@@ -11,6 +11,7 @@ using AuxiliarContable.Cartera;
 using AuxiliarContable.Cfdis;
 using AuxiliarContable.Conciliaciones;
 using AuxiliarContable.Documentos;
+using AuxiliarContable.EstadosDeCuenta;
 using AuxiliarContable.IA;
 using AuxiliarContable.Identity;
 using AuxiliarContable.Invitaciones;
@@ -18,6 +19,7 @@ using AuxiliarContable.Organizaciones;
 using AuxiliarContable.PerfilesFiscales;
 using Volo.Abp;
 using Volo.Abp.DependencyInjection;
+using Volo.Abp.Domain.Entities;
 
 namespace AuxiliarContable.Conversaciones;
 
@@ -40,6 +42,24 @@ public class HerramientasDelAsistente : ITransientDependency
     public const string ResumenDeCartera = "resumen_de_cartera";
     public const string CrearCliente = "crear_cliente";
     public const string InvitarPersona = "invitar_persona";
+    public const string ProponerParejas = "proponer_parejas";
+    public const string ConfirmarPareja = "confirmar_pareja";
+    public const string RechazarPareja = "rechazar_pareja";
+    public const string UnirAMano = "unir_a_mano";
+    public const string MarcarSinFactura = "marcar_sin_factura";
+    public const string EstadosDeCuenta = "estados_de_cuenta";
+    public const string RevisarEstadoDeCuenta = "revisar_estado_de_cuenta";
+    public const string ConfirmarEstadoDeCuenta = "confirmar_estado_de_cuenta";
+    public const string CorregirSaldos = "corregir_saldos";
+    public const string CorregirMovimiento = "corregir_movimiento";
+    public const string PersonasDelCliente = "personas_del_cliente";
+    public const string CambiarPapel = "cambiar_papel";
+    public const string QuitarPersona = "quitar_persona";
+
+    private const string EsquemaDeId = """{"type":"object","properties":{"id":{"type":"string","format":"uuid"}},"required":["id"]}""";
+
+    private const string EsquemaDelMes =
+        """{"type":"object","properties":{"anio":{"type":"integer","minimum":2000,"maximum":2100},"mes":{"type":"integer","minimum":1,"maximum":12}},"required":["anio","mes"]}""";
 
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
     {
@@ -52,6 +72,7 @@ public class HerramientasDelAsistente : ITransientDependency
     private readonly ICarteraAppService _cartera;
     private readonly IOrganizacionAppService _organizaciones;
     private readonly IInvitacionAppService _invitaciones;
+    private readonly IEstadosDeCuentaAppService _estados;
 
     public HerramientasDelAsistente(
         IPerfilFiscalAppService perfiles,
@@ -59,8 +80,10 @@ public class HerramientasDelAsistente : ITransientDependency
         IConciliacionAppService conciliacion,
         ICarteraAppService cartera,
         IOrganizacionAppService organizaciones,
-        IInvitacionAppService invitaciones)
+        IInvitacionAppService invitaciones,
+        IEstadosDeCuentaAppService estados)
     {
+        _estados = estados;
         _invitaciones = invitaciones;
         _organizaciones = organizaciones;
         _perfiles = perfiles;
@@ -73,7 +96,7 @@ public class HerramientasDelAsistente : ITransientDependency
     /// Las que puede usar quien escribe: sin permiso de cambiar, solo las de consulta. Invitar, solo
     /// el equipo con permiso de dar de alta personas (el servicio lo vuelve a exigir).
     /// </summary>
-    public static IReadOnlyList<HerramientaDelModelo> Disponibles(bool puedeEditar, bool puedeInvitar = false)
+    public static IReadOnlyList<HerramientaDelModelo> Disponibles(bool puedeEditar, bool puedeInvitar = false, bool esEquipo = false)
     {
         var lista = new List<HerramientaDelModelo>
         {
@@ -88,9 +111,10 @@ public class HerramientasDelAsistente : ITransientDependency
                 """{"type":"object","properties":{}}"""),
             new(ConciliacionDelMes,
                 "La conciliación de un mes del cliente activo: cuántos movimientos del banco ya están unidos a su factura y, sobre todo, " +
-                "lo que FALTA: depósitos sin factura, cargos sin factura, ventas de contado sin depósito y gastos sin cargo. " +
-                "Úsala para «¿qué me falta?» o «¿qué facturas me faltan de octubre?». No cambia nada.",
-                """{"type":"object","properties":{"anio":{"type":"integer","minimum":2000,"maximum":2100},"mes":{"type":"integer","minimum":1,"maximum":12}},"required":["anio","mes"]}"""),
+                "lo que FALTA: depósitos sin factura, cargos sin factura, ventas de contado sin depósito y gastos sin cargo, y las " +
+                "parejas propuestas por revisar. Úsala para «¿qué me falta?» o «¿qué facturas me faltan de octubre?». No cambia nada. " +
+                "Los «id» son para las herramientas de conciliación: NUNCA se los enseñes a la persona.",
+                EsquemaDelMes),
             new(BuscarDocumentos,
                 "Busca en la bóveda del cliente activo. Filtros opcionales: año, mes (1-12), tipo, dirección de la factura " +
                 "(emitida = venta, recibida = gasto) y texto (RFC, nombre del emisor o receptor, UUID, concepto o nombre del archivo). " +
@@ -103,6 +127,15 @@ public class HerramientasDelAsistente : ITransientDependency
                   "direccion":{"type":"string","enum":["emitida","recibida"]},
                   "texto":{"type":"string"}}}
                 """),
+            new(EstadosDeCuenta,
+                "Los estados de cuenta del cliente activo leídos por la IA: banco, periodo, saldos, si CUADRA (saldo inicial + " +
+                "abonos − cargos = saldo final), la diferencia y su revisión (por confirmar, requiere revisión, confirmado). " +
+                "Uno que no cuadra no entra a la conciliación hasta que se corrija o se confirme. Los «id» no se enseñan.",
+                """{"type":"object","properties":{}}"""),
+            new(RevisarEstadoDeCuenta,
+                "Detalle de un estado de cuenta para encontrar por qué no cuadra: los renglones donde el saldo corrido salta " +
+                "(ahí la IA leyó mal un monto) con sus vecinos. id = el de estados_de_cuenta.",
+                EsquemaDeId),
         };
 
         if (puedeEditar)
@@ -117,6 +150,41 @@ public class HerramientasDelAsistente : ITransientDependency
                 "Marca como correcto un dato que ya está en el perfil (extraído de la constancia o inferido) SOLO cuando la persona " +
                 "te dijo explícitamente que es correcto.",
                 $$$"""{"type":"object","properties":{"campo":{"type":"string","enum":[{{{claves}}}]}},"required":["campo"]}"""));
+
+            // La conciliación desde el chat. Las uniones las decide una PERSONA: el modelo propone y
+            // explica, y solo confirma, rechaza o une lo que la persona aprobó en la conversación.
+            lista.Add(new(ProponerParejas,
+                "Busca automáticamente qué movimiento del banco va con qué factura en un mes y deja las parejas como PROPUESTAS " +
+                "(no confirma nada). Después llama a conciliacion_del_mes para verlas y explícaselas a la persona.",
+                EsquemaDelMes));
+            lista.Add(new(ConfirmarPareja,
+                "Confirma una pareja propuesta (movimiento del banco = factura) SOLO cuando la persona la aprobó de forma explícita " +
+                "(«sí, esa es», «confirma todas las de 100 puntos»). id = el de la propuesta en conciliacion_del_mes.",
+                """{"type":"object","properties":{"id":{"type":"string","format":"uuid"}},"required":["id"]}"""));
+            lista.Add(new(RechazarPareja,
+                "Descarta una pareja propuesta cuando la persona dice que NO van juntos. No se vuelve a proponer.",
+                """{"type":"object","properties":{"id":{"type":"string","format":"uuid"}},"required":["id"]}"""));
+            lista.Add(new(UnirAMano,
+                "Une un movimiento del banco con una factura que la persona identificó (cuando no hubo propuesta). Ids de " +
+                "conciliacion_del_mes: movimientoId de depósitos/cargos sin factura, facturaId de ventas/gastos sin movimiento.",
+                """{"type":"object","properties":{"movimientoId":{"type":"string","format":"uuid"},"facturaId":{"type":"string","format":"uuid"}},"required":["movimientoId","facturaId"]}"""));
+            lista.Add(new(MarcarSinFactura,
+                "Marca un movimiento del banco como «no lleva factura» con la razón que dio la persona (traspaso entre cuentas, " +
+                "préstamo, comisión del banco…). Solo con la razón que ELLA dio; no la inventes.",
+                """{"type":"object","properties":{"movimientoId":{"type":"string","format":"uuid"},"porque":{"type":"string","minLength":3,"maxLength":200}},"required":["movimientoId","porque"]}"""));
+
+            // Estados de cuenta: las correcciones son las que la PERSONA lee en su PDF; el modelo no las deduce.
+            lista.Add(new(ConfirmarEstadoDeCuenta,
+                "Da por buena la lectura de un estado de cuenta SOLO cuando la persona lo aprobó. Si no cuadra, aunqueNoCuadre=true " +
+                "solo si ella lo pide explícitamente sabiendo la diferencia.",
+                """{"type":"object","properties":{"id":{"type":"string","format":"uuid"},"aunqueNoCuadre":{"type":"boolean"}},"required":["id"]}"""));
+            lista.Add(new(CorregirSaldos,
+                "Corrige el saldo inicial o final de un estado de cuenta con el valor que la persona LEYÓ en su PDF. Devuelve si ya cuadra.",
+                """{"type":"object","properties":{"id":{"type":"string","format":"uuid"},"saldoInicial":{"type":"number"},"saldoFinal":{"type":"number"}},"required":["id"]}"""));
+            lista.Add(new(CorregirMovimiento,
+                "Corrige un renglón mal leído (fecha AAAA-MM-DD, concepto, cargo o abono; uno de los dos en 0) con lo que la persona " +
+                "LEYÓ en su PDF. id = el del estado; movimientoId = el del renglón en revisar_estado_de_cuenta. Devuelve si ya cuadra.",
+                """{"type":"object","properties":{"id":{"type":"string","format":"uuid"},"movimientoId":{"type":"string","format":"uuid"},"fecha":{"type":"string","format":"date"},"concepto":{"type":"string","maxLength":500},"cargo":{"type":"number","minimum":0},"abono":{"type":"number","minimum":0}},"required":["id","movimientoId","fecha","concepto","cargo","abono"]}"""));
         }
 
         if (puedeInvitar)
@@ -126,6 +194,20 @@ public class HerramientasDelAsistente : ITransientDependency
                 "«dueño» (además invita a otros de su negocio), «miembro» (sube documentos y platica) o «lector» (solo consulta). " +
                 "Úsala SOLO después de que la persona confirme el correo exacto y el papel que le propusiste.",
                 """{"type":"object","properties":{"email":{"type":"string","format":"email","maxLength":256},"papel":{"type":"string","enum":["dueño","miembro","lector"]}},"required":["email","papel"]}"""));
+        }
+
+        // Quién entra a este cliente: lo administra el despacho (el servicio de Organizaciones lo exige).
+        if (esEquipo)
+        {
+            lista.Add(new(PersonasDelCliente,
+                "Las personas con acceso al cliente activo: nombre, correo y papel (dueño, miembro, lector). Los «userId» no se enseñan.",
+                """{"type":"object","properties":{}}"""));
+            lista.Add(new(CambiarPapel,
+                "Cambia el papel de una persona del cliente activo (dueño, miembro o lector). SOLO tras confirmar con quien te escribe.",
+                """{"type":"object","properties":{"userId":{"type":"string","format":"uuid"},"papel":{"type":"string","enum":["dueño","miembro","lector"]}},"required":["userId","papel"]}"""));
+            lista.Add(new(QuitarPersona,
+                "Quita el acceso de una persona al cliente activo (su cuenta sigue existiendo). SOLO tras confirmar nombre y correo con quien te escribe.",
+                """{"type":"object","properties":{"userId":{"type":"string","format":"uuid"}},"required":["userId"]}"""));
         }
 
         return lista;
@@ -147,6 +229,16 @@ public class HerramientasDelAsistente : ITransientDependency
                 $"Dio de alta al cliente: {n.GetString()}",
             InvitarPersona when uso.Entrada.ValueKind == JsonValueKind.Object && uso.Entrada.TryGetProperty("email", out var e) =>
                 $"Invitó a {e.GetString()}",
+            ProponerParejas => "Buscó parejas para conciliar",
+            ConfirmarPareja => "Confirmó una pareja de la conciliación",
+            RechazarPareja => "Descartó una pareja propuesta",
+            UnirAMano => "Unió un movimiento con su factura",
+            MarcarSinFactura => "Marcó un movimiento sin factura",
+            ConfirmarEstadoDeCuenta => "Confirmó un estado de cuenta",
+            CorregirSaldos => "Corrigió los saldos de un estado de cuenta",
+            CorregirMovimiento => "Corrigió un renglón del estado de cuenta",
+            CambiarPapel => "Cambió el papel de una persona",
+            QuitarPersona => "Quitó el acceso a una persona",
             _ => null,
         };
     }
@@ -188,6 +280,37 @@ public class HerramientasDelAsistente : ITransientDependency
                 BuscarDocumentos => await BuscarAsync(organizacionId, uso.Entrada),
                 GuardarDato => await GuardarAsync(organizacionId, uso.Entrada),
                 ConfirmarDato => await ConfirmarAsync(organizacionId, uso.Entrada),
+                ProponerParejas => await ProponerAsync(organizacionId, uso.Entrada),
+                ConfirmarPareja => await HechoAsync(() => _conciliacion.ConfirmarAsync(organizacionId, Id(uso.Entrada, "id")), "Pareja confirmada."),
+                RechazarPareja => await HechoAsync(() => _conciliacion.RechazarAsync(organizacionId, Id(uso.Entrada, "id")), "Pareja descartada."),
+                UnirAMano => await HechoAsync(() => _conciliacion.ConciliarAManoAsync(organizacionId, new ConciliarAManoDto
+                {
+                    MovimientoId = Id(uso.Entrada, "movimientoId"),
+                    CfdiId = Id(uso.Entrada, "facturaId"),
+                }), "Unidos."),
+                MarcarSinFactura => await HechoAsync(() => _conciliacion.MarcarSinFacturaAsync(organizacionId, new MarcarSinFacturaDto
+                {
+                    MovimientoId = Id(uso.Entrada, "movimientoId"),
+                    Porque = Texto(uso.Entrada, "porque").Trim(),
+                }), "Marcado sin factura."),
+                PersonasDelCliente => Personas(await _organizaciones.GetAsync(organizacionId)),
+                CambiarPapel => Personas(await _organizaciones.CambiarRolDeMiembroAsync(organizacionId, Id(uso.Entrada, "userId"),
+                    new CambiarRolEnOrganizacionDto { Rol = Papel(Texto(uso.Entrada, "papel")) })),
+                QuitarPersona => Personas(await _organizaciones.QuitarMiembroAsync(organizacionId, Id(uso.Entrada, "userId"))),
+                EstadosDeCuenta => ListaDeEstados(await _estados.GetListAsync(organizacionId)),
+                RevisarEstadoDeCuenta => DetalleDeEstado(await _estados.GetDetalleAsync(organizacionId, Id(uso.Entrada, "id"))),
+                ConfirmarEstadoDeCuenta => Cuadre(await _estados.ConfirmarAsync(organizacionId, Id(uso.Entrada, "id"),
+                    uso.Entrada.TryGetProperty("aunqueNoCuadre", out var aunque) && aunque.ValueKind == JsonValueKind.True)),
+                CorregirSaldos => Cuadre(await CorregirSaldosAsync(organizacionId, uso.Entrada)),
+                CorregirMovimiento => Cuadre(await _estados.CorregirMovimientoAsync(organizacionId, Id(uso.Entrada, "id"), new CorregirMovimientoDto
+                {
+                    MovimientoId = Id(uso.Entrada, "movimientoId"),
+                    Fecha = DateTime.TryParse(Texto(uso.Entrada, "fecha"), System.Globalization.CultureInfo.InvariantCulture,
+                        System.Globalization.DateTimeStyles.None, out var fecha) ? fecha : throw new UserFriendlyException("«fecha» va como AAAA-MM-DD."),
+                    Concepto = Texto(uso.Entrada, "concepto"),
+                    Cargo = Decimal(uso.Entrada, "cargo") ?? 0m,
+                    Abono = Decimal(uso.Entrada, "abono") ?? 0m,
+                })),
                 _ => throw new UserFriendlyException($"No existe la herramienta «{uso.Nombre}»."),
             };
             return new BloqueDeResultadoDeHerramienta(uso.Id, contenido);
@@ -195,6 +318,11 @@ public class HerramientasDelAsistente : ITransientDependency
         catch (UserFriendlyException ex)
         {
             return new BloqueDeResultadoDeHerramienta(uso.Id, ex.Message, EsError: true);
+        }
+        catch (EntityNotFoundException)
+        {
+            // Un id que no es de ESTE cliente (o que el modelo se inventó): sin decir de quién es.
+            return new BloqueDeResultadoDeHerramienta(uso.Id, "No existe en este cliente. Vuelve a consultar con conciliacion_del_mes.", EsError: true);
         }
         catch (BusinessException ex)
         {
@@ -330,15 +458,27 @@ public class HerramientasDelAsistente : ITransientDependency
         }, Json);
     }
 
+    private static RolEnOrganizacion Papel(string papel) => papel switch
+    {
+        "dueño" => RolEnOrganizacion.Administrador,
+        "miembro" => RolEnOrganizacion.Miembro,
+        "lector" => RolEnOrganizacion.Lector,
+        var otro => throw new UserFriendlyException($"Papel desconocido: «{otro}». Usa dueño, miembro o lector."),
+    };
+
+    private static string Personas(OrganizacionDetalleDto o) => o.ListaDeMiembros.Count == 0
+        ? "Nadie del cliente tiene acceso todavía. Puedes invitar a alguien."
+        : JsonSerializer.Serialize(o.ListaDeMiembros.Select(m => new
+        {
+            userId = m.UserId,
+            nombre = m.NombreCompleto ?? m.UserName,
+            email = m.Email,
+            papel = m.Rol switch { RolEnOrganizacion.Administrador => "dueño", RolEnOrganizacion.Lector => "lector", _ => "miembro" },
+        }), Json);
+
     private async Task<string> InvitarAsync(Guid organizacionId, JsonElement entrada)
     {
-        var papel = Texto(entrada, "papel") switch
-        {
-            "dueño" => RolEnOrganizacion.Administrador,
-            "miembro" => RolEnOrganizacion.Miembro,
-            "lector" => RolEnOrganizacion.Lector,
-            var otro => throw new UserFriendlyException($"Papel desconocido: «{otro}». Usa dueño, miembro o lector."),
-        };
+        var papel = Papel(Texto(entrada, "papel"));
         // El mismo servicio que la pantalla de Invitaciones: permiso, jerarquía, correo ya con cuenta
         // y el envío (en segundo plano). El cliente es el activo: el modelo no lo elige.
         var invitacion = await _invitaciones.CreateAsync(new CrearInvitacionDto
@@ -388,13 +528,16 @@ public class HerramientasDelAsistente : ITransientDependency
 
         object Mov(MovimientoDelBancoDto m) => new
         {
+            id = m.Id,
             fecha = m.Fecha.ToString("yyyy-MM-dd"),
+            banco = m.Banco,
             concepto = m.Concepto,
             monto = m.Abono > 0 ? m.Abono : m.Cargo,
         };
 
         object Fac(FacturaDelMesDto f) => new
         {
+            id = f.Id,
             fecha = f.Fecha.ToString("yyyy-MM-dd"),
             contraparte = $"{f.Contraparte} ({f.RfcContraparte})",
             total = f.Total,
@@ -406,7 +549,8 @@ public class HerramientasDelAsistente : ITransientDependency
             hayEstadosDeCuenta = c.HayEstadosDeCuenta,
             estadosQueNoCuadran = c.EstadosSinRevisar,
             conciliados = c.Confirmadas.Count,
-            propuestasPorRevisar = c.Propuestas.Count,
+            // Puntaje 0-100 del emparejador; «motivo» dice por qué (y «revisa» si hay otra candidata).
+            propuestasPorRevisar = c.Propuestas.Select(p => new { id = p.Id, puntaje = p.Puntaje, motivo = p.Motivo, movimiento = Mov(p.Movimiento), factura = Fac(p.Factura) }),
             depositosSinFactura = c.DepositosSinFactura.Select(Mov),
             cargosSinFactura = c.CargosSinFactura.Select(Mov),
             ventasSinDeposito = c.VentasSinDeposito.Select(Fac),
@@ -414,6 +558,94 @@ public class HerramientasDelAsistente : ITransientDependency
             sinFacturaJustificados = c.SinFacturaJustificados.Count,
         }, Json);
     }
+
+    private static object Resumen(EstadoDeCuentaResumenDto e) => new
+    {
+        id = e.Id,
+        banco = e.Banco,
+        cuenta = e.Cuenta is null ? null : $"…{e.Cuenta}",
+        periodo = $"{e.PeriodoInicio:yyyy-MM-dd} a {e.PeriodoFin:yyyy-MM-dd}",
+        moneda = e.Moneda,
+        saldoInicial = e.SaldoInicial,
+        saldoFinal = e.SaldoFinal,
+        abonos = e.TotalAbonos,
+        cargos = e.TotalCargos,
+        cuadra = e.Cuadra,
+        diferencia = e.Diferencia,
+        saltosDeSaldo = e.SaltosDeSaldo,
+        movimientos = e.Movimientos,
+        revision = e.Revision switch
+        {
+            RevisionDelEstadoDeCuenta.Confirmado => "confirmado",
+            RevisionDelEstadoDeCuenta.RequiereRevision => "requiere revisión",
+            _ => "por confirmar",
+        },
+    };
+
+    private static string ListaDeEstados(List<EstadoDeCuentaResumenDto> estados) =>
+        estados.Count == 0
+            ? "Este cliente no tiene estados de cuenta leídos. Pídele que mande el PDF de su banco con el clip."
+            : JsonSerializer.Serialize(estados.Select(Resumen), Json);
+
+    /// <summary>Solo los renglones sospechosos y sus vecinos: un estado puede tener cientos.</summary>
+    private static string DetalleDeEstado(EstadoDeCuentaDto e)
+    {
+        var sospechosos = e.Renglones.Select((r, i) => (r, i)).Where(x => x.r.SaltoDeSaldo).Select(x => x.i).ToHashSet();
+        var aMostrar = e.Renglones.Where((_, i) => sospechosos.Contains(i) || sospechosos.Contains(i + 1) || sospechosos.Contains(i - 1));
+        return JsonSerializer.Serialize(new
+        {
+            estado = Resumen(e),
+            renglonesConSaltoDeSaldo = sospechosos.Count,
+            renglones = aMostrar.Take(40).Select(r => new
+            {
+                movimientoId = r.Id,
+                orden = r.Orden,
+                fecha = r.Fecha.ToString("yyyy-MM-dd"),
+                concepto = r.Concepto,
+                cargo = r.Cargo,
+                abono = r.Abono,
+                saldo = r.Saldo,
+                saltaAqui = r.SaltoDeSaldo,
+            }),
+        }, Json);
+    }
+
+    /// <summary>
+    /// El servicio reemplaza LOS DOS saldos (la pantalla siempre manda ambos); en el chat la persona
+    /// suele dictar uno, así que el que no dijo se conserva tal cual estaba.
+    /// </summary>
+    private async Task<EstadoDeCuentaDto> CorregirSaldosAsync(Guid organizacionId, JsonElement entrada)
+    {
+        var id = Id(entrada, "id");
+        var actual = await _estados.GetDetalleAsync(organizacionId, id);
+        return await _estados.CorregirSaldosAsync(organizacionId, id, new CorregirSaldosDto
+        {
+            SaldoInicial = Decimal(entrada, "saldoInicial") ?? actual.SaldoInicial,
+            SaldoFinal = Decimal(entrada, "saldoFinal") ?? actual.SaldoFinal,
+        });
+    }
+
+    private static string Cuadre(EstadoDeCuentaDto e) => JsonSerializer.Serialize(Resumen(e), Json);
+
+    private static decimal? Decimal(JsonElement entrada, string propiedad) =>
+        entrada.ValueKind == JsonValueKind.Object && entrada.TryGetProperty(propiedad, out var v) && v.TryGetDecimal(out var d) ? d : null;
+
+    private async Task<string> ProponerAsync(Guid organizacionId, JsonElement entrada)
+    {
+        var anio = Entero(entrada, "anio") ?? throw new UserFriendlyException("Falta «anio».");
+        var mes = Entero(entrada, "mes") ?? throw new UserFriendlyException("Falta «mes».");
+        var c = await _conciliacion.ProponerAsync(organizacionId, anio, mes);
+        return JsonSerializer.Serialize(new { periodo = $"{anio}-{mes:00}", propuestas = c.Propuestas.Count, yaConciliados = c.Confirmadas.Count }, Json);
+    }
+
+    private static async Task<string> HechoAsync(Func<Task> accion, string mensaje)
+    {
+        await accion();
+        return mensaje;
+    }
+
+    private static Guid Id(JsonElement entrada, string propiedad) =>
+        Guid.TryParse(Texto(entrada, propiedad), out var id) ? id : throw new UserFriendlyException($"«{propiedad}» no es un id válido.");
 
     private static string? Opcional(JsonElement entrada, string propiedad) =>
         entrada.ValueKind == JsonValueKind.Object && entrada.TryGetProperty(propiedad, out var v)

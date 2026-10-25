@@ -368,6 +368,14 @@ cuenta en frases lo que ya se registra, por día y con filtros (persona, organiz
 - **Invitar desde el chat** (`invitar_persona`, en el chat de UN cliente): solo si `quien.Equipo` y
   `AbpIdentity.Users.Create`. Usa `IInvitacionAppService.CreateAsync` con rol `usuario` y la
   organización ACTIVA (el modelo no la elige); papel dueño/miembro/lector. Confirmar antes.
+- **Todo platicando** (chat de un cliente): conciliación (`proponer_parejas`, `confirmar_pareja`,
+  `rechazar_pareja`, `unir_a_mano`, `marcar_sin_factura`) y estados de cuenta (`estados_de_cuenta`,
+  `revisar_estado_de_cuenta`, `confirmar_estado_de_cuenta`, `corregir_saldos`, `corregir_movimiento`)
+  con `puedeEditar`; personas (`personas_del_cliente`, `cambiar_papel`, `quitar_persona`) solo el
+  equipo. `conciliacion_del_mes` ya devuelve ids (las instrucciones prohíben enseñarlos). Las
+  correcciones son lo que la PERSONA lee en su PDF. `corregir_saldos` conserva el saldo que no se
+  dijo (el servicio reemplaza los dos). Un id ajeno o inventado (`EntityNotFoundException`) vuelve
+  al modelo como error: ya no tumba el turno.
 - **Cartera** (`CarteraAppService`, `/cartera`): permiso `Organizaciones` + `Autorizador.Equipo`
   (en los tests la autorización es «todo permitido»: el atributo no basta). Semáforo por cliente
   (urgente = sin RFC, sin estado de cuenta del mes o uno que no cuadra) y pendientes en palabras.

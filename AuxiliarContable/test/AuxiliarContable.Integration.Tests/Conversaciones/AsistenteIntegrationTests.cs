@@ -113,12 +113,17 @@ public class AsistenteIntegrationTests : ConJerarquiaTestBase
         nombres.ShouldNotContain(HerramientasDelAsistente.GuardarDato);
         nombres.ShouldNotContain(HerramientasDelAsistente.ConfirmarDato);
 
-        // Y aunque el modelo la pidiera, el servicio del perfil la rechaza.
+        // Y aunque el modelo la pidiera, el servicio del perfil la rechaza: vuelve al modelo como error
+        // (la conversación sigue) y no se guarda nada.
         _modelo.Reiniciar();
         _modelo.UsarHerramienta(HerramientasDelAsistente.GuardarDato, new { campo = CamposDelPerfil.Giro, valor = "Otro" });
         _modelo.Contestar("No pude.");
-        await Should.ThrowAsync<EntityNotFoundException>(() =>
-            ComoAsync(_lector, () => _asistente.EnviarAsync(_cliente, Mensaje("Cambia mi giro"))));
+        var conversacion = await ComoAsync(_lector, () => _asistente.EnviarAsync(_cliente, Mensaje("Cambia mi giro")));
+
+        _modelo.Solicitudes[1].Turnos.Last().Bloques.Single().ShouldBeOfType<BloqueDeResultadoDeHerramienta>().EsError.ShouldBeTrue();
+        conversacion.Mensajes.Last().Acciones.ShouldBeEmpty();
+        var perfil = await ComoAsync(Usuario, () => _perfil.GetAsync(_cliente));
+        perfil.Campos.Single(c => c.Clave == CamposDelPerfil.Giro).Valor.ShouldBeNull();
     }
 
     [Fact]
@@ -246,5 +251,34 @@ public class AsistenteIntegrationTests : ConJerarquiaTestBase
         await ComoAsync(Usuario, () => _asistente.EnviarAsync(_cliente, Mensaje("hola")));
 
         _modelo.Solicitudes[0].Herramientas.Select(h => h.Nombre).ShouldNotContain(HerramientasDelAsistente.InvitarPersona);
+    }
+
+    [Fact]
+    public async Task El_despacho_administra_a_las_personas_del_cliente_platicando()
+    {
+        _modelo.UsarHerramienta(HerramientasDelAsistente.PersonasDelCliente, new { });
+        _modelo.UsarHerramienta(HerramientasDelAsistente.CambiarPapel, new { userId = _lector.Id, papel = "miembro" });
+        _modelo.UsarHerramienta(HerramientasDelAsistente.QuitarPersona, new { userId = Usuario.Id });
+        _modelo.Contestar("Listo.");
+
+        var conversacion = await ComoAsync(Administrador, () => _asistente.EnviarAsync(_cliente, Mensaje("Sube al lector a miembro y quita al otro")));
+
+        _modelo.Solicitudes[1].Turnos.Last().Bloques.Single().ShouldBeOfType<BloqueDeResultadoDeHerramienta>().Contenido.ShouldContain("lector");
+        var detalle = await ComoAsync(Administrador, () => GetRequiredService<IOrganizacionAppService>().GetAsync(_cliente));
+        detalle.ListaDeMiembros.ShouldHaveSingleItem().UserId.ShouldBe(_lector.Id);
+        detalle.ListaDeMiembros.Single().Rol.ShouldBe(RolEnOrganizacion.Miembro);
+        conversacion.Mensajes.Last().Acciones.ShouldBe(["Cambió el papel de una persona", "Quitó el acceso a una persona"]);
+    }
+
+    [Fact]
+    public async Task Un_cliente_no_administra_personas_desde_el_chat()
+    {
+        _modelo.Contestar("Hola.");
+
+        await ComoAsync(Usuario, () => _asistente.EnviarAsync(_cliente, Mensaje("hola")));
+
+        var nombres = _modelo.Solicitudes[0].Herramientas.Select(h => h.Nombre).ToList();
+        nombres.ShouldNotContain(HerramientasDelAsistente.PersonasDelCliente);
+        nombres.ShouldNotContain(HerramientasDelAsistente.QuitarPersona);
     }
 }

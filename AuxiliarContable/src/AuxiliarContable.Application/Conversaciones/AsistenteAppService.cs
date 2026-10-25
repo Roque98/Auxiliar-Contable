@@ -119,7 +119,7 @@ public class AsistenteAppService : AuxiliarContableAppService, IAsistenteAppServ
         var instrucciones = await InstruccionesAsync(organizacionId, quien.Equipo, puedeEditar, puedeInvitar);
         var herramientas = organizacionId == Guid.Empty
             ? HerramientasDelAsistente.DeCartera()
-            : HerramientasDelAsistente.Disponibles(puedeEditar, puedeInvitar);
+            : HerramientasDelAsistente.Disponibles(puedeEditar, puedeInvitar, quien.Equipo);
 
         for (var vuelta = 1; ; vuelta++)
         {

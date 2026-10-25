@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using AuxiliarContable.Boveda;
 using AuxiliarContable.Cfdis;
 using AuxiliarContable.Conciliaciones;
+using AuxiliarContable.Conversaciones;
 using AuxiliarContable.Documentos;
 using AuxiliarContable.EstadosDeCuenta;
 using AuxiliarContable.IA;
@@ -147,5 +148,66 @@ public class ConciliacionIntegrationTests : ConJerarquiaTestBase
             return true;
         }));
         await Should.ThrowAsync<UserFriendlyException>(() => ComoAsync(Usuario, () => _conciliacion.GetDelMesAsync(_cliente, 2026, 13)));
+    }
+
+    [Fact]
+    public async Task Se_concilia_platicando_y_un_id_ajeno_no_tumba_la_conversacion()
+    {
+        await FacturaAsync(Rfc, "ACM010101ABC", "1160.00", "2026-10-02T10:00:00");
+        await FacturaAsync("CFE370814QI0", Rfc, "500.00", "2026-10-06T10:00:00");
+        await EstadoDeCuentaAsync(10000m + 1160m - 500m - 50m,
+            new { fecha = "2026-10-03", concepto = "SPEI RECIBIDO ACM010101ABC", cargo = 0m, abono = 1160m },
+            new { fecha = "2026-10-07", concepto = "PAGO CFE", cargo = 500m, abono = 0m },
+            new { fecha = "2026-10-31", concepto = "COMISION", cargo = 50m, abono = 0m });
+        var mes = await ComoAsync(Usuario, () => _conciliacion.ProponerAsync(_cliente, 2026, 10));
+        var deVenta = mes.Propuestas.Single(p => p.Factura.EsVenta);
+        var deGasto = mes.Propuestas.Single(p => !p.Factura.EsVenta);
+        var comision = mes.CargosSinFactura.Single(m => m.Concepto == "COMISION");
+
+        var modelo = (ModeloConversacionalDePrueba)GetRequiredService<IModeloConversacional>();
+        modelo.Reiniciar();
+        modelo.UsarHerramienta(HerramientasDelAsistente.ConfirmarPareja, new { id = deVenta.Id });
+        modelo.UsarHerramienta(HerramientasDelAsistente.RechazarPareja, new { id = deGasto.Id });
+        modelo.UsarHerramienta(HerramientasDelAsistente.MarcarSinFactura, new { movimientoId = comision.Id, porque = "Comisión del banco" });
+        modelo.UsarHerramienta(HerramientasDelAsistente.ConfirmarPareja, new { id = Guid.NewGuid() });
+        modelo.Contestar("Listo: confirmé el depósito de $1,160 y marqué la comisión.");
+
+        var conversacion = await ComoAsync(Usuario, () =>
+            GetRequiredService<IAsistenteAppService>().EnviarAsync(_cliente, new EnviarMensajeDto { Texto = "Sí a la primera, no a la segunda; la comisión no lleva factura" }));
+
+        mes = await ComoAsync(Usuario, () => _conciliacion.GetDelMesAsync(_cliente, 2026, 10));
+        mes.Confirmadas.ShouldHaveSingleItem().Id.ShouldBe(deVenta.Id);
+        mes.Propuestas.ShouldBeEmpty();
+        mes.SinFacturaJustificados.ShouldHaveSingleItem().SinFacturaPorque.ShouldBe("Comisión del banco");
+        modelo.Solicitudes[4].Turnos.Last().Bloques.Single().ShouldBeOfType<BloqueDeResultadoDeHerramienta>().EsError.ShouldBeTrue();
+        conversacion.Mensajes.Last().Acciones.ShouldBe([
+            "Confirmó una pareja de la conciliación", "Descartó una pareja propuesta", "Marcó un movimiento sin factura"]);
+    }
+
+    [Fact]
+    public async Task Un_estado_que_no_cuadra_se_corrige_y_confirma_platicando()
+    {
+        // La IA leyó mal el saldo final: 9,000 en vez de 11,160.
+        await EstadoDeCuentaAsync(9000m, new { fecha = "2026-10-03", concepto = "SPEI", cargo = 0m, abono = 1160m });
+        var estados = GetRequiredService<IEstadosDeCuentaAppService>();
+        var estado = (await ComoAsync(Usuario, () => estados.GetListAsync(_cliente))).Single();
+        estado.Cuadra.ShouldBeFalse();
+
+        var modelo = (ModeloConversacionalDePrueba)GetRequiredService<IModeloConversacional>();
+        modelo.Reiniciar();
+        modelo.UsarHerramienta(HerramientasDelAsistente.EstadosDeCuenta, new { });
+        modelo.UsarHerramienta(HerramientasDelAsistente.CorregirSaldos, new { id = estado.Id, saldoFinal = 11160m });
+        modelo.UsarHerramienta(HerramientasDelAsistente.ConfirmarEstadoDeCuenta, new { id = estado.Id });
+        modelo.Contestar("Ya cuadra y quedó confirmado.");
+
+        var conversacion = await ComoAsync(Usuario, () =>
+            GetRequiredService<IAsistenteAppService>().EnviarAsync(_cliente, new EnviarMensajeDto { Texto = "El saldo final dice 11,160. Sí, confírmalo" }));
+
+        modelo.Solicitudes[1].Turnos.Last().Bloques.Single().ShouldBeOfType<BloqueDeResultadoDeHerramienta>().Contenido.ShouldContain("\"cuadra\":false");
+        estado = (await ComoAsync(Usuario, () => estados.GetListAsync(_cliente))).Single();
+        estado.Cuadra.ShouldBeTrue();
+        estado.Revision.ShouldBe(RevisionDelEstadoDeCuenta.Confirmado);
+        conversacion.Mensajes.Last().Acciones.ShouldBe([
+            "Corrigió los saldos de un estado de cuenta", "Confirmó un estado de cuenta"]);
     }
 }
