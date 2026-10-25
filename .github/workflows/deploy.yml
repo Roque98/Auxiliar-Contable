@@ -18,6 +18,12 @@ jobs:
   verificar:
     uses: ./.github/workflows/ci.yml
     secrets: inherit
+    # Un workflow llamado no puede pedir más permisos que los que le da quien lo llama: el job
+    # «secretos» del CI pide pull-requests:read (gitleaks) y, sin esto, el deploy no arrancaba
+    # («startup_failure», sin más detalle).
+    permissions:
+      contents: read
+      pull-requests: read
 
   publicar-y-desplegar:
     needs: verificar          # si el CI falla, no se publica ni se sube nada
