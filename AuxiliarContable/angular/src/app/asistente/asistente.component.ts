@@ -8,11 +8,12 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
+import { PermissionService } from '@abp/ng.core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { mensajeDeError } from '../invitaciones/invitaciones.service';
 import { ClienteVisibleDto, PerfilFiscalService } from '../perfil-fiscal/perfil-fiscal.service';
-import { AsistenteService, ConversacionDto, MAX_TEXTO, MensajeDto, RolDelMensaje } from './asistente.service';
+import { AsistenteService, CARTERA, ConversacionDto, MAX_TEXTO, MensajeDto, RolDelMensaje } from './asistente.service';
 
 const SUGERENCIAS_CLIENTE = [
   'Ayúdame a completar mi perfil',
@@ -24,6 +25,12 @@ const SUGERENCIAS_DESPACHO = [
   'Resume el perfil de este cliente y lo que falta',
   'Redacta un mensaje para pedirle sus estados de cuenta',
   '¿Qué documentos ha subido?',
+];
+
+const SUGERENCIAS_CARTERA = [
+  '¿Qué clientes están urgentes este mes?',
+  '¿A quién le falta el estado de cuenta?',
+  'Redacta un recordatorio para los que no han mandado facturas',
 ];
 
 /**
@@ -49,6 +56,7 @@ export class AsistenteComponent implements OnInit {
   private readonly perfiles = inject(PerfilFiscalService);
   private readonly ruta = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly permisos = inject(PermissionService);
   private readonly fondo = viewChild<ElementRef<HTMLElement>>('fondo');
 
   readonly Rol = RolDelMensaje;
@@ -69,11 +77,18 @@ export class AsistenteComponent implements OnInit {
       ? [...lista, { id: 'pendiente', rol: RolDelMensaje.Usuario, texto: enviando, creadoUtc: '', acciones: [] }]
       : lista;
   });
-  readonly sugerencias = computed(() => (this.conversacion()?.esDelDespacho ? SUGERENCIAS_DESPACHO : SUGERENCIAS_CLIENTE));
+  readonly esCartera = computed(() => this.clienteId() === CARTERA);
+  readonly sugerencias = computed(() =>
+    this.esCartera() ? SUGERENCIAS_CARTERA : this.conversacion()?.esDelDespacho ? SUGERENCIAS_DESPACHO : SUGERENCIAS_CLIENTE,
+  );
 
   ngOnInit(): void {
     this.perfiles.clientes().subscribe({
-      next: lista => {
+      next: delServidor => {
+        // El equipo puede platicar también sobre toda la cartera (solo el resumen; ver CLAUDE.md §1.2.11).
+        const lista = this.permisos.getGrantedPolicy('AuxiliarContable.Organizaciones')
+          ? [{ id: CARTERA, nombre: 'Toda la cartera', puedeEditar: false }, ...delServidor]
+          : delServidor;
         this.clientes.set(lista);
         const pedido = this.ruta.snapshot.queryParamMap.get('cliente');
         const elegido = lista.find(c => c.id === pedido) ?? (lista.length === 1 ? lista[0] : null);

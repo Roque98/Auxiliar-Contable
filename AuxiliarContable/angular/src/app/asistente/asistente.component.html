@@ -27,7 +27,11 @@
     <p class="as-activo" data-testid="cliente-activo">
       <i class="bi bi-person-badge" aria-hidden="true"></i>
       <span>Platicando sobre <strong>{{ c.nombre }}</strong></span>
-      <a [routerLink]="['/perfil-fiscal']" [queryParams]="{ cliente: c.id }">Ver perfil</a>
+      @if (esCartera()) {
+        <a [routerLink]="['/cartera']">Ver cartera</a>
+      } @else {
+        <a [routerLink]="['/perfil-fiscal']" [queryParams]="{ cliente: c.id }">Ver perfil</a>
+      }
     </p>
   }
 </header>

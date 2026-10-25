@@ -1,0 +1,75 @@
+<header class="ca-cabecera">
+  <div class="ca-titulo">
+    <h1>Cartera</h1>
+    <a class="btn btn-outline-primary" [routerLink]="['/asistente']" [queryParams]="{ cliente: cartera }">
+      <i class="bi bi-chat-dots" aria-hidden="true"></i> Preguntar sobre la cartera
+    </a>
+  </div>
+  <div class="ca-mes">
+    <button type="button" class="btn btn-outline-secondary" (click)="cambiarMes(-1)" aria-label="Mes anterior"><i class="bi bi-chevron-left" aria-hidden="true"></i></button>
+    <strong>{{ meses[mes - 1] }} {{ anio }}</strong>
+    <button type="button" class="btn btn-outline-secondary" (click)="cambiarMes(1)" aria-label="Mes siguiente"><i class="bi bi-chevron-right" aria-hidden="true"></i></button>
+  </div>
+</header>
+
+@if (error(); as e) {
+  <div class="ig-alerta ig-alerta-error" role="alert">{{ e }}</div>
+}
+
+@if (metricas(); as m) {
+  <section class="ca-metricas" aria-labelledby="ca-met">
+    <h2 id="ca-met">El despacho este mes</h2>
+    <dl>
+      <div><dt>Clientes al día</dt><dd>{{ m.clientesAlDia }} / {{ m.clientes }}</dd></div>
+      <div><dt>Perfiles completos</dt><dd>{{ m.clientesConPerfilCompleto }}</dd></div>
+      <div><dt>Documentos</dt><dd>{{ numero(m.documentosDelMes) }}</dd></div>
+      <div><dt>Facturas</dt><dd>{{ numero(m.facturasDelMes) }}</dd></div>
+      <div><dt>Estados de cuenta</dt><dd>{{ numero(m.estadosDeCuentaDelMes) }}</dd></div>
+      <div><dt>Conciliados</dt><dd>{{ numero(m.conciliadosDelMes) }}</dd></div>
+      <div><dt>Sin factura</dt><dd>{{ numero(m.movimientosSinFactura) }}</dd></div>
+      <div><dt>Chat</dt><dd>{{ numero(m.mensajesDelChat) }} msj · {{ m.personasEnElChat }} pers.</dd></div>
+      <div><dt>Tokens del chat</dt><dd>{{ numero(m.tokensDelChat) }}</dd></div>
+    </dl>
+  </section>
+}
+
+@if (clientes(); as l) {
+  <div class="ca-filtros" role="group" aria-label="Filtrar por semáforo">
+    <button type="button" class="ca-chip ca-urgente" [class.ca-activo]="filtro() === Semaforo.Urgente" (click)="alternar(Semaforo.Urgente)">Urgente {{ cuenta().urgente }}</button>
+    <button type="button" class="ca-chip ca-atencion" [class.ca-activo]="filtro() === Semaforo.Atencion" (click)="alternar(Semaforo.Atencion)">Atención {{ cuenta().atencion }}</button>
+    <button type="button" class="ca-chip ca-aldia" [class.ca-activo]="filtro() === Semaforo.AlDia" (click)="alternar(Semaforo.AlDia)">Al día {{ cuenta().alDia }}</button>
+  </div>
+
+  @if (!l.length) {
+    <p class="ca-vacio">Aún no hay clientes. Créalos en Organizaciones.</p>
+  }
+
+  <ul class="ca-lista">
+    @for (c of visibles(); track c.id) {
+      <li class="ca-cliente" [class.ca-borde-urgente]="c.semaforo === Semaforo.Urgente" [class.ca-borde-atencion]="c.semaforo === Semaforo.Atencion">
+        <div class="ca-cliente-cabeza">
+          <strong>{{ c.nombre }}</strong>
+          <span class="ca-pastilla" [class.ca-urgente]="c.semaforo === Semaforo.Urgente" [class.ca-atencion]="c.semaforo === Semaforo.Atencion" [class.ca-aldia]="c.semaforo === Semaforo.AlDia">{{ etiqueta(c.semaforo) }}</span>
+        </div>
+        <p class="ca-rfc">{{ c.rfc || 'Sin RFC' }} · perfil {{ c.perfilCompleto }} %</p>
+        <p class="ca-numeros">{{ c.facturasDelMes }} facturas · {{ c.estadosDeCuentaDelMes }} estados de cuenta · {{ c.documentosDelMes }} documentos</p>
+        @if (c.pendientes.length) {
+          <ul class="ca-pendientes">
+            @for (p of c.pendientes; track p) {
+              <li>{{ p }}</li>
+            }
+          </ul>
+        }
+        <nav class="ca-acciones" [attr.aria-label]="'Ir a ' + c.nombre">
+          <a class="btn btn-outline-secondary" [routerLink]="['/asistente']" [queryParams]="{ cliente: c.id }" aria-label="Asistente"><i class="bi bi-chat-dots" aria-hidden="true"></i></a>
+          <a class="btn btn-outline-secondary" [routerLink]="['/documentos']" [queryParams]="{ cliente: c.id }" aria-label="Documentos"><i class="bi bi-folder2-open" aria-hidden="true"></i></a>
+          <a class="btn btn-outline-secondary" [routerLink]="['/estados-de-cuenta']" [queryParams]="{ cliente: c.id }" aria-label="Estados de cuenta"><i class="bi bi-bank" aria-hidden="true"></i></a>
+          <a class="btn btn-outline-secondary" [routerLink]="['/conciliacion']" [queryParams]="{ cliente: c.id, anio: anio, mes: mes }" aria-label="Conciliación"><i class="bi bi-arrow-left-right" aria-hidden="true"></i></a>
+          <a class="btn btn-outline-secondary" [routerLink]="['/perfil-fiscal']" [queryParams]="{ cliente: c.id }" aria-label="Perfil fiscal"><i class="bi bi-person-vcard" aria-hidden="true"></i></a>
+        </nav>
+      </li>
+    }
+  </ul>
+} @else if (!error()) {
+  <div class="ig-esqueleto"></div>
+}

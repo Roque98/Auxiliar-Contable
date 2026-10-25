@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Logging;
 using Volo.Abp;
 using Volo.Abp.Domain.Repositories;
+using Volo.Abp.Domain.Entities;
 using Volo.Abp.Users;
 
 namespace AuxiliarContable.Conversaciones;
@@ -50,13 +51,13 @@ public class AsistenteAppService : AuxiliarContableAppService, IAsistenteAppServ
 
     public async Task<ConversacionDto> GetAsync(Guid organizacionId)
     {
-        await _autorizador.ExigirAsync(organizacionId, AccionEnOrganizacion.Ver);
+        await ExigirVerAsync(organizacionId);
         return await DescribirAsync(organizacionId, await AbiertaAsync(organizacionId));
     }
 
     public async Task<ConversacionDto> EmpezarDeNuevoAsync(Guid organizacionId)
     {
-        await _autorizador.ExigirAsync(organizacionId, AccionEnOrganizacion.Ver);
+        await ExigirVerAsync(organizacionId);
         if (await AbiertaAsync(organizacionId) is { } abierta)
         {
             abierta.Cerrar();
@@ -68,7 +69,7 @@ public class AsistenteAppService : AuxiliarContableAppService, IAsistenteAppServ
 
     public async Task<ConversacionDto> EnviarAsync(Guid organizacionId, EnviarMensajeDto input)
     {
-        await _autorizador.ExigirAsync(organizacionId, AccionEnOrganizacion.Ver);
+        await ExigirVerAsync(organizacionId);
         var texto = (input.Texto ?? string.Empty).Trim();
         if (texto.Length == 0)
         {
@@ -89,7 +90,7 @@ public class AsistenteAppService : AuxiliarContableAppService, IAsistenteAppServ
         await ExigirCupoAsync(yo);
 
         var quien = await _autorizador.QuienMiraAsync();
-        var puedeEditar = quien.Puede(organizacionId, AccionEnOrganizacion.Subir);
+        var puedeEditar = organizacionId != Guid.Empty && quien.Puede(organizacionId, AccionEnOrganizacion.Subir);
         var conversacion = await AbiertaAsync(organizacionId)
                            ?? await _conversaciones.InsertAsync(new Conversacion(GuidGenerator.Create(), yo, organizacionId, Clock.Now), autoSave: true);
 
@@ -112,7 +113,7 @@ public class AsistenteAppService : AuxiliarContableAppService, IAsistenteAppServ
         await GuardarAsync(RolDelMensaje.Usuario, texto, new BloqueDeTurno[] { new BloqueDeTexto(texto) });
 
         var instrucciones = await InstruccionesAsync(organizacionId, quien.Equipo, puedeEditar);
-        var herramientas = HerramientasDelAsistente.Disponibles(puedeEditar);
+        var herramientas = organizacionId == Guid.Empty ? HerramientasDelAsistente.DeCartera() : HerramientasDelAsistente.Disponibles(puedeEditar);
 
         for (var vuelta = 1; ; vuelta++)
         {
@@ -206,11 +207,35 @@ public class AsistenteAppService : AuxiliarContableAppService, IAsistenteAppServ
         return await AsyncExecuter.FirstOrDefaultAsync(consulta);
     }
 
-    private async Task<string> InstruccionesAsync(Guid organizacionId, bool delDespacho, bool puedeEditar)
+    /// <summary>
+    /// <see cref="Guid.Empty"/> es la conversación de TODA LA CARTERA: solo para el equipo, y en ella el
+    /// modelo solo ve el resumen de la cartera (<see cref="HerramientasDelAsistente.DeCartera"/>), nunca el
+    /// detalle de un cliente. Para eso se elige el cliente.
+    /// </summary>
+    private async Task ExigirVerAsync(Guid organizacionId)
     {
-        var cliente = (await _organizaciones.GetAsync(organizacionId)).Nombre;
-        return InstruccionesDelAsistente.Construir(cliente, Clock.Now, delDespacho, puedeEditar);
+        if (organizacionId == Guid.Empty)
+        {
+            if (!(await _autorizador.QuienMiraAsync()).Equipo)
+            {
+                throw new EntityNotFoundException(typeof(Organizacion), organizacionId);
+            }
+
+            return;
+        }
+
+        await _autorizador.ExigirAsync(organizacionId, AccionEnOrganizacion.Ver);
     }
+
+    private async Task<string> NombreAsync(Guid organizacionId) =>
+        organizacionId == Guid.Empty ? NombreDeLaCartera : (await _organizaciones.GetAsync(organizacionId)).Nombre;
+
+    public const string NombreDeLaCartera = "Toda la cartera";
+
+    private async Task<string> InstruccionesAsync(Guid organizacionId, bool delDespacho, bool puedeEditar) =>
+        organizacionId == Guid.Empty
+            ? InstruccionesDelAsistente.ConstruirParaLaCartera(Clock.Now)
+            : InstruccionesDelAsistente.Construir(await NombreAsync(organizacionId), Clock.Now, delDespacho, puedeEditar);
 
     private async Task<ConversacionDto> DescribirAsync(Guid organizacionId, Conversacion? conversacion)
     {
@@ -218,9 +243,9 @@ public class AsistenteAppService : AuxiliarContableAppService, IAsistenteAppServ
         var dto = new ConversacionDto
         {
             OrganizacionId = organizacionId,
-            NombreDelCliente = (await _organizaciones.GetAsync(organizacionId)).Nombre,
+            NombreDelCliente = await NombreAsync(organizacionId),
             Disponible = _modelo.EstaConfigurado,
-            PuedeEditar = quien.Puede(organizacionId, AccionEnOrganizacion.Subir),
+            PuedeEditar = organizacionId != Guid.Empty && quien.Puede(organizacionId, AccionEnOrganizacion.Subir),
             EsDelDespacho = quien.Equipo,
         };
 

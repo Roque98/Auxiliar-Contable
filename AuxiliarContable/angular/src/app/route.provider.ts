@@ -96,6 +96,16 @@ function configureRoutes() {
       layout: eLayoutType.application,
     },
 
+    // La cartera del despacho: solo el equipo (lleva permiso, ABP la oculta a los clientes).
+    {
+      path: '/cartera',
+      name: '::Menu:Cartera',
+      iconClass: 'bi bi-grid-3x3-gap',
+      order: 1.4,
+      layout: eLayoutType.application,
+      requiredPolicy: 'AuxiliarContable.Organizaciones',
+    },
+
     // El chat: la puerta principal («platicar con tu contador»). Mismo criterio que el perfil.
     {
       path: '/asistente',

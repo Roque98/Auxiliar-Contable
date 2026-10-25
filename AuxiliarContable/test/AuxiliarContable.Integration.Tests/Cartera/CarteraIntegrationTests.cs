@@ -1,0 +1,115 @@
+using System;
+using System.IO;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using AuxiliarContable.Boveda;
+using AuxiliarContable.Cartera;
+using AuxiliarContable.Cfdis;
+using AuxiliarContable.Conversaciones;
+using AuxiliarContable.Documentos;
+using AuxiliarContable.IA;
+using AuxiliarContable.Identity;
+using AuxiliarContable.Organizaciones;
+using AuxiliarContable.PerfilesFiscales;
+using Shouldly;
+using Volo.Abp.Authorization;
+using Volo.Abp.Content;
+using Volo.Abp.Domain.Entities;
+using Xunit;
+
+namespace AuxiliarContable;
+
+/// <summary>
+/// La cartera del despacho y el chat de toda la cartera: quién la ve, el semáforo, las métricas
+/// solo para el Owner, y el candado entre la conversación de la cartera y la de un cliente.
+/// </summary>
+public class CarteraIntegrationTests : ConJerarquiaTestBase
+{
+    private readonly ICarteraAppService _cartera;
+    private readonly IAsistenteAppService _asistente;
+    private readonly ModeloConversacionalDePrueba _modelo;
+    private Guid _alDia;
+    private Guid _sinNada;
+
+    public CarteraIntegrationTests(PostgresFixture fixture) : base(fixture)
+    {
+        _cartera = GetRequiredService<ICarteraAppService>();
+        _asistente = GetRequiredService<IAsistenteAppService>();
+        _modelo = (ModeloConversacionalDePrueba)GetRequiredService<IModeloConversacional>();
+    }
+
+    public override async Task InitializeAsync()
+    {
+        await base.InitializeAsync();
+        _modelo.Reiniciar();
+        _alDia = await CrearOrganizacionAsync("Panadería Lupita");
+        _sinNada = await CrearOrganizacionAsync("Taller Pepe");
+        await WithUnitOfWorkAsync(() => GetRequiredService<MembresiasDeOrganizacion>().AgregarAsync(_alDia, Usuario.Id, RolEnOrganizacion.Miembro));
+        await ComoAsync(Administrador, () => GetRequiredService<IPerfilFiscalAppService>().ResponderAsync(_alDia,
+            new ResponderDatoDelPerfilDto { Campo = CamposDelPerfil.Rfc, Valor = "GODE561231GR8" }));
+        await ComoAsync(Administrador, () => GetRequiredService<IBovedaAppService>().SubirAsync(_alDia, TipoDeDocumento.Otro,
+            new RemoteStreamContent(new MemoryStream(Encoding.UTF8.GetBytes(LectorDeCfdiTests.Cfdi40())), "f.xml")));
+    }
+
+    [Fact]
+    public async Task El_equipo_ve_toda_la_cartera_con_lo_urgente_primero()
+    {
+        var clientes = await ComoAsync(Administrador, () => _cartera.GetClientesAsync(2026, 9));
+
+        clientes.Select(c => c.Id).ShouldContain(_alDia);
+        var pepe = clientes.Single(c => c.Id == _sinNada);
+        pepe.Semaforo.ShouldBe(SemaforoDeCliente.Urgente);
+        pepe.Pendientes.ShouldContain(p => p.Contains("Sin RFC"));
+        var lupita = clientes.Single(c => c.Id == _alDia);
+        lupita.Rfc.ShouldBe("GODE561231GR8");
+        lupita.FacturasDelMes.ShouldBe(1, "la factura de prueba es de septiembre");
+        lupita.Pendientes.ShouldContain(p => p.Contains("estado de cuenta"));
+        clientes.First().Semaforo.ShouldBe(SemaforoDeCliente.Urgente);
+    }
+
+    [Fact]
+    public async Task Un_cliente_no_ve_la_cartera_y_las_metricas_son_del_Owner()
+    {
+        await Should.ThrowAsync<AbpAuthorizationException>(() => ComoAsync(Usuario, () => _cartera.GetClientesAsync(2026, 9)));
+        await Should.ThrowAsync<AbpAuthorizationException>(() => ComoAsync(Administrador, () => _cartera.GetMetricasAsync(2026, 9)));
+
+        var owner = await CrearUsuarioAsync("duena", AuxiliarRoles.Owner);
+        var metricas = await ComoAsync(owner, () => _cartera.GetMetricasAsync(2026, 9));
+        metricas.Clientes.ShouldBeGreaterThanOrEqualTo(2);
+        metricas.FacturasDelMes.ShouldBeGreaterThanOrEqualTo(1);
+    }
+
+    [Fact]
+    public async Task El_chat_de_la_cartera_solo_ve_el_resumen()
+    {
+        _modelo.UsarHerramienta(HerramientasDelAsistente.ResumenDeCartera, new { anio = 2026, mes = 9 });
+        _modelo.UsarHerramienta(HerramientasDelAsistente.ConsultarPerfil, new { });
+        _modelo.Contestar("Taller Pepe está urgente: no tiene RFC.");
+
+        var conversacion = await ComoAsync(Administrador, () => _asistente.EnviarAsync(Guid.Empty, new EnviarMensajeDto { Texto = "¿Quién está urgente?" }));
+
+        conversacion.NombreDelCliente.ShouldBe(AsistenteAppService.NombreDeLaCartera);
+        conversacion.PuedeEditar.ShouldBeFalse();
+        _modelo.Solicitudes[0].Herramientas.Select(h => h.Nombre).ShouldBe([HerramientasDelAsistente.ResumenDeCartera]);
+        var resumen = _modelo.Solicitudes[1].Turnos.Last().Bloques.Single().ShouldBeOfType<BloqueDeResultadoDeHerramienta>();
+        resumen.Contenido.ShouldContain("Taller Pepe");
+        var perfil = _modelo.Solicitudes[2].Turnos.Last().Bloques.Single().ShouldBeOfType<BloqueDeResultadoDeHerramienta>();
+        perfil.EsError.ShouldBeTrue("en la cartera no se consulta el perfil de nadie");
+    }
+
+    [Fact]
+    public async Task Un_cliente_no_entra_al_chat_de_la_cartera_ni_pide_el_resumen_desde_el_suyo()
+    {
+        await Should.ThrowAsync<EntityNotFoundException>(() => ComoAsync(Usuario, () => _asistente.GetAsync(Guid.Empty)));
+
+        _modelo.UsarHerramienta(HerramientasDelAsistente.ResumenDeCartera, new { anio = 2026, mes = 9 });
+        _modelo.Contestar("No puedo.");
+        await ComoAsync(Usuario, () => _asistente.EnviarAsync(_alDia, new EnviarMensajeDto { Texto = "¿Cómo van los demás clientes?" }));
+
+        _modelo.Solicitudes[0].Herramientas.Select(h => h.Nombre).ShouldNotContain(HerramientasDelAsistente.ResumenDeCartera);
+        var resultado = _modelo.Solicitudes[1].Turnos.Last().Bloques.Single().ShouldBeOfType<BloqueDeResultadoDeHerramienta>();
+        resultado.EsError.ShouldBeTrue();
+        resultado.Contenido.ShouldNotContain("Taller Pepe");
+    }
+}

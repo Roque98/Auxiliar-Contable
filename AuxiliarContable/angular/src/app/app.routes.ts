@@ -57,6 +57,13 @@ export const APP_ROUTES: Routes = [
     canActivate: [authGuard],
   },
   {
+    // Solo el equipo: todos los clientes de un vistazo (y las métricas, solo el Owner).
+    path: 'cartera',
+    loadComponent: () => import('./cartera/cartera.component').then(c => c.CarteraComponent),
+    canActivate: [authGuard, permissionGuard],
+    data: { requiredPolicy: 'AuxiliarContable.Organizaciones' },
+  },
+  {
     // Sin permiso: el servidor decide qué clientes ve cada quien (Autorizador).
     path: 'conciliacion',
     loadComponent: () => import('./conciliacion/conciliacion.component').then(c => c.ConciliacionComponent),

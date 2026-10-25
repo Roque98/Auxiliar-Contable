@@ -359,6 +359,14 @@ cuenta en frases lo que ya se registra, por día y con filtros (persona, organiz
 - **Costo**: historial de `MensajesDeHistorial` mensajes, `MaxMensajesPorDia` por persona.
 - **Instrucciones** (`InstruccionesDelAsistente`): cliente vs despacho, no inventar, orientación (no
   asesoría), texto plano. La pantalla pinta el texto como TEXTO (nunca `innerHTML`) + aviso de IA.
+- **Toda la cartera** (solo equipo): conversación con `organizacionId = Guid.Empty`
+  (`AsistenteAppService.ExigirVerAsync`). Herramientas: SOLO `resumen_de_cartera`
+  (`HerramientasDelAsistente.DeCartera`); `EjecutarAsync` lleva un candado: en la cartera solo el
+  resumen y en un cliente nunca el resumen. Nada del detalle de un cliente sale ahí.
+- **Cartera** (`CarteraAppService`, `/cartera`): permiso `Organizaciones` + `Autorizador.Equipo`
+  (en los tests la autorización es «todo permitido»: el atributo no basta). Semáforo por cliente
+  (urgente = sin RFC, sin estado de cuenta del mes o uno que no cuadra) y pendientes en palabras.
+  Métricas (`GetMetricasAsync`): solo nivel ≥ Owner (incluye tokens del chat del mes).
 - Pantalla `/asistente?cliente=` (mobile first). Tests: `Integration.Tests/Conversaciones`
   (`ModeloConversacionalDePrueba`) y `HttpApi.Host.Tests` (forma de la petición a Anthropic).
 

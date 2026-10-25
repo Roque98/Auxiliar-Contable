@@ -7,6 +7,7 @@ using System.Text.Json.Nodes;
 using System.Text.Unicode;
 using System.Threading.Tasks;
 using AuxiliarContable.Boveda;
+using AuxiliarContable.Cartera;
 using AuxiliarContable.Cfdis;
 using AuxiliarContable.Conciliaciones;
 using AuxiliarContable.Documentos;
@@ -33,6 +34,7 @@ public class HerramientasDelAsistente : ITransientDependency
     public const string BuscarDocumentos = "buscar_documentos";
     public const string ResumenDeDocumentos = "resumen_de_documentos";
     public const string ConciliacionDelMes = "conciliacion_del_mes";
+    public const string ResumenDeCartera = "resumen_de_cartera";
 
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
     {
@@ -42,12 +44,15 @@ public class HerramientasDelAsistente : ITransientDependency
     private readonly IPerfilFiscalAppService _perfiles;
     private readonly IBovedaAppService _boveda;
     private readonly IConciliacionAppService _conciliacion;
+    private readonly ICarteraAppService _cartera;
 
-    public HerramientasDelAsistente(IPerfilFiscalAppService perfiles, IBovedaAppService boveda, IConciliacionAppService conciliacion)
+    public HerramientasDelAsistente(
+        IPerfilFiscalAppService perfiles, IBovedaAppService boveda, IConciliacionAppService conciliacion, ICarteraAppService cartera)
     {
         _perfiles = perfiles;
         _boveda = boveda;
         _conciliacion = conciliacion;
+        _cartera = cartera;
     }
 
     /// <summary>Las que puede usar quien escribe: sin permiso de cambiar, solo las de consulta.</summary>
@@ -116,12 +121,30 @@ public class HerramientasDelAsistente : ITransientDependency
         };
     }
 
+    /// <summary>Las de la conversación de toda la cartera (solo equipo): el resumen, nada del detalle de un cliente.</summary>
+    public static IReadOnlyList<HerramientaDelModelo> DeCartera() =>
+    [
+        new(ResumenDeCartera,
+            "Resumen de TODOS los clientes del despacho para un mes: semáforo (al día, atención, urgente), RFC, perfil completo en %, " +
+            "documentos, facturas y estados de cuenta del mes, estados que no cuadran, parejas por confirmar, movimientos sin " +
+            "factura y la lista de pendientes de cada uno.",
+            """{"type":"object","properties":{"anio":{"type":"integer","minimum":2000,"maximum":2100},"mes":{"type":"integer","minimum":1,"maximum":12}},"required":["anio","mes"]}"""),
+    ];
+
     public async Task<BloqueDeResultadoDeHerramienta> EjecutarAsync(Guid organizacionId, BloqueDeUsoDeHerramienta uso)
     {
+        // El candado entre las dos clases de conversación: en la de la cartera (Guid.Empty) solo el
+        // resumen; en la de un cliente, nunca el resumen de todos. Lo que pida el modelo no lo salta.
+        if ((organizacionId == Guid.Empty) != (uso.Nombre == ResumenDeCartera))
+        {
+            return new BloqueDeResultadoDeHerramienta(uso.Id, $"La herramienta «{uso.Nombre}» no está disponible en esta conversación.", EsError: true);
+        }
+
         try
         {
             var contenido = uso.Nombre switch
             {
+                ResumenDeCartera => await CarteraAsync(uso.Entrada),
                 ConsultarPerfil => Perfil(await _perfiles.GetAsync(organizacionId)),
                 ResumenDeDocumentos => await ResumenAsync(organizacionId),
                 ConciliacionDelMes => await ConciliacionAsync(organizacionId, uso.Entrada),
@@ -266,6 +289,26 @@ public class HerramientasDelAsistente : ITransientDependency
                         concepto = d.Cfdi.Concepto,
                         uuid = d.Cfdi.Uuid,
                     },
+            }),
+        }, Json);
+    }
+
+    private async Task<string> CarteraAsync(JsonElement entrada)
+    {
+        var anio = Entero(entrada, "anio") ?? throw new UserFriendlyException("Falta «anio».");
+        var mes = Entero(entrada, "mes") ?? throw new UserFriendlyException("Falta «mes».");
+        var clientes = await _cartera.GetClientesAsync(anio, mes);
+        return JsonSerializer.Serialize(new
+        {
+            periodo = $"{anio}-{mes:00}",
+            clientes = clientes.Select(c => new
+            {
+                nombre = c.Nombre,
+                rfc = c.Rfc,
+                semaforo = c.Semaforo switch { SemaforoDeCliente.Urgente => "urgente", SemaforoDeCliente.Atencion => "atención", _ => "al día" },
+                perfil = $"{c.PerfilCompleto} %",
+                documentosDelMes = c.DocumentosDelMes,
+                pendientes = c.Pendientes,
             }),
         }, Json);
     }

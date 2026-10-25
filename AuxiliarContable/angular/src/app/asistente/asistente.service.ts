@@ -25,6 +25,9 @@ export interface ConversacionDto {
   mensajes: MensajeDto[];
 }
 
+/** La conversación de toda la cartera (solo equipo): `Guid.Empty` en el backend. */
+export const CARTERA = '00000000-0000-0000-0000-000000000000';
+
 /** Igual que `ConversacionConsts.MaxTextoDelUsuario`. */
 export const MAX_TEXTO = 4000;
 

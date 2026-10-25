@@ -112,6 +112,17 @@ export const SECCIONES: Seccion[] = [
         nota: 'Es orientación general hecha con IA y puede equivocarse: las decisiones fiscales las revisa tu contador.',
       },
       {
+        titulo: 'La cartera del despacho',
+        icono: 'bi-grid-3x3-gap',
+        ruta: '/cartera',
+        permisos: ['AuxiliarContable.Organizaciones'],
+        texto: [
+          'Cartera muestra a todos los clientes del mes con un semáforo: urgente (sin RFC, sin estado de cuenta o uno que no cuadra), atención o al día.',
+          'Cada tarjeta dice qué falta y lleva directo a su asistente, documentos, estados de cuenta, conciliación o perfil.',
+          'En el asistente, «Toda la cartera» responde preguntas como «¿quién está urgente?» y redacta recordatorios. El Owner ve además las métricas del despacho.',
+        ],
+      },
+      {
         titulo: 'El asistente para el despacho',
         icono: 'bi-chat-dots',
         ruta: '/asistente',
