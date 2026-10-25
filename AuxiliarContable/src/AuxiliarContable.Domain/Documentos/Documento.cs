@@ -34,6 +34,12 @@ public class Documento : FullAuditedAggregateRoot<Guid>
     /// <summary>Por qué no se pudo leer, para quien lo revise. Nunca lleva datos del documento.</summary>
     public string? Motivo { get; protected set; }
 
+    /// <summary>
+    /// A qué fecha CORRESPONDE (la del CFDI, el corte del estado de cuenta). Null = no se sabe y la
+    /// bóveda lo ordena por la fecha en que se subió.
+    /// </summary>
+    public DateTime? FechaDelDocumento { get; protected set; }
+
     protected Documento()
     {
     }
@@ -55,6 +61,8 @@ public class Documento : FullAuditedAggregateRoot<Guid>
         Sha256 = Check.Length(sha256, nameof(sha256), DocumentoConsts.HashLength, DocumentoConsts.HashLength)!;
         Estado = EstadoDeDocumento.Recibido;
     }
+
+    public void FecharEn(DateTime fecha) => FechaDelDocumento = fecha;
 
     public void MarcarProcesado()
     {

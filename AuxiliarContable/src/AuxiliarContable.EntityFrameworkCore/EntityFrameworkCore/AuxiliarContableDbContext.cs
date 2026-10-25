@@ -1,3 +1,4 @@
+using AuxiliarContable.Cfdis;
 using AuxiliarContable.Conversaciones;
 using AuxiliarContable.Documentos;
 using AuxiliarContable.PerfilesFiscales;
@@ -63,6 +64,8 @@ public class AuxiliarContableDbContext :
     public DbSet<Conversacion> Conversaciones { get; set; }
 
     public DbSet<MensajeDeConversacion> MensajesDeConversaciones { get; set; }
+
+    public DbSet<Cfdi> Cfdis { get; set; }
 
     // ⚠️ ESTOS DbSet NO SON DECORATIVOS. ABP aplica sus filtros globales (multi-tenancy y
     // soft delete) recorriendo las entidades que YA ESTAN en el modelo en el momento en que
@@ -257,6 +260,38 @@ public class AuxiliarContableDbContext :
             // borrado logico, un documento borrado y vuelto a subir chocaria con su fantasma.
             b.HasIndex(x => new { x.OrganizacionId, x.Sha256 });
             b.HasIndex(x => new { x.OrganizacionId, x.Tipo });
+        });
+
+        // CFDI leidos de su XML — AppCfdis. El archivo es su Documento (cifrado). Montos con 6
+        // decimales, como los admite el anexo 20. UUID unico por cliente ENTRE LOS VIVOS: un CFDI
+        // borrado y vuelto a subir no choca con su fantasma (mismo motivo que en Documentos).
+        builder.Entity<Cfdi>(b =>
+        {
+            b.ToTable(AuxiliarContableConsts.DbTablePrefix + "Cfdis", AuxiliarContableConsts.DbSchema);
+            b.ConfigureByConvention();
+            b.Property(x => x.Uuid).IsRequired().HasMaxLength(CfdiConsts.UuidLength);
+            b.Property(x => x.Version).IsRequired().HasMaxLength(10);
+            b.Property(x => x.TipoDeComprobante).IsRequired().HasMaxLength(1);
+            b.Property(x => x.Serie).HasMaxLength(50);
+            b.Property(x => x.Folio).HasMaxLength(50);
+            b.Property(x => x.EmisorRfc).IsRequired().HasMaxLength(CfdiConsts.MaxRfcLength);
+            b.Property(x => x.ReceptorRfc).IsRequired().HasMaxLength(CfdiConsts.MaxRfcLength);
+            b.Property(x => x.EmisorNombre).HasMaxLength(CfdiConsts.MaxNombreLength);
+            b.Property(x => x.ReceptorNombre).HasMaxLength(CfdiConsts.MaxNombreLength);
+            b.Property(x => x.UsoCfdi).HasMaxLength(10);
+            b.Property(x => x.Moneda).IsRequired().HasMaxLength(10);
+            b.Property(x => x.MetodoDePago).HasMaxLength(10);
+            b.Property(x => x.FormaDePago).HasMaxLength(10);
+            b.Property(x => x.Concepto).HasMaxLength(CfdiConsts.MaxConceptoLength);
+            foreach (var monto in new[] { nameof(Cfdi.SubTotal), nameof(Cfdi.Descuento), nameof(Cfdi.Total),
+                         nameof(Cfdi.TipoDeCambio), nameof(Cfdi.TotalTrasladados), nameof(Cfdi.TotalRetenidos) })
+            {
+                b.Property(monto).HasPrecision(20, 6);
+            }
+
+            b.HasIndex(x => new { x.OrganizacionId, x.Uuid }).IsUnique().HasFilter("\"IsDeleted\" = false");
+            b.HasIndex(x => x.DocumentoId);
+            b.HasIndex(x => new { x.OrganizacionId, x.Fecha });
         });
 
         // Perfil fiscal — AppPerfilesFiscales (uno por organizacion) y AppDatosDePerfiles (un

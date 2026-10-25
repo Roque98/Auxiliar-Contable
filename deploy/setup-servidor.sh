@@ -98,6 +98,9 @@ Claude__ApiKey=CAMBIAME
 # `openssl rand -base64 32` y se guarda TAMBIEN fuera del servidor: sin ella no se leen.
 Documentos__ClaveDeCifrado=CAMBIAME
 Documentos__Carpeta=/var/lib/auxiliar-contable/documentos
+
+# Antivirus (ClamAV en este VPS): lo deja instalar-antivirus.sh. Vacio = sin escanear.
+# Antivirus__Host=127.0.0.1
 ENVEOF
     chmod 600 /etc/auxiliar-contable/env
     chown root:root /etc/auxiliar-contable/env

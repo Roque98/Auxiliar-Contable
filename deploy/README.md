@@ -125,7 +125,18 @@ La API key de Anthropic va en `/etc/auxiliar-contable/env` como `Claude__ApiKey`
 (por defecto `claude-haiku-5-5`). Tras editar el `env`: `sudo systemctl restart auxiliar-contable`.
 
 Sin `Claude__ApiKey` la aplicación arranca igual; lo que necesite IA lanza «no configurado».
-Ver `CLAUDE.md` §1.2.8.
+Ver `CLAUDE.md` §1.2.8. El chat usa `Claude__ModeloDelChat` si se define (si no, el mismo).
+
+## Antivirus (ClamAV)
+
+Lo que suben los clientes pasa por ClamAV ANTES de guardarse. Una vez, como root:
+`bash instalar-antivirus.sh` (comprueba que haya ~1.5 GB libres: clamd carga las firmas en
+RAM; deja clamd solo en `127.0.0.1:3310`, prueba con EICAR y añade `Antivirus__Host` al `env`).
+Después `systemctl restart auxiliar-contable`. Sin `Antivirus__Host` se acepta sin escanear y
+cada subida lo apunta en el log; si clamd no responde, igual (no bloquea al cliente).
+
+⚠️ `nginx.conf` admite cuerpos de 25 MB (documentos de hasta 20 MB). Tras cambiarlo:
+`cp nginx.conf /etc/nginx/sites-available/auxiliar-contable && nginx -t && systemctl reload nginx`.
 
 ## Esconder la puerta del superadministrador (opcional)
 

@@ -77,6 +77,161 @@ namespace AuxiliarContable.Migrations
                     b.ToTable("AppApiKeys", (string)null);
                 });
 
+            modelBuilder.Entity("AuxiliarContable.Cfdis.Cfdi", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Concepto")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("ConcurrencyStamp");
+
+                    b.Property<DateTime>("CreationTime")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("CreationTime");
+
+                    b.Property<Guid?>("CreatorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("CreatorId");
+
+                    b.Property<Guid?>("DeleterId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("DeleterId");
+
+                    b.Property<DateTime?>("DeletionTime")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("DeletionTime");
+
+                    b.Property<decimal>("Descuento")
+                        .HasPrecision(20, 6)
+                        .HasColumnType("numeric(20,6)");
+
+                    b.Property<Guid>("DocumentoId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("EmisorNombre")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<string>("EmisorRfc")
+                        .IsRequired()
+                        .HasMaxLength(13)
+                        .HasColumnType("character varying(13)");
+
+                    b.Property<string>("ExtraProperties")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("ExtraProperties");
+
+                    b.Property<DateTime>("Fecha")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Folio")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("FormaDePago")
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("IsDeleted");
+
+                    b.Property<DateTime?>("LastModificationTime")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("LastModificationTime");
+
+                    b.Property<Guid?>("LastModifierId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("LastModifierId");
+
+                    b.Property<string>("MetodoDePago")
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
+                    b.Property<string>("Moneda")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
+                    b.Property<Guid>("OrganizacionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ReceptorNombre")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<string>("ReceptorRfc")
+                        .IsRequired()
+                        .HasMaxLength(13)
+                        .HasColumnType("character varying(13)");
+
+                    b.Property<string>("Serie")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<decimal>("SubTotal")
+                        .HasPrecision(20, 6)
+                        .HasColumnType("numeric(20,6)");
+
+                    b.Property<decimal?>("TipoDeCambio")
+                        .HasPrecision(20, 6)
+                        .HasColumnType("numeric(20,6)");
+
+                    b.Property<string>("TipoDeComprobante")
+                        .IsRequired()
+                        .HasMaxLength(1)
+                        .HasColumnType("character varying(1)");
+
+                    b.Property<decimal>("Total")
+                        .HasPrecision(20, 6)
+                        .HasColumnType("numeric(20,6)");
+
+                    b.Property<decimal>("TotalRetenidos")
+                        .HasPrecision(20, 6)
+                        .HasColumnType("numeric(20,6)");
+
+                    b.Property<decimal>("TotalTrasladados")
+                        .HasPrecision(20, 6)
+                        .HasColumnType("numeric(20,6)");
+
+                    b.Property<string>("UsoCfdi")
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
+                    b.Property<string>("Uuid")
+                        .IsRequired()
+                        .HasMaxLength(36)
+                        .HasColumnType("character varying(36)");
+
+                    b.Property<string>("Version")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DocumentoId");
+
+                    b.HasIndex("OrganizacionId", "Fecha");
+
+                    b.HasIndex("OrganizacionId", "Uuid")
+                        .IsUnique()
+                        .HasFilter("\"IsDeleted\" = false");
+
+                    b.ToTable("AppCfdis", (string)null);
+                });
+
             modelBuilder.Entity("AuxiliarContable.Conversaciones.Conversacion", b =>
                 {
                     b.Property<Guid>("Id")
@@ -195,6 +350,9 @@ namespace AuxiliarContable.Migrations
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("ExtraProperties");
+
+                    b.Property<DateTime?>("FechaDelDocumento")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<bool>("IsDeleted")
                         .ValueGeneratedOnAdd()

@@ -105,6 +105,15 @@ function configureRoutes() {
       layout: eLayoutType.application,
     },
 
+    // La bóveda: facturas, estados de cuenta y tickets de cada cliente. Mismo criterio.
+    {
+      path: '/documentos',
+      name: '::Menu:Documentos',
+      iconClass: 'bi bi-folder2-open',
+      order: 1.7,
+      layout: eLayoutType.application,
+    },
+
     // El perfil fiscal: para el cliente, el suyo; para el despacho, el de cada cliente. Sin
     // permiso propio: quién ve y cambia qué lo decide el servidor (Autorizador, 404 a lo ajeno).
     {

@@ -125,6 +125,35 @@ export const SECCIONES: Seccion[] = [
     ],
   },
   {
+    titulo: 'Documentos',
+    temas: [
+      {
+        titulo: 'Sube tus facturas y estados de cuenta',
+        icono: 'bi-folder2-open',
+        ruta: '/documentos',
+        salvoPermisos: ['AuxiliarContable.Organizaciones'],
+        pasos: [
+          'Abre Documentos y toca «Elegir archivos». Puedes elegir varios a la vez.',
+          'De tus facturas sube el XML: se lee solo y queda como venta o gasto según tu RFC.',
+          'Estados de cuenta y tickets: PDF o foto. Antes elige qué son en «Si no es factura, ¿qué es?».',
+          'Navega por año y mes, o busca por proveedor, RFC o concepto.',
+        ],
+        nota: 'Si subes el mismo archivo dos veces no se duplica. Todo se guarda cifrado.',
+      },
+      {
+        titulo: 'La bóveda de cada cliente',
+        icono: 'bi-folder2-open',
+        ruta: '/documentos',
+        permisos: ['AuxiliarContable.Organizaciones'],
+        texto: [
+          'Elige al cliente: ves sus documentos por mes, con ventas y gastos de sus facturas (sumas informativas).',
+          'Un mes sin facturas o sin estado de cuenta es lo que hay que pedirle.',
+          'Una factura «Otro RFC» no es ni del cliente ni para él: revisa si se subió al cliente equivocado.',
+        ],
+      },
+    ],
+  },
+  {
     titulo: 'Perfil fiscal',
     temas: [
       {

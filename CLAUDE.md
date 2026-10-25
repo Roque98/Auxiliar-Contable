@@ -296,6 +296,22 @@ cuenta en frases lo que ya se registra, por día y con filtros (persona, organiz
 - Tests: `Domain.Tests/{Documentos,PerfilesFiscales}`, `Application.Tests/PerfilesFiscales`,
   `Integration.Tests/PerfilesFiscales` (IA falsa `ModeloDeIADePrueba`, PDF generado con PdfPig).
 
+### 1.2.10.1 Bóveda y CFDI
+
+- `BovedaAppService` (`/documentos?cliente=`): subir uno por llamada (la pantalla manda varios en
+  serie), listar con filtros (año/mes sobre `FechaDelDocumento ?? CreationTime`, tipo, dirección,
+  texto), resumen por mes, `GetArchivoAsync` (descarga descifrada, SOLO por la API autenticada) y
+  borrado lógico. Ver = `Ver`; subir/borrar = `Subir`.
+- **CFDI = código, no IA**: `LectorDeCfdi` (3.3/4.0, sin DTD ni resolver, UUID del timbre
+  obligatorio). Duplicado = mismo SHA-256 O mismo UUID (índice único por cliente entre no
+  borrados). **Emitido/recibido NO se guarda**: se calcula con el RFC del perfil al consultar
+  (`Cfdi.DireccionPara`), porque el RFC puede llegar o corregirse después.
+- Totales del resumen: solo MXN, I suma, E resta, P/N/T no cuentan. Informativos, no fiscales.
+- **Antivirus**: `IEscanerDeArchivos` antes de guardar (`GestorDeDocumentos`). Infectado = se
+  rechaza; sin antivirus o caído = se acepta y se apunta en el log. ClamAV por `Antivirus:Host`
+  (`deploy/instalar-antivirus.sh`).
+- El chat busca en la bóveda con `buscar_documentos` y `resumen_de_documentos`.
+
 ### 1.2.11 Chat (asistente)
 
 - **Modelo**: `IModeloConversacional` (Domain/IA) — UN turno por llamada; el bucle de herramientas

@@ -1,0 +1,189 @@
+<header class="dc-cabecera">
+  <h1>Documentos</h1>
+  @if (clientes(); as lista) {
+    @if (lista.length > 1) {
+      <label class="dc-campo">
+        <span>Cliente</span>
+        <select class="ig-control" [ngModel]="clienteId()" (ngModelChange)="elegir($event)">
+          <option [ngValue]="null" disabled>Elige un cliente…</option>
+          @for (c of lista; track c.id) {
+            <option [ngValue]="c.id">{{ c.nombre }}</option>
+          }
+        </select>
+      </label>
+    } @else if (!lista.length) {
+      <p class="ig-ayuda">Todavía no perteneces a ningún cliente. Pide al despacho que te invite.</p>
+    }
+  }
+  @if (cliente(); as c) {
+    <p class="dc-activo" data-testid="cliente-activo">
+      <i class="bi bi-folder2-open" aria-hidden="true"></i>
+      <span>Documentos de <strong>{{ c.nombre }}</strong></span>
+      <a [routerLink]="['/asistente']" [queryParams]="{ cliente: c.id }">Preguntar al asistente</a>
+    </p>
+  }
+</header>
+
+@if (error(); as e) {
+  <div class="ig-alerta ig-alerta-error" role="alert">{{ e }}</div>
+}
+
+@if (cliente(); as c) {
+  @if (c.puedeEditar) {
+    <section class="dc-tarjeta" aria-labelledby="dc-subir">
+      <h2 id="dc-subir">Subir documentos</h2>
+      <p class="dc-nota">
+        Facturas: sube el <strong>XML</strong> (se lee solo). Estados de cuenta, tickets y otros: PDF o foto.
+        Puedes elegir varios a la vez.
+      </p>
+      <label class="dc-campo">
+        <span>Si no es factura, ¿qué es?</span>
+        <select class="ig-control" [(ngModel)]="tipoAlSubir">
+          @for (t of tiposParaSubir; track t) {
+            <option [ngValue]="t">{{ nombresDeTipo[t] }}</option>
+          }
+        </select>
+      </label>
+      <label class="btn btn-primary dc-boton-subir">
+        <i class="bi bi-cloud-arrow-up" aria-hidden="true"></i> Elegir archivos
+        <input type="file" multiple accept=".xml,.pdf,.jpg,.jpeg,.png,.webp,application/xml,text/xml,application/pdf,image/*" (change)="subir($event)" hidden />
+      </label>
+
+      @if (subidas().length) {
+        <ul class="dc-subidas" aria-live="polite">
+          @for (s of subidas(); track $index) {
+            <li [class]="'dc-subida dc-subida-' + s.estado">
+              @switch (s.estado) {
+                @case ('subiendo') { <span class="ig-girando" aria-hidden="true"></span> }
+                @case ('ok') { <i class="bi bi-check-circle-fill" aria-hidden="true"></i> }
+                @case ('duplicado') { <i class="bi bi-files" aria-hidden="true"></i> }
+                @case ('aviso') { <i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i> }
+                @case ('error') { <i class="bi bi-x-circle-fill" aria-hidden="true"></i> }
+              }
+              <span class="dc-subida-nombre">{{ s.nombre }}</span>
+              @if (s.mensaje) {
+                <span class="dc-subida-mensaje">{{ s.mensaje }}</span>
+              }
+            </li>
+          }
+        </ul>
+      }
+    </section>
+  }
+
+  @if (anios().length) {
+    <section class="dc-tarjeta" aria-labelledby="dc-periodos">
+      <h2 id="dc-periodos">Por mes</h2>
+      <div class="dc-anios" role="tablist">
+        @for (a of anios(); track a) {
+          <button type="button" role="tab" class="dc-chip" [class.dc-chip-activo]="anio() === a" [attr.aria-selected]="anio() === a" (click)="elegirAnio(a)">{{ a }}</button>
+        }
+      </div>
+      <div class="dc-meses">
+        @for (m of mesesDelAnio(); track m.mes) {
+          <button type="button" class="dc-mes" [class.dc-mes-activo]="mes() === m.mes" (click)="elegirMes(m.mes)" [attr.aria-pressed]="mes() === m.mes">
+            <span class="dc-mes-nombre">{{ meses[m.mes - 1] }}</span>
+            <span class="dc-mes-cuenta">
+              @for (t of m.porTipo; track t.tipo) {
+                <span>{{ t.cantidad }} {{ nombresDeTipo[t.tipo].toLowerCase() }}</span>
+              }
+            </span>
+            @if (m.emitido || m.recibido) {
+              <span class="dc-mes-totales">
+                @if (m.emitido) { <span>Ventas {{ dinero(m.emitido) }}</span> }
+                @if (m.recibido) { <span>Gastos {{ dinero(m.recibido) }}</span> }
+              </span>
+            }
+          </button>
+        }
+      </div>
+      <p class="dc-nota">Las sumas son informativas (facturas en pesos, ingresos menos notas de crédito); no son el cálculo de impuestos.</p>
+    </section>
+  }
+
+  <section class="dc-tarjeta" aria-labelledby="dc-lista">
+    <h2 id="dc-lista">
+      @if (mes(); as m) { {{ meses[m - 1] }} {{ anio() }} } @else if (anio()) { {{ anio() }} } @else { Todos }
+      <small>({{ total() }})</small>
+    </h2>
+    <form class="dc-filtros" (ngSubmit)="buscar()">
+      <label class="dc-campo dc-campo-texto">
+        <span>Buscar</span>
+        <input class="ig-control" name="texto" [(ngModel)]="texto" placeholder="RFC, proveedor, concepto, UUID…" type="search" />
+      </label>
+      <label class="dc-campo">
+        <span>Tipo</span>
+        <select class="ig-control" name="tipo" [(ngModel)]="tipo" (ngModelChange)="buscar()">
+          <option [ngValue]="null">Todos</option>
+          @for (t of tiposParaFiltrar; track t) {
+            <option [ngValue]="t">{{ nombresDeTipo[t] }}</option>
+          }
+        </select>
+      </label>
+      <label class="dc-campo">
+        <span>Facturas</span>
+        <select class="ig-control" name="direccion" [(ngModel)]="direccion" (ngModelChange)="buscar()">
+          <option [ngValue]="null">Todas</option>
+          <option [ngValue]="Direccion.Emitido">Emitidas (ventas)</option>
+          <option [ngValue]="Direccion.Recibido">Recibidas (gastos)</option>
+        </select>
+      </label>
+      <button type="submit" class="btn btn-outline-primary dc-buscar">Buscar</button>
+    </form>
+
+    @if (documentos(); as lista) {
+      @if (!lista.length) {
+        <p class="dc-vacio">No hay documentos con estos filtros.</p>
+      }
+      <ul class="dc-documentos">
+        @for (d of lista; track d.id) {
+          <li class="dc-documento">
+            <i class="bi dc-icono" [class]="'bi dc-icono ' + icono(d)" aria-hidden="true"></i>
+            <div class="dc-cuerpo">
+              @if (d.cfdi; as f) {
+                <p class="dc-titulo">
+                  @if (f.direccion === Direccion.Emitido) {
+                    <span class="dc-etiqueta dc-etiqueta-venta">Venta</span> {{ f.receptorNombre || f.receptorRfc }}
+                  } @else if (f.direccion === Direccion.Recibido) {
+                    <span class="dc-etiqueta dc-etiqueta-gasto">Gasto</span> {{ f.emisorNombre || f.emisorRfc }}
+                  } @else {
+                    <span class="dc-etiqueta">Otro RFC</span> {{ f.emisorNombre || f.emisorRfc }} → {{ f.receptorNombre || f.receptorRfc }}
+                  }
+                </p>
+                <p class="dc-detalle">
+                  <strong>{{ dinero(f.total, f.moneda) }}</strong> · {{ fecha(d.fecha) }}
+                  @if (f.serie || f.folio) { · {{ f.serie }}{{ f.folio }} }
+                </p>
+                @if (f.concepto) {
+                  <p class="dc-detalle dc-concepto">{{ f.concepto }}</p>
+                }
+              } @else {
+                <p class="dc-titulo">{{ d.nombre }}</p>
+                <p class="dc-detalle">{{ nombresDeTipo[d.tipo] }} · {{ fecha(d.fecha) }}</p>
+              }
+              @if (d.estado === Estado.ConError) {
+                <p class="dc-detalle dc-error">{{ d.motivo || 'No se pudo leer.' }}</p>
+              }
+            </div>
+            <div class="dc-acciones">
+              <button type="button" class="btn btn-outline-secondary" (click)="descargar(d)" [disabled]="ocupado() === d.id" [attr.aria-label]="'Descargar ' + d.nombre">
+                <i class="bi bi-download" aria-hidden="true"></i>
+              </button>
+              @if (c.puedeEditar) {
+                <button type="button" class="btn" [class.btn-outline-danger]="ocupado() !== 'borrar:' + d.id" [class.btn-danger]="ocupado() === 'borrar:' + d.id"
+                  (click)="eliminar(d)" [attr.aria-label]="'Borrar ' + d.nombre">
+                  @if (ocupado() === 'borrar:' + d.id) { ¿Borrar? } @else { <i class="bi bi-trash" aria-hidden="true"></i> }
+                </button>
+              }
+            </div>
+          </li>
+        }
+      </ul>
+      @if (hayMas()) {
+        <button type="button" class="btn btn-outline-primary dc-mas" (click)="buscar(true)">Ver más</button>
+      }
+    } @else {
+      <div class="ig-esqueleto"></div>
+    }
+  </section>
+}

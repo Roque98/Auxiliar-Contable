@@ -190,6 +190,28 @@ public class AsistenteIntegrationTests : ConJerarquiaTestBase
     }
 
     [Fact]
+    public async Task El_asistente_busca_en_la_boveda_del_cliente_activo()
+    {
+        await ComoAsync(Usuario, () => _perfil.ResponderAsync(_cliente,
+            new ResponderDatoDelPerfilDto { Campo = CamposDelPerfil.Rfc, Valor = "GODE561231GR8" }));
+        await ComoAsync(Usuario, () => GetRequiredService<Boveda.IBovedaAppService>().SubirAsync(_cliente, Documentos.TipoDeDocumento.Otro,
+            new Volo.Abp.Content.RemoteStreamContent(new System.IO.MemoryStream(System.Text.Encoding.UTF8.GetBytes(Cfdis.LectorDeCfdiTests.Cfdi40())), "f.xml")));
+
+        _modelo.UsarHerramienta(HerramientasDelAsistente.BuscarDocumentos, new { anio = 2026, mes = 9, direccion = "emitida" });
+        _modelo.UsarHerramienta(HerramientasDelAsistente.ResumenDeDocumentos, new { });
+        _modelo.Contestar("En septiembre facturaste $1,160.00.");
+
+        await ComoAsync(Usuario, () => _asistente.EnviarAsync(_cliente, Mensaje("¿Cuánto facturé en septiembre?")));
+
+        var busqueda = _modelo.Solicitudes[1].Turnos.Last().Bloques.Single().ShouldBeOfType<BloqueDeResultadoDeHerramienta>();
+        busqueda.EsError.ShouldBeFalse();
+        busqueda.Contenido.ShouldContain("\"total\":1");
+        busqueda.Contenido.ShouldContain("Pan dulce");
+        var resumen = _modelo.Solicitudes[2].Turnos.Last().Bloques.Single().ShouldBeOfType<BloqueDeResultadoDeHerramienta>();
+        resumen.Contenido.ShouldContain("\"emitido\":1160");
+    }
+
+    [Fact]
     public async Task Sin_modelo_configurado_lo_dice_sin_guardar_el_mensaje()
     {
         _modelo.EstaConfigurado = false;

@@ -9,6 +9,7 @@ export const CLAVE = process.env.AUXILIAR_E2E_CLAVE ?? '1q2w3E*';
 export const RUTAS = [
   '/',
   '/asistente',
+  '/documentos',
   '/perfil-fiscal',
   '/organizaciones',
   '/actividad',

@@ -263,6 +263,14 @@ public class AuxiliarContableHttpApiHostModule : AbpModule
             });
         });
 
+        // Antivirus de lo que se sube: ClamAV del propio VPS si hay Antivirus:Host. Sin él queda
+        // SinEscaner (Domain) y cada subida lo apunta en el log.
+        Configure<AuxiliarContable.Antivirus.AntivirusOptions>(configuration.GetSection(AuxiliarContable.Antivirus.AntivirusOptions.Seccion));
+        if (!string.IsNullOrWhiteSpace(configuration[$"{AuxiliarContable.Antivirus.AntivirusOptions.Seccion}:Host"]))
+        {
+            context.Services.Replace(ServiceDescriptor.Singleton<IEscanerDeArchivos, AuxiliarContable.Antivirus.ClamAvEscaner>());
+        }
+
         // Rate limiting por IP. Igual que Monitoring: umbrales desde appsettings, no
         // desde AbpSettings, porque se leen en caliente en cada peticion.
         // OpenTelemetry → OpenObserve (solo si hay Observabilidad:Otlp:Endpoint; docs/observabilidad.md).

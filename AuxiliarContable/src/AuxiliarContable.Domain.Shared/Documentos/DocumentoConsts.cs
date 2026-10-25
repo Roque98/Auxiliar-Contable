@@ -25,6 +25,7 @@ public enum TipoDeDocumento
     ConstanciaDeSituacionFiscal = 1,
     Cfdi = 2,
     EstadoDeCuenta = 3,
+    Ticket = 4,
 }
 
 /// <summary>En qué punto del proceso está.</summary>

@@ -6,13 +6,13 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Unicode;
 using System.Threading.Tasks;
+using AuxiliarContable.Boveda;
+using AuxiliarContable.Cfdis;
 using AuxiliarContable.Documentos;
 using AuxiliarContable.IA;
 using AuxiliarContable.PerfilesFiscales;
 using Volo.Abp;
 using Volo.Abp.DependencyInjection;
-using Volo.Abp.Domain.Repositories;
-using Volo.Abp.Linq;
 
 namespace AuxiliarContable.Conversaciones;
 
@@ -29,7 +29,8 @@ public class HerramientasDelAsistente : ITransientDependency
     public const string ConsultarPerfil = "consultar_perfil";
     public const string GuardarDato = "guardar_dato_del_perfil";
     public const string ConfirmarDato = "confirmar_dato_del_perfil";
-    public const string ListarDocumentos = "listar_documentos";
+    public const string BuscarDocumentos = "buscar_documentos";
+    public const string ResumenDeDocumentos = "resumen_de_documentos";
 
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
     {
@@ -37,15 +38,12 @@ public class HerramientasDelAsistente : ITransientDependency
     };
 
     private readonly IPerfilFiscalAppService _perfiles;
-    private readonly IRepository<Documento, Guid> _documentos;
-    private readonly IAsyncQueryableExecuter _ejecutor;
+    private readonly IBovedaAppService _boveda;
 
-    public HerramientasDelAsistente(
-        IPerfilFiscalAppService perfiles, IRepository<Documento, Guid> documentos, IAsyncQueryableExecuter ejecutor)
+    public HerramientasDelAsistente(IPerfilFiscalAppService perfiles, IBovedaAppService boveda)
     {
         _perfiles = perfiles;
-        _documentos = documentos;
-        _ejecutor = ejecutor;
+        _boveda = boveda;
     }
 
     /// <summary>Las que puede usar quien escribe: sin permiso de cambiar, solo las de consulta.</summary>
@@ -57,9 +55,23 @@ public class HerramientasDelAsistente : ITransientDependency
                 "Devuelve el perfil fiscal del cliente activo: cada dato con su valor, de dónde salió (constancia, cliente, despacho) " +
                 "y si ya está confirmado, más los avisos de la última constancia. Úsala antes de preguntar algo para no repetir preguntas.",
                 """{"type":"object","properties":{}}"""),
-            new(ListarDocumentos,
-                "Lista los documentos que el cliente activo ha subido (los más recientes primero): tipo, nombre, fecha y estado.",
-                """{"type":"object","properties":{"limite":{"type":"integer","minimum":1,"maximum":50}}}"""),
+            new(ResumenDeDocumentos,
+                "Cuántos documentos tiene el cliente activo por año, mes y tipo, y la suma de sus facturas (CFDI en MXN) emitidas " +
+                "(ventas) y recibidas (gastos) por mes. Úsala para «¿qué me falta?», «¿cuánto facturé en…?» o detectar meses sin documentos. " +
+                "Las sumas son informativas (ingresos menos notas de crédito), no un cálculo de impuestos.",
+                """{"type":"object","properties":{}}"""),
+            new(BuscarDocumentos,
+                "Busca en la bóveda del cliente activo. Filtros opcionales: año, mes (1-12), tipo, dirección de la factura " +
+                "(emitida = venta, recibida = gasto) y texto (RFC, nombre del emisor o receptor, UUID, concepto o nombre del archivo). " +
+                "Devuelve hasta 20 documentos, los más recientes primero, y cuántos hay en total.",
+                """
+                {"type":"object","properties":{
+                  "anio":{"type":"integer","minimum":2000,"maximum":2100},
+                  "mes":{"type":"integer","minimum":1,"maximum":12},
+                  "tipo":{"type":"string","enum":["cfdi","estado_de_cuenta","ticket","constancia","otro"]},
+                  "direccion":{"type":"string","enum":["emitida","recibida"]},
+                  "texto":{"type":"string"}}}
+                """),
         };
 
         if (puedeEditar)
@@ -102,7 +114,8 @@ public class HerramientasDelAsistente : ITransientDependency
             var contenido = uso.Nombre switch
             {
                 ConsultarPerfil => Perfil(await _perfiles.GetAsync(organizacionId)),
-                ListarDocumentos => await DocumentosAsync(organizacionId, Entero(uso.Entrada, "limite") ?? 20),
+                ResumenDeDocumentos => await ResumenAsync(organizacionId),
+                BuscarDocumentos => await BuscarAsync(organizacionId, uso.Entrada),
                 GuardarDato => await GuardarAsync(organizacionId, uso.Entrada),
                 ConfirmarDato => await ConfirmarAsync(organizacionId, uso.Entrada),
                 _ => throw new UserFriendlyException($"No existe la herramienta «{uso.Nombre}»."),
@@ -164,27 +177,94 @@ public class HerramientasDelAsistente : ITransientDependency
         return json.ToJsonString(Json);
     }
 
-    private async Task<string> DocumentosAsync(Guid organizacionId, int limite)
+    private static readonly Dictionary<string, TipoDeDocumento> Tipos = new()
     {
-        var consulta = (await _documentos.GetQueryableAsync())
-            .Where(d => d.OrganizacionId == organizacionId)
-            .OrderByDescending(d => d.CreationTime)
-            .Take(Math.Clamp(limite, 1, 50))
-            .Select(d => new { d.Tipo, d.NombreOriginal, d.CreationTime, d.Estado });
-        var lista = await _ejecutor.ToListAsync(consulta);
-        if (lista.Count == 0)
+        ["cfdi"] = TipoDeDocumento.Cfdi,
+        ["estado_de_cuenta"] = TipoDeDocumento.EstadoDeCuenta,
+        ["ticket"] = TipoDeDocumento.Ticket,
+        ["constancia"] = TipoDeDocumento.ConstanciaDeSituacionFiscal,
+        ["otro"] = TipoDeDocumento.Otro,
+    };
+
+    private static string NombreDeTipo(TipoDeDocumento tipo) => Tipos.FirstOrDefault(t => t.Value == tipo).Key ?? "otro";
+
+    private async Task<string> ResumenAsync(Guid organizacionId)
+    {
+        var resumen = await _boveda.GetResumenAsync(organizacionId);
+        if (resumen.Count == 0)
         {
             return "No ha subido ningún documento.";
         }
 
-        return JsonSerializer.Serialize(lista.Select(d => new
+        return JsonSerializer.Serialize(resumen.Select(r => new
         {
-            tipo = d.Tipo.ToString(),
-            nombre = d.NombreOriginal,
-            subido = d.CreationTime.ToString("yyyy-MM-dd"),
-            estado = d.Estado.ToString(),
+            periodo = $"{r.Anio}-{r.Mes:00}",
+            tipo = NombreDeTipo(r.Tipo),
+            cantidad = r.Cantidad,
+            emitido = r.Tipo == TipoDeDocumento.Cfdi ? r.TotalEmitido : (decimal?)null,
+            recibido = r.Tipo == TipoDeDocumento.Cfdi ? r.TotalRecibido : (decimal?)null,
         }), Json);
     }
+
+    private async Task<string> BuscarAsync(Guid organizacionId, JsonElement entrada)
+    {
+        var filtro = new BuscarEnBovedaDto
+        {
+            OrganizacionId = organizacionId,
+            Anio = Entero(entrada, "anio"),
+            Mes = Entero(entrada, "mes"),
+            Texto = Opcional(entrada, "texto"),
+            MaxResultCount = 20,
+        };
+        if (Opcional(entrada, "tipo") is { } tipo)
+        {
+            filtro.Tipo = Tipos.TryGetValue(tipo, out var t) ? t : throw new UserFriendlyException($"Tipo desconocido: {tipo}.");
+        }
+
+        filtro.Direccion = Opcional(entrada, "direccion") switch
+        {
+            "emitida" => DireccionDelCfdi.Emitido,
+            "recibida" => DireccionDelCfdi.Recibido,
+            _ => null,
+        };
+
+        var resultado = await _boveda.GetListAsync(filtro);
+        return JsonSerializer.Serialize(new
+        {
+            total = resultado.TotalCount,
+            documentos = resultado.Items.Select(d => new
+            {
+                tipo = NombreDeTipo(d.Tipo),
+                nombre = d.Nombre,
+                fecha = d.Fecha.ToString("yyyy-MM-dd"),
+                estado = d.Estado.ToString(),
+                factura = d.Cfdi == null
+                    ? null
+                    : new
+                    {
+                        direccion = d.Cfdi.Direccion switch
+                        {
+                            DireccionDelCfdi.Emitido => "emitida",
+                            DireccionDelCfdi.Recibido => "recibida",
+                            _ => "no es del RFC del cliente",
+                        },
+                        tipo = d.Cfdi.TipoDeComprobante,
+                        emisor = $"{d.Cfdi.EmisorNombre} ({d.Cfdi.EmisorRfc})",
+                        receptor = $"{d.Cfdi.ReceptorNombre} ({d.Cfdi.ReceptorRfc})",
+                        total = d.Cfdi.Total,
+                        moneda = d.Cfdi.Moneda,
+                        concepto = d.Cfdi.Concepto,
+                        uuid = d.Cfdi.Uuid,
+                    },
+            }),
+        }, Json);
+    }
+
+    private static string? Opcional(JsonElement entrada, string propiedad) =>
+        entrada.ValueKind == JsonValueKind.Object && entrada.TryGetProperty(propiedad, out var v)
+        && v.ValueKind == JsonValueKind.String && !string.IsNullOrWhiteSpace(v.GetString())
+            ? v.GetString()!.Trim()
+            : null;
 
     private static string Texto(JsonElement entrada, string propiedad) =>
         entrada.ValueKind == JsonValueKind.Object && entrada.TryGetProperty(propiedad, out var v) && v.ValueKind == JsonValueKind.String

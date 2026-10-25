@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using Volo.Abp;
 using Volo.Abp.Domain.Repositories;
 using Volo.Abp.Domain.Services;
@@ -17,11 +18,13 @@ public class GestorDeDocumentos : DomainService
 {
     private readonly IRepository<Documento, Guid> _documentos;
     private readonly AlmacenDeDocumentos _almacen;
+    private readonly IEscanerDeArchivos _escaner;
 
-    public GestorDeDocumentos(IRepository<Documento, Guid> documentos, AlmacenDeDocumentos almacen)
+    public GestorDeDocumentos(IRepository<Documento, Guid> documentos, AlmacenDeDocumentos almacen, IEscanerDeArchivos escaner)
     {
         _documentos = documentos;
         _almacen = almacen;
+        _escaner = escaner;
     }
 
     /// <summary>
@@ -58,6 +61,21 @@ public class GestorDeDocumentos : DomainService
         if (existente != null)
         {
             return (existente, true);
+        }
+
+        // Antivirus antes de guardar. Si no hay (o no responde) se acepta y se avisa en el log: un
+        // ClamAV caído no debe impedir que el cliente suba su constancia. Lo vigila el health check.
+        var escaneo = await _escaner.EscanearAsync(contenido);
+        if (escaneo.Veredicto == VeredictoDelEscaneo.Infectado)
+        {
+            Logger.LogWarning("Documento rechazado por el antivirus ({Detalle}) para la organización {Organizacion}.",
+                escaneo.Detalle, organizacionId);
+            throw new BusinessException("AuxiliarContable:DocumentoInfectado");
+        }
+
+        if (escaneo.Veredicto == VeredictoDelEscaneo.NoDisponible)
+        {
+            Logger.LogInformation("Documento sin escanear: {Detalle}.", escaneo.Detalle);
         }
 
         var documento = new Documento(
