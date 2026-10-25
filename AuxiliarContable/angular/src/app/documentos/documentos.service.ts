@@ -2,15 +2,9 @@ import { inject, Injectable } from '@angular/core';
 import { RestService } from '@abp/ng.core';
 import { Observable } from 'rxjs';
 import { EstadoDeDocumento } from '../perfil-fiscal/perfil-fiscal.service';
+import { TipoDeDocumento } from './tipos';
 
-/** Igual que `TipoDeDocumento` en el backend. */
-export enum TipoDeDocumento {
-  Otro = 0,
-  ConstanciaDeSituacionFiscal = 1,
-  Cfdi = 2,
-  EstadoDeCuenta = 3,
-  Ticket = 4,
-}
+export { TipoDeDocumento };
 
 /** Igual que `DireccionDelCfdi`. */
 export enum DireccionDelCfdi {

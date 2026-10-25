@@ -102,10 +102,12 @@ export const SECCIONES: Seccion[] = [
       {
         titulo: 'Platica con el asistente',
         icono: 'bi-chat-dots',
-        ruta: '/asistente',
+        ruta: '/',
         salvoPermisos: ['AuxiliarContable.Organizaciones'],
         pasos: [
-          'Abre Asistente y escríbele como a tu contador: «tengo una panadería», «¿qué me falta?».',
+          'Al entrar te recibe el asistente: escríbele como a tu contador, «tengo una panadería», «¿qué me falta?».',
+          'Con el clip (o arrastrando) le mandas facturas XML, estados de cuenta, tickets o tu constancia: los guarda en tus documentos y te dice qué llegó.',
+          'Arriba ves cómo vas (perfil, documentos del mes, constancia): toca una cifra para preguntarle por ella.',
           'Lo que le digas de tu negocio lo anota en tu perfil fiscal; abajo de su respuesta ves qué guardó.',
           'Si algo quedó mal, díselo o corrígelo en Perfil fiscal.',
         ],
@@ -125,10 +127,10 @@ export const SECCIONES: Seccion[] = [
       {
         titulo: 'El asistente para el despacho',
         icono: 'bi-chat-dots',
-        ruta: '/asistente',
+        ruta: '/',
         permisos: ['AuxiliarContable.Organizaciones'],
         texto: [
-          'Elige al cliente: arriba queda siempre a la vista con quién estás platicando.',
+          'Al entrar abre «Toda la cartera» con el semáforo del mes. Toca la pastilla de arriba para cambiar a un cliente: queda siempre a la vista con quién estás platicando.',
           'Pídele un resumen del perfil, qué falta o un borrador de mensaje para el cliente (no lo envía: lo copias tú).',
           'Lo que guarde a partir de lo que le digas queda como «Del despacho». Cada quien tiene su propia conversación.',
         ],
@@ -191,7 +193,7 @@ export const SECCIONES: Seccion[] = [
     temas: [
       {
         titulo: 'Llena tu perfil con tu constancia',
-        icono: 'bi-person-vcard',
+        icono: 'bi-person-lines-fill',
         ruta: '/perfil-fiscal',
         salvoPermisos: ['AuxiliarContable.Organizaciones'],
         pasos: [
@@ -204,7 +206,7 @@ export const SECCIONES: Seccion[] = [
       },
       {
         titulo: 'El perfil fiscal de cada cliente',
-        icono: 'bi-person-vcard',
+        icono: 'bi-person-lines-fill',
         ruta: '/perfil-fiscal',
         permisos: ['AuxiliarContable.Organizaciones'],
         texto: [

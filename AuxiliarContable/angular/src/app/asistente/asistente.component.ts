@@ -1,6 +1,7 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  DestroyRef,
   ElementRef,
   OnInit,
   computed,
@@ -8,37 +9,74 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
-import { PermissionService } from '@abp/ng.core';
+import { ConfigStateService, PermissionService } from '@abp/ng.core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { firstValueFrom } from 'rxjs';
+import { CarteraService, SemaforoDeCliente } from '../cartera/cartera.service';
+import { DocumentosService, MESES, NOMBRES_DE_TIPO } from '../documentos/documentos.service';
 import { mensajeDeError } from '../invitaciones/invitaciones.service';
 import { ClienteVisibleDto, PerfilFiscalService } from '../perfil-fiscal/perfil-fiscal.service';
+import { TIPOS_PARA_ADJUNTAR, TipoParaAdjuntar, tipoProbable } from './adjuntos';
 import { AsistenteService, CARTERA, ConversacionDto, MAX_TEXTO, MensajeDto, RolDelMensaje } from './asistente.service';
 
-const SUGERENCIAS_CLIENTE = [
-  'Ayúdame a completar mi perfil',
-  '¿Qué documentos me faltan?',
-  '¿Qué es la constancia de situación fiscal y dónde la saco?',
+/** Una idea para empezar: el texto que se manda y el icono de la tarjeta. */
+interface Sugerencia {
+  icono: string;
+  texto: string;
+}
+
+const SUGERENCIAS_CLIENTE: Sugerencia[] = [
+  { icono: 'bi-person-lines-fill', texto: 'Ayúdame a completar mi perfil' },
+  { icono: 'bi-list-check', texto: '¿Qué documentos me faltan este mes?' },
+  { icono: 'bi-question-circle', texto: '¿Qué es la constancia de situación fiscal y dónde la saco?' },
 ];
 
-const SUGERENCIAS_DESPACHO = [
-  'Resume el perfil de este cliente y lo que falta',
-  'Redacta un mensaje para pedirle sus estados de cuenta',
-  '¿Qué documentos ha subido?',
+const SUGERENCIAS_DESPACHO: Sugerencia[] = [
+  { icono: 'bi-clipboard-data', texto: 'Resume el perfil de este cliente y lo que falta' },
+  { icono: 'bi-envelope', texto: 'Redacta un mensaje para pedirle sus estados de cuenta' },
+  { icono: 'bi-arrow-left-right', texto: '¿Cómo va la conciliación de este mes?' },
 ];
 
-const SUGERENCIAS_CARTERA = [
-  '¿Qué clientes están urgentes este mes?',
-  '¿A quién le falta el estado de cuenta?',
-  'Redacta un recordatorio para los que no han mandado facturas',
+const SUGERENCIAS_CARTERA: Sugerencia[] = [
+  { icono: 'bi-exclamation-octagon', texto: '¿Qué clientes están urgentes este mes?' },
+  { icono: 'bi-bank', texto: '¿A quién le falta el estado de cuenta?' },
+  { icono: 'bi-envelope', texto: 'Redacta un recordatorio para los que no han mandado facturas' },
 ];
+
+/** Lo que se dice mientras el modelo contesta: no hay streaming y la espera debe sentirse viva. */
+const FRASES_DE_ESPERA = ['Pensando…', 'Revisando la información…', 'Armando la respuesta…'];
+
+/** Un dato del «pulso»: cifras deterministas (nunca del modelo) que se tocan para preguntar. */
+export interface DatoDelPulso {
+  icono: string;
+  cifra: string;
+  etiqueta: string;
+  tono: 'bien' | 'atencion' | 'urgente';
+  pregunta?: string;
+  adjuntar?: TipoParaAdjuntar;
+}
+
+export interface Adjunto {
+  archivo: File;
+  tipo: TipoParaAdjuntar;
+  estado: 'listo' | 'subiendo' | 'ok' | 'error';
+  nota?: string;
+}
+
+/** El límite de nginx es 25 MB; se deja margen para el sobre multipart. */
+const MAX_BYTES = 24 * 1024 * 1024;
+const MAX_ADJUNTOS = 10;
 
 /**
- * El chat con el asistente («platicar con tu contador»). Siempre sobre UN cliente, que va en la
- * URL (`?cliente=`) y se ve fijo arriba: el despacho nunca duda de con qué cliente está.
+ * El chat con el asistente: la PORTADA de la consola (ruta `/`). Siempre sobre UN cliente
+ * —o, para el equipo, sobre «Toda la cartera»—, que va en la URL (`?cliente=`) y se ve fijo
+ * arriba como una pastilla que se toca para cambiar.
  *
- * <p>Mobile first: la conversación ocupa la pantalla y la caja de texto queda pegada abajo;
- * desde 768 px solo se limita el ancho de los globos.</p>
+ * <p>Sin mensajes, recibe con un saludo, el «pulso» del cliente (cifras deterministas que se
+ * tocan para preguntar) e ideas para empezar. Con mensajes, es una conversación normal con la
+ * caja pegada abajo. El clip adjunta documentos: se suben a la bóveda (o al perfil, la
+ * constancia) y luego se le cuenta al asistente qué llegó, para que lo comente.</p>
  *
  * <p>Las respuestas se pintan como TEXTO (interpolación, `white-space: pre-wrap`), nunca como
  * HTML: lo que escribe el modelo no es de fiar.</p>
@@ -54,19 +92,34 @@ const SUGERENCIAS_CARTERA = [
 export class AsistenteComponent implements OnInit {
   private readonly api = inject(AsistenteService);
   private readonly perfiles = inject(PerfilFiscalService);
+  private readonly boveda = inject(DocumentosService);
+  private readonly cartera = inject(CarteraService);
   private readonly ruta = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly permisos = inject(PermissionService);
+  private readonly config = inject(ConfigStateService);
   private readonly fondo = viewChild<ElementRef<HTMLElement>>('fondo');
+  private readonly caja = viewChild<ElementRef<HTMLTextAreaElement>>('caja');
+  private readonly selectorDeArchivos = viewChild<ElementRef<HTMLInputElement>>('archivos');
 
   readonly Rol = RolDelMensaje;
+  readonly CARTERA = CARTERA;
   readonly maxTexto = MAX_TEXTO;
+  readonly tiposParaAdjuntar = TIPOS_PARA_ADJUNTAR;
 
   readonly clientes = signal<ClienteVisibleDto[] | null>(null);
   readonly clienteId = signal<string | null>(null);
   readonly conversacion = signal<ConversacionDto | null>(null);
   readonly pendiente = signal<string | null>(null);
   readonly error = signal<string | null>(null);
+  readonly pulso = signal<DatoDelPulso[]>([]);
+  readonly adjuntos = signal<Adjunto[]>([]);
+  readonly selectorAbierto = signal(false);
+  readonly filtro = signal('');
+  readonly arrastrando = signal(false);
+  readonly frase = signal(FRASES_DE_ESPERA[0]);
+  readonly esEquipo = signal(false);
+  readonly nombre = signal('');
   texto = '';
 
   readonly cliente = computed(() => this.clientes()?.find(c => c.id === this.clienteId()) ?? null);
@@ -81,19 +134,63 @@ export class AsistenteComponent implements OnInit {
   readonly sugerencias = computed(() =>
     this.esCartera() ? SUGERENCIAS_CARTERA : this.conversacion()?.esDelDespacho ? SUGERENCIAS_DESPACHO : SUGERENCIAS_CLIENTE,
   );
+  readonly puedeAdjuntar = computed(() => !this.esCartera() && !!this.conversacion()?.puedeEditar);
+  readonly subiendo = computed(() => this.adjuntos().some(a => a.estado === 'subiendo'));
+  readonly ocupado = computed(() => !!this.pendiente() || this.subiendo());
+  readonly clientesFiltrados = computed(() => {
+    const f = normalizar(this.filtro());
+    const lista = this.clientes() ?? [];
+    return f ? lista.filter(c => normalizar(c.nombre).includes(f)) : lista;
+  });
+
+  readonly saludo = computed(() => {
+    const h = new Date().getHours();
+    const parte = h < 12 ? 'Buenos días' : h < 19 ? 'Buenas tardes' : 'Buenas noches';
+    return parte;
+  });
+
+  readonly subtitulo = computed(() => {
+    if (this.esCartera()) {
+      return 'Tengo a la vista toda tu cartera. Pregúntame quién va atrasado o qué hay que pedir.';
+    }
+    if (this.conversacion()?.esDelDespacho) {
+      return `Trabajemos en ${this.cliente()?.nombre ?? 'este cliente'}: su perfil, sus documentos y su conciliación.`;
+    }
+    return 'Soy tu auxiliar contable. Platícame o mándame tus documentos y yo los ordeno.';
+  });
+
+  constructor() {
+    // La frase de espera rota mientras se espera respuesta; se apaga al destruir la vista.
+    const reloj = setInterval(() => {
+      if (this.pendiente()) {
+        const i = FRASES_DE_ESPERA.indexOf(this.frase());
+        this.frase.set(FRASES_DE_ESPERA[(i + 1) % FRASES_DE_ESPERA.length]);
+      }
+    }, 2500);
+    inject(DestroyRef).onDestroy(() => clearInterval(reloj));
+  }
 
   ngOnInit(): void {
+    const usuario = this.config.getOne('currentUser') as { name?: string } | undefined;
+    // Solo el nombre de pila: «Buenas tardes, Ana», no «Buenas tardes, Ana García López».
+    this.nombre.set((usuario?.name || '').trim().split(/\s+/)[0] ?? '');
+    this.esEquipo.set(this.permisos.getGrantedPolicy('AuxiliarContable.Organizaciones'));
+
     this.perfiles.clientes().subscribe({
       next: delServidor => {
         // El equipo puede platicar también sobre toda la cartera (solo el resumen; ver CLAUDE.md §1.2.11).
-        const lista = this.permisos.getGrantedPolicy('AuxiliarContable.Organizaciones')
+        const lista = this.esEquipo()
           ? [{ id: CARTERA, nombre: 'Toda la cartera', puedeEditar: false }, ...delServidor]
           : delServidor;
         this.clientes.set(lista);
         const pedido = this.ruta.snapshot.queryParamMap.get('cliente');
-        const elegido = lista.find(c => c.id === pedido) ?? (lista.length === 1 ? lista[0] : null);
+        // Sin cliente en la URL: el equipo entra a su cartera; un cliente, a su única organización.
+        const elegido =
+          lista.find(c => c.id === pedido) ?? (this.esEquipo() ? lista[0] : lista.length === 1 ? lista[0] : null);
         if (elegido) {
           this.elegir(elegido.id);
+        } else if (lista.length > 1) {
+          this.selectorAbierto.set(true);
         }
       },
       error: e => this.error.set(mensajeDeError(e, 'No se pudo cargar la lista de clientes.')),
@@ -101,8 +198,15 @@ export class AsistenteComponent implements OnInit {
   }
 
   elegir(id: string | null): void {
+    this.selectorAbierto.set(false);
+    this.filtro.set('');
+    if (id === this.clienteId() && this.conversacion()) {
+      return;
+    }
     this.clienteId.set(id);
     this.conversacion.set(null);
+    this.pulso.set([]);
+    this.adjuntos.set([]);
     this.error.set(null);
     this.router.navigate([], { queryParams: { cliente: id }, replaceUrl: true });
     if (!id) {
@@ -112,26 +216,48 @@ export class AsistenteComponent implements OnInit {
       next: c => this.mostrar(c),
       error: e => this.error.set(mensajeDeError(e, 'No se pudo cargar la conversación.')),
     });
+    this.cargarPulso(id);
   }
 
-  enviar(texto = this.texto): void {
+  alternarSelector(): void {
+    if (!this.ocupado()) {
+      this.selectorAbierto.update(v => !v);
+    }
+  }
+
+  async enviar(texto = this.texto): Promise<void> {
     const id = this.clienteId();
-    const limpio = texto.trim();
-    if (!id || !limpio || this.pendiente()) {
+    let limpio = texto.trim();
+    const porSubir = this.adjuntos().filter(a => a.estado === 'listo');
+    if (!id || (!limpio && !porSubir.length) || this.ocupado()) {
       return;
     }
     this.error.set(null);
+
+    if (porSubir.length) {
+      const informe = await this.subirAdjuntos(id);
+      if (!informe) {
+        return;
+      }
+      limpio = limpio ? `${limpio}\n\n${informe}` : informe;
+    }
+
     this.pendiente.set(limpio);
+    this.frase.set(FRASES_DE_ESPERA[0]);
     this.texto = '';
     this.bajar();
     this.api.enviar(id, limpio).subscribe({
       next: c => {
         this.pendiente.set(null);
+        this.adjuntos.set([]);
         this.mostrar(c);
+        this.cargarPulso(id);
       },
       error: e => {
-        // Lo escrito vuelve a la caja: el servidor no guardó nada del turno.
-        this.texto = limpio;
+        // Lo escrito vuelve a la caja: el servidor no guardó nada del turno. Los archivos sí
+        // quedaron en la bóveda, así que no se ofrecen otra vez.
+        this.texto = texto.trim();
+        this.adjuntos.set([]);
         this.pendiente.set(null);
         this.error.set(mensajeDeError(e, 'No se pudo enviar. Intenta de nuevo.'));
       },
@@ -146,9 +272,17 @@ export class AsistenteComponent implements OnInit {
     }
   }
 
+  tocarPulso(dato: DatoDelPulso): void {
+    if (dato.adjuntar !== undefined) {
+      this.abrirArchivos(dato.adjuntar);
+    } else if (dato.pregunta) {
+      this.enviar(dato.pregunta);
+    }
+  }
+
   empezarDeNuevo(): void {
     const id = this.clienteId();
-    if (!id || this.pendiente()) {
+    if (!id || this.ocupado()) {
       return;
     }
     this.api.empezarDeNuevo(id).subscribe({
@@ -157,8 +291,212 @@ export class AsistenteComponent implements OnInit {
     });
   }
 
+  // ---- Adjuntos -------------------------------------------------------------------------------
+
+  private tipoPreferido: TipoParaAdjuntar | null = null;
+
+  abrirArchivos(tipo: TipoParaAdjuntar | null = null): void {
+    if (!this.puedeAdjuntar() || this.ocupado()) {
+      return;
+    }
+    this.tipoPreferido = tipo;
+    this.selectorDeArchivos()?.nativeElement.click();
+  }
+
+  alElegirArchivos(evento: Event): void {
+    const entrada = evento.target as HTMLInputElement;
+    this.agregar(Array.from(entrada.files ?? []));
+    entrada.value = '';
+    this.tipoPreferido = null;
+  }
+
+  alArrastrar(evento: DragEvent, dentro: boolean): void {
+    if (!this.puedeAdjuntar() || !evento.dataTransfer?.types.includes('Files')) {
+      return;
+    }
+    evento.preventDefault();
+    this.arrastrando.set(dentro);
+  }
+
+  alSoltar(evento: DragEvent): void {
+    if (!this.puedeAdjuntar()) {
+      return;
+    }
+    evento.preventDefault();
+    this.arrastrando.set(false);
+    this.agregar(Array.from(evento.dataTransfer?.files ?? []));
+  }
+
+  cambiarTipo(indice: number, tipo: TipoParaAdjuntar): void {
+    this.adjuntos.update(l => l.map((a, i) => (i === indice ? { ...a, tipo } : a)));
+  }
+
+  quitar(indice: number): void {
+    this.adjuntos.update(l => l.filter((_, i) => i !== indice));
+  }
+
+  icono(a: Adjunto): string {
+    if (a.archivo.name.toLowerCase().endsWith('.xml')) return 'bi-file-earmark-code';
+    if (a.archivo.type.startsWith('image/')) return 'bi-file-earmark-image';
+    return 'bi-file-earmark-pdf';
+  }
+
+  private agregar(archivos: File[]): void {
+    if (!archivos.length) {
+      return;
+    }
+    const nuevos: Adjunto[] = [];
+    const rechazados: string[] = [];
+    for (const archivo of archivos) {
+      if (archivo.size > MAX_BYTES) {
+        rechazados.push(`${archivo.name} pesa más de 24 MB`);
+        continue;
+      }
+      const esXml = archivo.name.toLowerCase().endsWith('.xml');
+      const tipo = this.tipoPreferido !== null && !esXml ? this.tipoPreferido : tipoProbable(archivo);
+      nuevos.push({ archivo, tipo, estado: 'listo' });
+    }
+    const lista = [...this.adjuntos(), ...nuevos];
+    if (lista.length > MAX_ADJUNTOS) {
+      rechazados.push(`solo caben ${MAX_ADJUNTOS} archivos por mensaje`);
+    }
+    this.adjuntos.set(lista.slice(0, MAX_ADJUNTOS));
+    this.error.set(rechazados.length ? `No se agregó todo: ${rechazados.join('; ')}.` : null);
+    setTimeout(() => this.caja()?.nativeElement.focus());
+  }
+
+  /**
+   * Sube los adjuntos uno por uno y devuelve el texto que se le cuenta al asistente, o `null` si
+   * no se pudo subir ninguno (entonces no se manda nada y el motivo queda en cada archivo).
+   */
+  private async subirAdjuntos(id: string): Promise<string | null> {
+    const renglones: string[] = [];
+    let buenos = 0;
+    const lista = this.adjuntos();
+    for (let i = 0; i < lista.length; i++) {
+      const a = lista[i];
+      if (a.estado !== 'listo') {
+        continue;
+      }
+      this.marcar(i, { estado: 'subiendo' });
+      try {
+        if (a.tipo === 'csf') {
+          await firstValueFrom(this.perfiles.subirCsf(id, a.archivo));
+          this.marcar(i, { estado: 'ok' });
+          renglones.push(`- ${a.archivo.name} (constancia fiscal): subida al perfil`);
+        } else {
+          const r = await firstValueFrom(this.boveda.subir(id, a.tipo, a.archivo));
+          const nota = r.esDuplicado ? 'ya estaba en la bóveda' : r.aviso || '';
+          this.marcar(i, { estado: 'ok', nota });
+          renglones.push(`- ${a.archivo.name} (${NOMBRES_DE_TIPO[r.documento.tipo].toLowerCase()})${nota ? ': ' + nota : ''}`);
+        }
+        buenos++;
+      } catch (e) {
+        const motivo = mensajeDeError(e, 'No se pudo subir.');
+        this.marcar(i, { estado: 'error', nota: motivo });
+        renglones.push(`- ${a.archivo.name}: no se pudo subir (${motivo})`);
+      }
+    }
+    if (!buenos) {
+      this.error.set('No se pudo subir ningún archivo. Revisa el motivo en cada uno.');
+      return null;
+    }
+    const encabezado = buenos === 1 ? 'Te acabo de mandar un documento' : `Te acabo de mandar ${buenos} documentos`;
+    return `${encabezado}:\n${renglones.join('\n')}`;
+  }
+
+  private marcar(indice: number, cambio: Partial<Adjunto>): void {
+    this.adjuntos.update(l => l.map((a, i) => (i === indice ? { ...a, ...cambio } : a)));
+  }
+
+  // ---- Pulso ----------------------------------------------------------------------------------
+
+  /** Cifras deterministas para la bienvenida. Si algo falla, el pulso simplemente no se pinta. */
+  private cargarPulso(id: string): void {
+    const ahora = new Date();
+    const anio = ahora.getFullYear();
+    const mes = ahora.getMonth() + 1;
+    const nombreDelMes = MESES[ahora.getMonth()];
+
+    if (id === CARTERA) {
+      this.cartera.clientes(anio, mes).subscribe({
+        next: lista => {
+          if (this.clienteId() !== id) return;
+          const cuantos = (s: SemaforoDeCliente) => lista.filter(c => c.semaforo === s).length;
+          const urgentes = cuantos(SemaforoDeCliente.Urgente);
+          const atencion = cuantos(SemaforoDeCliente.Atencion);
+          const alDia = cuantos(SemaforoDeCliente.AlDia);
+          this.pulso.set([
+            { icono: 'bi-exclamation-octagon', cifra: `${urgentes}`, etiqueta: urgentes === 1 ? 'cliente urgente' : 'clientes urgentes', tono: urgentes ? 'urgente' : 'bien', pregunta: '¿Qué clientes están urgentes este mes y qué les falta?' },
+            { icono: 'bi-hourglass-split', cifra: `${atencion}`, etiqueta: 'requieren atención', tono: atencion ? 'atencion' : 'bien', pregunta: '¿Qué clientes requieren atención y por qué?' },
+            { icono: 'bi-check2-circle', cifra: `${alDia}`, etiqueta: `al día en ${nombreDelMes}`, tono: 'bien', pregunta: '¿Qué clientes están al día este mes?' },
+          ]);
+        },
+        error: () => undefined,
+      });
+      return;
+    }
+
+    let perfil: DatoDelPulso | null = null;
+    let documentos: DatoDelPulso | null = null;
+    let constancia: DatoDelPulso | null = null;
+    const publicar = () => {
+      if (this.clienteId() === id) {
+        this.pulso.set([perfil, documentos, constancia].filter((d): d is DatoDelPulso => !!d));
+      }
+    };
+
+    this.perfiles.obtener(id).subscribe({
+      next: p => {
+        const llenos = p.campos.filter(c => c.valor?.trim()).length;
+        const porcentaje = p.campos.length ? Math.round((llenos * 100) / p.campos.length) : 0;
+        perfil = {
+          icono: 'bi-person-lines-fill',
+          cifra: `${porcentaje}%`,
+          etiqueta: 'perfil fiscal',
+          tono: porcentaje >= 100 ? 'bien' : porcentaje >= 50 ? 'atencion' : 'urgente',
+          pregunta: porcentaje >= 100 ? 'Repasa conmigo el perfil fiscal' : 'Ayúdame a completar el perfil fiscal',
+        };
+        constancia = p.csf
+          ? { icono: 'bi-file-earmark-check', cifra: 'Lista', etiqueta: 'constancia fiscal', tono: 'bien', pregunta: '¿Qué datos salieron de la constancia de situación fiscal?' }
+          : p.puedeEditar
+            ? { icono: 'bi-file-earmark-arrow-up', cifra: 'Falta', etiqueta: 'constancia fiscal · súbela', tono: 'urgente', adjuntar: 'csf' }
+            : { icono: 'bi-file-earmark-x', cifra: 'Falta', etiqueta: 'constancia fiscal', tono: 'urgente', pregunta: '¿Cómo se saca la constancia de situación fiscal?' };
+        publicar();
+      },
+      error: () => undefined,
+    });
+
+    this.boveda.resumen(id).subscribe({
+      next: r => {
+        const delMes = r.filter(x => x.anio === anio && x.mes === mes).reduce((s, x) => s + x.cantidad, 0);
+        documentos = {
+          icono: 'bi-folder2-open',
+          cifra: `${delMes}`,
+          etiqueta: `documentos de ${nombreDelMes}`,
+          tono: delMes ? 'bien' : 'atencion',
+          pregunta: `¿Qué documentos hay de ${nombreDelMes} y qué falta?`,
+        };
+        publicar();
+      },
+      error: () => undefined,
+    });
+  }
+
+  // ---- Utilidades -----------------------------------------------------------------------------
+
   hora(utc: string): string {
     return utc ? new Date(utc).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }) : '';
+  }
+
+  /** Dos letras para la pastilla del cliente: «Panadería La Espiga» → «PL». */
+  iniciales(nombre: string): string {
+    return nombre
+      .split(/\s+/)
+      .filter(p => p.length > 2)
+      .slice(0, 2)
+      .map(p => p[0].toUpperCase())
+      .join('');
   }
 
   private mostrar(c: ConversacionDto): void {
@@ -169,4 +507,8 @@ export class AsistenteComponent implements OnInit {
   private bajar(): void {
     setTimeout(() => this.fondo()?.nativeElement.scrollIntoView({ block: 'end', behavior: 'smooth' }));
   }
+}
+
+function normalizar(s: string): string {
+  return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
 }

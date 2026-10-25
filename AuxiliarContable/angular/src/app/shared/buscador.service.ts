@@ -53,7 +53,7 @@ export class BuscadorService {
   private static readonly Tope = 5;
 
   private static readonly Destinos: Destino[] = [
-    { clave: '::Menu:Home', ruta: '/', icono: 'bi-house' },
+    { clave: '::Menu:Asistente', ruta: '/', icono: 'bi-stars' },
     { clave: '::Menu:Organizaciones', ruta: '/organizaciones', icono: 'bi-building', policy: 'AuxiliarContable.Organizaciones' },
     { clave: '::Menu:Actividad', ruta: '/actividad', icono: 'bi-clock-history', policy: 'AuxiliarContable.Actividad' },
     { clave: '::Menu:SystemStatus', ruta: '/system-status', icono: 'bi-activity', policy: 'AuxiliarContable.SystemStatus' },

@@ -18,7 +18,7 @@
     }
   }
   @if (clienteId(); as id) {
-    <a class="btn btn-outline-primary pf-platicar" [routerLink]="['/asistente']" [queryParams]="{ cliente: id }">
+    <a class="btn btn-outline-primary pf-platicar" [routerLink]="['/']" [queryParams]="{ cliente: id }">
       <i class="bi bi-chat-dots" aria-hidden="true"></i> Llenarlo platicando con el asistente
     </a>
   }

@@ -88,10 +88,11 @@ function configureRoutes() {
   });
 
   routes.add([
+    // El chat ES la portada: la puerta principal («platicar con tu contador»). Primero en el menú.
     {
       path: '/',
-      name: '::Menu:Home',
-      iconClass: 'bi bi-house',
+      name: '::Menu:Asistente',
+      iconClass: 'bi bi-stars',
       order: 1,
       layout: eLayoutType.application,
     },
@@ -104,15 +105,6 @@ function configureRoutes() {
       order: 1.4,
       layout: eLayoutType.application,
       requiredPolicy: 'AuxiliarContable.Organizaciones',
-    },
-
-    // El chat: la puerta principal («platicar con tu contador»). Mismo criterio que el perfil.
-    {
-      path: '/asistente',
-      name: '::Menu:Asistente',
-      iconClass: 'bi bi-chat-dots',
-      order: 1.5,
-      layout: eLayoutType.application,
     },
 
     // La bóveda: facturas, estados de cuenta y tickets de cada cliente. Mismo criterio.
@@ -147,7 +139,7 @@ function configureRoutes() {
     {
       path: '/perfil-fiscal',
       name: '::Menu:PerfilFiscal',
-      iconClass: 'bi bi-person-vcard',
+      iconClass: 'bi bi-person-lines-fill',
       order: 2,
       layout: eLayoutType.application,
     },

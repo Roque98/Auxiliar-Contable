@@ -367,7 +367,15 @@ cuenta en frases lo que ya se registra, por día y con filtros (persona, organiz
   (en los tests la autorización es «todo permitido»: el atributo no basta). Semáforo por cliente
   (urgente = sin RFC, sin estado de cuenta del mes o uno que no cuadra) y pendientes en palabras.
   Métricas (`GetMetricasAsync`): solo nivel ≥ Owner (incluye tokens del chat del mes).
-- Pantalla `/asistente?cliente=` (mobile first). Tests: `Integration.Tests/Conversaciones`
+- **El chat ES la portada** (`/`, `?cliente=`; `/asistente` redirige ahí y la ruta NO lleva
+  authGuard: sin sesión el layout pinta su acceso y no la monta). El equipo entra a «Toda la
+  cartera»; un cliente, a su organización. Bienvenida con el «pulso» (cifras DETERMINISTAS de
+  cartera/perfil/bóveda, nunca del modelo; se tocan para preguntar) e ideas. El clip (o arrastrar)
+  sube a la bóveda —la constancia, al perfil— y luego se le cuenta al modelo qué llegó, en el
+  texto del mensaje. El tipo se adivina por nombre (`asistente/adjuntos.ts`, con prueba) y se
+  corrige con un toque. El viejo panel de inicio (estado del sistema) se quitó: vive en
+  `/system-status`. `iconos.spec.ts` falla si se usa un `bi-*` que no existe.
+- Tests: `Integration.Tests/Conversaciones`
   (`ModeloConversacionalDePrueba`) y `HttpApi.Host.Tests` (forma de la petición a Anthropic).
 
 ### 1.3 Design system (el aspecto de TODO el front)

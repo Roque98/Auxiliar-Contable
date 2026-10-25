@@ -1,113 +1,286 @@
-<header class="as-cabecera">
-  <div class="as-titulo">
-    <h1>Asistente</h1>
-    @if (conversacion()?.mensajes?.length) {
-      <button type="button" class="btn btn-outline-secondary as-nueva" (click)="empezarDeNuevo()" [disabled]="!!pendiente()">
-        <i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i> Empezar de nuevo
-      </button>
-    }
-  </div>
-  @if (clientes(); as lista) {
-    @if (lista.length > 1) {
-      <label class="as-cliente">
-        <span>Cliente</span>
-        <select class="ig-control" [ngModel]="clienteId()" (ngModelChange)="elegir($event)" [disabled]="!!pendiente()">
-          <option [ngValue]="null" disabled>Elige un cliente…</option>
-          @for (c of lista; track c.id) {
-            <option [ngValue]="c.id">{{ c.nombre }}</option>
+<div
+  class="as"
+  [class.as-arrastrando]="arrastrando()"
+  (dragover)="alArrastrar($event, true)"
+  (dragleave)="alArrastrar($event, false)"
+  (drop)="alSoltar($event)">
+  <h1 class="visually-hidden">Asistente</h1>
+
+  <!-- El contexto, SIEMPRE a la vista: con quién se está platicando. Se toca para cambiar. -->
+  <header class="as-barra">
+    @if (clientes(); as lista) {
+      @if (lista.length) {
+        <button
+          type="button"
+          class="as-contexto"
+          data-testid="cliente-activo"
+          [attr.aria-expanded]="selectorAbierto()"
+          aria-controls="as-selector"
+          [disabled]="lista.length < 2 || ocupado()"
+          (click)="alternarSelector()">
+          <span class="as-contexto-avatar" [class.as-contexto-cartera]="esCartera()" aria-hidden="true">
+            @if (esCartera()) {
+              <i class="bi bi-grid-3x3-gap-fill"></i>
+            } @else {
+              {{ iniciales(cliente()?.nombre ?? '') || '?' }}
+            }
+          </span>
+          <span class="as-contexto-texto">
+            <small>{{ esCartera() ? 'Despacho' : conversacion()?.esDelDespacho ? 'Cliente' : 'Tu empresa' }}</small>
+            <strong>{{ cliente()?.nombre ?? 'Elige un cliente' }}</strong>
+          </span>
+          @if (lista.length > 1) {
+            <i class="bi bi-chevron-down as-contexto-flecha" aria-hidden="true"></i>
           }
-        </select>
-      </label>
-    } @else if (!lista.length) {
-      <p class="ig-ayuda">Todavía no perteneces a ningún cliente. Pide al despacho que te invite.</p>
-    }
-  }
-  @if (cliente(); as c) {
-    <!-- El cliente activo, SIEMPRE a la vista (visión: «chat del equipo»). -->
-    <p class="as-activo" data-testid="cliente-activo">
-      <i class="bi bi-person-badge" aria-hidden="true"></i>
-      <span>Platicando sobre <strong>{{ c.nombre }}</strong></span>
-      @if (esCartera()) {
-        <a [routerLink]="['/cartera']">Ver cartera</a>
+        </button>
       } @else {
-        <a [routerLink]="['/perfil-fiscal']" [queryParams]="{ cliente: c.id }">Ver perfil</a>
+        <p class="ig-ayuda as-sin-clientes">Todavía no perteneces a ningún cliente. Pide al despacho que te invite.</p>
       }
-    </p>
-  }
-</header>
+    }
 
-@if (conversacion(); as conv) {
-  @if (!conv.disponible) {
-    <div class="ig-alerta ig-alerta-aviso" role="status">El asistente no está disponible por ahora.</div>
+    <div class="as-barra-acciones">
+      @if (cliente(); as c) {
+        @if (esCartera()) {
+          <a class="as-icono" [routerLink]="['/cartera']" title="Ver cartera" aria-label="Ver cartera">
+            <i class="bi bi-grid-3x3-gap" aria-hidden="true"></i>
+          </a>
+        } @else {
+          <a class="as-icono" [routerLink]="['/documentos']" [queryParams]="{ cliente: c.id }" title="Ver documentos" aria-label="Ver documentos">
+            <i class="bi bi-folder2-open" aria-hidden="true"></i>
+          </a>
+          <a class="as-icono" [routerLink]="['/perfil-fiscal']" [queryParams]="{ cliente: c.id }" title="Ver perfil" aria-label="Ver perfil">
+            <i class="bi bi-person-lines-fill" aria-hidden="true"></i>
+          </a>
+        }
+      }
+      @if (conversacion()?.mensajes?.length) {
+        <button type="button" class="as-icono" (click)="empezarDeNuevo()" [disabled]="ocupado()" title="Conversación nueva" aria-label="Empezar de nuevo">
+          <i class="bi bi-pencil-square" aria-hidden="true"></i>
+        </button>
+      }
+    </div>
+  </header>
+
+  @if (selectorAbierto()) {
+    <div class="as-selector" id="as-selector" role="dialog" aria-label="Elegir cliente">
+      <label class="visually-hidden" for="as-filtro">Buscar cliente</label>
+      <div class="as-selector-busca">
+        <i class="bi bi-search" aria-hidden="true"></i>
+        <input
+          id="as-filtro"
+          class="ig-control"
+          type="search"
+          placeholder="Buscar cliente…"
+          autocomplete="off"
+          [ngModel]="filtro()"
+          (ngModelChange)="filtro.set($event)" />
+      </div>
+      <ul class="as-selector-lista">
+        @for (c of clientesFiltrados(); track c.id) {
+          <li>
+            <button type="button" class="as-selector-opcion" [class.activa]="c.id === clienteId()" (click)="elegir(c.id)">
+              <span class="as-contexto-avatar" [class.as-contexto-cartera]="c.id === CARTERA" aria-hidden="true">
+                @if (c.id === CARTERA) {
+                  <i class="bi bi-grid-3x3-gap-fill"></i>
+                } @else {
+                  {{ iniciales(c.nombre) || '?' }}
+                }
+              </span>
+              <span>{{ c.nombre }}</span>
+              @if (c.id === clienteId()) {
+                <i class="bi bi-check2" aria-hidden="true"></i>
+              }
+            </button>
+          </li>
+        } @empty {
+          <li class="as-selector-nada">Ningún cliente se llama así.</li>
+        }
+      </ul>
+    </div>
   }
 
-  <section class="as-mensajes" aria-label="Conversación" aria-live="polite">
-    @if (!mensajes().length) {
-      <div class="as-vacio">
-        <p>
-          @if (conv.esDelDespacho) {
-            Pregúntame lo que necesites de este cliente: lo que tiene su perfil, qué falta o un mensaje para pedírselo.
-          } @else {
-            ¡Hola! Te ayudo a tener tu información en orden. Puedes empezar con algo como:
+  @if (conversacion(); as conv) {
+    @if (!conv.disponible) {
+      <div class="ig-alerta ig-alerta-aviso" role="status">El asistente no está disponible por ahora.</div>
+    }
+
+    <section class="as-mensajes" aria-label="Conversación" aria-live="polite">
+      @if (!mensajes().length) {
+        <!-- La bienvenida: saludo, el pulso del cliente (cifras de verdad, no del modelo) e ideas. -->
+        <div class="as-bienvenida">
+          <div class="as-orbe" aria-hidden="true"><i class="bi bi-stars"></i></div>
+          <h2 class="as-saludo">{{ saludo() }}@if (nombre()) {<span class="as-saludo-nombre">, {{ nombre() }}</span>}</h2>
+          <p class="as-subtitulo">{{ subtitulo() }}</p>
+
+          @if (pulso().length) {
+            <ul class="as-pulso" aria-label="Cómo va">
+              @for (d of pulso(); track d.etiqueta) {
+                <li>
+                  <button
+                    type="button"
+                    
+                    [class]="'as-dato as-dato-' + d.tono"
+                    (click)="tocarPulso(d)"
+                    [disabled]="!conv.disponible || ocupado()">
+                    <i class="bi" [class]="'bi ' + d.icono" aria-hidden="true"></i>
+                    <span class="as-dato-cifra">{{ d.cifra }}</span>
+                    <span class="as-dato-etiqueta">{{ d.etiqueta }}</span>
+                  </button>
+                </li>
+              }
+            </ul>
           }
-        </p>
-        <div class="as-sugerencias">
-          @for (s of sugerencias(); track s) {
-            <button type="button" class="as-sugerencia" (click)="enviar(s)" [disabled]="!conv.disponible">{{ s }}</button>
-          }
+
+          <div class="as-ideas">
+            @if (puedeAdjuntar()) {
+              <button type="button" class="as-idea as-idea-subir" (click)="abrirArchivos()" [disabled]="ocupado()">
+                <i class="bi bi-cloud-arrow-up" aria-hidden="true"></i>
+                <span>
+                  <strong>Mándame documentos</strong>
+                  <small>Facturas XML, estados de cuenta, tickets o tu constancia. También puedes arrastrarlos aquí.</small>
+                </span>
+              </button>
+            }
+            @for (s of sugerencias(); track s.texto) {
+              <button type="button" class="as-idea" (click)="enviar(s.texto)" [disabled]="!conv.disponible || ocupado()">
+                <i class="bi" [class]="'bi ' + s.icono" aria-hidden="true"></i>
+                <span>{{ s.texto }}</span>
+              </button>
+            }
+          </div>
         </div>
+      }
+
+      @for (m of mensajes(); track m.id) {
+        @if (m.rol === Rol.Asistente) {
+          <div class="as-fila">
+            <span class="as-firma" aria-hidden="true"><i class="bi bi-stars"></i></span>
+            <article class="as-globo as-globo-asistente">
+              <p class="as-texto">{{ m.texto }}</p>
+              @if (m.acciones.length) {
+                <ul class="as-acciones">
+                  @for (a of m.acciones; track a) {
+                    <li><i class="bi bi-check2-circle" aria-hidden="true"></i>{{ a }}</li>
+                  }
+                </ul>
+              }
+              @if (m.creadoUtc) {
+                <time class="as-hora">{{ hora(m.creadoUtc) }}</time>
+              }
+            </article>
+          </div>
+        } @else {
+          <article class="as-globo as-globo-yo" [class.as-globo-enviando]="m.id === 'pendiente'">
+            <p class="as-texto">{{ m.texto }}</p>
+            @if (m.creadoUtc) {
+              <time class="as-hora">{{ hora(m.creadoUtc) }}</time>
+            }
+          </article>
+        }
+      }
+
+      @if (pendiente()) {
+        <div class="as-fila" role="status">
+          <span class="as-firma as-firma-viva" aria-hidden="true"><i class="bi bi-stars"></i></span>
+          <p class="as-escribiendo">
+            <span class="as-puntos" aria-hidden="true"><i></i><i></i><i></i></span>
+            {{ frase() }}
+          </p>
+        </div>
+      }
+      <div #fondo></div>
+    </section>
+
+    @if (error(); as e) {
+      <div class="ig-alerta ig-alerta-error" role="alert">{{ e }}</div>
+    }
+
+    <form class="as-caja" (ngSubmit)="enviar()">
+      @if (adjuntos().length) {
+        <ul class="as-adjuntos" aria-label="Archivos para mandar">
+          @for (a of adjuntos(); track $index; let i = $index) {
+            <li [class]="'as-adjunto as-adjunto-' + a.estado">
+              @switch (a.estado) {
+                @case ('subiendo') { <span class="ig-girando" aria-hidden="true"></span> }
+                @case ('ok') { <i class="bi bi-check-circle-fill" aria-hidden="true"></i> }
+                @case ('error') { <i class="bi bi-x-circle-fill" aria-hidden="true"></i> }
+                @default { <i class="bi" [class]="'bi ' + icono(a)" aria-hidden="true"></i> }
+              }
+              <span class="as-adjunto-datos">
+                <span class="as-adjunto-nombre">{{ a.archivo.name }}</span>
+                @if (a.estado === 'listo') {
+                  <select
+                    class="as-adjunto-tipo"
+                    [attr.aria-label]="'Qué es ' + a.archivo.name"
+                    [ngModel]="a.tipo"
+                    [ngModelOptions]="{ standalone: true }"
+                    (ngModelChange)="cambiarTipo(i, $event)">
+                    @for (t of tiposParaAdjuntar; track t.valor) {
+                      <option [ngValue]="t.valor">{{ t.nombre }}</option>
+                    }
+                  </select>
+                } @else if (a.nota) {
+                  <small>{{ a.nota }}</small>
+                }
+              </span>
+              @if (a.estado === 'listo') {
+                <button type="button" class="as-adjunto-quitar" (click)="quitar(i)" [attr.aria-label]="'Quitar ' + a.archivo.name">
+                  <i class="bi bi-x-lg" aria-hidden="true"></i>
+                </button>
+              }
+            </li>
+          }
+        </ul>
+      }
+
+      <div class="as-caja-fila">
+        @if (puedeAdjuntar()) {
+          <button type="button" class="as-clip" (click)="abrirArchivos()" [disabled]="ocupado()" aria-label="Adjuntar documentos" title="Adjuntar documentos">
+            <i class="bi bi-paperclip" aria-hidden="true"></i>
+          </button>
+          <input
+            #archivos
+            type="file"
+            multiple
+            hidden
+            accept=".xml,.pdf,.jpg,.jpeg,.png,.webp,application/xml,text/xml,application/pdf,image/*"
+            (change)="alElegirArchivos($event)" />
+        }
+        <label class="visually-hidden" for="as-texto">Tu mensaje</label>
+        <textarea
+          #caja
+          id="as-texto"
+          name="texto"
+          rows="1"
+          [(ngModel)]="texto"
+          [maxlength]="maxTexto"
+          (keydown)="alTeclear($event)"
+          [disabled]="!conv.disponible"
+          [placeholder]="esCartera() ? 'Pregunta por tu cartera…' : 'Escribe o adjunta…'"
+          enterkeyhint="send"
+        ></textarea>
+        <button
+          type="submit"
+          class="as-enviar"
+          [disabled]="(!texto.trim() && !adjuntos().length) || ocupado() || !conv.disponible"
+          aria-label="Enviar">
+          <i class="bi bi-arrow-up" aria-hidden="true"></i>
+        </button>
+      </div>
+      <p class="as-aviso">IA: puede equivocarse. Las decisiones fiscales las revisa tu contador.</p>
+    </form>
+
+    @if (arrastrando()) {
+      <div class="as-soltar" aria-hidden="true">
+        <i class="bi bi-cloud-arrow-up"></i>
+        <span>Suelta aquí tus documentos</span>
       </div>
     }
-
-    @for (m of mensajes(); track m.id) {
-      <article class="as-globo" [class.as-globo-yo]="m.rol === Rol.Usuario" [class.as-globo-asistente]="m.rol === Rol.Asistente">
-        <p class="as-texto">{{ m.texto }}</p>
-        @if (m.acciones.length) {
-          <ul class="as-acciones">
-            @for (a of m.acciones; track a) {
-              <li><i class="bi bi-check2" aria-hidden="true"></i>{{ a }}</li>
-            }
-          </ul>
-        }
-        @if (m.creadoUtc) {
-          <time class="as-hora">{{ hora(m.creadoUtc) }}</time>
-        }
-      </article>
-    }
-
-    @if (pendiente()) {
-      <p class="as-escribiendo" role="status"><span class="ig-girando" aria-hidden="true"></span>Escribiendo…</p>
-    }
-    <div #fondo></div>
-  </section>
-
-  @if (error(); as e) {
+  } @else if (error(); as e) {
     <div class="ig-alerta ig-alerta-error" role="alert">{{ e }}</div>
+  } @else if (clienteId()) {
+    <div class="as-cargando" aria-busy="true">
+      <div class="as-orbe as-orbe-latiendo" aria-hidden="true"><i class="bi bi-stars"></i></div>
+    </div>
   }
-
-  <form class="as-caja" (ngSubmit)="enviar()">
-    <label class="visually-hidden" for="as-texto">Tu mensaje</label>
-    <textarea
-      id="as-texto"
-      name="texto"
-      class="ig-control"
-      rows="1"
-      [(ngModel)]="texto"
-      [maxlength]="maxTexto"
-      (keydown)="alTeclear($event)"
-      [disabled]="!conv.disponible"
-      placeholder="Escribe tu mensaje…"
-      enterkeyhint="send"
-    ></textarea>
-    <button type="submit" class="btn btn-primary as-enviar" [disabled]="!texto.trim() || !!pendiente() || !conv.disponible" aria-label="Enviar">
-      <i class="bi bi-send-fill" aria-hidden="true"></i>
-    </button>
-    <p class="as-aviso">
-      Orientación general generada con IA: puede equivocarse. Las decisiones fiscales las revisa tu contador.
-    </p>
-  </form>
-} @else if (error(); as e) {
-  <div class="ig-alerta ig-alerta-error" role="alert">{{ e }}</div>
-} @else if (clienteId()) {
-  <div class="ig-esqueleto"></div>
-}
+</div>

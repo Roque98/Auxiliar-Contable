@@ -87,13 +87,13 @@
         <img class="ig-marca-logo" [src]="logo" alt="" />
         <div class="ig-marca-texto">
           <strong>{{ m?.appName }}</strong>
-          <small>Administración</small>
+          <small>Contabilidad con IA</small>
         </div>
       } @else {
         <span class="ig-marca-logo"><ng-container [ngTemplateOutlet]="logoDeSerie" /></span>
         <div class="ig-marca-texto">
           <strong>{{ m?.appName }}</strong>
-          <small>Administración</small>
+          <small>Contabilidad con IA</small>
         </div>
       }
       <button type="button" class="ig-cerrar-lateral" aria-label="Cerrar menú" (click)="cerrarMovil()">
@@ -168,7 +168,7 @@
         [routerLink]="item.ruta"
         routerLinkActive="activa"
         ariaCurrentWhenActive="page"
-        [routerLinkActiveOptions]="{ exact: item.ruta === '/' }">
+        [routerLinkActiveOptions]="item.ruta === '/' ? opcionesDeLaPortada : { exact: false }">
         <i [ngClass]="item.icono" aria-hidden="true"></i>
         <span>{{ item.nombre }}</span>
       </a>

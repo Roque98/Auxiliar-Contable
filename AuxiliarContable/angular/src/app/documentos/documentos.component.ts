@@ -255,7 +255,7 @@ export class DocumentosComponent implements OnInit {
       case TipoDeDocumento.Ticket:
         return 'bi-ticket-perforated';
       case TipoDeDocumento.ConstanciaDeSituacionFiscal:
-        return 'bi-person-vcard';
+        return 'bi-person-lines-fill';
       default:
         return d.tipoMime.startsWith('image/') ? 'bi-file-earmark-image' : 'bi-file-earmark';
     }

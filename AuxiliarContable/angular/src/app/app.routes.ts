@@ -3,9 +3,13 @@ import { Routes } from '@angular/router';
 import { environment } from '../environments/environment';
 export const APP_ROUTES: Routes = [
   {
+    // La PORTADA es el chat: clientes y despacho entran platicando (visión de producto). Sin
+    // guardia A PROPÓSITO: sin sesión el layout pinta su portada de acceso y no monta la ruta;
+    // un authGuard aquí mandaría directo al login y anunciaría el acceso oculto (§6.98).
+    // El servidor decide qué clientes ve cada quien (Autorizador).
     path: '',
     pathMatch: 'full',
-    loadComponent: () => import('./home/home.component').then(c => c.HomeComponent),
+    loadComponent: () => import('./asistente/asistente.component').then(c => c.AsistenteComponent),
   },
   // Explorador de BD: solo en Development.
   ...(environment.production
@@ -39,10 +43,9 @@ export const APP_ROUTES: Routes = [
     canActivate: [authGuard],
   },
   {
-    // Sin permiso: el servidor decide qué clientes ve cada quien (Autorizador).
+    // La dirección vieja del chat (enlaces y marcadores): ahora es la portada. Conserva ?cliente=.
     path: 'asistente',
-    loadComponent: () => import('./asistente/asistente.component').then(c => c.AsistenteComponent),
-    canActivate: [authGuard],
+    redirectTo: '',
   },
   {
     // Sin permiso: el servidor decide qué clientes ve cada quien (Autorizador).

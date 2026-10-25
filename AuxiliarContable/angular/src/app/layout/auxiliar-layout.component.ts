@@ -12,7 +12,7 @@ import {
   untracked,
 } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
-import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { IsActiveMatchOptions, NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { ABP, AuthService, ConfigStateService, LocalizationService, RoutesService, TreeNode } from '@abp/ng.core';
 import type { SeccionMenu as SeccionMenuLocal } from './menu';
 import { filter } from 'rxjs';
@@ -100,6 +100,9 @@ export class AuxiliarLayoutComponent implements OnInit {
    */
   readonly abiertos = signal<Set<string>>(this.leerAbiertos());
   readonly idDeGrupo = idDeGrupo;
+
+  /** La portada (el chat) lleva ?cliente=: con «exact» a secas dejaba de resaltarse en el menú. */
+  readonly opcionesDeLaPortada: IsActiveMatchOptions = { paths: 'exact', queryParams: 'ignored', matrixParams: 'ignored', fragment: 'ignored' };
 
   constructor() {
     // Al llegar el árbol (los permisos cargan después) y en cada navegación.
