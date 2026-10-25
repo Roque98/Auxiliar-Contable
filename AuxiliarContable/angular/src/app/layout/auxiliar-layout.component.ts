@@ -22,6 +22,7 @@ import { ProfilePictureService } from '../profile-picture/profile-picture.servic
 import { ABRIR_BUSCADOR } from '../shared/buscador.component';
 import { TemaService } from '../shared/tema.service';
 import { AvisoSeguridadComponent } from '../seguridad/aviso-seguridad.component';
+import { AceptarAvisoComponent } from '../privacidad/aceptar-aviso.component';
 import { casaConRuta, clavesQueContienen, construirMenu, idDeGrupo, leerAbiertos } from './menu';
 
 export type { EntradaMenu, ItemMenu, SeccionMenu, SubgrupoMenu } from './menu';
@@ -29,7 +30,7 @@ export type { EntradaMenu, ItemMenu, SeccionMenu, SubgrupoMenu } from './menu';
 const CLAVE_MENU_CERRADO = 'ig-menu-cerrado';
 /** Qué secciones y subgrupos del menú dejó abiertos el usuario (todos arrancan cerrados). */
 const CLAVE_MENU_ABIERTOS = 'ig-menu-abiertos';
-const RUTAS_PUBLICAS = ['/registro'];
+const RUTAS_PUBLICAS = ['/registro', '/privacidad'];
 
 export function iniciales(nombre: string): string {
   return (
@@ -51,7 +52,7 @@ export function iniciales(nombre: string): string {
 @Component({
   selector: 'app-auxiliar-layout',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, NgClass, NgTemplateOutlet, AsyncPipe, CampanaComponent, AvisoSeguridadComponent],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, NgClass, NgTemplateOutlet, AsyncPipe, CampanaComponent, AvisoSeguridadComponent, AceptarAvisoComponent],
   templateUrl: './auxiliar-layout.component.html',
   styleUrls: ['./auxiliar-layout.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,

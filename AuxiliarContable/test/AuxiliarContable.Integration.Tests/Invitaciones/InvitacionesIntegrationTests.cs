@@ -96,6 +96,7 @@ public class InvitacionesIntegrationTests : ConJerarquiaTestBase
         await WithUnitOfWorkAsync(() => _registro.AceptarAsync(new AceptarInvitacionDto
         {
             Token = token,
+            VersionDelAvisoAceptada = AuxiliarContable.Privacidad.AvisoDePrivacidadConsts.VersionVigente,
             UserName = "ana",
             Name = "Ana",
             Password = Clave
@@ -140,7 +141,7 @@ public class InvitacionesIntegrationTests : ConJerarquiaTestBase
         revocada.Estado.ShouldBe(EstadoInvitacion.Revocada);
 
         var error = await Should.ThrowAsync<BusinessException>(() => WithUnitOfWorkAsync(() => _registro.AceptarAsync(
-            new AceptarInvitacionDto { Token = token, UserName = "cris", Password = Clave })));
+            new AceptarInvitacionDto { Token = token, VersionDelAvisoAceptada = AuxiliarContable.Privacidad.AvisoDePrivacidadConsts.VersionVigente, UserName = "cris", Password = Clave })));
         error.Code.ShouldBe("AuxiliarContable:InvitacionNoValida");
     }
 

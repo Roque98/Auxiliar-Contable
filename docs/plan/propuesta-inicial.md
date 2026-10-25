@@ -4,6 +4,22 @@
 > Sin código de features. Las decisiones marcadas **[DECIDES TÚ]** esperan respuesta; las
 > marcadas **[TOMADA]** las tomé yo por ser reversibles y baratas.
 
+## 0. Decisiones tomadas (2026-10-25)
+
+| Tema | Decisión | Quién |
+|---|---|---|
+| Despachos | **Uno solo.** Sin multi-tenancy de ABP; los clientes son organizaciones | Dueño |
+| Cliente | **1 organización = 1 RFC**; quien tenga dos RFC son dos clientes | Dueño |
+| Alcance del equipo | **Owner y administradores ven todos los clientes** (como ya funciona); un cliente pertenece a un solo despacho. No hay asignación por administrador | Dueño |
+| FKE | Ubicación desconocida por ahora: no se reimplementa lógica fiscal hasta encontrarlo | Dueño |
+| Documentos | **En el disco del VPS**, cifrados por la aplicación, con copia externa | Dueño |
+| Antivirus | **ClamAV en el VPS**, se instala con la fase 1 (cuando haya subidas): hoy no escanearía nada y ocuparía ~1 GB de RAM | Dueño + yo |
+| Sesión de Claude en el VPS | `claude-cuenta2b` detenida y deshabilitada (libera memoria para lo anterior) | Dueño |
+| Despliegue | Usuario propio `deploy-auxiliar` (no el `deploy` compartido con ZIA) y script de activación de root fuera de su alcance | Yo |
+| Aviso de privacidad | Página pública `/privacidad`, casilla obligatoria al registrarse y panel para quien no lo aceptó; constancia por versión | Yo (texto: borrador para abogado) |
+
+Pendiente: el modelo del chat (§4.2) y los datos del despacho para el aviso.
+
 ## 1. Estado actual del stack
 
 **Lo que ya hay y sirve tal cual**

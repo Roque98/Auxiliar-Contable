@@ -113,4 +113,11 @@ public class AceptarInvitacionDto : TokenDeInvitacionDto
     // Fuera del registro de auditoría: ABP guarda los parámetros de cada llamada.
     [DisableAuditing]
     public string Password { get; set; } = string.Empty;
+
+    /// <summary>
+    /// La versión del aviso de privacidad que la pantalla le enseñó y que aceptó (casilla
+    /// obligatoria). Sin ella, o si ya no es la vigente, no se crea la cuenta.
+    /// </summary>
+    [StringLength(AuxiliarContable.Privacidad.AvisoDePrivacidadConsts.MaxVersionLength)]
+    public string? VersionDelAvisoAceptada { get; set; }
 }

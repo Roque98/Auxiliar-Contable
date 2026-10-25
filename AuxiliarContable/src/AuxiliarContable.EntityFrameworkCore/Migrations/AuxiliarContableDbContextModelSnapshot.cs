@@ -465,6 +465,30 @@ namespace AuxiliarContable.Migrations
                     b.ToTable("AppOrganizacionMiembros", (string)null);
                 });
 
+            modelBuilder.Entity("AuxiliarContable.Privacidad.ConsentimientoDePrivacidad", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("AceptadoUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Version")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "Version")
+                        .IsUnique();
+
+                    b.ToTable("AppConsentimientosDePrivacidad", (string)null);
+                });
+
             modelBuilder.Entity("AuxiliarContable.Security.BlockedIp", b =>
                 {
                     b.Property<Guid>("Id")

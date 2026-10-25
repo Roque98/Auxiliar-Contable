@@ -255,9 +255,37 @@ cuenta en frases lo que ya se registra, por día y con filtros (persona, organiz
 - Tests: `test/*.HttpApi.Host.Tests/IA/` (API falsa; nunca se llama a Anthropic) y
   `test/*.Domain.Tests/IA/` (validaciones).
 
+### 1.2.9 Aviso de privacidad (LFPDPPP)
+
+- Texto en `angular/src/app/privacidad/aviso.ts`, página PÚBLICA `/privacidad`. Versión en
+  `VERSION_DEL_AVISO` y en `AvisoDePrivacidadConsts.VersionVigente` (backend): ⚠️ **al cambiar
+  el texto se cambian las dos, con el mismo valor**, y todos tendrán que aceptarlo de nuevo.
+- Constancia: `AppConsentimientosDePrivacidad` (usuario + versión + fecha UTC; solo se añaden
+  filas, única por usuario y versión). `RegistroDeConsentimientos` (dominio).
+- Registro por invitación: sin `VersionDelAvisoAceptada` vigente NO se crea la cuenta (casilla
+  obligatoria: es el consentimiento expreso para datos financieros y patrimoniales).
+- Con sesión: `AceptarAvisoComponent` (en el layout) tapa la consola hasta aceptar
+  (`/api/app/privacidad/estado` y `/aceptar`). Si la consulta falla NO bloquea.
+- Los datos del despacho responsable están como `PENDIENTE` en `aviso.ts`: mientras falten, la
+  página lo dice. El texto es un borrador técnico: **lo tiene que revisar un abogado**.
+- Tests: `test/*.Integration.Tests/Privacidad/`, e2e `privacidad.spec.ts` (la ayuda de login
+  acepta el aviso si aparece).
+
 ### 1.3 Design system (el aspecto de TODO el front)
 
 El design system viene tal cual de ZIA-Console; solo cambian la marca y el acento.
+
+⚠️ **MOBILE FIRST en toda la UI (regla del dueño, 2026-10-25).** El cliente sube tickets y
+estados de cuenta desde el teléfono y conversa con el asistente ahí: el teléfono es el caso
+principal, no una adaptación.
+- Los estilos base son los del teléfono (~360-390 px) y se crece con `@media (min-width: …)`,
+  nunca al revés. Cortes: **576px** (teléfono grande), **768px** (tableta), **992px**
+  (escritorio), los de Bootstrap que ya trae LeptonX.
+- En el teléfono: acciones a todo el ancho y la principal arriba (al alcance del pulgar),
+  objetivos táctiles de ≥ 44 px, nada de scroll horizontal, nada que dependa de `:hover`.
+- Lo heredado de ZIA está escrito al revés (`max-width: 760px` y compañía): se convierte a
+  mobile first **cuando se toca**, no de golpe.
+- Toda pantalla nueva se revisa en Playwright con `devices['iPhone 13']` además de escritorio.
 
 **Marca**: el isotipo es una hoja de registro con la palomita de «conciliado»
 (`docs/marca/isotipo.svg`; cómo sacar los PNG en `docs/marca/README.md`). El nombre va en

@@ -189,6 +189,7 @@ public class PapelesYNivelesIntegrationTests : ConJerarquiaTestBase
         await WithUnitOfWorkAsync(() => GetRequiredService<IRegistroAppService>().AceptarAsync(new AceptarInvitacionDto
         {
             Token = token,
+            VersionDelAvisoAceptada = AuxiliarContable.Privacidad.AvisoDePrivacidadConsts.VersionVigente,
             UserName = "olga",
             Password = Clave,
         }));

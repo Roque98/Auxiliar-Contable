@@ -538,6 +538,7 @@
     "AuxiliarContable:InvitacionNoValida": "El enlace de invitación no es válido o ya se usó. Pide una nueva a quien te invitó.",
     "AuxiliarContable:InvitacionYaPendiente": "Ya hay una invitación pendiente para {email}. Reenvíala desde la lista en vez de crear otra.",
     "AuxiliarContable:InvitacionCorreoConCuenta": "Ya existe una cuenta con el correo {email}.",
+    "AuxiliarContable:AvisoDePrivacidadDesactualizado": "Para continuar tienes que aceptar el aviso de privacidad vigente. Si tenías la página abierta, recárgala: el aviso cambió.",
     "AuxiliarContable:InvitacionRolFueraDeAlcance": "No puedes invitar a alguien con ese rol.",
     "AuxiliarContable:InvitacionDemasiadosEnvios": "Esta invitación ya se envió {maximo} veces. Revócala y crea una nueva si hace falta.",
     "AuxiliarContable:InvitacionCorreoNoConfigurado": "El envío de correos no está configurado todavía, así que la invitación no puede salir. Pide al Developer que configure Brevo.",

@@ -82,6 +82,14 @@
         }
       </div>
 
+      <div class="ig-campo rg-aviso">
+        <input id="rg-aviso" name="aceptaAviso" type="checkbox" required [(ngModel)]="aceptaAviso" />
+        <label for="rg-aviso">
+          He leído y acepto el <a href="/privacidad" target="_blank" rel="noopener">aviso de privacidad</a>,
+          incluido el tratamiento de mis datos fiscales, financieros y patrimoniales.
+        </label>
+      </div>
+
       <button type="submit" class="ig-btn ig-btn-principal ig-btn-bloque" [disabled]="!listo || enviando()">
         @if (enviando()) {
           <span class="ig-girando" aria-hidden="true"></span>Creando tu cuenta…

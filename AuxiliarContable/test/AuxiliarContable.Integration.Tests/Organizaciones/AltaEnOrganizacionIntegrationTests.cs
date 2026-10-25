@@ -144,7 +144,7 @@ public class AltaEnOrganizacionIntegrationTests : ConJerarquiaTestBase
         var token = await EmitirAsync(invitacion.Id);
         (await _registro.ConsultarAsync(new TokenDeInvitacionDto { Token = token })).Organizacion.ShouldBe("Grupo Sur");
 
-        await WithUnitOfWorkAsync(() => _registro.AceptarAsync(new AceptarInvitacionDto { Token = token, UserName = "olga", Password = Clave }));
+        await WithUnitOfWorkAsync(() => _registro.AceptarAsync(new AceptarInvitacionDto { Token = token, VersionDelAvisoAceptada = AuxiliarContable.Privacidad.AvisoDePrivacidadConsts.VersionVigente, UserName = "olga", Password = Clave }));
 
         (await MiembrosAsync(organizacion)).ShouldBe(["olga"]);
     }
@@ -159,7 +159,7 @@ public class AltaEnOrganizacionIntegrationTests : ConJerarquiaTestBase
         await ComoAsync(Owner, () => _organizaciones.DeleteAsync(organizacion));
 
         var ex = await Should.ThrowAsync<BusinessException>(() =>
-            WithUnitOfWorkAsync(() => _registro.AceptarAsync(new AceptarInvitacionDto { Token = token, UserName = "pia", Password = Clave })));
+            WithUnitOfWorkAsync(() => _registro.AceptarAsync(new AceptarInvitacionDto { Token = token, VersionDelAvisoAceptada = AuxiliarContable.Privacidad.AvisoDePrivacidadConsts.VersionVigente, UserName = "pia", Password = Clave })));
 
         ex.Code.ShouldBe("AuxiliarContable:InvitacionSinOrganizacion");
         (await ExisteAsync("pia")).ShouldBeFalse();

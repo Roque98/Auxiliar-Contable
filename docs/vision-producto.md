@@ -57,3 +57,14 @@ Tengo un Fiscal Knowledge Engine (FKE) en C#: catálogo de 250+ reglas CFDI para
 
 ## Seguridad y cumplimiento
 Datos financieros y fiscales sensibles: cifrado en reposo y tránsito, URLs firmadas para documentos, bitácora de auditoría (quién vio/cambió qué), retención y borrado de datos, consideraciones de LFPDPPP. Valida tipo y tamaño de archivo, escanea uploads. No mandes al LLM más datos de los necesarios.
+
+## Aclaraciones posteriores del dueño
+
+- **2026-10-25** — Hay **un solo despacho** (no es multi-tenant en el sentido de varios
+  despachos). **El Owner y los administradores son del mismo despacho y ven todos los
+  clientes**; un cliente pertenece a un solo despacho. Esto sustituye a «un administrador solo
+  accede a los clientes que tiene asignados» y a «Roles y permisos (multi-tenant)» de arriba: el
+  aislamiento estricto es **entre clientes (organizaciones)**, no entre administradores.
+- **2026-10-25** — Un cliente = un RFC. La ubicación del FKE aún no se conoce.
+- **2026-10-25** — Los documentos se guardan en el disco del VPS (cifrados por la aplicación) y
+  el antivirus va en el VPS.

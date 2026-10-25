@@ -4,6 +4,7 @@ import { AuthService, ConfigStateService } from '@abp/ng.core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { tokenDelFragmento } from './token';
 import { InvitacionPublicaDto, InvitacionesService, mensajeDeError } from '../invitaciones/invitaciones.service';
+import { VERSION_DEL_AVISO } from '../privacidad/aviso';
 
 type Paso = 'cargando' | 'invalida' | 'formulario' | 'lista';
 
@@ -41,6 +42,8 @@ export class RegistroComponent implements OnInit {
   surname = '';
   password = '';
   repetir = '';
+  /** Casilla del aviso de privacidad: obligatoria (consentimiento expreso para datos financieros). */
+  aceptaAviso = false;
 
   ngOnInit(): void {
     this.token = tokenDelFragmento(window.location.hash);
@@ -82,7 +85,7 @@ export class RegistroComponent implements OnInit {
   }
 
   get listo(): boolean {
-    return !!this.userName.trim() && this.reglas.every(r => r.ok) && this.coinciden;
+    return !!this.userName.trim() && this.reglas.every(r => r.ok) && this.coinciden && this.aceptaAviso;
   }
 
   crear(): void {
@@ -99,6 +102,7 @@ export class RegistroComponent implements OnInit {
         name: this.name.trim() || undefined,
         surname: this.surname.trim() || undefined,
         password: this.password,
+        versionDelAvisoAceptada: VERSION_DEL_AVISO,
       })
       .subscribe({
         next: () => {

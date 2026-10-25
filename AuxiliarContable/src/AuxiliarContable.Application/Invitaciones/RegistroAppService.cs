@@ -4,7 +4,9 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using AuxiliarContable.Identity;
 using AuxiliarContable.Organizaciones;
+using AuxiliarContable.Privacidad;
 using Microsoft.AspNetCore.Authorization;
+using Volo.Abp;
 using Volo.Abp.Domain.Repositories;
 
 namespace AuxiliarContable.Invitaciones;
@@ -18,11 +20,16 @@ public class RegistroAppService : AuxiliarContableAppService, IRegistroAppServic
 {
     private readonly GestorDeInvitaciones _gestor;
     private readonly IRepository<Organizacion, Guid> _organizaciones;
+    private readonly RegistroDeConsentimientos _consentimientos;
 
-    public RegistroAppService(GestorDeInvitaciones gestor, IRepository<Organizacion, Guid> organizaciones)
+    public RegistroAppService(
+        GestorDeInvitaciones gestor,
+        IRepository<Organizacion, Guid> organizaciones,
+        RegistroDeConsentimientos consentimientos)
     {
         _gestor = gestor;
         _organizaciones = organizaciones;
+        _consentimientos = consentimientos;
     }
 
     /// <summary>
@@ -50,9 +57,20 @@ public class RegistroAppService : AuxiliarContableAppService, IRegistroAppServic
         };
     }
 
+    /// <summary>
+    /// Crea la cuenta y deja constancia de que aceptó el aviso de privacidad, en la misma
+    /// unidad de trabajo: o las dos cosas o ninguna. El aviso se comprueba ANTES, para no
+    /// gastar el intento en validar usuario y contraseña de algo que se va a rechazar.
+    /// </summary>
     public async Task AceptarAsync(AceptarInvitacionDto input)
     {
-        await _gestor.AceptarAsync(input.Token, input.UserName, input.Name, input.Surname, input.Password);
+        if (input.VersionDelAvisoAceptada != AvisoDePrivacidadConsts.VersionVigente)
+        {
+            throw new BusinessException("AuxiliarContable:AvisoDePrivacidadDesactualizado");
+        }
+
+        var usuario = await _gestor.AceptarAsync(input.Token, input.UserName, input.Name, input.Surname, input.Password);
+        await _consentimientos.AceptarAsync(usuario.Id, input.VersionDelAvisoAceptada);
     }
 
     /// <summary>La parte local del correo, con solo lo que Identity acepta en un usuario.</summary>

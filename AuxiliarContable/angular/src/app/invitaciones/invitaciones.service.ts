@@ -54,6 +54,8 @@ export interface AceptarInvitacionDto {
   name?: string;
   surname?: string;
   password: string;
+  /** La versión del aviso de privacidad que se le enseñó y aceptó (casilla obligatoria). */
+  versionDelAvisoAceptada: string;
 }
 
 /** `InvitacionAppService` (`/api/app/invitacion`) y `RegistroAppService` (`/api/app/registro`). */

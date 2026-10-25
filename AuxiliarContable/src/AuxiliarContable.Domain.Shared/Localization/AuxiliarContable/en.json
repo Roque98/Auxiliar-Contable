@@ -503,6 +503,7 @@
     "AuxiliarContable:InvitacionNoValida": "The invitation link is not valid or was already used. Ask whoever invited you for a new one.",
     "AuxiliarContable:InvitacionYaPendiente": "There is already a pending invitation for {email}. Resend it from the list instead of creating another one.",
     "AuxiliarContable:InvitacionCorreoConCuenta": "An account with the email {email} already exists.",
+    "AuxiliarContable:AvisoDePrivacidadDesactualizado": "To continue you have to accept the current privacy notice. If the page was open for a while, reload it: the notice changed.",
     "AuxiliarContable:InvitacionRolFueraDeAlcance": "You cannot invite someone with that role.",
     "AuxiliarContable:InvitacionDemasiadosEnvios": "This invitation was already sent {maximo} times. Revoke it and create a new one if needed.",
     "AuxiliarContable:InvitacionCorreoNoConfigurado": "Email sending is not configured yet, so the invitation cannot go out. Ask the Developer to configure Brevo.",

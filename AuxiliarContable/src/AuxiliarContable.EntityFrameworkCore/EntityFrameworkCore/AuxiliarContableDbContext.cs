@@ -49,6 +49,8 @@ public class AuxiliarContableDbContext :
 
     public DbSet<TelegramLink> TelegramLinks { get; set; }
 
+    public DbSet<Privacidad.ConsentimientoDePrivacidad> ConsentimientosDePrivacidad { get; set; }
+
     // ⚠️ ESTOS DbSet NO SON DECORATIVOS. ABP aplica sus filtros globales (multi-tenancy y
     // soft delete) recorriendo las entidades que YA ESTAN en el modelo en el momento en que
     // se llama a base.OnModelCreating(), que aqui es la PRIMERA linea de OnModelCreating.
@@ -226,6 +228,18 @@ public class AuxiliarContableDbContext :
             b.HasIndex(x => x.UserId).IsUnique();
             // La confirmacion busca por aqui, y ocurre en cada mensaje que recibe el bot.
             b.HasIndex(x => x.TokenHash);
+        });
+
+        // Aceptaciones del aviso de privacidad — tabla AppConsentimientosDePrivacidad. Solo se
+        // anaden filas (es la prueba de que cada quien acepto que texto y cuando).
+        builder.Entity<Privacidad.ConsentimientoDePrivacidad>(b =>
+        {
+            b.ToTable(AuxiliarContableConsts.DbTablePrefix + "ConsentimientosDePrivacidad", AuxiliarContableConsts.DbSchema);
+            b.ConfigureByConvention();
+            b.Property(x => x.Version).IsRequired().HasMaxLength(Privacidad.AvisoDePrivacidadConsts.MaxVersionLength);
+            // Una fila por persona y version: aceptar dos veces la misma no duplica (y la
+            // carrera de dos pestanas a la vez la para la base).
+            b.HasIndex(x => new { x.UserId, x.Version }).IsUnique();
         });
 
         // Intentos fallidos de un trabajo en segundo plano — tabla AppJobFailures.

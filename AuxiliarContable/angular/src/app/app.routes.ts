@@ -64,6 +64,11 @@ export const APP_ROUTES: Routes = [
     canActivate: [authGuard],
   },
   {
+    // PÚBLICA: el aviso de privacidad se lee ANTES de tener cuenta (registro, login).
+    path: 'privacidad',
+    loadComponent: () => import('./privacidad/aviso-de-privacidad.component').then(c => c.AvisoDePrivacidadComponent),
+  },
+  {
     // PÚBLICA: la abre quien recibió la invitación y aún no tiene cuenta. Lo que protege
     // es el token del correo, no la sesión. El layout la pinta sin menú.
     path: 'registro',

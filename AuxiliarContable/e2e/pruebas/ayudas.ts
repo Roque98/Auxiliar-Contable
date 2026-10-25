@@ -51,11 +51,24 @@ export async function contextoConSesion(browser: Browser): Promise<{ contexto: B
       await pagina.click('button[name=Action]');
       await pagina.waitForURL(u => !/\/Account\//i.test(u.pathname), { timeout: 60_000 });
       await expect(pagina.locator('button[aria-label^="Cambiar a modo"]')).toBeVisible({ timeout: 60_000 });
+      await aceptarAvisoSiHaceFalta(pagina);
       return { contexto, pagina };
     }
     await pagina.waitForTimeout(65_000);
   }
   throw new Error('No se pudo iniciar sesión (¿API caída o límite de peticiones?).');
+}
+
+/**
+ * Quien no aceptó el aviso de privacidad vigente ve un panel que tapa la consola. La primera
+ * vez en una base nueva (o al cambiar el aviso) se acepta aquí; las demás no aparece.
+ */
+export async function aceptarAvisoSiHaceFalta(pagina: Page): Promise<void> {
+  const aceptar = pagina.getByRole('button', { name: 'Acepto el aviso de privacidad' });
+  if (await aceptar.waitFor({ timeout: 5_000 }).then(() => true).catch(() => false)) {
+    await aceptar.click();
+    await aceptar.waitFor({ state: 'detached', timeout: 15_000 });
+  }
 }
 
 /** Navega y espera a que la pantalla haya pintado algo más que el esqueleto. */

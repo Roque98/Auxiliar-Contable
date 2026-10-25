@@ -85,3 +85,28 @@
   text-decoration: underline;
   cursor: pointer;
 }
+
+/* La casilla del aviso: el texto envuelve junto a la casilla, no debajo. */
+.rg-aviso {
+  display: flex;
+  gap: var(--ig-esp-2);
+  align-items: flex-start;
+
+  input {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    margin-top: 3px;
+    accent-color: var(--ig-acento);
+  }
+
+  label {
+    font-weight: normal;
+    line-height: 1.5;
+  }
+
+  a {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+}
