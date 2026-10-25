@@ -271,6 +271,31 @@ cuenta en frases lo que ya se registra, por día y con filtros (persona, organiz
 - Tests: `test/*.Integration.Tests/Privacidad/`, e2e `privacidad.spec.ts` (la ayuda de login
   acepta el aviso si aparece).
 
+### 1.2.10 Documentos y perfil fiscal (CSF)
+
+- **Documentos** (`Domain/Documentos/`): `Documento` (fila: cliente, tipo, nombre, MIME real,
+  SHA-256, estado) + contenido **cifrado AES-256-GCM** en disco (`AlmacenDeDocumentos` →
+  contenedor `DocumentosContainer`, proveedor FileSystem en el host; AAD = id del documento).
+  Solo se entra por `GestorDeDocumentos.RecibirAsync`: tope de tamaño, tipo POR LOS BYTES
+  (`DetectorDeDocumento`: PDF, XML sin DOCTYPE, JPEG/PNG/WebP), duplicado = mismo SHA-256 en el
+  mismo cliente. Carpeta: `Documentos:Carpeta` (prod `/var/lib/auxiliar-contable/documentos`,
+  dev `%LOCALAPPDATA%/auxiliar-contable/documentos`). Clave: `Documentos:ClaveDeCifrado`
+  (user-secrets / env; ⚠️ guardada también FUERA del servidor). La copia remota incluye la carpeta.
+- **Perfil fiscal** (`PerfilesFiscales/`): uno por organización, un `DatoDelPerfil` por campo del
+  catálogo `CamposDelPerfil` (claves estables), cada uno con `Origen` (CSF / cliente / despacho /
+  inferido), `Confirmado` y `DocumentoId`. ⚠️ `Proponer` (extracción) NUNCA pisa lo confirmado:
+  devuelve false y queda aviso. `Responder` (persona) confirma. `ConfirmarLoDeLaConstancia`
+  confirma de golpe solo lo extraído (no lo inferido).
+- **Lectura de la CSF** (`ProcesadorDeCsf`, trabajo `auxiliar:leer-csf`): texto con PdfPig; el
+  CÓDIGO lee RFC/CURP/CP/fecha de emisión (`LectorDeCsf`, `Sat`) y Haiku lee nombre, domicilio y
+  tablas (regímenes, obligaciones, actividades) desde el TEXTO (el PDF solo si es escaneo). En
+  identificadores manda el código; regímenes se validan contra los 19 de c_RegimenFiscal. Avisos:
+  CSF > 90 días, RFC distinto, dígito verificador, régimen desconocido, porcentajes ≠ 100.
+- Quién: `Autorizador` — ver = `Ver`, cambiar = `Subir` (el papel «Solo ve» no cambia); el despacho
+  en todos los clientes. Pantalla `/perfil-fiscal?cliente=` (mobile first).
+- Tests: `Domain.Tests/{Documentos,PerfilesFiscales}`, `Application.Tests/PerfilesFiscales`,
+  `Integration.Tests/PerfilesFiscales` (IA falsa `ModeloDeIADePrueba`, PDF generado con PdfPig).
+
 ### 1.3 Design system (el aspecto de TODO el front)
 
 El design system viene tal cual de ZIA-Console; solo cambian la marca y el acento.

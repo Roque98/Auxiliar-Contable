@@ -36,10 +36,15 @@ describe('manual por rol', () => {
     expect(usuario).toContain('Protege tu cuenta');
     expect(usuario).not.toContain('Dar acceso a un cliente');
     expect(usuario).not.toContain('Invitar a alguien');
+    // El perfil fiscal: el cliente ve cómo llenar el suyo, no el de «cada cliente».
+    expect(usuario).toContain('Llena tu perfil con tu constancia');
+    expect(usuario).not.toContain('El perfil fiscal de cada cliente');
 
     const admin = titulos(['AuxiliarContable.Organizaciones', 'AbpIdentity.Users.Create', 'AbpIdentity.Users.Update']);
     expect(admin).toContain('Invitar a alguien');
     expect(admin).toContain('Dar acceso a un cliente');
+    expect(admin).toContain('El perfil fiscal de cada cliente');
+    expect(admin).not.toContain('Llena tu perfil con tu constancia');
     expect(admin).not.toContain('Gestionar a la gente de tu organización');
     expect(admin).not.toContain('Roles y permisos');
 
@@ -50,7 +55,7 @@ describe('manual por rol', () => {
 
   it('las secciones sin temas desaparecen', () => {
     const secciones = manualPara(() => false, 0).map(s => s.titulo);
-    expect(secciones).toEqual(['Lo básico', 'Organizaciones']);
+    expect(secciones).toEqual(['Lo básico', 'Perfil fiscal', 'Organizaciones']);
     expect(SECCIONES.length).toBeGreaterThan(1);
   });
 });

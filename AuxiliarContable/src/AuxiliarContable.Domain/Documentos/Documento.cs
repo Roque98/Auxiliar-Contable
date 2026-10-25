@@ -1,0 +1,70 @@
+using System;
+using Volo.Abp;
+using Volo.Abp.Domain.Entities.Auditing;
+
+namespace AuxiliarContable.Documentos;
+
+/// <summary>
+/// Un archivo que mandó un cliente (o el despacho por él). El contenido NO vive aquí: va
+/// cifrado al disco (<see cref="AlmacenDeDocumentos"/>); aquí quedan los datos para buscarlo,
+/// saber de quién es y detectar duplicados.
+///
+/// <para>⚠️ <see cref="OrganizacionId"/> es la frontera de aislamiento: todo lo que lea
+/// documentos filtra por ella con el alcance del usuario (ver <c>AlcanceDeOrganizaciones</c>).</para>
+/// </summary>
+public class Documento : FullAuditedAggregateRoot<Guid>
+{
+    public Guid OrganizacionId { get; protected set; }
+
+    public TipoDeDocumento Tipo { get; protected set; }
+
+    /// <summary>El nombre con el que se subió. Solo para mostrarlo: nunca se usa como ruta.</summary>
+    public string NombreOriginal { get; protected set; } = string.Empty;
+
+    /// <summary>El tipo REAL, sacado de los bytes (<see cref="DetectorDeDocumento"/>), no el que declaró el navegador.</summary>
+    public string TipoMime { get; protected set; } = string.Empty;
+
+    public long Tamano { get; protected set; }
+
+    /// <summary>SHA-256 del contenido en claro: el mismo archivo subido dos veces es el mismo documento.</summary>
+    public string Sha256 { get; protected set; } = string.Empty;
+
+    public EstadoDeDocumento Estado { get; protected set; }
+
+    /// <summary>Por qué no se pudo leer, para quien lo revise. Nunca lleva datos del documento.</summary>
+    public string? Motivo { get; protected set; }
+
+    protected Documento()
+    {
+    }
+
+    public Documento(
+        Guid id,
+        Guid organizacionId,
+        TipoDeDocumento tipo,
+        string nombreOriginal,
+        string tipoMime,
+        long tamano,
+        string sha256) : base(id)
+    {
+        OrganizacionId = organizacionId;
+        Tipo = tipo;
+        NombreOriginal = Check.NotNullOrWhiteSpace(nombreOriginal, nameof(nombreOriginal), DocumentoConsts.MaxNombreLength);
+        TipoMime = Check.NotNullOrWhiteSpace(tipoMime, nameof(tipoMime), DocumentoConsts.MaxTipoMimeLength);
+        Tamano = tamano;
+        Sha256 = Check.Length(sha256, nameof(sha256), DocumentoConsts.HashLength, DocumentoConsts.HashLength)!;
+        Estado = EstadoDeDocumento.Recibido;
+    }
+
+    public void MarcarProcesado()
+    {
+        Estado = EstadoDeDocumento.Procesado;
+        Motivo = null;
+    }
+
+    public void MarcarConError(string motivo)
+    {
+        Estado = EstadoDeDocumento.ConError;
+        Motivo = motivo.Length <= 500 ? motivo : motivo[..500];
+    }
+}

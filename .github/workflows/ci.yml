@@ -94,6 +94,12 @@ jobs:
 
   secretos:
     runs-on: ubuntu-latest
+    # En un PR, gitleaks-action pide la lista de commits del PR a la API: sin pull-requests:read
+    # fallaba con «Resource not accessible by integration» y el paso salía rojo en TODOS los PR
+    # sin haber encontrado nada (en main pasaba porque ahí no hay PR que listar).
+    permissions:
+      contents: read
+      pull-requests: read
     steps:
       - uses: actions/checkout@v7
         with:

@@ -94,12 +94,21 @@ fi
 echo "==> Subiendo $(basename "$volcado")"
 # Se suben el volcado Y los roles: sin los roles, restaurar en una máquina limpia falla
 # por permisos y la copia sirve de mucho menos de lo que parece.
+#
+# Y los DOCUMENTOS de los clientes: viven en disco, no en la base (CLAUDE.md §1.2.10), así
+# que el volcado no los lleva. Van ya cifrados por la aplicación; restic los vuelve a cifrar.
+# ⚠️ Sin Documentos__ClaveDeCifrado (guardada también fuera del servidor) no se pueden leer.
+DOCUMENTOS=/var/lib/auxiliar-contable/documentos
+rutas=("$volcado")
 if [ -r "$roles" ]; then
-    restic backup --tag auxiliar-contable --host auxiliar-contable "$volcado" "$roles"
+    rutas+=("$roles")
 else
-    echo "!! No se encontró $roles; se sube solo el volcado." >&2
-    restic backup --tag auxiliar-contable --host auxiliar-contable "$volcado"
+    echo "!! No se encontró $roles; se sube sin los roles." >&2
 fi
+if [ -d "$DOCUMENTOS" ]; then
+    rutas+=("$DOCUMENTOS")
+fi
+restic backup --tag auxiliar-contable --host auxiliar-contable "${rutas[@]}"
 
 echo "==> Aplicando retención"
 # --prune borra de verdad los datos que ya no referencia ningún snapshot. Sin él la

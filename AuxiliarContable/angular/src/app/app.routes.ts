@@ -39,6 +39,12 @@ export const APP_ROUTES: Routes = [
     canActivate: [authGuard],
   },
   {
+    // Sin permiso: el servidor decide qué clientes ve cada quien (Autorizador).
+    path: 'perfil-fiscal',
+    loadComponent: () => import('./perfil-fiscal/perfil-fiscal.component').then(c => c.PerfilFiscalComponent),
+    canActivate: [authGuard],
+  },
+  {
     path: 'organizaciones',
     loadComponent: () => import('./organizaciones/organizaciones.component').then(c => c.OrganizacionesComponent),
     canActivate: [authGuard, permissionGuard],

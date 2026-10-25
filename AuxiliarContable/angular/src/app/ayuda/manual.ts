@@ -97,6 +97,35 @@ export const SECCIONES: Seccion[] = [
     ],
   },
   {
+    titulo: 'Perfil fiscal',
+    temas: [
+      {
+        titulo: 'Llena tu perfil con tu constancia',
+        icono: 'bi-person-vcard',
+        ruta: '/perfil-fiscal',
+        salvoPermisos: ['AuxiliarContable.Organizaciones'],
+        pasos: [
+          'Descarga tu Constancia de Situación Fiscal (PDF) del portal del SAT. Que sea reciente: de los últimos 3 meses.',
+          'Abre Perfil fiscal y toca «Subir mi constancia». En unos segundos verás tus datos.',
+          'Revisa cada dato marcado «Por confirmar»: si está bien, toca «Es correcto»; si no, «Corregir».',
+          'Completa lo que la constancia no dice (a qué te dedicas, si facturas, tus bancos, si tienes trabajadores).',
+        ],
+        nota: 'Nada se da por bueno hasta que lo confirmas. Cada dato dice de dónde salió: de tu constancia, de ti o del despacho.',
+      },
+      {
+        titulo: 'El perfil fiscal de cada cliente',
+        icono: 'bi-person-vcard',
+        ruta: '/perfil-fiscal',
+        permisos: ['AuxiliarContable.Organizaciones'],
+        texto: [
+          'En Perfil fiscal elige al cliente: ves su constancia, sus datos y de dónde salió cada uno.',
+          'Puedes subir su constancia por él, confirmar datos y corregirlos; lo que captures queda como «Del despacho».',
+          'Los avisos de la constancia (antigua, régimen dudoso, un dato distinto al confirmado) salen arriba: atiéndelos con el cliente.',
+        ],
+      },
+    ],
+  },
+  {
     titulo: 'Actividad',
     temas: [
       {

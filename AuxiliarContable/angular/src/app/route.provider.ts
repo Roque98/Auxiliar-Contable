@@ -96,6 +96,16 @@ function configureRoutes() {
       layout: eLayoutType.application,
     },
 
+    // El perfil fiscal: para el cliente, el suyo; para el despacho, el de cada cliente. Sin
+    // permiso propio: quién ve y cambia qué lo decide el servidor (Autorizador, 404 a lo ajeno).
+    {
+      path: '/perfil-fiscal',
+      name: '::Menu:PerfilFiscal',
+      iconClass: 'bi bi-person-vcard',
+      order: 2,
+      layout: eLayoutType.application,
+    },
+
     // --- Mi cuenta -------------------------------------------------------------
     //
     // ⚠️⚠️ El padre se queda SIN ruta, y las dos razones importan.

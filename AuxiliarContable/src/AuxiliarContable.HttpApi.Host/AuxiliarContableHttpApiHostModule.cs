@@ -1,7 +1,10 @@
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Volo.Abp.Emailing;
+using AuxiliarContable.Documentos;
 using AuxiliarContable.IA.Claude;
 using AuxiliarContable.Notifications.Brevo;
+using Volo.Abp.BlobStoring;
+using Volo.Abp.BlobStoring.FileSystem;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -82,7 +85,9 @@ namespace AuxiliarContable;
     typeof(AbpAspNetCoreSerilogModule),
     // Explicito aunque ya venga por AbpBackgroundJobs: el recolector de metricas
     // depende de el y no queremos que se rompa si un dia cambia esa cadena.
-    typeof(AbpBackgroundWorkersModule)
+    typeof(AbpBackgroundWorkersModule),
+    // Documentos de los clientes en disco (cifrados por AlmacenDeDocumentos).
+    typeof(Volo.Abp.BlobStoring.FileSystem.AbpBlobStoringFileSystemModule)
     )]
 public class AuxiliarContableHttpApiHostModule : AbpModule
 {
@@ -236,6 +241,26 @@ public class AuxiliarContableHttpApiHostModule : AbpModule
         context.Services.AddHttpClient(ClaudeModeloDeIA.NombreHttpClient, cliente =>
         {
             cliente.Timeout = TimeSpan.FromSeconds(claude.TimeoutSegundos);
+        });
+
+        // Documentos de los clientes: AL DISCO, no a la base (decision del dueño, 2026-10-25),
+        // y siempre cifrados (AlmacenDeDocumentos). Solo este contenedor: las fotos y logos
+        // siguen en la base. En produccion la carpeta va en /var/lib/auxiliar-contable, la unica
+        // escribible con ProtectSystem=strict, y entra en la copia remota (backup-remoto.sh).
+        Configure<DocumentosOptions>(configuration.GetSection(DocumentosOptions.Seccion));
+        var carpetaDeDocumentos = configuration[$"{DocumentosOptions.Seccion}:Carpeta"];
+        if (string.IsNullOrWhiteSpace(carpetaDeDocumentos))
+        {
+            carpetaDeDocumentos = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "auxiliar-contable", "documentos");
+        }
+
+        Configure<AbpBlobStoringOptions>(options =>
+        {
+            options.Containers.Configure<DocumentosContainer>(container =>
+            {
+                container.UseFileSystem(disco => disco.BasePath = carpetaDeDocumentos);
+            });
         });
 
         // Rate limiting por IP. Igual que Monitoring: umbrales desde appsettings, no

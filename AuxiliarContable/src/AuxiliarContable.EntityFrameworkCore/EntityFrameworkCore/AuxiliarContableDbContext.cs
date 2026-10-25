@@ -1,3 +1,5 @@
+using AuxiliarContable.Documentos;
+using AuxiliarContable.PerfilesFiscales;
 using AuxiliarContable.Organizaciones;
 using AuxiliarContable.ApiKeys;
 using AuxiliarContable.Invitaciones;
@@ -50,6 +52,12 @@ public class AuxiliarContableDbContext :
     public DbSet<TelegramLink> TelegramLinks { get; set; }
 
     public DbSet<Privacidad.ConsentimientoDePrivacidad> ConsentimientosDePrivacidad { get; set; }
+
+    public DbSet<Documento> Documentos { get; set; }
+
+    public DbSet<PerfilFiscal> PerfilesFiscales { get; set; }
+
+    public DbSet<DatoDelPerfil> DatosDePerfiles { get; set; }
 
     // ⚠️ ESTOS DbSet NO SON DECORATIVOS. ABP aplica sus filtros globales (multi-tenancy y
     // soft delete) recorriendo las entidades que YA ESTAN en el modelo en el momento en que
@@ -228,6 +236,44 @@ public class AuxiliarContableDbContext :
             b.HasIndex(x => x.UserId).IsUnique();
             // La confirmacion busca por aqui, y ocurre en cada mensaje que recibe el bot.
             b.HasIndex(x => x.TokenHash);
+        });
+
+        // Documentos de los clientes — tabla AppDocumentos. El CONTENIDO no va aqui: va cifrado
+        // al disco (AlmacenDeDocumentos). Aqui solo lo necesario para buscarlo y deduplicar.
+        builder.Entity<Documento>(b =>
+        {
+            b.ToTable(AuxiliarContableConsts.DbTablePrefix + "Documentos", AuxiliarContableConsts.DbSchema);
+            b.ConfigureByConvention();
+            b.Property(x => x.NombreOriginal).IsRequired().HasMaxLength(DocumentoConsts.MaxNombreLength);
+            b.Property(x => x.TipoMime).IsRequired().HasMaxLength(DocumentoConsts.MaxTipoMimeLength);
+            b.Property(x => x.Sha256).IsRequired().HasMaxLength(DocumentoConsts.HashLength);
+            b.Property(x => x.Motivo).HasMaxLength(500);
+            // Duplicados: el mismo archivo para el mismo cliente. NO unico a proposito: con el
+            // borrado logico, un documento borrado y vuelto a subir chocaria con su fantasma.
+            b.HasIndex(x => new { x.OrganizacionId, x.Sha256 });
+            b.HasIndex(x => new { x.OrganizacionId, x.Tipo });
+        });
+
+        // Perfil fiscal — AppPerfilesFiscales (uno por organizacion) y AppDatosDePerfiles (un
+        // dato por campo del catalogo, con su origen).
+        builder.Entity<PerfilFiscal>(b =>
+        {
+            b.ToTable(AuxiliarContableConsts.DbTablePrefix + "PerfilesFiscales", AuxiliarContableConsts.DbSchema);
+            b.ConfigureByConvention();
+            b.Property(x => x.AvisosDeLaCsf).HasMaxLength(PerfilFiscal.MaxAvisosLength);
+            // UNO por cliente: dos perfiles harian ambiguo cual es «el» del cliente.
+            b.HasIndex(x => x.OrganizacionId).IsUnique();
+            b.HasMany(x => x.Datos).WithOne().HasForeignKey(x => x.PerfilFiscalId).IsRequired();
+            b.Navigation(x => x.Datos).AutoInclude();
+        });
+
+        builder.Entity<DatoDelPerfil>(b =>
+        {
+            b.ToTable(AuxiliarContableConsts.DbTablePrefix + "DatosDePerfiles", AuxiliarContableConsts.DbSchema);
+            b.ConfigureByConvention();
+            b.HasKey(x => new { x.PerfilFiscalId, x.Campo });
+            b.Property(x => x.Campo).HasMaxLength(64);
+            b.Property(x => x.Valor).IsRequired().HasMaxLength(CamposDelPerfil.MaxValorLength);
         });
 
         // Aceptaciones del aviso de privacidad — tabla AppConsentimientosDePrivacidad. Solo se

@@ -72,6 +72,11 @@ public class AuxiliarContablePostgreSqlTestModule : AbpModule
         // La autorización está en «todo permitido»: sin esto nadie sería cliente y no se
         // podría probar quién ve qué clientes. Ver AlcanceSegunRol.
         context.Services.Replace(ServiceDescriptor.Transient<AuxiliarContable.Organizaciones.AlcanceDeOrganizaciones, AlcanceSegunRol>());
+        // Documentos: una clave de prueba (nueva en cada ejecución) y la IA falsa, que cada
+        // test programa. Nunca se llama a Anthropic desde los tests.
+        Configure<AuxiliarContable.Documentos.DocumentosOptions>(options =>
+            options.ClaveDeCifrado = System.Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32)));
+        context.Services.Replace(ServiceDescriptor.Singleton<AuxiliarContable.IA.IModeloDeIA, ModeloDeIADePrueba>());
         context.Services.Configure<AbpDbConnectionOptions>(options =>
         {
             options.ConnectionStrings.Default = PostgresTestConsts.MainConnectionString;

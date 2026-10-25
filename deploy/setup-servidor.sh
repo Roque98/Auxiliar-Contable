@@ -36,6 +36,8 @@ mkdir -p "$RAIZ"/{staging,current}
 # y se las llevaria por delante -> se invalidan las cookies y el login da 400.
 mkdir -p /var/lib/auxiliar-contable /var/log/auxiliar-contable/api /var/log/auxiliar-contable/migrator /etc/auxiliar-contable
 chown -R "$USUARIO_APP:$USUARIO_APP" "$RAIZ/current" /var/lib/auxiliar-contable /var/log/auxiliar-contable
+# Documentos de los clientes (cifrados): solo el usuario de la app.
+install -d -m 700 -o "$USUARIO_APP" -g "$USUARIO_APP" /var/lib/auxiliar-contable/documentos
 # El workflow entra como $USUARIO_DEPLOY y hace rsync a staging/:
 # si esto fuera de $USUARIO_APP, la subida fallaria con "Permission denied".
 chown "$USUARIO_DEPLOY:$USUARIO_DEPLOY" "$RAIZ"
@@ -91,6 +93,11 @@ Brevo__SmsSender=AuxContable
 
 # Claude (IA): API key de Anthropic (console.anthropic.com > API keys). Sin ella no se usa IA.
 Claude__ApiKey=CAMBIAME
+
+# Documentos de los clientes: en disco y cifrados por la app (AES-256). La clave se genera con
+# `openssl rand -base64 32` y se guarda TAMBIEN fuera del servidor: sin ella no se leen.
+Documentos__ClaveDeCifrado=CAMBIAME
+Documentos__Carpeta=/var/lib/auxiliar-contable/documentos
 ENVEOF
     chmod 600 /etc/auxiliar-contable/env
     chown root:root /etc/auxiliar-contable/env

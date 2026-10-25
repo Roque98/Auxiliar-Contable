@@ -77,6 +77,93 @@ namespace AuxiliarContable.Migrations
                     b.ToTable("AppApiKeys", (string)null);
                 });
 
+            modelBuilder.Entity("AuxiliarContable.Documentos.Documento", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("ConcurrencyStamp");
+
+                    b.Property<DateTime>("CreationTime")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("CreationTime");
+
+                    b.Property<Guid?>("CreatorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("CreatorId");
+
+                    b.Property<Guid?>("DeleterId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("DeleterId");
+
+                    b.Property<DateTime?>("DeletionTime")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("DeletionTime");
+
+                    b.Property<int>("Estado")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ExtraProperties")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("ExtraProperties");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("IsDeleted");
+
+                    b.Property<DateTime?>("LastModificationTime")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("LastModificationTime");
+
+                    b.Property<Guid?>("LastModifierId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("LastModifierId");
+
+                    b.Property<string>("Motivo")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("NombreOriginal")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.Property<Guid>("OrganizacionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Sha256")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<long>("Tamano")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("Tipo")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("TipoMime")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrganizacionId", "Sha256");
+
+                    b.HasIndex("OrganizacionId", "Tipo");
+
+                    b.ToTable("AppDocumentos", (string)null);
+                });
+
             modelBuilder.Entity("AuxiliarContable.Invitaciones.Invitacion", b =>
                 {
                     b.Property<Guid>("Id")
@@ -463,6 +550,102 @@ namespace AuxiliarContable.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("AppOrganizacionMiembros", (string)null);
+                });
+
+            modelBuilder.Entity("AuxiliarContable.PerfilesFiscales.DatoDelPerfil", b =>
+                {
+                    b.Property<Guid>("PerfilFiscalId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Campo")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTime>("ActualizadoUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("Confirmado")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid?>("DocumentoId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Origen")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Valor")
+                        .IsRequired()
+                        .HasMaxLength(8000)
+                        .HasColumnType("character varying(8000)");
+
+                    b.HasKey("PerfilFiscalId", "Campo");
+
+                    b.ToTable("AppDatosDePerfiles", (string)null);
+                });
+
+            modelBuilder.Entity("AuxiliarContable.PerfilesFiscales.PerfilFiscal", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AvisosDeLaCsf")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
+
+                    b.Property<string>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("ConcurrencyStamp");
+
+                    b.Property<DateTime>("CreationTime")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("CreationTime");
+
+                    b.Property<Guid?>("CreatorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("CreatorId");
+
+                    b.Property<Guid?>("DeleterId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("DeleterId");
+
+                    b.Property<DateTime?>("DeletionTime")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("DeletionTime");
+
+                    b.Property<string>("ExtraProperties")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("ExtraProperties");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("IsDeleted");
+
+                    b.Property<DateTime?>("LastModificationTime")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("LastModificationTime");
+
+                    b.Property<Guid?>("LastModifierId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("LastModifierId");
+
+                    b.Property<Guid>("OrganizacionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("UltimaCsfId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrganizacionId")
+                        .IsUnique();
+
+                    b.ToTable("AppPerfilesFiscales", (string)null);
                 });
 
             modelBuilder.Entity("AuxiliarContable.Privacidad.ConsentimientoDePrivacidad", b =>
@@ -2538,6 +2721,15 @@ namespace AuxiliarContable.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("AuxiliarContable.PerfilesFiscales.DatoDelPerfil", b =>
+                {
+                    b.HasOne("AuxiliarContable.PerfilesFiscales.PerfilFiscal", null)
+                        .WithMany("Datos")
+                        .HasForeignKey("PerfilFiscalId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Volo.Abp.AuditLogging.AuditLogAction", b =>
                 {
                     b.HasOne("Volo.Abp.AuditLogging.AuditLog", null)
@@ -2748,6 +2940,11 @@ namespace AuxiliarContable.Migrations
             modelBuilder.Entity("AuxiliarContable.Organizaciones.Organizacion", b =>
                 {
                     b.Navigation("Miembros");
+                });
+
+            modelBuilder.Entity("AuxiliarContable.PerfilesFiscales.PerfilFiscal", b =>
+                {
+                    b.Navigation("Datos");
                 });
 
             modelBuilder.Entity("Volo.Abp.AuditLogging.AuditLog", b =>

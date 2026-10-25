@@ -1,0 +1,177 @@
+<header class="pf-cabecera">
+  <h1>Perfil fiscal</h1>
+  @if (clientes(); as lista) {
+    @if (lista.length > 1) {
+      <label class="pf-cliente">
+        <span>Cliente</span>
+        <select class="ig-control" [ngModel]="clienteId()" (ngModelChange)="elegir($event)">
+          <option [ngValue]="null" disabled>Elige un cliente…</option>
+          @for (c of lista; track c.id) {
+            <option [ngValue]="c.id">{{ c.nombre }}</option>
+          }
+        </select>
+      </label>
+    } @else if (cliente(); as c) {
+      <p class="pf-de">De <strong>{{ c.nombre }}</strong></p>
+    } @else if (!lista.length) {
+      <p class="ig-ayuda">Todavía no perteneces a ningún cliente. Pide al despacho que te invite.</p>
+    }
+  }
+</header>
+
+@if (error(); as e) {
+  <div class="ig-alerta ig-alerta-error" role="alert">{{ e }}</div>
+}
+
+@if (cargando() && !perfil()) {
+  <div class="ig-esqueleto"></div>
+}
+
+@if (perfil(); as p) {
+  <!-- La constancia: prellena el perfil. Opcional. -->
+  <section class="pf-csf" aria-labelledby="pf-csf-titulo">
+    <h2 id="pf-csf-titulo">Constancia de Situación Fiscal</h2>
+
+    @if (!p.csf) {
+      <p>
+        Si tienes tu constancia a la mano, súbela y lleno tu perfil por ti. Si no, también puedes
+        capturar los datos tú mismo abajo.
+      </p>
+    } @else {
+      <p class="pf-csf-archivo">
+        <i class="bi bi-file-earmark-pdf" aria-hidden="true"></i>
+        <span>{{ p.csf.nombre }}</span>
+      </p>
+      @switch (p.csf.estado) {
+        @case (Estado.Recibido) {
+          <p class="pf-estado" role="status"><span class="ig-girando" aria-hidden="true"></span>Leyendo tu constancia…</p>
+        }
+        @case (Estado.Procesado) {
+          <p class="pf-estado pf-estado-ok" role="status">
+            <i class="bi bi-check-circle-fill" aria-hidden="true"></i>Leída. Revisa los datos y confírmalos.
+          </p>
+        }
+        @case (Estado.ConError) {
+          <p class="pf-estado pf-estado-error" role="status">
+            <i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i>{{ p.csf.motivo || 'No se pudo leer.' }}
+          </p>
+        }
+      }
+      @if (p.csf.avisos.length) {
+        <ul class="pf-avisos">
+          @for (a of p.csf.avisos; track $index) {
+            <li><i class="bi bi-info-circle" aria-hidden="true"></i>{{ a }}</li>
+          }
+        </ul>
+      }
+    }
+
+    @if (p.puedeEditar) {
+      <label class="ig-btn pf-subir" [class.ig-btn-principal]="!p.csf" [class.ig-btn-secundario]="!!p.csf"
+             [class.pf-subir-ocupado]="subiendo() || leyendo()">
+        <input type="file" accept="application/pdf" class="pf-archivo" (change)="subir($event)"
+               [disabled]="subiendo() || leyendo()" />
+        @if (subiendo()) {
+          <span class="ig-girando" aria-hidden="true"></span>Subiendo…
+        } @else {
+          <i class="bi bi-upload" aria-hidden="true"></i>{{ p.csf ? 'Subir una más reciente' : 'Subir mi constancia (PDF)' }}
+        }
+      </label>
+    }
+  </section>
+
+  @if (porConfirmar(); as n) {
+    <div class="ig-alerta ig-alerta-aviso pf-pendientes" role="status">
+      <p>{{ n === 1 ? 'Hay 1 dato' : 'Hay ' + n + ' datos' }} por confirmar. Nada se da por bueno hasta que lo confirmes.</p>
+      @if (p.puedeEditar && deLaConstanciaPorConfirmar() > 1) {
+        <button type="button" class="ig-btn ig-btn-principal pf-todo" [disabled]="guardando() === '*'" (click)="confirmarConstancia()">
+          <i class="bi bi-check2-all" aria-hidden="true"></i>Todo lo de la constancia está bien
+        </button>
+      }
+    </div>
+  }
+
+  @for (g of grupos(); track g.grupo) {
+    <section class="pf-grupo" [attr.aria-labelledby]="'pf-g-' + g.grupo">
+      <h2 [id]="'pf-g-' + g.grupo">{{ g.titulo }}</h2>
+      <dl class="pf-datos">
+        @for (d of g.campos; track d.clave) {
+          <div class="pf-dato" [class.pf-dato-sugerido]="esSugerido(d)">
+            <dt>{{ d.etiqueta }}</dt>
+            <dd>
+              @if (editando() === d.clave) {
+                <div class="pf-editor">
+                  @switch (d.tipo) {
+                    @case (TipoDeCampo.Fecha) {
+                      <input type="date" class="ig-control" [attr.aria-label]="d.etiqueta" [(ngModel)]="valorEditado" />
+                    }
+                    @case (TipoDeCampo.SiNo) {
+                      <select class="ig-control" [attr.aria-label]="d.etiqueta" [(ngModel)]="valorEditado">
+                        <option value="si">Sí</option>
+                        <option value="no">No</option>
+                      </select>
+                    }
+                    @case (TipoDeCampo.Lista) {
+                      <textarea class="ig-control" rows="3" [attr.aria-label]="d.etiqueta + ' (uno por renglón)'"
+                                [(ngModel)]="valorEditado"></textarea>
+                      <span class="ig-ayuda">Uno por renglón.</span>
+                    }
+                    @default {
+                      <input type="text" class="ig-control" [attr.aria-label]="d.etiqueta" [(ngModel)]="valorEditado" />
+                    }
+                  }
+                  <div class="pf-acciones">
+                    <button type="button" class="ig-btn ig-btn-principal" [disabled]="guardando() === d.clave || !valorEditado.trim()"
+                            (click)="guardar(d)">Guardar</button>
+                    <button type="button" class="ig-btn ig-btn-secundario" (click)="editando.set(null)">Cancelar</button>
+                  </div>
+                </div>
+              } @else {
+                @if (d.valor) {
+                  @let renglones = valorLegible(d);
+                  @if (renglones.length > 1 || d.tipo === TipoDeCampo.Lista) {
+                    <ul class="pf-lista">
+                      @for (r of renglones; track $index) {<li>{{ r }}</li>}
+                    </ul>
+                  } @else {
+                    <span class="pf-valor">{{ renglones[0] }}</span>
+                  }
+                  <span class="pf-meta">
+                    <span class="pf-origen" [class.pf-origen-csf]="esDeLaConstancia(d)">{{ etiquetaDeOrigen(d.origen) }}</span>
+                    @if (d.confirmado) {
+                      <span class="pf-confirmado"><i class="bi bi-check2" aria-hidden="true"></i>Confirmado</span>
+                    } @else {
+                      <span class="pf-por-confirmar">Por confirmar</span>
+                    }
+                  </span>
+                } @else {
+                  <span class="pf-vacio">{{ d.vieneEnLaCsf ? 'Sin dato (viene en la constancia)' : 'Sin dato' }}</span>
+                }
+
+                @if (p.puedeEditar) {
+                  <div class="pf-acciones">
+                    @if (esSugerido(d)) {
+                      <button type="button" class="ig-btn ig-btn-principal" [disabled]="guardando() === d.clave" (click)="confirmar(d)">
+                        Es correcto
+                      </button>
+                    }
+                    @if (esEditable(d)) {
+                      <button type="button" class="ig-btn ig-btn-secundario" (click)="corregir(d)">
+                        {{ d.valor ? 'Corregir' : 'Agregar' }}
+                      </button>
+                    }
+                  </div>
+                }
+              }
+            </dd>
+          </div>
+        }
+      </dl>
+    </section>
+  }
+
+  <p class="ig-ayuda pf-aviso-legal">
+    Auxiliar contable es un asistente: organiza y revisa tu información, pero no sustituye la firma de un contador
+    en tus declaraciones.
+  </p>
+}

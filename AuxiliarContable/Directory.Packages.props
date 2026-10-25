@@ -21,6 +21,8 @@
   <ItemGroup>
     <!-- Terceros -->
     <PackageVersion Include="Dapper" Version="2.1.66" />
+    <!-- Texto de los PDF (CSF, estados de cuenta) para leerlos con codigo antes que con IA. MIT. -->
+    <PackageVersion Include="PdfPig" Version="0.1.16" />
     <!-- Drivers ADO.NET usados directamente por ExternalDataSourceConnectionFactory. -->
     <PackageVersion Include="Npgsql" Version="10.0.0" />
     <!-- Observabilidad (OpenTelemetry → OpenObserve; docs/observabilidad.md). Npgsql.OpenTelemetry
@@ -107,6 +109,8 @@
     <PackageVersion Include="Volo.Abp.BlobStoring.Database.Domain" Version="10.6.0" />
     <PackageVersion Include="Volo.Abp.BlobStoring.Database.Domain.Shared" Version="10.6.0" />
     <PackageVersion Include="Volo.Abp.BlobStoring.Database.EntityFrameworkCore" Version="10.6.0" />
+    <!-- Documentos de los clientes en el disco del VPS (cifrados por la app; CLAUDE.md 1.2.10). -->
+    <PackageVersion Include="Volo.Abp.BlobStoring.FileSystem" Version="10.6.0" />
 
     <!-- Feature Management -->
     <PackageVersion Include="Volo.Abp.FeatureManagement.Application" Version="10.6.0" />
