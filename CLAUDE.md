@@ -365,6 +365,9 @@ cuenta en frases lo que ya se registra, por día y con filtros (persona, organiz
   reglas que la pantalla, y las instrucciones piden confirmar el nombre antes). `EjecutarAsync` lleva
   un candado: en la cartera solo esas y en un cliente nunca esas. Una acción cuyo resultado fue
   error no se enseña bajo la respuesta. Nada del detalle de un cliente sale ahí.
+- **Invitar desde el chat** (`invitar_persona`, en el chat de UN cliente): solo si `quien.Equipo` y
+  `AbpIdentity.Users.Create`. Usa `IInvitacionAppService.CreateAsync` con rol `usuario` y la
+  organización ACTIVA (el modelo no la elige); papel dueño/miembro/lector. Confirmar antes.
 - **Cartera** (`CarteraAppService`, `/cartera`): permiso `Organizaciones` + `Autorizador.Equipo`
   (en los tests la autorización es «todo permitido»: el atributo no basta). Semáforo por cliente
   (urgente = sin RFC, sin estado de cuenta del mes o uno que no cuadra) y pendientes en palabras.
