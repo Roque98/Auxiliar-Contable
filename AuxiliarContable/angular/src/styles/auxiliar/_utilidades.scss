@@ -1,0 +1,124 @@
+/* ===========================================================================
+   DESIGN SYSTEM DE AUXILIAR CONTABLE — UTILIDADES
+   =========================================================================== */
+
+.ig-solo-lector {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.ig-secundario {
+  color: var(--ig-texto-secundario);
+}
+
+.ig-num {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------------------------------------------------------------------------
+   Tablas que se apilan en móvil.
+
+   Una tabla de seis columnas no cabe en 375px, y la página no hace scroll
+   horizontal: media tabla quedaba fuera, imposible de alcanzar con el dedo. Cada
+   fila pasa a ser una ficha con su etiqueta delante.
+
+   Uso: class="table tabla-apilable" (o "ig-tabla tabla-apilable") y un
+   `data-label` en cada <td> con el texto de su cabecera. Si tampoco cabe en una
+   tablet, `tabla-apilable-tablet` (apila hasta 1200 px).
+   --------------------------------------------------------------------------- */
+@mixin apilar($t) {
+  html #{$t} thead {
+    display: none;
+  }
+
+  html #{$t},
+  html #{$t} tbody,
+  html #{$t} tr,
+  html #{$t} td {
+    display: block;
+    width: 100%;
+  }
+
+  html #{$t} tr {
+    border: var(--ig-borde);
+    border-radius: var(--ig-radio-md);
+    background: var(--ig-blanco);
+    margin-bottom: 10px;
+    padding: 4px 12px;
+  }
+
+  html #{$t} > tbody > tr > td,
+  html #{$t} td {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    border: 0;
+    border-bottom: 1px solid var(--ig-gris-fondo);
+    padding: 8px 0;
+    text-align: right;
+    word-break: break-word;
+  }
+
+  html #{$t} td:last-child {
+    border-bottom: 0;
+  }
+
+  html #{$t} td::before {
+    content: attr(data-label);
+    flex: 0 0 auto;
+    margin-right: auto;
+    font-size: var(--ig-texto-sm);
+    font-weight: var(--ig-peso-semi);
+    color: var(--ig-texto-secundario);
+    text-align: left;
+  }
+
+  html #{$t} td:not([data-label]) {
+    justify-content: center;
+    padding-top: 10px;
+  }
+
+  /* Dentro de una caja con borde, las fichas ya tienen el suyo. */
+  html .ig-tabla-caja:has(#{$t}),
+  html .table-responsive:has(#{$t}) {
+    border: 0;
+    background: transparent;
+    overflow: visible;
+  }
+}
+
+@media (max-width: 767.98px) {
+  @include apilar('.tabla-apilable');
+}
+
+/* Tablas de muchas columnas (siete o más) que tampoco caben en una tablet: se apilan
+   hasta 1200 px. Mismo uso que `.tabla-apilable`, con `data-label` en cada <td>. */
+@media (max-width: 1199.98px) {
+  @include apilar('.tabla-apilable-tablet');
+}
+
+/* ---------------------------------------------------------------------------
+   Contenedor de una tabla ancha: si no cabe, se desplaza DENTRO de su caja en vez
+   de salirse de la pantalla. Sin borde propio (la tabla o la tarjeta ya lo tienen).
+   En móvil la tabla se apila (`.tabla-apilable`) y esto no hace nada.
+
+   ⚠️ Regla de las rejillas: columnas con `minmax(0, 1fr)`, no `1fr` a secas. Un `1fr`
+   no baja del contenido más largo que no se parte (un título, una URL) y empuja la
+   pantalla entera hacia la derecha. Así desbordaba Inicio con avisos largos.
+   --------------------------------------------------------------------------- */
+.ig-desplazable {
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+/* Piezas que cambian con el tema (el logotipo: su gris no se lee sobre oscuro). Cada una
+   conserva su propio `display` cuando se ve; solo se esconde la que no toca. */
+html:not([data-tema='oscuro']) .ig-solo-oscuro,
+html[data-tema='oscuro'] .ig-solo-claro {
+  display: none !important;
+}

@@ -1,0 +1,26 @@
+# Aplica migraciones y seed. Unidad oneshot: se lanza a demanda desde deploy.sh con
+#   systemctl start --wait auxiliar-contable-migrator
+# Existe como unidad (y no como una linea suelta en deploy.sh) porque asi systemd
+# parsea el EnvironmentFile correctamente: las cadenas de conexion llevan ';' y
+# 'export $(grep ... | xargs)' las parte por la mitad.
+[Unit]
+Description=Auxiliar contable - migraciones y seed
+After=network.target postgresql.service
+
+[Service]
+Type=oneshot
+# El DbMigrator lee la configuracion del DIRECTORIO ACTUAL, no del ensamblado.
+WorkingDirectory=/srv/auxiliar-contable/staging/migrator
+ExecStart=/usr/bin/dotnet /srv/auxiliar-contable/staging/migrator/AuxiliarContable.DbMigrator.dll
+User=auxiliar
+Group=auxiliar
+SyslogIdentifier=auxiliar-contable-migrator
+
+Environment=DOTNET_ENVIRONMENT=Production
+EnvironmentFile=/etc/auxiliar-contable/env
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/log/auxiliar-contable

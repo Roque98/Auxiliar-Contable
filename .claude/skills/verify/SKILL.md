@@ -5,23 +5,23 @@ description: Secuencia completa de verificación antes de dar por terminado cual
 
 # Verificación completa (antes de terminar)
 
-Ejecuta desde `IgasConsole/` y reporta el resultado de cada paso. Si algo falla, corrígelo antes de terminar.
+Ejecuta desde `AuxiliarContable/` y reporta el resultado de cada paso. Si algo falla, corrígelo antes de terminar.
 
 1. **Build** (warnings = errores):
    ```bash
-   dotnet build IgasConsole.slnx -c Debug
+   dotnet build AuxiliarContable.slnx -c Debug
    ```
 2. **Tests unitarios / EF (SQLite)**:
    ```bash
-   dotnet test test/IgasConsole.EntityFrameworkCore.Tests/*.csproj
+   dotnet test test/AuxiliarContable.EntityFrameworkCore.Tests/*.csproj
    ```
 3. **Tests de arquitectura**:
    ```bash
-   dotnet test test/IgasConsole.Architecture.Tests/*.csproj
+   dotnet test test/AuxiliarContable.Architecture.Tests/*.csproj
    ```
 4. **Tests de integración (PostgreSQL + Respawn)**:
    ```bash
-   dotnet test test/IgasConsole.Integration.Tests/*.csproj
+   dotnet test test/AuxiliarContable.Integration.Tests/*.csproj
    ```
 5. **Dependencias vulnerables**:
    ```bash

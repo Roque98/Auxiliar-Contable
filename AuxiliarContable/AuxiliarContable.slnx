@@ -1,0 +1,25 @@
+<Solution>
+    <Configurations>
+        <Platform Name="Any CPU" />
+    </Configurations>
+    <Folder Name="/src/">
+        <Project Path="src/AuxiliarContable.Domain/AuxiliarContable.Domain.csproj" />
+        <Project Path="src/AuxiliarContable.Application/AuxiliarContable.Application.csproj" />
+        <Project Path="src/AuxiliarContable.EntityFrameworkCore/AuxiliarContable.EntityFrameworkCore.csproj" />
+        <Project Path="src/AuxiliarContable.Domain.Shared/AuxiliarContable.Domain.Shared.csproj" />
+        <Project Path="src/AuxiliarContable.Application.Contracts/AuxiliarContable.Application.Contracts.csproj" />
+        <Project Path="src/AuxiliarContable.HttpApi/AuxiliarContable.HttpApi.csproj" />
+        <Project Path="src/AuxiliarContable.HttpApi.Client/AuxiliarContable.HttpApi.Client.csproj" />
+        <Project Path="src/AuxiliarContable.HttpApi.Host/AuxiliarContable.HttpApi.Host.csproj" />
+        <Project Path="src/AuxiliarContable.DbMigrator/AuxiliarContable.DbMigrator.csproj" />
+    </Folder>
+    <Folder Name="/test/">
+        <Project Path="test/AuxiliarContable.Application.Tests/AuxiliarContable.Application.Tests.csproj" />
+        <Project Path="test/AuxiliarContable.EntityFrameworkCore.Tests/AuxiliarContable.EntityFrameworkCore.Tests.csproj" />
+        <Project Path="test/AuxiliarContable.TestBase/AuxiliarContable.TestBase.csproj" />
+        <Project Path="test/AuxiliarContable.Domain.Tests/AuxiliarContable.Domain.Tests.csproj" />
+        <Project Path="test/AuxiliarContable.HttpApi.Client.ConsoleTestApp/AuxiliarContable.HttpApi.Client.ConsoleTestApp.csproj" />
+        <Project Path="test/AuxiliarContable.Architecture.Tests/AuxiliarContable.Architecture.Tests.csproj" />
+        <Project Path="test/AuxiliarContable.Integration.Tests/AuxiliarContable.Integration.Tests.csproj" />
+    </Folder>
+</Solution>

@@ -20,14 +20,14 @@ jobs:
       postgres:
         image: postgres:18
         env:
-          POSTGRES_USER: igas_console
+          POSTGRES_USER: auxiliar_contable
           POSTGRES_PASSWORD: ci_password_not_secret
           POSTGRES_DB: postgres
         ports:
           - 5432:5432
         # Sin healthcheck los tests arrancan antes de que Postgres acepte conexiones.
         options: >-
-          --health-cmd "pg_isready -U igas_console"
+          --health-cmd "pg_isready -U auxiliar_contable"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
@@ -35,7 +35,7 @@ jobs:
     env:
       # El rol de los tests necesita CREATEDB: crean y destruyen sus propias bases.
       # El superusuario del contenedor ya lo tiene.
-      IGASCONSOLE_TEST_POSTGRES: "Host=localhost;Port=5432;Username=igas_console;Password=ci_password_not_secret"
+      AUXILIARCONTABLE_TEST_POSTGRES: "Host=localhost;Port=5432;Username=auxiliar_contable;Password=ci_password_not_secret"
 
     steps:
       - uses: actions/checkout@v7
@@ -46,15 +46,15 @@ jobs:
           dotnet-version: '10.0.x'
 
       - name: Restaurar
-        run: dotnet restore IgasConsole/IgasConsole.slnx
+        run: dotnet restore AuxiliarContable/AuxiliarContable.slnx
 
       # TreatWarningsAsErrors esta activo: un warning rompe el build, que es lo que
       # queremos que pase aqui y no en la maquina de nadie.
       - name: Compilar (Release)
-        run: dotnet build IgasConsole/IgasConsole.slnx -c Release --no-restore
+        run: dotnet build AuxiliarContable/AuxiliarContable.slnx -c Release --no-restore
 
       - name: Tests
-        run: dotnet test IgasConsole/IgasConsole.slnx -c Release --no-build --verbosity normal
+        run: dotnet test AuxiliarContable/AuxiliarContable.slnx -c Release --no-build --verbosity normal
 
       # La logica pura del front: la forma de las URLs de los espacios y del logo, que esta
       # escrita DOS veces (TypeScript y C#) y que si se desincroniza deja a un inquilino sin
@@ -70,16 +70,16 @@ jobs:
           node-version: '22'
 
       - name: Instalar dependencias del front
-        working-directory: IgasConsole/angular
+        working-directory: AuxiliarContable/angular
         run: yarn install --frozen-lockfile --ignore-engines
 
       - name: Tests del front
-        working-directory: IgasConsole/angular
+        working-directory: AuxiliarContable/angular
         run: yarn test:unit
 
       - name: Dependencias vulnerables
         run: |
-          salida=$(dotnet list IgasConsole/IgasConsole.slnx package --vulnerable --include-transitive)
+          salida=$(dotnet list AuxiliarContable/AuxiliarContable.slnx package --vulnerable --include-transitive)
           echo "$salida"
           # 'dotnet list package' devuelve 0 aunque encuentre vulnerabilidades: hay que
           # mirar el texto para que el job falle de verdad.

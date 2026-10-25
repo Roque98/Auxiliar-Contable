@@ -1,0 +1,15 @@
+# Dispara la copia diaria.
+#   sudo systemctl enable --now auxiliar-contable-backup.timer
+[Unit]
+Description=Copia diaria de la base de Auxiliar contable
+
+[Timer]
+OnCalendar=*-*-* 03:30:00
+# Si el servidor estaba apagado a esa hora, la copia se hace al arrancar en vez de
+# saltarsela hasta el dia siguiente.
+Persistent=true
+# Evita que todas las tareas de las 03:30 arranquen a la vez.
+RandomizedDelaySec=15m
+
+[Install]
+WantedBy=timers.target

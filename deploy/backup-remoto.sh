@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Sube la copia recién hecha FUERA del servidor, a Cloudflare R2, con restic.
 #
-# Lo llama zia-console-backup.sh pasándole la ruta del volcado como $1. Se instala en
-# /etc/zia-console/backup-remoto.sh (modo 700, root): esa ruta es la que busca el script
+# Lo llama auxiliar-contable-backup.sh pasándole la ruta del volcado como $1. Se instala en
+# /etc/auxiliar-contable/backup-remoto.sh (modo 700, root): esa ruta es la que busca el script
 # de copia, y mientras no exista cada ejecución avisa en el log.
 #
 # ¿Por qué restic y no un 'rclone copy' a secas?
@@ -19,7 +19,7 @@
 # exactamente el escenario del que protegen. Va también en un gestor de contraseñas.
 set -euo pipefail
 
-CONFIG=/etc/zia-console/backup-remoto.env
+CONFIG=/etc/auxiliar-contable/backup-remoto.env
 RETENCION_DIARIA=14
 RETENCION_SEMANAL=8
 RETENCION_MENSUAL=6
@@ -64,7 +64,7 @@ export AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY RESTIC_PASSWORD
 export AWS_DEFAULT_REGION="${AWS_DEFAULT_REGION:-auto}"
 
 # ⚠️ La caché NO puede quedarse donde restic la pone por defecto (~/.cache/restic).
-# zia-console-backup.service corre con ProtectHome=true, así que /root no existe para el
+# auxiliar-contable-backup.service corre con ProtectHome=true, así que /root no existe para el
 # proceso y restic falla al arrancar. No se ve probando el script a mano —ahí /root sí está—
 # sino solo cuando lo lanza systemd, que es la única forma en que corre de verdad.
 # El directorio está declarado en ReadWritePaths de la unidad.
@@ -95,17 +95,17 @@ echo "==> Subiendo $(basename "$volcado")"
 # Se suben el volcado Y los roles: sin los roles, restaurar en una máquina limpia falla
 # por permisos y la copia sirve de mucho menos de lo que parece.
 if [ -r "$roles" ]; then
-    restic backup --tag igas-console --host igas-console "$volcado" "$roles"
+    restic backup --tag auxiliar-contable --host auxiliar-contable "$volcado" "$roles"
 else
     echo "!! No se encontró $roles; se sube solo el volcado." >&2
-    restic backup --tag igas-console --host igas-console "$volcado"
+    restic backup --tag auxiliar-contable --host auxiliar-contable "$volcado"
 fi
 
 echo "==> Aplicando retención"
 # --prune borra de verdad los datos que ya no referencia ningún snapshot. Sin él la
 # retención solo quita etiquetas y el bucket crece para siempre.
 restic forget \
-    --tag igas-console \
+    --tag auxiliar-contable \
     --keep-daily "$RETENCION_DIARIA" \
     --keep-weekly "$RETENCION_SEMANAL" \
     --keep-monthly "$RETENCION_MENSUAL" \
@@ -117,10 +117,10 @@ echo "==> Verificando el repositorio"
 # justamente lo que nunca se corrompe.
 restic check --read-data-subset=5%
 
-cuantos=$(restic snapshots --tag igas-console --json | grep -o '"short_id"' | wc -l)
+cuantos=$(restic snapshots --tag auxiliar-contable --json | grep -o '"short_id"' | wc -l)
 echo "    OK: $cuantos snapshots en el destino"
 
 # Se lo dejamos al script padre, que es quien escribe el estado que lee la aplicación.
-mkdir -p /var/lib/zia-console
-echo "$cuantos" > /var/lib/zia-console/remote-snapshots
-chmod 644 /var/lib/zia-console/remote-snapshots
+mkdir -p /var/lib/auxiliar-contable
+echo "$cuantos" > /var/lib/auxiliar-contable/remote-snapshots
+chmod 644 /var/lib/auxiliar-contable/remote-snapshots

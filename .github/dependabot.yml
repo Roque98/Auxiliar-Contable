@@ -8,7 +8,7 @@ updates:
   # El directorio es el de la solucion porque las versiones estan centralizadas en
   # Directory.Packages.props (Central Package Management).
   - package-ecosystem: nuget
-    directory: /IgasConsole
+    directory: /AuxiliarContable
     schedule:
       interval: weekly
       day: monday
@@ -29,7 +29,7 @@ updates:
   # --- Angular ---------------------------------------------------------------
   # Ecosistema npm: Dependabot entiende el yarn.lock de este proyecto.
   - package-ecosystem: npm
-    directory: /IgasConsole/angular
+    directory: /AuxiliarContable/angular
     schedule:
       interval: weekly
       day: monday

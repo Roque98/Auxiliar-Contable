@@ -166,7 +166,7 @@ toca la base** y por eso tiene 30 tests baratos.
 
 Productos vivía suelto: la pantalla de importar colgaba del menú sin grupo y el catálogo
 —alta, informe de ventas, import— era lo único del proyecto que ningún inquilino contrataba.
-Ahora es la feature `IgasConsole.Catalogo`, con `RequireFeatures` en sus permisos y
+Ahora es la feature `AuxiliarContable.Catalogo`, con `RequireFeatures` en sus permisos y
 `[RequiresFeature]` en `ProductAppService` y `ProductImportAppService`.
 
 - ⚠️⚠️ **`isAvailableToHost` NO es un control de acceso — es la PANTALLA.** Verificado en
@@ -197,7 +197,7 @@ Ahora es la feature `IgasConsole.Catalogo`, con `RequireFeatures` en sus permiso
 - **Los tests lo contratan a mano** (`ContratarModuloAsync` en `IntegrationTestBase`), no la
   clase base para todos: encendido de oficio, quitar el `[RequiresFeature]` no pondría rojo
   ni un test.
-- El barrido de `PermisosPorVertical` cubre `IgasConsole.Products` sin tocarlo: la lista de
+- El barrido de `PermisosPorVertical` cubre `AuxiliarContable.Products` sin tocarlo: la lista de
   prefijos es el dato del que tira, así que declarar la feature nueva ahí basta para que un
   permiso suyo sin `RequireFeatures` salga en rojo. Ojo con el permiso **padre**, que casi se
   escapa: ver §6.966.096.
@@ -241,7 +241,7 @@ partir de ahí **manda el rol**. Lo que queda guardado es una etiqueta descripti
 Elegir el tipo al crear un usuario, en la propia pantalla de ABP. Son **tres piezas** y hacen
 falta las tres:
 
-1. **Declarar la propiedad** en `IgasConsoleModuleExtensionConfigurator` → viaja por los DTO de
+1. **Declarar la propiedad** en `AuxiliarContableModuleExtensionConfigurator` → viaja por los DTO de
    ABP y la guarda su propio endpoint. Sin esto el campo se pinta y el valor se pierde.
 2. **Un contribuidor de formulario** que la convierta en desplegable. Sin él ABP la pinta
    igualmente, pero como una **caja de texto pidiendo un GUID** con la etiqueta cruda
@@ -294,7 +294,7 @@ primero fallan, y ninguna da error:
 | lo que escribes | lo que se localiza | lo que se ve |
 |---|---|---|
 | `'::Menu:TiposDeUsuario'` | `'::::Menu:…'` | etiqueta **vacía** |
-| `'IgasConsole::Tipos:Campo'` | `'::IgasConsole::…'` | la palabra **«IgasConsole»** |
+| `'AuxiliarContable::Tipos:Campo'` | `'::AuxiliarContable::…'` | la palabra **«AuxiliarContable»** |
 | `'Tipos:Campo'` | `'::Tipos:Campo'` | ✅ «Tipo de usuario» |
 
 - Se encontró **mirando el DOM del formulario** —el `<label for="…">` estaba ahí, con un
@@ -365,11 +365,11 @@ de lo mismo** condenadas a discrepar.
 
 ### 6.966.2 ⚠️ El esquema de los tests se crea FUERA de la aplicación ABP
 
-`PostgresFixture` monta el esquema con un `IgasConsoleDbContext` **construido a mano** y
+`PostgresFixture` monta el esquema con un `AuxiliarContableDbContext` **construido a mano** y
 `EnsureCreated`. Consecuencia: **nada de lo que configuran los módulos al arrancar está en ese
 modelo** — y eso incluye las propiedades extendidas mapeadas con `MapEfCoreProperty`.
 
-Sin llamar a `IgasConsoleEfCoreEntityExtensionMappings.Configure()` en el fixture, la tabla se crea
+Sin llamar a `AuxiliarContableEfCoreEntityExtensionMappings.Configure()` en el fixture, la tabla se crea
 sin esa columna y **todos** los tests del ensamblado fallan a la vez en 1 ms con
 `42703: no existe la columna a.TipoDeUsuarioId`, en el constructor de la clase de test. El
 error no menciona ni los tests ni las extensiones, y parece un problema de base de datos

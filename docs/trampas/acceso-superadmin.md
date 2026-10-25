@@ -25,7 +25,7 @@ Acceso__SegmentoDelHost=g7k2p
   recibe la redirección al formulario y con ella el segmento. Lo que protege esa cuenta es el
   **segundo factor**. Escribirlo aquí para que nadie confunda una cosa con la otra.
 - **Vacío = comportamiento por defecto**, y ese es el **interruptor de emergencia**: se borra
-  la variable de `/etc/igas-console/env`, se reinicia el servicio y la instalación vuelve a
+  la variable de `/etc/auxiliar-contable/env`, se reinicia el servicio y la instalación vuelve a
   como estaba, sin desplegar nada. Development lo deja vacío a propósito.
 - ⚠️ **El segmento NO está en el bundle de Angular, y es todo el asunto.** El JavaScript se
   sirve público —lo necesitan los espacios de inquilino—, así que un segmento compilado dentro

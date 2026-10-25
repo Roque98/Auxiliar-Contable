@@ -1,0 +1,4 @@
+/* el design system de la consola: tokens, tipografía, componentes y el puente que hace
+   que las pantallas de ABP se vean igual que las nuestras. Ver `styles/auxiliar/`.
+   `@use` y no `@import`: el segundo está deprecado y desaparece en Dart Sass 3. */
+@use 'styles/auxiliar';

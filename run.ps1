@@ -17,7 +17,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$sln = Join-Path $PSScriptRoot 'IgasConsole'
+$sln = Join-Path $PSScriptRoot 'AuxiliarContable'
 
 function Start-InNewWindow([string]$title, [string]$workdir, [string]$cmd) {
     Start-Process powershell -ArgumentList @(
@@ -30,14 +30,14 @@ if ($Migrate) {
     Write-Host 'Migrando la base de datos (PostgreSQL)...' -ForegroundColor Cyan
     # El DbMigrator lee la configuracion del DIRECTORIO ACTUAL, no del .csproj:
     # hay que situarse dentro del proyecto o no encuentra la cadena de conexion.
-    Push-Location (Join-Path $sln 'src/IgasConsole.DbMigrator')
+    Push-Location (Join-Path $sln 'src/AuxiliarContable.DbMigrator')
     try { dotnet run } finally { Pop-Location }
     Write-Host 'Migracion completada.' -ForegroundColor Cyan
 }
 
 if (-not $NoApi) {
     Write-Host 'Iniciando API  -> https://localhost:44338/swagger' -ForegroundColor Green
-    Start-InNewWindow 'ABP API' $sln 'dotnet run --project src/IgasConsole.HttpApi.Host'
+    Start-InNewWindow 'ABP API' $sln 'dotnet run --project src/AuxiliarContable.HttpApi.Host'
 }
 
 if (-not $NoFront) {

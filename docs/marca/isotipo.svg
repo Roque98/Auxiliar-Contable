@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <!-- Auxiliar contable: una hoja de registro con su palomita de «conciliado». -->
+  <rect width="256" height="256" rx="56" fill="#2c5282"/>
+  <rect x="62" y="48" width="124" height="160" rx="16" fill="#ffffff"/>
+  <rect x="86" y="82" width="76" height="12" rx="6" fill="#2c5282" fill-opacity="0.35"/>
+  <rect x="86" y="110" width="76" height="12" rx="6" fill="#2c5282" fill-opacity="0.35"/>
+  <rect x="86" y="138" width="44" height="12" rx="6" fill="#2c5282" fill-opacity="0.35"/>
+  <circle cx="180" cy="180" r="42" fill="#f2b632" stroke="#2c5282" stroke-width="10"/>
+  <path d="M161 181 l13 13 l26 -27" fill="none" stroke="#1a365d" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

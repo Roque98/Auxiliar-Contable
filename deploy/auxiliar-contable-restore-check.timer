@@ -1,0 +1,17 @@
+# Verificacion mensual de que la copia se puede restaurar.
+#   sudo systemctl enable --now auxiliar-contable-restore-check.timer
+#
+# Mensual y no diaria: descarga el volcado entero desde R2 y restaura una base completa.
+# Diario seria gasto de transferencia y de CPU para responder a una pregunta que no
+# cambia de un dia para otro. Mensual detecta a tiempo una copia que dejo de servir.
+[Unit]
+Description=Verificacion mensual de la copia de Auxiliar contable
+
+[Timer]
+OnCalendar=*-*-01 05:00:00
+# Si el servidor estaba apagado ese dia, se hace al arrancar en vez de saltarse el mes.
+Persistent=true
+RandomizedDelaySec=30m
+
+[Install]
+WantedBy=timers.target

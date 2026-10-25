@@ -1,0 +1,22 @@
+# Verificacion mensual: restaura la copia remota en una base temporal.
+#   sudo systemctl start auxiliar-contable-restore-check   (para probarla a mano)
+[Unit]
+Description=Auxiliar contable - verificar que la copia se puede restaurar
+After=postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/auxiliar-contable-restore-check.sh
+SyslogIdentifier=auxiliar-contable-restore-check
+# Corre como root: necesita 'sudo -u postgres' para crear y borrar la base temporal.
+User=root
+
+NoNewPrivileges=true
+PrivateTmp=false
+ProtectSystem=strict
+ProtectHome=true
+# /var/lib para el estado y el directorio de trabajo, /var/cache para restic.
+# Ojo: PrivateTmp=false a proposito, porque el volcado se copia a /tmp para que el
+# usuario 'postgres' pueda leerlo — con /tmp privado, postgres veria otro /tmp distinto.
+ReadWritePaths=/var/lib/auxiliar-contable /var/cache/restic /tmp

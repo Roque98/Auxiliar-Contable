@@ -39,7 +39,7 @@
 
 Todo el texto visible pasa por el sistema de localización de ABP: `{{ '::Clave' |
 abpLocalization }}` en las plantillas y `LocalizationService.instant('::Clave')` en el
-TypeScript. Las claves viven en `Domain.Shared/Localization/IgasConsole/{es,en}.json`.
+TypeScript. Las claves viven en `Domain.Shared/Localization/AuxiliarContable/{es,en}.json`.
 
 - **`CoreModule` ya trae el pipe**: no hace falta importar `LocalizationPipe` aparte. Un
   componente que no importe `CoreModule` falla con `NG8004: No pipe found`.
@@ -54,7 +54,7 @@ TypeScript. Las claves viven en `Domain.Shared/Localization/IgasConsole/{es,en}.
   filtro se manda con él— y traducirlo allí haría que la respuesta dependiera del idioma
   de quien pregunta.
 - **No se traducen** los nombres técnicos que romperían al traducirse: la cabecera
-  `X-Api-Key`, el comando `journalctl -u igas-console`, la URL de la API de Telegram.
+  `X-Api-Key`, el comando `journalctl -u auxiliar-contable`, la URL de la API de Telegram.
   Tampoco la página `home`, que es la de bienvenida que trae ABP con enlaces a su propio
   sitio.
 - Al comprobarlo en el navegador, la cultura se elige con el **idioma del navegador** y con

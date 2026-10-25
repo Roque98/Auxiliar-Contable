@@ -3,7 +3,7 @@ name: sql-query
 description: Añade una consulta de LECTURA con SQL crudo — SqlQueryRaw para la base principal o Dapper para una fuente externa. Úsala para reportes, listados complejos o agregaciones.
 ---
 
-> ⚠️ En Igas el módulo `Product` ya no existe: la feature de referencia es `Organizaciones` (ver CLAUDE.md §10). Para el patrón de SQL crudo/Dapper, el código de `Product` sigue en abt-template (`D:/proyectos/perso/abt-template`).
+> ⚠️ En esta consola el módulo `Product` ya no existe: la feature de referencia es `Organizaciones` (ver CLAUDE.md §10). Para el patrón de SQL crudo/Dapper, el código de `Product` sigue en abt-template (`D:/proyectos/perso/abt-template`).
 
 
 # Agregar una query de lectura explícita

@@ -1,0 +1,752 @@
+/* ===========================================================================
+   DESIGN SYSTEM DE AUXILIAR CONTABLE — COMPONENTES
+   Las piezas propias, con prefijo `.ig-`. Ver el catálogo en `/design-system`.
+   =========================================================================== */
+@use 'mixins' as *;
+
+/* --- Botones ------------------------------------------------------------ */
+.ig-btn {
+  @include boton-base;
+}
+
+.ig-btn-principal {
+  @include boton-principal;
+}
+
+.ig-btn-secundario {
+  @include boton-secundario;
+}
+
+.ig-btn-oscuro {
+  @include boton-oscuro;
+}
+
+.ig-btn-texto {
+  @include boton-texto;
+}
+
+.ig-btn-peligro {
+  color: var(--ig-error);
+
+  &:hover,
+  &:focus-visible {
+    color: var(--ig-error-texto);
+  }
+}
+
+/* Confirmación de algo destructivo («Sí, quitarla», «Sí, eliminar»): rojo sólido, que se
+   distinga de un botón deshabilitado. */
+.ig-btn-peligro-solido {
+  background: var(--ig-error);
+  border-color: var(--ig-error);
+  color: #ffffff;
+
+  &:hover,
+  &:focus-visible {
+    background: var(--ig-error-texto);
+    border-color: var(--ig-error-texto);
+    color: #ffffff;
+  }
+}
+
+html[data-tema='oscuro'] .ig-btn-peligro-solido:hover,
+html[data-tema='oscuro'] .ig-btn-peligro-solido:focus-visible {
+  // En oscuro --ig-error-texto es un rosa claro: con texto blanco no se leería.
+  background: #c0392b;
+  border-color: #c0392b;
+}
+
+.ig-btn-chico {
+  @include boton-chico;
+}
+
+.ig-btn-bloque {
+  width: 100%;
+}
+
+.ig-btn-icono {
+  display: inline-grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  background: none;
+  border-radius: var(--ig-radio-xs);
+  cursor: pointer;
+  font-size: 1.1rem;
+  line-height: 1;
+  color: var(--ig-tinta);
+
+  &:hover {
+    background: var(--ig-gris-fondo);
+  }
+
+  &:disabled {
+    opacity: 0.35;
+    cursor: default;
+  }
+}
+
+.ig-acciones {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+/* --- Superficies -------------------------------------------------------- */
+.ig-panel {
+  @include panel;
+}
+
+.ig-panel + .ig-panel {
+  margin-top: var(--ig-esp-5);
+}
+
+/* --- Encabezado de página ---------------------------------------------- */
+.ig-encabezado {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: var(--ig-esp-4);
+  flex-wrap: wrap;
+  margin-bottom: var(--ig-esp-7);
+
+  h1 {
+    margin: 0 0 var(--ig-esp-1);
+  }
+}
+
+.ig-sub {
+  color: var(--ig-texto-secundario);
+  margin: 0;
+  max-width: 60ch;
+}
+
+/* --- La raya de la marca ----------------------------------------------- */
+.ig-raya {
+  display: flex;
+  gap: 5px;
+
+  i {
+    display: block;
+    height: 3px;
+    border-radius: 2px;
+  }
+
+  i:first-child {
+    width: 36px;
+    background: var(--ig-acento);
+  }
+
+  i:last-child {
+    width: 14px;
+    background: var(--ig-gris);
+  }
+
+  &.ig-raya-grande {
+    gap: 6px;
+    justify-content: center;
+
+    i {
+      height: 4px;
+    }
+
+    i:first-child {
+      width: 44px;
+    }
+
+    i:last-child {
+      width: 16px;
+    }
+  }
+}
+
+/* --- Pestañas ----------------------------------------------------------- */
+.ig-pestanas {
+  @include pestanas-contenedor;
+  margin-bottom: var(--ig-esp-5);
+}
+
+.ig-pestana {
+  @include pestana;
+
+  &[aria-selected='true'],
+  &.activa {
+    @include pestana-activa;
+  }
+}
+
+.ig-cuenta {
+  background: var(--ig-invertido);
+  color: var(--ig-acento);
+  font-size: var(--ig-texto-xs);
+  font-weight: var(--ig-peso-fuerte);
+  border-radius: 10px;
+  padding: 1px 7px;
+}
+
+/* --- Formularios -------------------------------------------------------- */
+.ig-campo {
+  margin-bottom: var(--ig-esp-4);
+
+  > label {
+    display: block;
+    font-weight: var(--ig-peso-semi);
+    font-size: var(--ig-texto-md);
+    margin-bottom: 6px;
+  }
+}
+
+.ig-control {
+  @include control;
+}
+
+.ig-msg {
+  color: var(--ig-error);
+  font-size: var(--ig-texto-sm);
+  margin-top: 5px;
+  min-height: 1em;
+}
+
+.ig-ayuda {
+  color: var(--ig-texto-secundario);
+  font-size: var(--ig-texto-sm);
+  margin-top: 5px;
+}
+
+.ig-buscar {
+  position: relative;
+  flex: 1 1 240px;
+
+  > i,
+  > svg {
+    position: absolute;
+    left: 13px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--ig-gris);
+    pointer-events: none;
+  }
+
+  input {
+    padding-left: 38px;
+  }
+}
+
+.ig-filtros {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: var(--ig-esp-4);
+
+  select {
+    width: auto;
+    min-width: 170px;
+  }
+}
+
+.ig-check {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--ig-marcado);
+  cursor: pointer;
+}
+
+/* --- Tablas ------------------------------------------------------------- */
+.ig-tabla-caja {
+  overflow-x: auto;
+  border: var(--ig-borde);
+  border-radius: var(--ig-radio-md);
+  background: var(--ig-blanco);
+}
+
+.ig-tabla {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+
+  th {
+    text-align: left;
+    font-weight: var(--ig-peso-semi);
+    color: var(--ig-texto-secundario);
+    font-size: var(--ig-texto-sm);
+    padding: 12px 16px;
+    background: var(--ig-fondo);
+    border-bottom: var(--ig-borde);
+    white-space: nowrap;
+  }
+
+  td {
+    padding: 13px 16px;
+    border-bottom: var(--ig-borde);
+    vertical-align: middle;
+  }
+
+  tbody tr:last-child td {
+    border-bottom: 0;
+  }
+
+  tbody tr:hover {
+    background: var(--ig-fondo);
+  }
+
+  tbody tr.seleccionada {
+    background: var(--ig-acento-suave);
+  }
+
+  .ig-num {
+    text-align: right;
+  }
+}
+
+/* --- Persona y avatar --------------------------------------------------- */
+.ig-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  flex: none;
+  background: var(--ig-invertido);
+  color: var(--ig-acento);
+  display: grid;
+  place-items: center;
+  font-weight: var(--ig-peso-fuerte);
+  font-size: 0.8rem;
+  overflow: hidden;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  &.ig-avatar-neutro {
+    background: var(--ig-gris-fondo);
+    color: var(--ig-tinta);
+  }
+}
+
+.ig-persona {
+  display: flex;
+  align-items: center;
+  gap: var(--ig-esp-3);
+  min-width: 0;
+
+  small {
+    display: block;
+    color: var(--ig-texto-secundario);
+  }
+}
+
+/* --- Etiquetas ---------------------------------------------------------- */
+.ig-etiqueta {
+  @include etiqueta;
+  background: var(--ig-gris-fondo);
+  color: var(--ig-tinta-suave);
+}
+
+.ig-etiqueta-tinta {
+  background: var(--ig-invertido);
+  color: var(--ig-acento);
+}
+
+.ig-etiqueta-acento {
+  background: var(--ig-acento-suave);
+  color: var(--ig-acento-texto);
+}
+
+.ig-etiqueta-exito {
+  background: var(--ig-exito-suave);
+  color: var(--ig-exito-texto);
+}
+
+.ig-etiqueta-error {
+  background: var(--ig-error-suave);
+  color: var(--ig-error-texto);
+}
+
+.ig-etiqueta-alerta {
+  background: var(--ig-alerta-suave);
+  color: var(--ig-alerta-texto);
+}
+
+.ig-etiqueta-sello {
+  background: var(--ig-acento);
+  color: var(--ig-sobre-acento);
+  font-size: 0.7rem;
+  font-weight: var(--ig-peso-fuerte);
+  padding: 2px 9px;
+}
+
+/* --- Alertas ------------------------------------------------------------ */
+.ig-alerta {
+  @include alerta;
+  background: var(--ig-info-suave);
+  color: var(--ig-info-texto);
+  margin-bottom: var(--ig-esp-4);
+}
+
+.ig-alerta-exito {
+  background: var(--ig-exito-suave);
+  color: var(--ig-exito-texto);
+}
+
+.ig-alerta-error {
+  background: var(--ig-error-suave);
+  color: var(--ig-error-texto);
+}
+
+.ig-alerta-aviso {
+  background: var(--ig-alerta-suave);
+  color: var(--ig-alerta-texto);
+}
+
+/* --- Estado vacío ------------------------------------------------------- */
+.ig-vacio {
+  text-align: center;
+  padding: var(--ig-esp-9) var(--ig-esp-5);
+  color: var(--ig-texto-secundario);
+
+  > i {
+    display: block;
+    font-size: 2.6rem;
+    color: var(--ig-gris-medio);
+    margin-bottom: var(--ig-esp-2);
+  }
+
+  strong {
+    display: block;
+    color: var(--ig-tinta);
+    margin-bottom: var(--ig-esp-1);
+  }
+}
+
+/* --- Progreso ----------------------------------------------------------- */
+.ig-barra {
+  height: 5px;
+  background: var(--ig-gris-fondo);
+  border-radius: 3px;
+  overflow: hidden;
+
+  > i {
+    display: block;
+    height: 100%;
+    width: 0;
+    background: var(--ig-acento);
+    border-radius: 3px;
+    transition: width 0.2s;
+  }
+}
+
+.ig-girando {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2.5px solid var(--ig-acento);
+  border-top-color: transparent;
+  animation: ig-gira 0.8s linear infinite;
+}
+
+@keyframes ig-gira {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* --- Pasos (línea de tiempo vertical) ----------------------------------- */
+ol.ig-pasos {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.ig-paso {
+  display: grid;
+  grid-template-columns: 34px 1fr;
+  gap: 14px;
+  position: relative;
+  padding-bottom: 26px;
+
+  &:last-child {
+    padding-bottom: 0;
+  }
+
+  /* La guía gris y, encima, el avance en acento. */
+  &::before,
+  &::after {
+    content: '';
+    position: absolute;
+    left: 16px;
+    top: 36px;
+    width: 2px;
+  }
+
+  &::before {
+    bottom: 2px;
+    background: var(--ig-gris-claro);
+  }
+
+  &::after {
+    height: 0;
+    background: var(--ig-acento);
+    transition: height var(--ig-lento) ease;
+  }
+
+  &:last-child::before,
+  &:last-child::after {
+    display: none;
+  }
+
+  &.hecho::after {
+    height: calc(100% - 38px);
+  }
+
+  h3 {
+    margin: 5px 0 2px;
+    font-size: var(--ig-titulo-3);
+    color: var(--ig-texto-secundario);
+    font-weight: var(--ig-peso-medio);
+  }
+
+  p {
+    margin: 0;
+    color: var(--ig-texto-secundario);
+    font-size: 0.84rem;
+  }
+
+  &.activo h3,
+  &.hecho h3,
+  &.error h3 {
+    color: var(--ig-tinta);
+    font-weight: var(--ig-peso-fuerte);
+  }
+
+  &.error p {
+    color: var(--ig-error);
+  }
+
+  .ig-barra {
+    margin-top: var(--ig-esp-2);
+    display: none;
+  }
+
+  &.activo .ig-barra {
+    display: block;
+  }
+}
+
+.ig-paso-icono {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--ig-gris-claro);
+  background: var(--ig-blanco);
+  font-weight: var(--ig-peso-fuerte);
+  font-size: 0.85rem;
+  color: var(--ig-texto-secundario);
+  transition: background-color var(--ig-medio), border-color var(--ig-medio), color var(--ig-medio);
+
+  .activo & {
+    border-color: var(--ig-acento);
+    color: var(--ig-tinta);
+  }
+
+  .hecho & {
+    background: var(--ig-acento);
+    border-color: var(--ig-acento);
+    color: var(--ig-sobre-acento);
+  }
+
+  .error & {
+    background: var(--ig-error);
+    border-color: var(--ig-error);
+    color: var(--ig-sobre-invertido);
+  }
+}
+
+.ig-paso-tiempo {
+  font-size: 0.76rem;
+  color: var(--ig-texto-secundario);
+  margin-left: 6px;
+  font-weight: var(--ig-peso-normal);
+}
+
+/* --- Zona de subida ----------------------------------------------------- */
+.ig-zona {
+  display: block;
+  position: relative;
+  border: 2px dashed var(--ig-gris-medio);
+  border-radius: var(--ig-radio-lg);
+  padding: 42px 24px;
+  text-align: center;
+  background: var(--ig-fondo);
+  cursor: pointer;
+  transition: border-color var(--ig-rapido), background-color var(--ig-rapido);
+
+  &:hover,
+  &.encima {
+    border-color: var(--ig-acento);
+    background: var(--ig-acento-suave);
+  }
+
+  &:focus-within {
+    border-color: var(--ig-tinta);
+  }
+
+  p {
+    margin: 4px 0;
+  }
+
+  .ig-ayuda {
+    font-size: var(--ig-texto-md);
+  }
+}
+
+/* --- Ficha de archivo --------------------------------------------------- */
+.ig-archivo {
+  display: flex;
+  align-items: center;
+  gap: var(--ig-esp-3);
+  padding: 12px 14px;
+  background: var(--ig-gris-fondo);
+  border-radius: var(--ig-radio);
+  min-width: 0;
+
+  > div {
+    min-width: 0;
+  }
+
+  strong {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.9rem;
+  }
+
+  small {
+    color: var(--ig-texto-secundario);
+  }
+}
+
+.ig-ext {
+  background: var(--ig-invertido);
+  color: var(--ig-acento);
+  font-weight: var(--ig-peso-fuerte);
+  font-size: 0.7rem;
+  padding: 6px 7px;
+  border-radius: 6px;
+  text-transform: uppercase;
+}
+
+/* --- Barra de cambios sin guardar -------------------------------------- */
+.ig-barra-guardar {
+  position: sticky;
+  bottom: var(--ig-esp-4);
+  margin-top: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ig-esp-3);
+  flex-wrap: wrap;
+  padding: 14px 18px;
+  background: var(--ig-invertido);
+  color: var(--ig-sobre-invertido);
+  border-radius: var(--ig-radio-md);
+  z-index: 5;
+
+  .ig-btn-secundario {
+    background: transparent;
+    color: var(--ig-sobre-invertido);
+    border-color: var(--ig-tinta-suave);
+  }
+}
+
+/* --- Visor (iframe de reportes) ---------------------------------------- */
+.ig-marco {
+  width: 100%;
+  display: block;
+  border: var(--ig-borde);
+  border-radius: var(--ig-radio);
+  background: var(--ig-blanco);
+}
+
+.ig-zoom {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  border: var(--ig-borde);
+  border-radius: var(--ig-radio-sm);
+  padding: 2px;
+
+  span {
+    min-width: 46px;
+    text-align: center;
+    font-size: 0.82rem;
+    font-weight: var(--ig-peso-semi);
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* --- Esqueleto de carga ------------------------------------------------- */
+.ig-esqueleto {
+  display: block;
+  height: 14px;
+  border-radius: 6px;
+  background: linear-gradient(90deg, var(--ig-gris-fondo) 25%, var(--ig-fondo) 37%, var(--ig-gris-fondo) 63%);
+  background-size: 400% 100%;
+  animation: ig-brillo 1.4s ease infinite;
+}
+
+@keyframes ig-brillo {
+  0% {
+    background-position: 100% 50%;
+  }
+
+  100% {
+    background-position: 0 50%;
+  }
+}
+
+/* --- Líneas decorativas de fondo --------------------------------------- */
+.ig-lineas-fondo {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 300px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+@media (max-width: 760px) {
+  .ig-lineas-fondo {
+    width: 180px;
+    opacity: 0.7;
+  }
+
+  .ig-encabezado .ig-btn {
+    width: 100%;
+  }
+
+  // En estrecho las pestañas pasan a otra fila en vez de deslizar: con la barra de
+  // desplazamiento oculta, las que no cabían quedaban escondidas sin ninguna pista.
+  .ig-pestanas {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .ig-pestana {
+    flex: 1 1 auto;
+    justify-content: center;
+    padding: 10px 8px;
+  }
+
+  .ig-filtros select {
+    flex: 1 1 140px;
+    min-width: 0;
+  }
+}

@@ -1,0 +1,27 @@
+# Copia de seguridad de la base. La dispara auxiliar-contable-backup.timer.
+#   sudo systemctl start auxiliar-contable-backup   (para probarla a mano)
+[Unit]
+Description=Auxiliar contable - copia de seguridad de la base
+After=postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/auxiliar-contable-backup.sh
+SyslogIdentifier=auxiliar-contable-backup
+# Corre como root: necesita 'sudo -u postgres' y escribir en /var/backups.
+User=root
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/backups/auxiliar-contable
+# La cache de restic, que usa el gancho de copia remota (backup-remoto.sh). Hay que
+# declararla porque ProtectHome=true deja /root fuera del alcance del proceso, y ahi es
+# justo donde restic pondria su cache por defecto. Sin esta linea el gancho falla SOLO
+# cuando lo lanza systemd: probandolo a mano funciona, porque ahi /root si esta.
+ReadWritePaths=/var/cache/restic
+# El archivo de estado que lee la API para saber si la copia se hizo y cuando. Es el
+# unico puente entre esto —que corre fuera de la aplicacion— y la aplicacion.
+ReadWritePaths=/var/lib/auxiliar-contable

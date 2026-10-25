@@ -38,7 +38,7 @@ que es donde están el cliente HTTP y el token del bot.
 ### 6.0.1 El panel de la cola (`/jobs`)
 
 Ver qué está encolado, qué reintenta, qué se abandonó y **por qué**. Permisos
-`IgasConsole.Jobs` (ver) y `IgasConsole.Jobs.Manage` (reintentar y borrar).
+`AuxiliarContable.Jobs` (ver) y `AuxiliarContable.Jobs.Manage` (reintentar y borrar).
 
 - ⚠️ **ABP NO GUARDA EL MOTIVO DEL FALLO.** `BackgroundJobRecord` tiene `TryCount`,
   `NextTryTime` e `IsAbandoned` y **ni un solo campo para la excepción** (verificado en
@@ -185,13 +185,13 @@ Las copias las hace **systemd, fuera de la aplicación** (03:30 diaria; verifica
 restauración el día 1 de cada mes). Ver `deploy/README.md` para el destino remoto.
 
 - ⚠️ **El puente es un archivo, no una llamada a la API**: los scripts dejan
-  `/var/lib/igas-console/backup-status.json` y `restore-check-status.json`, y la aplicación
+  `/var/lib/auxiliar-contable/backup-status.json` y `restore-check-status.json`, y la aplicación
   los lee. Se eligió así porque la copia tiene que poder correr —y dejar constancia— aunque
   la aplicación esté caída, que es justo cuando más importa. Se escribe con un `mv` atómico
   y con un `trap … EXIT`, o sea **también cuando el script falla**: el caso a detectar es
   «lleva semanas rota», y para eso el archivo tiene que contar el fallo, no dejar de
   actualizarse.
-  - La unidad lleva `ProtectSystem=strict`, así que `/var/lib/igas-console` va declarado en
+  - La unidad lleva `ProtectSystem=strict`, así que `/var/lib/auxiliar-contable` va declarado en
     `ReadWritePaths` — sin eso el script muere con *Read-only file system*.
 - ⚠️ **`BackupHealthCheck` NUNCA devuelve `Unhealthy`, y es deliberado.** El despliegue
   comprueba `/health-status` y aborta si no da 200; ASP.NET devuelve **503 para
@@ -211,8 +211,8 @@ restauración el día 1 de cada mes). Ver `deploy/README.md` para el destino rem
   porque `pg_restore` termina con éxito sobre un volcado sin datos.
   - Su unidad lleva `PrivateTmp=false` a propósito: el volcado se copia a `/tmp` para que el
     usuario `postgres` pueda leerlo, y con `/tmp` privado postgres vería otro distinto.
-- **El panel `/system-status`** (permiso `IgasConsole.SystemStatus`) enseña **solo recuentos**.
+- **El panel `/system-status`** (permiso `AuxiliarContable.SystemStatus`) enseña **solo recuentos**.
   Eso es lo que permite que baste un permiso: saber que hay tres trabajos abandonados no es
-  lo mismo que poder leer sus argumentos, y para eso sigue haciendo falta `IgasConsole.Jobs`.
+  lo mismo que poder leer sus argumentos, y para eso sigue haciendo falta `AuxiliarContable.Jobs`.
   La salud sale de la última muestra del recolector, no de sondear otra vez.
 

@@ -1,0 +1,14 @@
+{
+  "name": "auxiliar-contable-e2e",
+  "private": true,
+  "description": "Pruebas de pantalla de Auxiliar contable (Playwright) contra la app local.",
+  "scripts": {
+    "test": "playwright test",
+    "test:ver": "playwright test --headed",
+    "informe": "playwright show-report",
+    "instalar-navegador": "playwright install chromium"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0"
+  }
+}

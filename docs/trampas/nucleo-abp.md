@@ -10,7 +10,7 @@ Verificado en `refs/abp`:
 - **Filtro de tenant automático (EF)**: las queries LINQ filtran por `TenantId` del tenant actual vía *global query filters*. **No** filtres por `TenantId` en LINQ. `ICurrentTenant.Id` da el tenant actual.
   - ⚠️⚠️ **TRAMPA GRANDE — una entidad SIN `DbSet` no recibe los filtros globales.** ABP los
     aplica recorriendo `modelBuilder.Model.GetEntityTypes()` **dentro de
-    `base.OnModelCreating()`**, que en `IgasConsoleDbContext` es la **primera línea**. EF ya
+    `base.OnModelCreating()`**, que en `AuxiliarContableDbContext` es la **primera línea**. EF ya
     conoce ahí las entidades que tienen una propiedad `DbSet<>`; una registrada solo más
     abajo con `builder.Entity<X>()` llega tarde y **se queda sin filtro de tenant y sin el
     de soft delete**. No falla nada al compilar y las consultas devuelven las filas de
@@ -121,7 +121,7 @@ ABP open source **detecta** que un usuario necesita segundo factor (`SignInManag
 - ⚠️ **Solo se sustituye el MODELO de la página de login, no la vista** — así la pantalla
   sigue siendo la de ABP y se actualiza con el módulo. Se hace con
   `[Dependency(ReplaceServices = true)]` + `[ExposeServices(...)]` (ver
-  `IgasConsoleLoginModel`). La clase base es **`OpenIddictSupportedLoginModel`**, no
+  `AuxiliarContableLoginModel`). La clase base es **`OpenIddictSupportedLoginModel`**, no
   `LoginModel`: heredar de `LoginModel` compila igual pero se pierde el manejo del
   `ReturnUrl` de OpenIddict y el login deja de completar el flujo de autorización.
 - ⚠️ **Desvincular Telegram APAGA el segundo factor de forma explícita.** Identity solo lo

@@ -1,0 +1,114 @@
+{
+  "template": "app",
+  "imports": {
+    "Volo.Abp.LeptonXLiteTheme": {
+      "version": "5.6.0",
+      "isInstalled": true,
+      "creationTime": "08/09/2026 20:53:00 +00:00"
+    },
+    "Volo.Abp.Account": {
+      "version": "10.6.0",
+      "isInstalled": true,
+      "creationTime": "08/09/2026 20:53:00 +00:00"
+    },
+    "Volo.Abp.OpenIddict": {
+      "version": "10.6.0",
+      "isInstalled": true,
+      "creationTime": "08/09/2026 20:53:00 +00:00"
+    },
+    "Volo.Abp.Identity": {
+      "version": "10.6.0",
+      "isInstalled": true,
+      "creationTime": "08/09/2026 20:53:00 +00:00"
+    },
+    "Volo.Abp.TenantManagement": {
+      "version": "10.6.0",
+      "isInstalled": true,
+      "creationTime": "08/09/2026 20:53:00 +00:00"
+    },
+    "Volo.Abp.SettingManagement": {
+      "version": "10.6.0",
+      "isInstalled": true,
+      "creationTime": "08/09/2026 20:53:00 +00:00"
+    },
+    "Volo.Abp.PermissionManagement": {
+      "version": "10.6.0",
+      "isInstalled": true,
+      "creationTime": "08/09/2026 20:53:00 +00:00"
+    },
+    "Volo.Abp.FeatureManagement": {
+      "version": "10.6.0",
+      "isInstalled": true,
+      "creationTime": "08/09/2026 20:53:00 +00:00"
+    },
+    "Volo.Abp.BlobStoring.Database": {
+      "version": "10.6.0",
+      "isInstalled": true,
+      "creationTime": "08/09/2026 20:53:00 +00:00"
+    }
+  },
+  "folders": {
+    "items": {
+      "src": {},
+      "test": {}
+    }
+  },
+  "packages": {
+    "AuxiliarContable.Application": {
+      "path": "src/AuxiliarContable.Application/AuxiliarContable.Application.abppkg",
+      "folder": "src"
+    },
+    "AuxiliarContable.Application.Tests": {
+      "path": "test/AuxiliarContable.Application.Tests/AuxiliarContable.Application.Tests.abppkg",
+      "folder": "test"
+    },
+    "AuxiliarContable.Domain.Shared": {
+      "path": "src/AuxiliarContable.Domain.Shared/AuxiliarContable.Domain.Shared.abppkg",
+      "folder": "src"
+    },
+    "AuxiliarContable.Application.Contracts": {
+      "path": "src/AuxiliarContable.Application.Contracts/AuxiliarContable.Application.Contracts.abppkg",
+      "folder": "src"
+    },
+    "AuxiliarContable.HttpApi": {
+      "path": "src/AuxiliarContable.HttpApi/AuxiliarContable.HttpApi.abppkg",
+      "folder": "src"
+    },
+    "AuxiliarContable.HttpApi.Client": {
+      "path": "src/AuxiliarContable.HttpApi.Client/AuxiliarContable.HttpApi.Client.abppkg",
+      "folder": "src"
+    },
+    "AuxiliarContable.EntityFrameworkCore.Tests": {
+      "path": "test/AuxiliarContable.EntityFrameworkCore.Tests/AuxiliarContable.EntityFrameworkCore.Tests.abppkg",
+      "folder": "test"
+    },
+    "AuxiliarContable.EntityFrameworkCore": {
+      "path": "src/AuxiliarContable.EntityFrameworkCore/AuxiliarContable.EntityFrameworkCore.abppkg",
+      "folder": "src"
+    },
+    "AuxiliarContable.TestBase": {
+      "path": "test/AuxiliarContable.TestBase/AuxiliarContable.TestBase.abppkg",
+      "folder": "test"
+    },
+    "AuxiliarContable.Domain.Tests": {
+      "path": "test/AuxiliarContable.Domain.Tests/AuxiliarContable.Domain.Tests.abppkg",
+      "folder": "test"
+    },
+    "AuxiliarContable.HttpApi.Client.ConsoleTestApp": {
+      "path": "test/AuxiliarContable.HttpApi.Client.ConsoleTestApp/AuxiliarContable.HttpApi.Client.ConsoleTestApp.abppkg",
+      "folder": "test"
+    },
+    "AuxiliarContable.DbMigrator": {
+      "path": "src/AuxiliarContable.DbMigrator/AuxiliarContable.DbMigrator.abppkg",
+      "folder": "src"
+    },
+    "AuxiliarContable.HttpApi.Host": {
+      "path": "src/AuxiliarContable.HttpApi.Host/AuxiliarContable.HttpApi.Host.abppkg",
+      "folder": "src"
+    },
+    "AuxiliarContable.Domain": {
+      "path": "src/AuxiliarContable.Domain/AuxiliarContable.Domain.abppkg",
+      "folder": "src"
+    }
+  }
+}

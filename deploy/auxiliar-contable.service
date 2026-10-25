@@ -1,0 +1,39 @@
+# Unidad systemd de la API. Copiar a /etc/systemd/system/auxiliar-contable.service
+#   sudo systemctl daemon-reload && sudo systemctl enable --now auxiliar-contable
+[Unit]
+Description=Auxiliar contable API
+After=network.target postgresql.service
+Wants=postgresql.service
+
+[Service]
+WorkingDirectory=/srv/auxiliar-contable/current/api
+ExecStart=/usr/bin/dotnet /srv/auxiliar-contable/current/api/AuxiliarContable.HttpApi.Host.dll
+Restart=always
+RestartSec=10
+KillSignal=SIGINT
+SyslogIdentifier=auxiliar-contable
+User=auxiliar
+Group=auxiliar
+
+# Production apaga el explorador de BD (IsEnabled = IsDevelopment()). Si esto
+# faltara, quedaria un CRUD directo a la base expuesto en produccion.
+Environment=ASPNETCORE_ENVIRONMENT=Production
+Environment=DOTNET_ENVIRONMENT=Production
+# Kestrel solo en loopback: quien expone al mundo es nginx, con TLS.
+Environment=ASPNETCORE_URLS=http://127.0.0.1:5030
+Environment=DOTNET_PRINT_TELEMETRY_MESSAGE=false
+
+# Secretos y cadenas de conexion. NO van aqui: este archivo se versiona.
+# Crear /etc/auxiliar-contable/env con permisos 600 y dueno auxiliar (ver deploy/README.md).
+EnvironmentFile=/etc/auxiliar-contable/env
+
+# --- Endurecimiento -----------------------------------------------------------
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+# Las unicas rutas escribibles: claves de DataProtection y logs.
+ReadWritePaths=/var/lib/auxiliar-contable /var/log/auxiliar-contable
+
+[Install]
+WantedBy=multi-user.target

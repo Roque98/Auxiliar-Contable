@@ -6,21 +6,22 @@ Telegram, auditoría) sigue igual: es el resumen para el equipo. Esto es para **
 
 | Qué | Cómo llega | Dónde se ve |
 |---|---|---|
-| Trazas de la API: cada petición con sus consultas a PostgreSQL, llamadas HTTP y órdenes a MeshCentral | OpenTelemetry (OTLP/HTTP) | OpenObserve → Traces |
+| Trazas de la API: cada petición con sus consultas a PostgreSQL y llamadas HTTP | OpenTelemetry (OTLP/HTTP) | OpenObserve → Traces |
 | Métricas de la API: por ruta (p50/p95, errores) y del runtime (GC, hilos) | OpenTelemetry | OpenObserve → Metrics |
 | Logs de la API (los de Serilog, con el id de la traza) | `Serilog.Sinks.OpenTelemetry` | OpenObserve → Logs (y el archivo de siempre) |
-| Errores de JavaScript de la web y de la app | A la API (`/api/app/errores-del-cliente/registrar`), que los registra como log | OpenObserve → Logs, `Error en el cliente` |
-| Que los sitios respondan, visto desde FUERA del VPS | Workflow `vigilancia.yml` del repo público Roque98/ZIA, cada 10 min | Telegram, solo cuando algo cambia |
+| Errores de JavaScript de la web | A la API (`/api/app/errores-del-cliente/registrar`), que los registra como log | OpenObserve → Logs, `Error en el cliente` |
+| Que los sitios respondan, visto desde FUERA del VPS | **Pendiente**: la vigilancia de ZIA (`vigilancia.yml` en Roque98/ZIA) no mira esta app | — |
 
 ## OpenObserve
 
-- `/opt/openobserve` (copia versionada en `deploy/openobserve/`): imagen fijada (`v1.1.2`), solo en
+- **Compartido con ZIA**: lo instaló y lo mantiene ZIA-Console (`/opt/openobserve`, su copia
+  versionada vive en `deploy/openobserve/` de ESE repo): imagen fijada (`v1.1.2`), solo en
   `127.0.0.1:5080`, datos en `/opt/openobserve/data`, **30 días** de retención, telemetría al fabricante
   apagada, contenedor con tope de 1 GB (en reposo usa ~200 MB).
 - Usuario administrador y contraseña: `/etc/openobserve/env` (600). La consola usa la credencial de
-  **ingesta** (el passcode, no la contraseña), en `/etc/zia-console/env`:
+  **ingesta** (el passcode, no la contraseña), en `/etc/auxiliar-contable/env`:
   `Observabilidad__Otlp__Endpoint=http://127.0.0.1:5080/api/default` y `Observabilidad__Otlp__Authorization=Basic …`.
-- Acceso: `https://obs.ziacentro.mx` (nginx: `deploy/openobserve/nginx-obs.conf`).
+- Acceso: `https://obs.ziacentro.mx` (nginx: el de ZIA-Console).
 - Actualizar: cambiar la etiqueta en el compose, `docker compose pull && docker compose up -d`.
 
 ## En el código
@@ -28,15 +29,13 @@ Telegram, auditoría) sigue igual: es el resumen para el equipo. Esto es para **
 - `HttpApi.Host/Observabilidad/`: `AddObservabilidad` (trazas y métricas) y `ObservabilidadOptions`.
   Sin `Observabilidad:Otlp:Endpoint` no se exporta nada (desarrollo y pruebas).
 - Logs: `Program.cs` añade el sink de OpenTelemetry a Serilog; el archivo sigue de respaldo.
-- MeshCentral va por WebSocket: sus órdenes se trazan a mano (`ClienteMeshCentral.Trazas`).
 - No se trazan `/health-status`, `/health-ui` ni estáticos (ruido): las métricas sí los cuentan.
 - ⚠️ Los logs del propio exportador (`System.Net.Http.HttpClient.Otlp*Exporter`) y del health check que
   se consulta a sí mismo (`…health-checks`) van a `Warning` en `appsettings.json`: con `Information`
   eran la mitad de los logs, y los del exportador se reenviaban a sí mismos en cada lote.
 - Errores del cliente: `ErroresDelClienteAppService` (con sesión, fuera de la auditoría, 20/min por
   persona). Web: `shared/reporte-de-errores.ts` desde el `ErrorHandler` (`RecargaTrasDespliegue`); no
-  manda los fallos de carga tras un despliegue ni la falta de red. App: `src/util/reporte-de-errores.ts`
-  (Roque98/ZIA-App).
+  manda los fallos de carga tras un despliegue ni la falta de red.
 
 ## Qué mirar cuando algo falla
 

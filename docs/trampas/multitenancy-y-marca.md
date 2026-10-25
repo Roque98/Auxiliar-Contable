@@ -143,7 +143,7 @@ permiso normal— ni rompe ningún test funcional: todo sigue haciendo lo que di
 - Lo vigila `PermisosDeInquilinoIntegrationTests`, y su tercer test es el que importa: un
   permiso **nuevo sin clasificar** sale en rojo. Los otros dos solo cubren lo que existía el
   día que se escribieron, que es exactamente cómo se coló el fallo. Comprobado que se pone
-  rojo al quitarle el lado a `IgasConsole.Jobs`.
+  rojo al quitarle el lado a `AuxiliarContable.Jobs`.
 - Verificado también en el navegador: el administrador de un inquilino ve en el menú solo
   Identity, claves de API y marca, y escribiendo a mano `/security`, `/jobs`, `/metrics`,
   `/system-status` o `/tenants` se queda fuera.
@@ -153,7 +153,7 @@ permiso normal— ni rompe ningún test funcional: todo sigue haciendo lo que di
 
 ## 6.97 Marca por inquilino (nombre, logo y color)
 
-Pantalla `/branding`, permiso `IgasConsole.Branding`. Cada inquilino pone su nombre, su logo y
+Pantalla `/branding`, permiso `AuxiliarContable.Branding`. Cada inquilino pone su nombre, su logo y
 su color de acento, y se ven **también en la pantalla de login** del Host. El host edita el
 valor por defecto que heredan los que no hayan puesto el suyo.
 
@@ -250,7 +250,7 @@ siempre nace sobre una base vacía.
 
 ### 6.965.3 Entrar como el administrador de un inquilino (suplantación)
 
-Botón «Entrar como admin» en `/tenants`. Permiso propio `IgasConsole.Tenants.Impersonate`
+Botón «Entrar como admin» en `/tenants`. Permiso propio `AuxiliarContable.Tenants.Impersonate`
 (**Host**), aparte del CRUD: crear una organización y entrar a mirar sus datos con la cara de
 otro no son la misma responsabilidad.
 

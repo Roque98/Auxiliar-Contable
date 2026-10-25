@@ -36,7 +36,7 @@ jobs:
           node-version: '24'
           # El proyecto usa yarn (yarn.lock versionado, no hay package-lock.json).
           cache: yarn
-          cache-dependency-path: IgasConsole/angular/yarn.lock
+          cache-dependency-path: AuxiliarContable/angular/yarn.lock
 
       # --- API ---------------------------------------------------------------
       # Las librerias cliente (wwwroot/libs) NO estan versionadas y las paginas de
@@ -46,23 +46,23 @@ jobs:
         run: |
           dotnet tool install -g Volo.Abp.Studio.Cli
           echo "$HOME/.dotnet/tools" >> $GITHUB_PATH
-          cd IgasConsole && abp install-libs
+          cd AuxiliarContable && abp install-libs
 
       - name: Publicar API
         run: |
-          dotnet publish IgasConsole/src/IgasConsole.HttpApi.Host/IgasConsole.HttpApi.Host.csproj \
+          dotnet publish AuxiliarContable/src/AuxiliarContable.HttpApi.Host/AuxiliarContable.HttpApi.Host.csproj \
             -c Release -o publicado/api
 
       # El DbMigrator se publica aparte: deploy.sh lo ejecuta ANTES de intercambiar
       # las versiones, para que un fallo de migracion no tumbe la que esta sirviendo.
       - name: Publicar DbMigrator
         run: |
-          dotnet publish IgasConsole/src/IgasConsole.DbMigrator/IgasConsole.DbMigrator.csproj \
+          dotnet publish AuxiliarContable/src/AuxiliarContable.DbMigrator/AuxiliarContable.DbMigrator.csproj \
             -c Release -o publicado/migrator
 
       # --- Angular -----------------------------------------------------------
       - name: Compilar Angular
-        working-directory: IgasConsole/angular
+        working-directory: AuxiliarContable/angular
         run: |
           yarn install --frozen-lockfile
           yarn build:prod
@@ -84,19 +84,19 @@ jobs:
           # A un directorio de staging: el servicio sigue sirviendo la version vieja
           # mientras se copia. El intercambio lo hace deploy.sh en el servidor.
           rsync -az --delete -e "ssh -i ~/.ssh/id_deploy" \
-            publicado/api/ "$DESTINO:/srv/zia-console/staging/api/"
+            publicado/api/ "$DESTINO:/srv/auxiliar-contable/staging/api/"
           rsync -az --delete -e "ssh -i ~/.ssh/id_deploy" \
-            IgasConsole/angular/dist/IgasConsole/browser/ "$DESTINO:/srv/zia-console/staging/web/"
+            AuxiliarContable/angular/dist/AuxiliarContable/browser/ "$DESTINO:/srv/auxiliar-contable/staging/web/"
           rsync -az --delete -e "ssh -i ~/.ssh/id_deploy" \
-            publicado/migrator/ "$DESTINO:/srv/zia-console/staging/migrator/"
+            publicado/migrator/ "$DESTINO:/srv/auxiliar-contable/staging/migrator/"
           rsync -az -e "ssh -i ~/.ssh/id_deploy" \
-            deploy/deploy.sh "$DESTINO:/srv/zia-console/deploy.sh"
+            deploy/deploy.sh "$DESTINO:/srv/auxiliar-contable/deploy.sh"
 
       - name: Activar en el servidor
         env:
           DESTINO: ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}
         run: |
-          ssh -i ~/.ssh/id_deploy "$DESTINO" "chmod +x /srv/zia-console/deploy.sh && sudo /srv/zia-console/deploy.sh"
+          ssh -i ~/.ssh/id_deploy "$DESTINO" "chmod +x /srv/auxiliar-contable/deploy.sh && sudo /srv/auxiliar-contable/deploy.sh"
 
       - name: Comprobar salud
         run: |

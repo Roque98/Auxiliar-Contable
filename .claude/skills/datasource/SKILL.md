@@ -5,7 +5,7 @@ description: Registra una fuente de datos externa de solo lectura nueva (constan
 
 # Registrar una fuente de datos externa nueva
 
-1. **Constante** en `src/IgasConsole.Domain.Shared/DataSources/DataSourceNames.cs`:
+1. **Constante** en `src/AuxiliarContable.Domain.Shared/DataSources/DataSourceNames.cs`:
    ```csharp
    public const string <Nombre> = "<Nombre>";
    ```

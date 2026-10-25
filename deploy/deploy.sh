@@ -6,12 +6,12 @@
 # responde sana, se revierte sola.
 set -euo pipefail
 
-RAIZ=/srv/zia-console
-SERVICIO=zia-console
-USUARIO_APP=zia
+RAIZ=/srv/auxiliar-contable
+SERVICIO=auxiliar-contable
+USUARIO_APP=auxiliar
 USUARIO_DEPLOY=deploy
-CERT=/etc/zia-console/openiddict.pfx
-LOGS=/var/log/zia-console
+CERT=/etc/auxiliar-contable/openiddict.pfx
+LOGS=/var/log/auxiliar-contable
 
 cd "$RAIZ"
 
@@ -44,14 +44,14 @@ chown -R "$USUARIO_APP:$USUARIO_APP" staging
 
 # Serilog escribe en 'Logs/' relativo al content root, pero las units usan
 # ProtectSystem=strict: /srv es de solo lectura. El enlace redirige la escritura a
-# /var/log/zia-console, que si esta en ReadWritePaths.
+# /var/log/auxiliar-contable, que si esta en ReadWritePaths.
 mkdir -p "$LOGS/api" "$LOGS/migrator"
 chown -R "$USUARIO_APP:$USUARIO_APP" "$LOGS"
 ln -sfn "$LOGS/migrator" staging/migrator/Logs
 
 echo "==> Aplicando migraciones y seed"
 # Antes de intercambiar: si la migracion falla, la version vieja sigue sirviendo.
-systemctl start --wait zia-console-migrator
+systemctl start --wait auxiliar-contable-migrator
 
 echo "==> Rotando versiones"
 rm -rf previous
@@ -72,7 +72,7 @@ systemctl restart "$SERVICIO"
 
 echo "==> Comprobando salud"
 for i in $(seq 1 20); do
-    codigo=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:5010/health-status || true)
+    codigo=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:5030/health-status || true)
     if [ "$codigo" = "200" ]; then
         echo "    Sano. Despliegue completado."
         systemctl reload nginx

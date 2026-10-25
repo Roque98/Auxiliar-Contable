@@ -5,9 +5,9 @@ y systemd + nginx los sirven. La base de datos es PostgreSQL en el propio servid
 
 ```
 GitHub Actions                         VPS (Ubuntu)
-  build + tests  ──> publicado/  ─rsync─>  /srv/zia-console/staging/
+  build + tests  ──> publicado/  ─rsync─>  /srv/auxiliar-contable/staging/
                                               │
-                                              ├─ migrator ─> systemctl start --wait zia-console-migrator
+                                              ├─ migrator ─> systemctl start --wait auxiliar-contable-migrator
                                               └─ deploy.sh ─> intercambia current/ y reinicia
                                                               (revierte solo si no arranca sano)
 ```
@@ -17,10 +17,10 @@ GitHub Actions                         VPS (Ubuntu)
 | Archivo | Dónde va | Qué hace |
 |---|---|---|
 | `setup-servidor.sh` | se ejecuta una vez, como root | Instala runtime, nginx, PostgreSQL, crea usuario y directorios |
-| `zia-console.service` | `/etc/systemd/system/` | La API bajo systemd, en `127.0.0.1:5010` |
-| `zia-console-migrator.service` | `/etc/systemd/system/` | Unidad oneshot que aplica migraciones y seed |
-| `nginx.conf` | `/etc/nginx/sites-available/zia-console` | TLS, proxy inverso a la API y estáticos del Angular |
-| `deploy.sh` | `/srv/zia-console/` (lo sube el workflow) | Migra, intercambia versiones, reinicia y verifica |
+| `auxiliar-contable.service` | `/etc/systemd/system/` | La API bajo systemd, en `127.0.0.1:5030` |
+| `auxiliar-contable-migrator.service` | `/etc/systemd/system/` | Unidad oneshot que aplica migraciones y seed |
+| `nginx.conf` | `/etc/nginx/sites-available/auxiliar-contable` | TLS, proxy inverso a la API y estáticos del Angular |
+| `deploy.sh` | `/srv/auxiliar-contable/` (lo sube el workflow) | Migra, intercambia versiones, reinicia y verifica |
 | `endurecer-ssh.sh` | se ejecuta una vez, como root | Deja SSH solo con clave y monta fail2ban |
 
 ## Puesta en marcha (una vez)
@@ -54,27 +54,33 @@ GitHub Actions                         VPS (Ubuntu)
    que encuentra y cloud-init deja un `50-cloud-init.conf` con
    `PasswordAuthentication yes`. Por eso el nuestro se llama `01-endurecimiento.conf`.
 
-   También monta una segunda jail, `zia-console-abuso`, que lee el `access.log` de
+   También monta una segunda jail, `auxiliar-contable-abuso`, que lee el `access.log` de
    nginx y banea a nivel de firewall las IPs que reciben varios `429` seguidos — el
-   rate limiting de la API (ver `IgasConsole.HttpApi.Host/Monitoring/RateLimiting*`)
+   rate limiting de la API (ver `AuxiliarContable.HttpApi.Host/Monitoring/RateLimiting*`)
    ya identificó esa IP como abuso; esta jail hace que además deje de poder conectar,
    en vez de seguir golpeando la API para siempre. No banea por `401`/`403`/`404`
    sueltos: eso es tráfico normal de cualquier servidor público (mismo criterio que el
    monitoreo aplica para no avisar por eso).
 
-## En el mismo VPS que abt-template
+## En el VPS de ZIA (convive con otras aplicaciones)
 
-Igas se despliega como una **segunda aplicación** en el servidor que ya sirve
-abt-template. No comparten nada que se pise:
+Auxiliar contable se despliega como una aplicación **más** en el servidor de ZIA, que ya sirve
+abt-template, ZIA-Console y el chatbot de ZIA. No comparten nada que se pise:
 
-| | abt-template | zia-console |
+| | ZIA-Console | Auxiliar contable |
 |---|---|---|
-| Carpeta | `/srv/abp-template` | `/srv/zia-console` |
-| Puerto interno (Kestrel) | `127.0.0.1:5000` | `127.0.0.1:5010` |
-| Usuario de servicio | `abp` | `zia` |
-| Base de datos / rol | `abp_template` | `igas_console` |
-| Secretos | `/etc/abp-template/` | `/etc/zia-console/` |
-| sudoers | `/etc/sudoers.d/abp-template` | `/etc/sudoers.d/zia-console` |
+| Carpeta | `/srv/zia-console` | `/srv/auxiliar-contable` |
+| Puerto interno (Kestrel) | `127.0.0.1:5010` | `127.0.0.1:5030` (5000 = abt-template, 5020 = chatbot) |
+| Usuario de servicio | `zia` | `auxiliar` |
+| Base de datos / rol | `igas_console` (conserva el nombre viejo) | `auxiliar_contable` |
+| Secretos | `/etc/zia-console/` | `/etc/auxiliar-contable/` |
+| sudoers | `/etc/sudoers.d/zia-console` | `/etc/sudoers.d/auxiliar-contable` |
+| Sitio nginx | `sites-available/zia-console` | `sites-available/auxiliar-contable` |
+| Certificado | el de ziacentro.mx | uno propio para `contable` y `api-contable` |
+
+⚠️ Desde aquí **no se toca nada de ZIA**: ni su sitio nginx, ni su certificado, ni sus servicios.
+Lo que es del servidor (snippets de Cloudflare, OpenObserve, fail2ban, swap, SSH) lo mantiene
+ZIA-Console; esta app solo lo usa.
 
 El usuario `deploy` es el mismo, con una línea de sudoers por aplicación (cada una solo
 autoriza su propio `deploy.sh`). La clave SSH de despliegue conviene que sea **otra**:
@@ -88,15 +94,14 @@ Qué cambia respecto a la puesta en marcha de arriba:
 - `endurecer-ssh.sh` **no** hace falta: es del servidor, no de la aplicación, y ya se corrió.
 - Antes del primer despliegue, mirar la memoria (`free -h`): son dos APIs .NET y un
   PostgreSQL en la misma máquina.
-- Dominios: `console.ziacentro.mx` (app) y `api.ziacentro.mx` (API): registros **A** en Cloudflare
-  (solo DNS, nube gris) hacia la IP del VPS. Certificado (uno para todo ziacentro.mx):
-  `certbot certonly --webroot -w /var/www/acme -d ziacentro.mx -d www.ziacentro.mx -d console.ziacentro.mx -d api.ziacentro.mx`.
-  Los dominios anteriores (igasmorelia.com, app.ziacentro.com, igas.inangelroque.duckdns.org) se retiraron el
-  20/10/2026 (sitios nginx, certificados, redirect URIs y CORS). Respaldo en /root/backups/*-pre-legado*.
+- Dominios: `contable.ziacentro.mx` (app) y `api-contable.ziacentro.mx` (API): registros **A** en
+  Cloudflare hacia la IP del VPS, **proxificados** (nube naranja) como el resto de ziacentro.mx: el
+  origen solo acepta tráfico de Cloudflare (ver abajo). Certificado propio:
+  `certbot certonly --webroot -w /var/www/acme -d contable.ziacentro.mx -d api-contable.ziacentro.mx`.
 
 ## Brevo (correo, SMS y WhatsApp)
 
-La API key va en `/etc/zia-console/env` (`Brevo__ApiKey`), nunca en el repositorio.
+La API key va en `/etc/auxiliar-contable/env` (`Brevo__ApiKey`), nunca en el repositorio.
 Tres cosas de fuera que hacen falta para que los mensajes salgan de verdad:
 
 1. **IPs autorizadas.** Si la cuenta tiene activado *Authorised IPs*, añadir la IPv4 **y**
@@ -114,14 +119,14 @@ Sin `Brevo__ApiKey` la aplicación arranca igual y cada envío queda en el log c
 Por defecto el panel del host está en `https://TU-DOMINIO.com/` y el formulario de login
 en `https://api.TU-DOMINIO.com/Account/Login`: las dos rutas por defecto de cualquier ABP,
 y las dos primeras que prueba un escáner. Se mueven las dos a la vez añadiendo **una línea**
-a `/etc/zia-console/env`:
+a `/etc/auxiliar-contable/env`:
 
 ```bash
 Acceso__SegmentoDelHost=elige-algo-largo
 ```
 
 ```bash
-systemctl restart zia-console
+systemctl restart auxiliar-contable
 ```
 
 A partir de ahí:
@@ -157,7 +162,7 @@ En GitHub → Settings → Secrets and variables → Actions:
 | `VPS_USER` | `deploy` |
 | `VPS_SSH_KEY` | Clave **privada** de despliegue, completa, incluidas las líneas `BEGIN`/`END` |
 | `VPS_KNOWN_HOSTS` | Salida de `ssh-keyscan TU_IP` |
-| `VPS_DOMINIO` | `api.ziacentro.mx` |
+| `VPS_DOMINIO` | `api-contable.ziacentro.mx` |
 
 `VPS_KNOWN_HOSTS` no es opcional: sin él habría que usar
 `StrictHostKeyChecking=no`, y entonces el deploy entregaría la clave privada a
@@ -166,7 +171,7 @@ cualquier servidor que respondiera en esa IP.
 Genera una clave **dedicada al despliegue**, no reutilices tu clave personal:
 
 ```bash
-ssh-keygen -t ed25519 -f ~/.ssh/abp_deploy -C "deploy zia-console" -N ""
+ssh-keygen -t ed25519 -f ~/.ssh/abp_deploy -C "deploy auxiliar-contable" -N ""
 ```
 
 ## Desplegar
@@ -181,10 +186,10 @@ Cuando le tengas confianza, descomenta el bloque `push:` de
 
 ```bash
 ssh deploy@IP
-sudo systemctl stop zia-console
-sudo rm -rf /srv/zia-console/current
-sudo mv /srv/zia-console/previous /srv/zia-console/current
-sudo systemctl start zia-console
+sudo systemctl stop auxiliar-contable
+sudo rm -rf /srv/auxiliar-contable/current
+sudo mv /srv/auxiliar-contable/previous /srv/auxiliar-contable/current
+sudo systemctl start auxiliar-contable
 ```
 
 Ojo: eso revierte el **código**, no la base de datos. Una migración que borra
@@ -197,19 +202,19 @@ recupera la ejecución perdida si el servidor estaba apagado y se puede lanzar a
 
 | Archivo | Dónde va |
 |---|---|
-| `zia-console-backup.sh` | `/usr/local/bin/` (modo 750) |
-| `zia-console-backup.service` | `/etc/systemd/system/` |
-| `zia-console-backup.timer` | `/etc/systemd/system/`, luego `systemctl enable --now` |
+| `auxiliar-contable-backup.sh` | `/usr/local/bin/` (modo 750) |
+| `auxiliar-contable-backup.service` | `/etc/systemd/system/` |
+| `auxiliar-contable-backup.timer` | `/etc/systemd/system/`, luego `systemctl enable --now` |
 
-Cada noche a las 03:30 (±15 min) vuelca `igas_console` en formato custom a
-`/var/backups/zia-console/diario/`, **comprueba que el volcado se puede leer**
+Cada noche a las 03:30 (±15 min) vuelca `auxiliar_contable` en formato custom a
+`/var/backups/auxiliar-contable/diario/`, **comprueba que el volcado se puede leer**
 (`pg_restore --list`; si no, lo borra en vez de dejar una copia falsa), guarda también
 los roles en `roles.sql` y rota: 14 diarias y 8 semanales (las de los domingos).
 
 ```bash
-systemctl list-timers zia-console-backup.timer   # cuándo toca la próxima
-systemctl start zia-console-backup               # lanzar una a mano
-journalctl -u zia-console-backup -n 20           # cómo fue la última
+systemctl list-timers auxiliar-contable-backup.timer   # cuándo toca la próxima
+systemctl start auxiliar-contable-backup               # lanzar una a mano
+journalctl -u auxiliar-contable-backup -n 20           # cómo fue la última
 ```
 
 ### Restaurar
@@ -219,36 +224,36 @@ Probado de verdad, no solo escrito. El volcado es `root:700`, así que el usuari
 el paso que hace fallar el `pg_restore` de manual.
 
 ```bash
-DUMP=$(ls -t /var/backups/zia-console/diario/*.dump | head -1)
+DUMP=$(ls -t /var/backups/auxiliar-contable/diario/*.dump | head -1)
 install -o postgres -g postgres -m 400 "$DUMP" /tmp/restaurar.dump
 
 # Ensayo en una base desechable (recomendado antes de tocar la de verdad):
-sudo -u postgres psql -c "CREATE DATABASE prueba_restauracion OWNER igas_console;"
-sudo -u postgres pg_restore -d prueba_restauracion --no-owner --role=igas_console /tmp/restaurar.dump
+sudo -u postgres psql -c "CREATE DATABASE prueba_restauracion OWNER auxiliar_contable;"
+sudo -u postgres pg_restore -d prueba_restauracion --no-owner --role=auxiliar_contable /tmp/restaurar.dump
 
 # Sobre la base real: parar la API primero, o escribirá encima a media restauración.
-sudo systemctl stop zia-console
-sudo -u postgres psql -c "DROP DATABASE igas_console;"                     -c "CREATE DATABASE igas_console OWNER igas_console;"
-sudo -u postgres pg_restore -d igas_console --no-owner --role=igas_console /tmp/restaurar.dump
-sudo systemctl start zia-console
+sudo systemctl stop auxiliar-contable
+sudo -u postgres psql -c "DROP DATABASE auxiliar_contable;"                     -c "CREATE DATABASE auxiliar_contable OWNER auxiliar_contable;"
+sudo -u postgres pg_restore -d auxiliar_contable --no-owner --role=auxiliar_contable /tmp/restaurar.dump
+sudo systemctl start auxiliar-contable
 rm -f /tmp/restaurar.dump
 ```
 
 En una máquina limpia, restaura antes los roles: `sudo -u postgres psql -f roles.sql`
-(sin ellos falla con *role "igas_console" does not exist*).
+(sin ellos falla con *role "auxiliar_contable" does not exist*).
 
 ### Fuera del servidor
 
 Una copia en el mismo disco que la base no protege de perder el disco ni el VPS. El
-script ejecuta `/etc/zia-console/backup-remoto.sh` pasándole la ruta del volcado recién
+script ejecuta `/etc/auxiliar-contable/backup-remoto.sh` pasándole la ruta del volcado recién
 hecho. Mientras ese gancho no exista, cada ejecución lo avisa en el log.
 
 El gancho de este repo (`backup-remoto.sh`) sube a **Cloudflare R2 con restic**.
 
 | Archivo | Destino en el servidor |
 |---|---|
-| `backup-remoto.sh` | `/etc/zia-console/` (modo **700**, root) |
-| `backup-remoto.env.example` | `/etc/zia-console/backup-remoto.env` (modo **600**), con los valores reales |
+| `backup-remoto.sh` | `/etc/auxiliar-contable/` (modo **700**, root) |
+| `backup-remoto.env.example` | `/etc/auxiliar-contable/backup-remoto.env` (modo **600**), con los valores reales |
 
 Hace falta `restic` instalado (`apt-get install restic`).
 
@@ -263,7 +268,7 @@ máquina, perderla deja copias que nadie puede descifrar — justo el escenario 
 protegen. Va también en un gestor de contraseñas.
 
 ⚠️ **La caché de restic va en `/var/cache/restic`, declarada en `ReadWritePaths` de la
-unidad.** `zia-console-backup.service` corre con `ProtectHome=true`, así que `/root` no
+unidad.** `auxiliar-contable-backup.service` corre con `ProtectHome=true`, así que `/root` no
 existe para el proceso y ahí es donde restic la pondría por defecto. Sin esa línea el
 gancho falla **solo** cuando lo lanza systemd: probándolo a mano funciona, porque ahí
 `/root` sí está.
@@ -271,7 +276,7 @@ gancho falla **solo** cuando lo lanza systemd: probándolo a mano funciona, porq
 Mirar el destino a mano:
 
 ```bash
-set -a; . /etc/zia-console/backup-remoto.env; set +a
+set -a; . /etc/auxiliar-contable/backup-remoto.env; set +a
 export RESTIC_REPOSITORY="s3:https://$R2_ACCOUNT_ID.r2.cloudflarestorage.com/$R2_BUCKET"
 export RESTIC_CACHE_DIR=/var/cache/restic
 restic snapshots          # qué hay subido
@@ -281,45 +286,18 @@ restic check              # ¿está sano el repositorio?
 ## Comprobaciones
 
 ```bash
-systemctl status zia-console
-journalctl -u zia-console -f          # logs en vivo
-journalctl -u zia-console-migrator -n 50
-curl -s localhost:5010/health-status
-systemctl list-timers zia-console-backup.timer
+systemctl status auxiliar-contable
+journalctl -u auxiliar-contable -f          # logs en vivo
+journalctl -u auxiliar-contable-migrator -n 50
+curl -s localhost:5030/health-status
+systemctl list-timers auxiliar-contable-backup.timer
 ```
-
-## Nodos de estación: publicar versiones
-
-Los paquetes del nodo viven en `/srv/zia-console/nodo/<versión>/` (lo crea `setup-servidor.sh`).
-En `/etc/zia-console/env`:
-
-```
-Nodos__CarpetaDePublicaciones=/srv/zia-console/nodo
-```
-
-Desde la máquina de desarrollo:
-
-```bash
-deploy/nodo/empaquetar.sh 1.0.0 "Notas de la versión"   # compila Linux y Windows, firma
-deploy/nodo/publicar.sh 1.0.0 deploy@servidor            # la sube
-```
-
-Después, en la consola, **Nodos y licencias → Versiones → versión estable** (solo Developer). Sin
-versión estable el instalador no tiene qué bajar.
-
-Los escritorios remotos (MeshCentral) se configuran aparte, sin desplegar desde aquí:
-[`docs/escritorios-remotos.md`](../docs/escritorios-remotos.md).
-
-⚠️ La llave de firma (`~/.igas/firma/llave-privada.pem`) se genera la primera vez y NO entra al
-repositorio. Guarda una copia fuera de la máquina: los nodos instalados solo aceptan paquetes
-firmados con ella; si se pierde, hay que reinstalar todas las estaciones.
-
-El usuario `deploy` tiene que poder escribir en `/srv/zia-console/nodo`
-(`sudo chown -R deploy /srv/zia-console/nodo`).
 
 ## Cloudflare delante de *.ziacentro.mx (solo tráfico desde Cloudflare)
 
-ziacentro.mx, www, console y api están proxificados por Cloudflare (SSL Full strict). En el origen:
+Todo ziacentro.mx (incluidos `contable` y `api-contable`) va proxificado por Cloudflare (SSL Full
+strict). Lo de abajo es del SERVIDOR: lo instaló y lo mantiene ZIA-Console; este repo solo incluye los
+snippets en su sitio nginx. En el origen:
 
 - `/etc/nginx/conf.d/cloudflare-geo.conf` (generado): `geo $realip_remote_addr $desde_cloudflare` con los rangos oficiales de Cloudflare + 127.0.0.1/::1. Solo define una variable.
 - `/etc/nginx/snippets/cloudflare-realip.conf` (generado): `set_real_ip_from` + `real_ip_header CF-Connecting-IP`. Se incluye **solo** en los `server{}` de *.ziacentro.mx, así `$remote_addr`, los logs, `limit_req` y `X-Real-IP`/`X-Forwarded-For` hacia los backends llevan la IP real del visitante.

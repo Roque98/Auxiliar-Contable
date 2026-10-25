@@ -2,7 +2,7 @@
 description: Audita todos los .sql del repo buscando concatenación, parámetros mal usados y queries sin test.
 ---
 
-Audita todos los archivos `.sql` bajo `IgasConsole/src`:
+Audita todos los archivos `.sql` bajo `AuxiliarContable/src`:
 
 1. **Concatenación**: reporta cualquier `.sql` (o construcción de SQL en C#) que
    arme el string con variables en vez de parámetros.

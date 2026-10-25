@@ -7,7 +7,7 @@
 Los archivos se guardan con el sistema de **BLOB Storing de ABP**, proveedor
 **Database** (tablas `AbpBlobs` / `AbpBlobContainers`, ya en la migración `Initial`).
 
-- El proveedor va **declarado explícitamente** en `IgasConsoleDomainModule`
+- El proveedor va **declarado explícitamente** en `AuxiliarContableDomainModule`
   (`options.Containers.ConfigureDefault(c => c.UseDatabase())`) aunque
   `BlobStoringDatabaseDomainModule` lo elija solo: ese automatismo solo actúa *si nadie
   ha configurado un proveedor*, así que el día que se añada otro (S3, disco…) dejaría de
@@ -57,7 +57,7 @@ Los archivos se guardan con el sistema de **BLOB Storing de ABP**, proveedor
 ## 6.05 Claves de API
 
 Acceso máquina a máquina sin login interactivo: cabecera `X-Api-Key`. Pantalla en
-`/api-keys`, permiso `IgasConsole.ApiKeys`.
+`/api-keys`, permiso `AuxiliarContable.ApiKeys`.
 
 - **Una clave autentica COMO un usuario y hereda sus permisos.** Se descartó darle permisos
   propios: un segundo sistema de autorización en paralelo acaba divergiendo del primero
@@ -87,8 +87,8 @@ Acceso máquina a máquina sin login interactivo: cabecera `X-Api-Key`. Pantalla
 
 ## 6.15 Seguridad: bloqueo de IPs
 
-**Módulo aparte de Monitoring** (`Security/` en cada capa, namespace `IgasConsole.Security`,
-pantalla propia en `/security`, permisos `IgasConsole.Security.BlockedIps` y `.Manage`). Mirar
+**Módulo aparte de Monitoring** (`Security/` en cada capa, namespace `AuxiliarContable.Security`,
+pantalla propia en `/security`, permisos `AuxiliarContable.Security.BlockedIps` y `.Manage`). Mirar
 un gráfico de CPU y dejar a alguien fuera de la aplicación no se parecen en nada, y bajo un
 permiso común no se podía dar lo uno sin lo otro.
 
@@ -171,7 +171,7 @@ la señal de volumen se autolimita dentro con `_ultimoVolumenUtc`. Coste: un `GR
 
 `AbpSecurityLogs` la llena ABP **sola desde el primer día** —inicios de sesión correctos y
 fallidos, bloqueos, cambios de contraseña, segundo factor— y hasta ahora no había forma de
-verla. Segunda sección de `/security`, permiso propio `IgasConsole.Security.Logs`: ver quién
+verla. Segunda sección de `/security`, permiso propio `AuxiliarContable.Security.Logs`: ver quién
 intentó entrar es lo más sensible del panel.
 
 - Aquí **sí basta el repositorio de ABP**: `IIdentitySecurityLogRepository` trae
@@ -206,7 +206,7 @@ intentó entrar es lo más sensible del panel.
 Qué campo cambió y de qué valor a cuál. Las tablas (`AbpEntityChanges` /
 `AbpEntityPropertyChanges`) estaban desde la migración inicial sin nadie que las llenara:
 lo que faltaba era **declarar qué entidades rastrear**. Mismo permiso que el registro de
-peticiones (`IgasConsole.AuditLogs`) — las dos cosas son el rastro de personas.
+peticiones (`AuxiliarContable.AuditLogs`) — las dos cosas son el rastro de personas.
 
 - ⚠️ **La lista de entidades es EXPLÍCITA, nunca `AddAllEntities()`.** Seleccionar todo
   sería catastrófico aquí: `ServerMetric` inserta **una fila por minuto**, y

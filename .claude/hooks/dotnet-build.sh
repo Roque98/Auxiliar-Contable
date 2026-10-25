@@ -4,9 +4,9 @@
 input=$(cat)
 echo "$input" | grep -q '\.cs' || exit 0
 
-cd "${CLAUDE_PROJECT_DIR}/IgasConsole" || exit 0
+cd "${CLAUDE_PROJECT_DIR}/AuxiliarContable" || exit 0
 
-if ! dotnet build IgasConsole.slnx -c Debug --nologo -v quiet 2>&1; then
+if ! dotnet build AuxiliarContable.slnx -c Debug --nologo -v quiet 2>&1; then
   echo "dotnet build FALLÓ tras editar código C#. Corrige los errores antes de continuar." >&2
   echo "Si es un tipo/método de ABP, verifícalo en refs/abp (Regla Cero) — puede no existir." >&2
   exit 2

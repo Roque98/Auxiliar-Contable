@@ -1,0 +1,336 @@
+/* ===========================================================================
+   DESIGN SYSTEM DE AUXILIAR CONTABLE — PÁGINAS DEL SERVIDOR (login, recuperar contraseña,
+   segundo factor, consentimiento)
+
+   Son páginas MVC del tema LeptonX Lite: no comparten hoja de estilos con el SPA de
+   Angular. Aquí se repiten los tokens imprescindibles con los MISMOS valores que
+   `angular/src/styles/auxiliar/_tokens.scss` —si cambia uno, cambian los dos— y se
+   rehace la pantalla como la del prototipo (el de ZIA-Console).
+
+   El acento y el texto que va encima los fija por marca `BrandingStyleViewComponent`
+   (sobrescribe `--ig-acento` y `--ig-sobre-acento`).
+
+   Se hace con CSS y NO sustituyendo las vistas: la pantalla sigue siendo la de ABP
+   (formulario, validación, segundo factor) y se actualiza con el módulo.
+   =========================================================================== */
+
+:root {
+  --ig-blanco: #ffffff;
+  --ig-fondo: #fafafb;
+  --ig-gris-fondo: #f2f3f5;
+  --ig-gris-claro: #e3e5e8;
+  --ig-gris-medio: #c9ccd1;
+  --ig-gris: #8a8f98;
+  --ig-texto-secundario: #666d75;
+  --ig-tinta-suave: #4a4f57;
+  --ig-tinta: #23262b;
+  --ig-acento: #2c5282;
+  --ig-sobre-acento: #ffffff;
+  --ig-acento-suave: color-mix(in srgb, var(--ig-acento) 20%, #ffffff);
+  --ig-acento-hover: color-mix(in srgb, var(--ig-acento) 85%, #000000);
+  --ig-error: #c0392b;
+  --ig-error-suave: #fbe9e7;
+  --ig-error-texto: #8a2a1f;
+  --ig-exito-suave: #e3f4eb;
+  --ig-exito-texto: #14603d;
+  --ig-fuente: 'Sora', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --ig-radio: 10px;
+
+  --lpx-logo: url('/images/logo/marca/isotipo.png');
+  --lpx-logo-icon: url('/images/logo/marca/isotipo.png');
+  --bs-body-font-family: var(--ig-fuente);
+  --bs-body-color: var(--ig-tinta);
+  --bs-body-bg: var(--ig-blanco);
+  --bs-secondary-color: var(--ig-texto-secundario);
+  --bs-link-color: var(--ig-tinta);
+  --bs-link-hover-color: var(--ig-tinta);
+}
+
+/* --- El lienzo: blanco, con las líneas de marca arriba a la derecha ------- */
+body.abp-account-layout {
+  background: var(--ig-blanco) !important;
+  color: var(--ig-tinta);
+  font-family: var(--ig-fuente);
+  font-size: 15px;
+  -webkit-font-smoothing: antialiased;
+}
+
+body.abp-account-layout::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 300px;
+  height: 200px;
+  pointer-events: none;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 200'%3E%3Cg fill='none' stroke-linecap='round'%3E%3Cpath d='M110 -20 L330 200' stroke='%232C5282' stroke-width='10'/%3E%3Cpath d='M150 -20 L330 160' stroke='%23E3E5E8' stroke-width='7'/%3E%3Cpath d='M185 -20 L330 125' stroke='%238A8F98' stroke-width='2'/%3E%3Cpath d='M215 -20 L330 95' stroke='%232C5282' stroke-width='3'/%3E%3C/g%3E%3C/svg%3E") no-repeat top right / contain;
+}
+
+.abp-account-layout .lpx-scroll-container,
+.abp-account-layout #lpx-wrapper,
+.abp-account-layout .lpx-content-container,
+.abp-account-layout .lpx-content {
+  background: transparent !important;
+}
+
+.abp-account-layout .lpx-content .container > .row > [class*='col-'] {
+  max-width: 400px;
+  flex: 0 0 auto;
+  width: 100%;
+  margin: 6vh auto 40px;
+  padding: 0 18px;
+  text-align: center;
+}
+
+/* --- Marca: logo grande, logotipo y las dos rayas ------------------------ */
+.abp-account-layout .lpx-logo-container {
+  margin-bottom: 0;
+}
+
+.abp-account-layout .lpx-login-logo.lpx-brand-logo {
+  width: 76px !important;
+  height: 76px !important;
+  background-image: var(--lpx-logo) !important;
+  background-size: contain !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+}
+
+/* El nombre de la app va en texto, con la tipografía y la tinta de la consola. */
+.abp-account-layout .lpx-login-name.lpx-brand-name {
+  margin-top: 14px;
+  color: var(--ig-tinta) !important;
+  font-family: var(--ig-fuente);
+  font-weight: 700;
+}
+
+.abp-account-layout .lpx-logo-container::after {
+  content: '';
+  display: block;
+  width: 66px;
+  height: 4px;
+  margin: 20px auto 26px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--ig-acento) 0 44px, transparent 44px 50px, var(--ig-gris) 50px 66px);
+}
+
+/* El selector de idioma (la aplicación es en español) ocupaba una tarjeta entera. */
+.abp-account-layout .lpx-content .card.mb-3 {
+  display: none !important;
+}
+
+/* --- La tarjeta del formulario, sin tarjeta ------------------------------ */
+.abp-account-layout .lpx-content .card {
+  background: transparent;
+  border: 0;
+  box-shadow: none !important;
+  margin: 0 !important;
+}
+
+.abp-account-layout .lpx-content .card-body {
+  padding: 0 !important;
+  text-align: left;
+}
+
+.abp-account-layout .card-body > h4,
+.abp-account-layout .card-body > h2,
+.abp-account-layout .card-body > h1 {
+  text-align: center;
+  font-size: 1.05rem;
+  font-weight: 500;
+  color: var(--ig-texto-secundario);
+  margin: 0 0 24px;
+  letter-spacing: 0;
+}
+
+.abp-account-layout .card-body > p,
+.abp-account-layout .card-body form > p {
+  color: var(--ig-tinta-suave);
+}
+
+.abp-account-layout form.mt-4 {
+  margin-top: 0 !important;
+}
+
+/* El pie del prototipo, debajo del formulario de login. */
+.abp-account-layout .card-body:has(#LoginInput_Password)::after {
+  content: '¿No tienes cuenta? Pide acceso a tu administrador.';
+  display: block;
+  margin-top: 26px;
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--ig-texto-secundario);
+}
+
+/* --- Campos ------------------------------------------------------------ */
+.abp-account-layout .form-label {
+  font-weight: 600;
+  font-size: 0.85rem;
+  margin-bottom: 6px;
+  color: var(--ig-tinta);
+}
+
+.abp-account-layout .form-control,
+.abp-account-layout .form-select {
+  padding: 11px 13px;
+  border: 1.5px solid var(--ig-gris-claro);
+  border-radius: var(--ig-radio);
+  background-color: var(--ig-blanco);
+  color: var(--ig-tinta);
+  font-family: var(--ig-fuente);
+  font-size: 15px;
+  box-shadow: none;
+}
+
+.abp-account-layout .form-control:focus,
+.abp-account-layout .form-select:focus {
+  outline: none;
+  border-color: var(--ig-acento);
+  box-shadow: 0 0 0 4px var(--ig-acento-suave);
+}
+
+.abp-account-layout .form-control.input-validation-error {
+  border-color: var(--ig-error);
+}
+
+/* Contraseña con el botón de mostrar DENTRO del campo, como en el prototipo. */
+.abp-account-layout .input-group {
+  position: relative;
+}
+
+.abp-account-layout .input-group > .form-control {
+  border-radius: var(--ig-radio) !important;
+  padding-right: 48px;
+}
+
+.abp-account-layout #PasswordVisibilityButton {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 5;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0 !important;
+  border-radius: 8px !important;
+  background: transparent !important;
+  color: var(--ig-gris) !important;
+  box-shadow: none !important;
+}
+
+.abp-account-layout #PasswordVisibilityButton:hover {
+  background: var(--ig-gris-fondo) !important;
+  color: var(--ig-tinta) !important;
+}
+
+.abp-account-layout .text-danger,
+.abp-account-layout .field-validation-error {
+  color: var(--ig-error) !important;
+  font-size: 0.8rem;
+}
+
+.abp-account-layout .text-muted.small {
+  color: var(--ig-texto-secundario) !important;
+  font-size: 0.78rem;
+}
+
+.abp-account-layout .form-check-input {
+  width: 17px;
+  height: 17px;
+  margin-top: 0.2em;
+  border: 1.5px solid var(--ig-gris-medio);
+}
+
+.abp-account-layout .form-check-input:checked {
+  background-color: var(--ig-tinta);
+  border-color: var(--ig-tinta);
+}
+
+.abp-account-layout .form-check-label,
+.abp-account-layout .row a {
+  font-size: 0.85rem;
+}
+
+.abp-account-layout a {
+  color: var(--ig-tinta);
+  text-decoration: underline;
+  text-decoration-color: var(--ig-acento);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+}
+
+/* --- Botones ----------------------------------------------------------- */
+.abp-account-layout .btn {
+  font-family: var(--ig-fuente);
+  font-weight: 600;
+  border-radius: var(--ig-radio);
+}
+
+.abp-account-layout .btn-primary {
+  background: var(--ig-acento) !important;
+  color: var(--ig-sobre-acento) !important;
+  border: 0 !important;
+  box-shadow: 0 2px 0 var(--ig-gris) !important;
+  padding: 14px;
+  font-size: 1rem;
+}
+
+.abp-account-layout .btn-primary:hover,
+.abp-account-layout .btn-primary:focus-visible {
+  background: var(--ig-acento-hover) !important;
+}
+
+.abp-account-layout .btn-primary:active {
+  transform: translateY(2px);
+  box-shadow: none !important;
+}
+
+.abp-account-layout .btn-secondary,
+.abp-account-layout .btn-outline-primary,
+.abp-account-layout .btn-light {
+  background: var(--ig-blanco) !important;
+  color: var(--ig-tinta) !important;
+  border: 1.5px solid var(--ig-gris-claro) !important;
+}
+
+.abp-account-layout .btn-lg.mt-3 {
+  margin-top: 8px !important;
+}
+
+/* --- Alertas (error de credenciales, enlace enviado) --------------------- */
+.abp-account-layout .alert {
+  border: 0;
+  border-radius: var(--ig-radio);
+  padding: 14px 16px;
+  font-size: 0.88rem;
+  text-align: left;
+}
+
+.abp-account-layout .alert-danger {
+  background: var(--ig-error-suave);
+  color: var(--ig-error-texto);
+}
+
+.abp-account-layout .alert-success,
+.abp-account-layout .alert-info {
+  background: var(--ig-exito-suave);
+  color: var(--ig-exito-texto);
+}
+
+:focus-visible {
+  outline: 2px solid var(--ig-tinta);
+  outline-offset: 2px;
+}
+
+@media (max-width: 760px) {
+  body.abp-account-layout::before {
+    width: 180px;
+    height: 120px;
+    opacity: 0.7;
+  }
+
+  .abp-account-layout .lpx-content .container > .row > [class*='col-'] {
+    margin-top: 4vh;
+  }
+}

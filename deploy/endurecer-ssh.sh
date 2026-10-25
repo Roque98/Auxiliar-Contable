@@ -55,7 +55,7 @@ DEBIAN_FRONTEND=noninteractive apt-get install -y fail2ban >/dev/null
 # dejarla seguir golpeando la API para siempre. Un 401/403/404 aislado es el ruido
 # normal de cualquier servidor publico (mismo criterio que MetricsCollectorWorker.cs
 # al decidir que NO avisa por esos codigos) y banear por eso generaria falsos positivos.
-cat > /etc/fail2ban/filter.d/zia-console-abuso.conf <<'FILTEREOF'
+cat > /etc/fail2ban/filter.d/auxiliar-contable-abuso.conf <<'FILTEREOF'
 [Definition]
 failregex = ^<HOST> -.*"(?:GET|POST|PUT|DELETE|PATCH|HEAD|OPTIONS) \S+ HTTP/\d\.\d" 429
 ignoreregex =
@@ -74,13 +74,13 @@ ignoreip = 127.0.0.1/8 ::1
 [sshd]
 enabled = true
 
-[zia-console-abuso]
+[auxiliar-contable-abuso]
 enabled  = true
 # ESTE jail SI lee un fichero (el access.log de nginx), no el journal: el backend
 # systemd del DEFAULT es solo para sshd. Sin este override, fail2ban intentaria
 # buscar un journalmatch que no existe y esta jail nunca vigilaria nada, en silencio.
 backend  = auto
-filter   = zia-console-abuso
+filter   = auxiliar-contable-abuso
 logpath  = /var/log/nginx/access.log
 # 3 y no 4 (el maxretry del DEFAULT): a esto ya lo filtro el rate limiter de la API,
 # asi que cada 429 que llega aqui es una IP que YA fue avisada y sigue insistiendo.
@@ -107,7 +107,7 @@ Si algo fuera mal, Contabo (y casi cualquier proveedor) da consola web por
 VNC, que no pasa por SSH.
 
   fail2ban-client status sshd                # a quien ha baneado por SSH
-  fail2ban-client status zia-console-abuso  # a quien ha baneado por abusar de la API
+  fail2ban-client status auxiliar-contable-abuso  # a quien ha baneado por abusar de la API
   fail2ban-client set sshd unbanip 1.2.3.4
 =========================================================================
 FIN

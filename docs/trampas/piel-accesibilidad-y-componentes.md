@@ -207,7 +207,7 @@ con los permisos de un módulo. Al atar el catálogo a su feature se le puso ade
   `Tenant` —serían permisos sobre algo que no puede contratar jamás—; si se le ofrece, van
   `Both`. Escrito como «siempre Tenant», el guardián prohibía el caso correcto.
 - ⚠️ **Y el barrido saltaba el permiso PADRE.** Los prefijos llevan punto final
-  (`IgasConsole.Products.`) y el padre se llama `IgasConsole.Products`, sin él: un `StartsWith` a
+  (`AuxiliarContable.Products.`) y el padre se llama `AuxiliarContable.Products`, sin él: un `StartsWith` a
   secas revisa los hijos y **no mira al padre**. Se vio saboteando —quitándole el
   `RequireFeatures` al padre— y comprobando que el test pasaba tan tranquilo, que es la peor
   forma de fallar que tiene un guardián. **Sabotear en los dos sentidos es lo que lo destapó;
