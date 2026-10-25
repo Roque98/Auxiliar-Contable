@@ -1,0 +1,22 @@
+# Navegadores a los que apunta la aplicación.
+#
+# ⚠️ Existe porque SIN ESTE ARCHIVO no se podía ejecutar ni un test. Browserslist cae a su
+# consulta por defecto (`> 0.5%, last 2 versions, Firefox ESR, not dead`), que arrastra
+# `and_qq 14.9` y `and_uc 15.5` —dos navegadores Android que no soportan `await` de nivel
+# superior—. El arrancador de pruebas de Angular lo usa (`await import('zone.js/testing')`),
+# así que el build de test fallaba entero con:
+#
+#   ERROR: Top-level await is not available in the configured target environment
+#
+# El mensaje habla del entorno destino y no menciona browserslist ni el archivo que falta,
+# así que manda a buscar en la dirección equivocada.
+#
+# Esta es la línea base que documenta Angular como soportada. Ojo: también afecta al build
+# de producción, y para bien — deja de transpilar y de meter polyfills para navegadores que
+# nadie va a usar para abrir un panel de administración.
+last 2 Chrome versions
+last 2 Edge versions
+last 2 Firefox versions
+Firefox ESR
+last 2 Safari major versions
+last 2 iOS major versions

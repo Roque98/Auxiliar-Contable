@@ -1,0 +1,93 @@
+<div class="db-explorer">
+  <h2>{{ '::Menu:DbExplorer' | abpLocalization }}<small class="text-muted">{{ '::DbExplorer:DevOnly' | abpLocalization }}</small></h2>
+  <p class="text-muted">{{ '::DbExplorer:Intro' | abpLocalization }}</p>
+
+  <div class="form-group mb-3" style="max-width: 480px">
+    <label>{{ '::DbExplorer:Table' | abpLocalization }}</label>
+    <select class="form-select" (change)="onTableChange($event)">
+      <option value="">{{ '::DbExplorer:PickTable' | abpLocalization }}</option>
+      @for (t of tables(); track t.schema + '.' + t.name) {
+        <option [value]="t.schema + '.' + t.name">
+          {{ t.schema }}.{{ t.name }}@if (!t.isEditable) { <span>{{ '::DbExplorer:ReadOnly' | abpLocalization }}</span> }
+        </option>
+      }
+    </select>
+  </div>
+
+  @if (schema(); as s) {
+    <div class="d-flex align-items-center gap-2 mb-2">
+      <button class="btn btn-sm btn-outline-secondary" (click)="prevPage()" [disabled]="skipCount() === 0">{{ '::DbExplorer:Prev' | abpLocalization }}</button>
+      <span class="text-muted">
+        {{ skipCount() + 1 }}–{{ skipCount() + rows().length }} de {{ totalCount() }}
+      </span>
+      <button class="btn btn-sm btn-outline-secondary" (click)="nextPage()"
+              [disabled]="skipCount() + pageSize >= totalCount()">{{ '::DbExplorer:Next' | abpLocalization }}</button>
+
+      @if (s.isEditable) {
+        <button class="btn btn-sm btn-primary ms-auto" (click)="startInsert()">{{ '::DbExplorer:NewRow' | abpLocalization }}</button>
+      } @else {
+        <span class="badge bg-secondary ms-auto">{{ '::DbExplorer:ReadOnly2' | abpLocalization }}</span>
+      }
+    </div>
+
+    <div class="table-responsive">
+      <table class="table table-sm table-striped table-bordered align-middle">
+        <thead>
+          <tr>
+            @for (c of s.columns; track c.name) {
+              <th>
+                {{ c.name }}
+                @if (c.isPrimaryKey) { <span title="Primary key">🔑</span> }
+                <div class="col-type">{{ c.dataType }}</div>
+              </th>
+            }
+            @if (s.isEditable) { <th>{{ '::Common:Actions' | abpLocalization }}</th> }
+          </tr>
+        </thead>
+        <tbody>
+          @for (row of rows(); track $index) {
+            <tr>
+              @for (c of s.columns; track c.name) {
+                <td class="cell">{{ display(row[c.name]) }}</td>
+              }
+              @if (s.isEditable) {
+                <td class="text-nowrap">
+                  <button class="btn btn-sm btn-outline-primary" (click)="startEdit(row)">{{ '::Common:Edit' | abpLocalization }}</button>
+                  <button class="btn btn-sm btn-outline-danger" (click)="deleteRow(row)">{{ '::Common:Delete' | abpLocalization }}</button>
+                </td>
+              }
+            </tr>
+          } @empty {
+            <tr><td [attr.colspan]="s.columns.length + 1" class="text-center text-muted">{{ '::DbExplorer:NoRows' | abpLocalization }}</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    @if (editMode(); as mode) {
+      <div class="card edit-panel">
+        <div class="card-body">
+          <h5 class="card-title">{{ mode === 'insert' ? 'Nueva fila' : 'Editar fila' }}</h5>
+          @for (c of s.columns; track c.name) {
+            <div class="form-group mb-2">
+              <label class="form-label mb-0">
+                {{ c.name }}
+                <small class="text-muted">
+                  {{ c.dataType }}@if (c.isPrimaryKey) { <span>, PK</span> }@if (c.isNullable) { <span>{{ '::DbExplorer:Nullable' | abpLocalization }}</span> }@if (c.isReadOnly) { <span>{{ '::DbExplorer:ReadOnly3' | abpLocalization }}</span> }
+                </small>
+              </label>
+              <input class="form-control form-control-sm"
+                     [(ngModel)]="editModel[c.name]"
+                     [disabled]="isDisabled(c)"
+                     [placeholder]="c.isNullable ? '(vacío = null)' : ''" />
+            </div>
+          }
+          <div class="mt-2">
+            <button class="btn btn-sm btn-primary" (click)="save()">{{ '::Common:Save' | abpLocalization }}</button>
+            <button class="btn btn-sm btn-secondary" (click)="cancelEdit()">{{ '::Common:Cancel' | abpLocalization }}</button>
+          </div>
+        </div>
+      </div>
+    }
+  }
+</div>

@@ -1,0 +1,169 @@
+/* Estilos de las dos tablas de auditoria. Vienen de `metrics.component.scss`, donde
+   convivian con los graficos: al separar las pantallas se traen solo las reglas que estas
+   secciones usan de verdad.
+
+   ⚠️ La paleta (`--texto-secundario`, `--rejilla`, `--superficie`) la definia `.viz-root`,
+   que era el contenedor de metricas. Aqui se redeclara para esta pantalla: sin ella todas
+   las variables caen a su valor de respaldo y la tabla pierde los bordes. */
+.aud-root {
+  --superficie: var(--ig-blanco, #fcfcfb);
+  --texto-primario: var(--bs-body-color, #0b0b0b);
+  --texto-secundario: var(--bs-secondary-color, #666d75);
+  --rejilla: var(--ig-gris-claro, #e3e3df);
+  --estado-critico: #cd3a3a;
+  --serie-1: #2770c9;
+
+  padding: 1rem 0;
+  color: var(--texto-primario);
+}
+
+
+/* --- Tabla --- */
+.tabla-envoltura {
+  /* El contenido ancho se desplaza dentro de su caja; la página nunca de lado. */
+  overflow-x: auto;
+}
+
+/* --- Tabla --- */
+.tabla-envoltura {
+  /* El contenido ancho se desplaza dentro de su caja; la página nunca de lado. */
+  overflow-x: auto;
+}
+
+.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- Tráfico bloqueado --- */
+.bloqueados {
+  margin-top: 1.5rem;
+}
+
+.subtitulo {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1rem;
+  margin: 0 0 0.5rem;
+  color: var(--estado-critico);
+
+  /* El registro de peticiones no es una alerta: no debe ir en rojo. */
+  &.neutro {
+    color: var(--texto-primario);
+  }
+}
+
+/* --- Registro de peticiones --- */
+.peticiones {
+  margin-top: 1.5rem;
+}
+
+/* --- Registro de peticiones --- */
+.peticiones {
+  margin-top: 1.5rem;
+}
+
+.peticiones-cabecera {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.peticiones-cabecera {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.filtros-peticiones {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+
+  input {
+    width: 11rem;
+  }
+}
+
+/* IP pulsable de la tabla de bloqueados. Botón y no <a>: no navega a ninguna parte,
+   filtra la tabla de abajo. */
+.enlace-ip {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--serie-1);
+  text-decoration: underline;
+  cursor: pointer;
+  font: inherit;
+}
+
+td.critico {
+  color: var(--estado-critico);
+  font-weight: 600;
+}
+
+.endpoint {
+  font-family: var(--bs-font-monospace, monospace);
+  font-size: 0.85rem;
+}
+
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.ayuda {
+  font-size: 0.78rem;
+  color: var(--texto-secundario);
+}
+
+// --- Historial de cambios ------------------------------------------------------
+.filtros-registro {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  margin-bottom: 0.5rem;
+
+  select,
+  input {
+    max-width: 12rem;
+  }
+}
+
+// ⚠️ Sin `opacity`. La tenía a 0.75 y eso destruye el contraste sin que se vea en el
+// CSS: el color resultante no está escrito en ninguna parte —es el de debajo mezclado
+// con el fondo— y axe lo midió en 2,99 sobre el 4,5 que exige AA. Un color secundario
+// declarado se puede comprobar; una opacidad hay que renderizarla para saber qué da.
+.id-corto {
+  font-size: 0.78rem;
+  color: var(--bs-secondary-color, #666d75);
+}
+
+.paginacion {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-top: 0.6rem;
+}
+
+.cuantos {
+  font-size: 0.85rem;
+  color: var(--bs-secondary-color, #6c757d);
+}
+
+
+.pie {
+  font-size: 0.8rem;
+  color: var(--texto-secundario);
+  margin: 0.25rem 0 1rem;
+}

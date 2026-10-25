@@ -1,0 +1,27 @@
+<Project>
+
+  <!-- PUERTAS DE CALIDAD (Fase 3) — aplican a TODOS los proyectos de la solución.
+       Convenciones ejecutables: una violación rompe el build, no es solo un aviso. -->
+  <PropertyGroup>
+    <!-- Los warnings del compilador y de los analizadores fallan el build. -->
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+
+    <!-- Nullable reference types activado en toda la solución. -->
+    <Nullable>enable</Nullable>
+
+    <!-- Versión de lenguaje fijada. -->
+    <LangVersion>latest</LangVersion>
+
+    <!-- Los estilos del .editorconfig se evalúan en el build (no solo en el IDE). -->
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+
+    <!-- Analizadores .NET al día. Nivel "Default" (curado y coherente): junto con
+         TreatWarningsAsErrors, cualquier hallazgo del analizador rompe el build.
+         Para endurecer aún más, sube a "Recommended"/"All" y limpia el código de
+         plantilla de ABP (IgasConsoleDbMigrationService, ConsoleTestApp) que no cumple
+         reglas de perfilado como CA1848/CA2254. -->
+    <AnalysisLevel>latest</AnalysisLevel>
+    <AnalysisMode>Default</AnalysisMode>
+  </PropertyGroup>
+
+</Project>

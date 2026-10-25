@@ -1,0 +1,27 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <Import Project="..\..\common.props" />
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <RootNamespace>IgasConsole</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\IgasConsole.Domain.Shared\IgasConsole.Domain.Shared.csproj" />
+  </ItemGroup>
+  
+  <ItemGroup>
+    <!-- Solo por [BackgroundJobName] en BackgroundJobs/JobArgs.cs: los ARGUMENTOS de los
+         trabajos viven aqui (son un contrato) aunque su implementacion este en el Host. -->
+    <PackageReference Include="Volo.Abp.BackgroundJobs.Abstractions" />
+    <PackageReference Include="Volo.Abp.PermissionManagement.Application.Contracts" />
+    <PackageReference Include="Volo.Abp.FeatureManagement.Application.Contracts" />
+    <PackageReference Include="Volo.Abp.SettingManagement.Application.Contracts" />
+    <PackageReference Include="Volo.Abp.Identity.Application.Contracts" />
+    <PackageReference Include="Volo.Abp.Account.Application.Contracts" />
+    <PackageReference Include="Volo.Abp.TenantManagement.Application.Contracts" />
+  </ItemGroup>
+
+</Project>

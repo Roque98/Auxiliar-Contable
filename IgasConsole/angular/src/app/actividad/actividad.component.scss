@@ -1,0 +1,190 @@
+/* Solo la composición de esta pantalla: las piezas (`.ig-*`) son del design system. */
+
+.ac-filtros {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ig-esp-3);
+  margin-bottom: var(--ig-esp-4);
+}
+
+// Las pestañas no se encogen para compartir fila: si no caben, los selectores bajan.
+.ac-filtros .ig-pestanas {
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  margin-bottom: 0;
+}
+
+// Cinco pestañas: con el relleno normal, en tablet «Personas» bajaba sola a otra fila.
+.ac-filtros .ig-pestana {
+  padding-inline: 12px;
+}
+
+// Un <select> mide lo que su opción más larga (un nombre completo con su usuario): sin
+// ancho propio y min-width 0, empujaba el panel fuera de la pantalla en móvil.
+.ac-selects {
+  display: flex;
+  flex-wrap: wrap;
+  flex: 1 1 320px;
+  justify-content: flex-end;
+  min-width: 0;
+  max-width: 100%;
+  gap: var(--ig-esp-2);
+
+  .ig-control {
+    width: auto;
+    min-width: 0;
+    max-width: 100%;
+    flex: 0 1 260px;
+  }
+}
+
+.ac-tipo {
+  display: none;
+}
+
+.ac-dia {
+  & + & {
+    margin-top: var(--ig-esp-5);
+  }
+
+  h2 {
+    margin: 0 0 var(--ig-esp-2);
+    font-size: var(--ig-texto-sm);
+    font-weight: var(--ig-peso-semi);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--ig-texto-secundario);
+  }
+}
+
+.ac-lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.ac-item {
+  display: grid;
+  grid-template-columns: 76px 34px minmax(0, 1fr) auto;
+  align-items: start;
+  gap: var(--ig-esp-3);
+  padding: var(--ig-esp-3) 0;
+  border-bottom: var(--ig-borde);
+}
+
+.ac-hora {
+  padding-top: 8px;
+  font-size: var(--ig-texto-sm);
+  color: var(--ig-texto-secundario);
+  font-variant-numeric: tabular-nums;
+}
+
+.ac-avatar {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--ig-invertido);
+  color: var(--ig-sobre-invertido);
+  font-size: var(--ig-texto-xs);
+  font-weight: var(--ig-peso-fuerte);
+}
+
+.ac-cuerpo {
+  min-width: 0;
+
+  p {
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+}
+
+.ac-org {
+  margin-left: var(--ig-esp-2);
+  padding: 1px 8px;
+  border-radius: var(--ig-radio-pastilla);
+  background: var(--ig-gris-fondo);
+  color: var(--ig-tinta-suave);
+  font-size: var(--ig-texto-xs);
+  font-weight: var(--ig-peso-semi);
+}
+
+.ac-cuerpo .ac-texto {
+  margin-top: 2px;
+  color: var(--ig-tinta-suave);
+
+  .bi {
+    margin-right: var(--ig-esp-1);
+    color: var(--ig-texto-secundario);
+  }
+}
+
+.ac-veces {
+  margin-left: var(--ig-esp-1);
+  padding: 0 6px;
+  border-radius: var(--ig-radio-pastilla);
+  background: var(--ig-acento-suave);
+  color: var(--ig-tinta);
+  font-size: var(--ig-texto-xs);
+  font-weight: var(--ig-peso-fuerte);
+}
+
+.ac-ip {
+  color: var(--ig-texto-secundario);
+  font-size: var(--ig-texto-xs);
+}
+
+.ac-mas {
+  display: flex;
+  justify-content: center;
+  margin-top: var(--ig-esp-4);
+}
+
+@media (max-width: 760px) {
+  .ac-filtros .ig-pestanas {
+    display: none;
+  }
+
+  .ac-selects {
+    flex-basis: 100%;
+    flex-direction: column;
+
+    .ig-control {
+      display: block;
+      flex: none;
+      width: 100%;
+    }
+  }
+
+  .ac-item {
+    row-gap: var(--ig-esp-1);
+  }
+
+  .ac-item {
+    grid-template-columns: 34px minmax(0, 1fr);
+  }
+
+  .ac-avatar {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .ac-cuerpo {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .ac-hora {
+    grid-column: 2;
+    grid-row: 2;
+    padding-top: 0;
+  }
+
+  .ac-abrir {
+    grid-column: 2;
+    justify-self: start;
+  }
+}

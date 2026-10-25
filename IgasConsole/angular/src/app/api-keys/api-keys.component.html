@@ -1,0 +1,95 @@
+<div class="ak-root">
+  <app-cabecera [titulo]="'::Menu:ApiKeys' | abpLocalization">
+    <span descripcion>
+      {{ '::ApiKeys:Intro' | abpLocalization }}
+      Una clave actúa <b>{{ '::ApiKeys:AsYou' | abpLocalization }}</b>: puede hacer todo lo que tú
+      puedes hacer, y no pide {{ '::ApiKeys:WarnAuth' | abpLocalization }}
+    </span>
+  </app-cabecera>
+
+  <app-esqueleto *ngIf="cargando" [filas]="5" [etiqueta]="'::Common:Loading' | abpLocalization" />
+  <div *ngIf="error" class="alert alert-danger">{{ error }}</div>
+
+  <!-- La clave recién creada. Se muestra una sola vez. -->
+  <div *ngIf="claveNueva" class="alert alert-success clave-nueva">
+    <p class="mb-2">
+      <b>{{ '::ApiKeys:CopyNow' | abpLocalization }}</b> Es la única vez que se muestra: el servidor solo guarda un hash
+      {{ '::ApiKeys:WarnOnce' | abpLocalization }}
+    </p>
+    <div class="fila-clave">
+      <code>{{ claveNueva }}</code>
+      <button type="button" class="btn btn-sm btn-outline-secondary" (click)="copiar()">
+        {{ copiada ? 'Copiada' : 'Copiar' }}
+      </button>
+    </div>
+    <p class="ayuda mb-0">{{ '::ApiKeys:SentInHeader' | abpLocalization }} <code>X-Api-Key</code>.
+    </p>
+  </div>
+
+  <div *ngIf="!cargando" class="tarjeta">
+    <h3 class="subtitulo">{{ '::ApiKeys:Create' | abpLocalization }}</h3>
+    <div class="form-clave">
+      <input
+        type="text"
+        class="form-control form-control-sm nombre"
+        placeholder="Para qué es (p. ej. «informe nocturno»)"
+        aria-label="Nombre"
+        [(ngModel)]="nombre" />
+      <input
+        type="number"
+        class="form-control form-control-sm dias"
+        placeholder="Días"
+        aria-label="Días de validez (vacío = no caduca)"
+        title="Vacío = no caduca"
+        min="1"
+        [(ngModel)]="dias" />
+      <button type="button" class="btn btn-sm btn-primary" [disabled]="creando" (click)="crear()">
+        {{ creando ? 'Creando…' : 'Crear' }}
+      </button>
+    </div>
+    <p class="ayuda">
+      {{ '::ApiKeys:ExpiryHint' | abpLocalization }}
+    </p>
+  </div>
+
+  <table *ngIf="claves.length > 0" class="table table-sm table-striped tabla-apilable mt-4">
+    <thead>
+      <tr>
+        <th scope="col">{{ '::Common:Name' | abpLocalization }}</th>
+        <th scope="col">{{ '::ApiKeys:Key' | abpLocalization }}</th>
+        <th scope="col">{{ '::Common:Created' | abpLocalization }}</th>
+        <th scope="col">{{ '::ApiKeys:LastUsed' | abpLocalization }}</th>
+        <th scope="col">{{ '::ApiKeys:Expires' | abpLocalization }}</th>
+        <th scope="col"></th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let k of claves" [class.inactiva]="!k.isUsable">
+        <td data-label="Nombre">{{ k.name }}</td>
+        <td data-label="Clave"><code>{{ k.pista }}…</code></td>
+        <td data-label="Creada">{{ fecha(k.creationTime) }}</td>
+        <!-- Es el dato que se mira antes de revocar una clave de la que ya nadie se acuerda. -->
+        <td data-label="Último uso">{{ fecha(k.lastUsedUtc) }}</td>
+        <td data-label="Caduca">
+          <span *ngIf="k.expiresUtc">{{ fecha(k.expiresUtc) }}</span>
+          <span *ngIf="!k.expiresUtc">{{ '::ApiKeys:NoExpiry' | abpLocalization }}</span>
+          <span *ngIf="k.revokedUtc" class="etiqueta">{{ '::ApiKeys:Revoked' | abpLocalization }}</span>
+          <span *ngIf="!k.isUsable && !k.revokedUtc" class="etiqueta">{{ '::ApiKeys:Expired' | abpLocalization }}</span>
+        </td>
+        <td>
+          <button
+            *ngIf="k.isUsable"
+            type="button"
+            class="btn btn-sm btn-outline-danger"
+            (click)="revocar(k)">
+            {{ '::ApiKeys:Revoke' | abpLocalization }}
+          </button>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+
+  <app-vacio *ngIf="!cargando && !error && claves.length === 0"
+             icono="bi-key"
+             [texto]="'::ApiKeys:Empty' | abpLocalization" />
+</div>

@@ -1,0 +1,71 @@
+<div class="avisos-root">
+  <app-cabecera [titulo]="'::Menu:Notifications' | abpLocalization"
+                [descripcion]="'::Notifications:Intro' | abpLocalization" />
+
+  <div class="acciones-arriba">
+    <button
+      type="button"
+      class="btn btn-sm"
+      [class.btn-primary]="!soloSinLeer"
+      [class.btn-outline-secondary]="soloSinLeer"
+      (click)="filtrar(false)">
+      {{ '::Common:All' | abpLocalization }}
+    </button>
+    <button
+      type="button"
+      class="btn btn-sm"
+      [class.btn-primary]="soloSinLeer"
+      [class.btn-outline-secondary]="!soloSinLeer"
+      (click)="filtrar(true)">
+      {{ '::Notifications:OnlyUnread' | abpLocalization }}
+    </button>
+    <button
+      *ngIf="haySinLeer"
+      type="button"
+      class="btn btn-sm btn-outline-secondary"
+      (click)="marcarTodo()">
+      {{ '::Notifications:MarkAllRead' | abpLocalization }}
+    </button>
+  </div>
+
+  <app-esqueleto *ngIf="cargando" [filas]="5" [etiqueta]="'::Common:Loading' | abpLocalization" />
+  <div *ngIf="error" class="alert alert-danger">{{ error }}</div>
+
+  <ng-container *ngIf="!cargando && !error">
+    <p *ngIf="avisos.length === 0" class="aviso-vacio">
+      {{ soloSinLeer ? 'No tienes avisos sin leer.' : 'No hay avisos.' }}
+    </p>
+
+    <ul class="lista">
+      <li
+        *ngFor="let a of avisos"
+        class="fila"
+        [class.no-leido]="!a.isRead"
+        [class.clicable]="a.url"
+        (click)="abrir(a)">
+        <div class="cabecera">
+          <span class="badge" [ngClass]="claseSeveridad(a.severity)">
+            {{ textoSeveridad(a.severity) }}
+          </span>
+          <span class="titulo-aviso">{{ a.title }}</span>
+          <span class="cuando">{{ fecha(a.creationTime) }}</span>
+        </div>
+
+        <p class="cuerpo">{{ a.body }}</p>
+
+        <div class="pie">
+          <span *ngIf="a.url" class="destino">
+            <i class="fas fa-arrow-right" aria-hidden="true"></i> {{ a.url }}
+          </span>
+          <button
+            *ngIf="!a.isRead"
+            type="button"
+            class="btn btn-sm btn-outline-secondary"
+            (click)="marcarLeido(a, $event)">
+            {{ '::Notifications:MarkRead' | abpLocalization }}
+          </button>
+        </div>
+      </li>
+    </ul>
+  </ng-container>
+</div>

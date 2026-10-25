@@ -1,0 +1,78 @@
+<div class="ses-root">
+  <app-cabecera [titulo]="'::Menu:Sessions' | abpLocalization"
+                [descripcion]="'::Sessions:Intro' | abpLocalization" />
+
+  <app-esqueleto *ngIf="cargando" [filas]="5" [etiqueta]="'::Common:Loading' | abpLocalization" />
+  <div *ngIf="error" class="alert alert-danger">{{ error }}</div>
+
+  <ng-container *ngIf="!cargando && !error">
+    <button
+      *ngIf="hayOtras"
+      type="button"
+      class="btn btn-sm btn-outline-danger mb-3"
+      (click)="cerrarLasDemas()">
+      {{ '::Sessions:CloseOthers' | abpLocalization }}
+    </button>
+
+    <div class="ig-desplazable">
+      <table *ngIf="sesiones.length > 0" class="table table-sm table-striped tabla-apilable">
+        <thead>
+          <tr>
+            <th scope="col">{{ '::Sessions:Device' | abpLocalization }}</th>
+            <th scope="col">IP</th>
+            <th scope="col">{{ '::Sessions:SignedIn' | abpLocalization }}</th>
+            <th scope="col">{{ '::Sessions:LastActivity' | abpLocalization }}</th>
+            <th scope="col"></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let s of paginaDeSesiones" [class.actual]="s.isCurrent">
+            <td data-label="Dispositivo">
+              {{ s.deviceInfo || s.device || 'Desconocido' }}
+              <span *ngIf="s.isCurrent" class="badge text-bg-success">{{ '::Sessions:ThisSession' | abpLocalization }}</span>
+            </td>
+            <td data-label="IP">{{ s.ipAddresses || '—' }}</td>
+            <td data-label="Entró">{{ fecha(s.signedIn) }}</td>
+            <!-- Es el dato que distingue una sesión viva de una olvidada en un portátil. -->
+            <td data-label="Última actividad">{{ fecha(s.lastAccessed) }}</td>
+            <td>
+              <button
+                type="button"
+                class="btn btn-sm btn-outline-secondary"
+                [title]="s.isCurrent ? 'Cerrar esta sesión te sacará de la aplicación' : 'Cerrar esta sesión'"
+                (click)="cerrar(s)">
+                {{ s.isCurrent ? 'Salir aquí' : 'Cerrar' }}
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Solo cuando hay mas de una pagina: unos controles de paginado sobre seis filas son
+         ruido. -->
+    <div *ngIf="sesiones.length > porPagina" class="paginacion">
+      <button type="button" class="btn btn-sm btn-outline-secondary"
+              [disabled]="pagina === 0" (click)="anterior()">
+        {{ '::Common:Previous' | abpLocalization }}
+      </button>
+      <span class="cuantos">
+        {{ pagina * porPagina + 1 }}–{{ pagina * porPagina + paginaDeSesiones.length }}
+        {{ '::Common:Of' | abpLocalization }} {{ sesiones.length }}
+      </span>
+      <button type="button" class="btn btn-sm btn-outline-secondary"
+              [disabled]="!hayMasPaginas" (click)="siguiente()">
+        {{ '::Common:Next' | abpLocalization }}
+      </button>
+    </div>
+
+    <app-vacio *ngIf="sesiones.length === 0"
+               icono="bi-laptop"
+               [texto]="'::Sessions:Empty' | abpLocalization" />
+
+    <p class="ayuda">
+      {{ '::Sessions:Hint' | abpLocalization }}
+      sesiones: se gestionan en <b>{{ '::Menu:ApiKeys' | abpLocalization }}</b>.
+    </p>
+  </ng-container>
+</div>

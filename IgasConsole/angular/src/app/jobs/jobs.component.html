@@ -1,0 +1,152 @@
+<div class="jobs-root">
+  <app-cabecera [titulo]="'::Jobs:Title' | abpLocalization"
+                [descripcion]="'::Jobs:Intro' | abpLocalization" />
+
+  <div *ngIf="resumen" class="resumen">
+    <span class="badge bg-secondary">{{ '::Jobs:Waiting' | abpLocalization }}: {{ resumen.esperando }}</span>
+    <span class="badge bg-warning text-dark">{{ '::Jobs:Retrying' | abpLocalization }}: {{ resumen.reintentando }}</span>
+    <span class="badge bg-danger">{{ '::Jobs:Abandoned' | abpLocalization }}: {{ resumen.abandonado }}</span>
+    <span class="badge bg-success">{{ '::Jobs:Completed' | abpLocalization }}: {{ resumen.completado }}</span>
+  </div>
+
+  <div class="filtros">
+    <button
+      type="button"
+      class="btn btn-sm"
+      [class.btn-primary]="!filtro"
+      [class.btn-outline-secondary]="filtro"
+      (click)="filtrar(null)">
+      {{ '::Common:All' | abpLocalization }}
+    </button>
+    <button
+      *ngFor="let e of estados"
+      type="button"
+      class="btn btn-sm"
+      [class.btn-primary]="filtro === e"
+      [class.btn-outline-secondary]="filtro !== e"
+      (click)="filtrar(e)">
+      {{ etiquetaEstado(e) }}
+    </button>
+    <button type="button" class="btn btn-sm btn-outline-secondary" (click)="cargar()">
+      <i class="fas fa-rotate" aria-hidden="true"></i> {{ '::Common:Refresh' | abpLocalization }}
+    </button>
+  </div>
+
+  <app-esqueleto *ngIf="cargando" [filas]="5" [etiqueta]="'::Common:Loading' | abpLocalization" />
+  <div *ngIf="error" class="alert alert-danger">{{ error }}</div>
+
+  <ng-container *ngIf="!cargando && !error">
+    <!-- La PISTA importa aqui mas que en ninguna otra pantalla: una cola vacia puede
+         significar "todo va bien" o "el worker no esta corriendo", y esa es justamente la
+         pregunta que trae a alguien a abrirla (§6.0.1). -->
+    <app-vacio *ngIf="trabajos.length === 0"
+               icono="bi-list-task"
+               [texto]="'::Jobs:Empty' | abpLocalization"
+               [pista]="!filtro ? ('::Jobs:EmptyHint' | abpLocalization) : null" />
+
+    <!-- El contenedor con scroll propio es lo que impide que la PÁGINA se desplace de
+         lado: con seis columnas y tres botones la tabla no baja de ~1015 px, y en una
+         ventana de 1280 con el menú lateral abierto quedan 972. En móvil no interviene:
+         ahí .tabla-apilable convierte cada fila en una ficha. -->
+    <div *ngIf="trabajos.length > 0" class="tabla-scroll">
+    <table class="table table-sm table-striped tabla-apilable">
+      <thead>
+        <tr>
+          <th scope="col">{{ '::Jobs:Job' | abpLocalization }}</th>
+          <th scope="col">{{ '::Common:State' | abpLocalization }}</th>
+          <th scope="col">{{ '::Jobs:Attempts' | abpLocalization }}</th>
+          <th scope="col">{{ '::Jobs:Queued' | abpLocalization }}</th>
+          <th scope="col">{{ '::Jobs:LastReason' | abpLocalization }}</th>
+          <th scope="col"></th>
+        </tr>
+      </thead>
+      <tbody>
+        <ng-container *ngFor="let t of trabajos">
+          <tr>
+            <td data-label="Trabajo">
+              <button type="button" class="btn btn-link p-0 nombre" (click)="alternarDetalle(t)">
+                {{ t.jobName }}
+              </button>
+            </td>
+            <td data-label="Estado">
+              <span class="badge" [ngClass]="claseEstado(t.state)">{{ etiquetaEstado(t.state) }}</span>
+            </td>
+            <td data-label="Intentos">{{ t.tryCount }}</td>
+            <td data-label="Encolado" class="cuando-celda">{{ fechaCorta(t.creationTime) }}</td>
+            <td data-label="Último motivo" class="motivo">
+              <span *ngIf="t.lastFailure; else sinFallo" [title]="t.lastFailure.message">
+                {{ t.lastFailure.message }}
+              </span>
+              <ng-template #sinFallo>—</ng-template>
+            </td>
+            <td data-label="" class="acciones">
+              <button
+                type="button"
+                class="btn btn-sm btn-outline-secondary"
+                (click)="alternarDetalle(t)">
+                {{ abierto === t.id ? textoOcultar : textoDetalle }}
+              </button>
+              <button
+                *ngIf="sePuedeReintentar(t)"
+                type="button"
+                class="btn btn-sm btn-outline-primary"
+                (click)="reintentar(t)">
+                {{ '::Jobs:Retry' | abpLocalization }}
+              </button>
+              <button
+                *ngIf="puedeGestionar"
+                type="button"
+                class="btn btn-sm btn-outline-danger"
+                (click)="borrar(t)">
+                {{ '::Common:Delete' | abpLocalization }}
+              </button>
+            </td>
+          </tr>
+
+          <tr *ngIf="abierto === t.id" class="detalle">
+            <td colspan="6">
+              <div class="bloque">
+                <h4>{{ '::Jobs:Arguments' | abpLocalization }}</h4>
+                <!-- Se muestran enteros porque en este proyecto NUNCA llevan secretos: el
+                     enlace de recuperación encola el id de usuario y genera el token dentro
+                     del propio trabajo. Hay un test que lo vigila sobre el JSON guardado. -->
+                <pre class="args">{{ argumentos(t.jobArgs) }}</pre>
+              </div>
+
+              <div class="bloque">
+                <h4>{{ '::Jobs:Dates' | abpLocalization }}</h4>
+                <ul class="fechas">
+                  <li>{{ '::Jobs:LastAttempt' | abpLocalization }}: {{ fecha(t.lastTryTime) }}</li>
+                  <li *ngIf="t.state !== 'Completado' && t.state !== 'Abandonado'">
+                    {{ '::Jobs:NextAttempt' | abpLocalization }}: {{ fecha(t.nextTryTime) }}
+                  </li>
+                  <li *ngIf="t.completionTime">{{ '::Jobs:CompletedOn' | abpLocalization }}: {{ fecha(t.completionTime) }}</li>
+                </ul>
+              </div>
+
+              <div class="bloque">
+                <h4>{{ '::Jobs:FailureHistory' | abpLocalization }}</h4>
+                <p *ngIf="historial.length === 0" class="aviso">
+                  {{ '::Jobs:NoFailures' | abpLocalization }}
+                </p>
+                <div *ngFor="let f of historial" class="fallo">
+                  <div class="cabecera-fallo">
+                    <strong>{{ '::Jobs:Attempt' | abpLocalization }} {{ f.tryCount }}</strong>
+                    <span class="cuando">{{ fecha(f.attemptedUtc) }}</span>
+                    <code>{{ f.exceptionType }}</code>
+                  </div>
+                  <p class="mensaje">{{ f.message }}</p>
+                  <details *ngIf="f.stackTrace">
+                    <summary>{{ '::Jobs:StackTrace' | abpLocalization }}</summary>
+                    <pre class="pila">{{ f.stackTrace }}</pre>
+                  </details>
+                </div>
+              </div>
+            </td>
+          </tr>
+        </ng-container>
+      </tbody>
+    </table>
+    </div>
+  </ng-container>
+</div>

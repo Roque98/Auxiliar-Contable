@@ -1,0 +1,48 @@
+/* -----------------------------------------------------------------------------
+   Sustituye al `font-bundle.css` del tema LeptonX Lite para las páginas MVC.
+
+   ⚠️⚠️ ESTE ARCHIVO GANA POR ESTAR AQUÍ, no por configuración. El del tema va
+   EMBEBIDO EN LA DLL y se sirve en esta misma ruta virtual; un archivo físico en
+   `wwwroot` con la misma ruta lo tapa, porque los archivos estáticos se resuelven
+   antes. Comprobado pidiendo la URL y viendo cuál de los dos contesta — no se
+   dedujo, se midió.
+     - Consecuencia: si alguien mueve `UseStaticFiles` o cambia el orden del
+       pipeline, esto deja de aplicarse **en silencio** y vuelve Inter desde Google.
+       El síntoma sería la pantalla de login con otra tipografía que el resto.
+     - Se hace así porque el tema LeptonX Lite **no está en `refs/abp`** (vive en
+       otro repositorio de Volo), así que no hay forma de verificar una API de
+       bundles con la que quitarlo limpiamente. Regla Cero: mejor una solución
+       comprobada que una API plausible.
+
+   El original es UNA línea: un `@import` a `fonts.googleapis.com` para traer Inter.
+   Se descubrió **con el navegador**, mirando qué peticiones salían al abrir el
+   login: la mitad Angular ya estaba resuelta y esta seguía pidiéndole la
+   tipografía a Google en cada carga.
+
+   ⚠️ Son DOS mitades y hay que arreglar las dos. El SPA y las páginas MVC (login,
+   segundo factor, activación) se sirven desde hosts distintos y **no comparten ni
+   una hoja de estilos**. Arreglar solo una deja la aplicación con dos tipografías:
+   la de la marca (Sora) en el panel y la de ABP justo en la primera pantalla que ve nadie.
+   ----------------------------------------------------------------------------- */
+
+@font-face {
+  font-family: 'Sora';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('/fonts/sora-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+    U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215,
+    U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'Sora';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('/fonts/sora-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304,
+    U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB,
+    U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}

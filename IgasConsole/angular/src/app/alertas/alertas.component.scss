@@ -1,0 +1,57 @@
+/* Estilos del panel de avisos, traidos de `metrics.component.scss`. La paleta la definia
+   `.viz-root`; aqui se redeclara para esta pantalla. */
+.ale-root {
+  --superficie: var(--ig-blanco, #fff);
+  --rejilla: var(--ig-gris-claro, #e3e3df);
+  --texto-secundario: var(--bs-secondary-color, #666d75);
+  padding: 1rem 0;
+  max-width: 42rem;
+}
+
+.ajustes {
+  margin-top: 1.5rem;
+  border: 1px solid var(--rejilla);
+  border-radius: 8px;
+  background: var(--superficie);
+  overflow: hidden;
+}
+
+.ajustes-cabecera {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 0;
+  background: transparent;
+  color: var(--texto-primario);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ajustes-cuerpo {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 0 1rem 1rem;
+  border-top: 1px solid var(--rejilla);
+  padding-top: 1rem;
+  max-width: 640px;
+}
+
+.ayuda {
+  font-size: 0.78rem;
+  color: var(--texto-secundario);
+}
+
+.mensaje {
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  border: 1px solid var(--rejilla);
+
+  &.error {
+    border-color: var(--estado-critico);
+    color: var(--estado-critico);
+  }
+}

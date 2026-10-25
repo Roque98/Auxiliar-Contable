@@ -1,0 +1,25 @@
+<Solution>
+    <Configurations>
+        <Platform Name="Any CPU" />
+    </Configurations>
+    <Folder Name="/src/">
+        <Project Path="src/IgasConsole.Domain/IgasConsole.Domain.csproj" />
+        <Project Path="src/IgasConsole.Application/IgasConsole.Application.csproj" />
+        <Project Path="src/IgasConsole.EntityFrameworkCore/IgasConsole.EntityFrameworkCore.csproj" />
+        <Project Path="src/IgasConsole.Domain.Shared/IgasConsole.Domain.Shared.csproj" />
+        <Project Path="src/IgasConsole.Application.Contracts/IgasConsole.Application.Contracts.csproj" />
+        <Project Path="src/IgasConsole.HttpApi/IgasConsole.HttpApi.csproj" />
+        <Project Path="src/IgasConsole.HttpApi.Client/IgasConsole.HttpApi.Client.csproj" />
+        <Project Path="src/IgasConsole.HttpApi.Host/IgasConsole.HttpApi.Host.csproj" />
+        <Project Path="src/IgasConsole.DbMigrator/IgasConsole.DbMigrator.csproj" />
+    </Folder>
+    <Folder Name="/test/">
+        <Project Path="test/IgasConsole.Application.Tests/IgasConsole.Application.Tests.csproj" />
+        <Project Path="test/IgasConsole.EntityFrameworkCore.Tests/IgasConsole.EntityFrameworkCore.Tests.csproj" />
+        <Project Path="test/IgasConsole.TestBase/IgasConsole.TestBase.csproj" />
+        <Project Path="test/IgasConsole.Domain.Tests/IgasConsole.Domain.Tests.csproj" />
+        <Project Path="test/IgasConsole.HttpApi.Client.ConsoleTestApp/IgasConsole.HttpApi.Client.ConsoleTestApp.csproj" />
+        <Project Path="test/IgasConsole.Architecture.Tests/IgasConsole.Architecture.Tests.csproj" />
+        <Project Path="test/IgasConsole.Integration.Tests/IgasConsole.Integration.Tests.csproj" />
+    </Folder>
+</Solution>

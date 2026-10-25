@@ -1,0 +1,112 @@
+.sec-root {
+  max-width: 1000px;
+  padding: 1rem 0;
+}
+
+.tarjeta {
+  border: 1px solid var(--bs-border-color, #dee2e6);
+  border-radius: 0.5rem;
+  padding: 1rem 1.25rem;
+}
+
+.subtitulo {
+  font-size: 1.05rem;
+  margin-bottom: 0.75rem;
+}
+
+.form-bloqueo {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.form-bloqueo .motivo {
+  flex: 1 1 16rem;
+}
+
+.form-bloqueo .horas {
+  max-width: 6rem;
+}
+
+.ayuda {
+  margin: 0.6rem 0 0;
+  font-size: 0.875rem;
+  color: var(--bs-secondary-color, #6c757d);
+}
+
+.nota-auto {
+  margin-top: 1rem;
+  font-size: 0.9rem;
+  color: var(--bs-secondary-color, #6c757d);
+}
+
+.aviso {
+  padding: 0.75rem 0;
+}
+
+// Caducada: sigue a la vista pero atenuada. Saber que algo ESTUVO bloqueado es informacion.
+tr.caducada {
+  opacity: 0.55;
+}
+
+.etiqueta {
+  margin-left: 0.4rem;
+  font-size: 0.75rem;
+  color: var(--bs-secondary-color, #6c757d);
+}
+
+// --- Registro de seguridad -----------------------------------------------------
+.filtros-registro {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+
+  select,
+  input {
+    max-width: 12rem;
+  }
+}
+
+// Un intento fallido se ve antes de leer la fila. Barra a la izquierda y no fondo de
+// color, para que se distinga tambien con el tema oscuro.
+tr.fallido > td:first-child {
+  box-shadow: inset 3px 0 0 0 var(--bs-danger, #dc3545);
+}
+
+// El navegador es larguisimo y no aporta al ojear: se recorta y el texto completo queda
+// en el title.
+.navegador {
+  max-width: 14rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.paginacion {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-top: 0.6rem;
+}
+
+.cuantos {
+  font-size: 0.85rem;
+  color: var(--bs-secondary-color, #6c757d);
+}
+
+@media (max-width: 767.98px) {
+  .navegador {
+    max-width: none;
+    white-space: normal;
+  }
+}
+
+/* El detalle de una entrada del registro: se pinta bajo la insignia de la acción, en
+   pequeño, porque es contexto y no la columna principal. */
+.detalle-registro {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 0.75rem;
+  color: var(--bs-secondary-color);
+}

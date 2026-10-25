@@ -1,0 +1,161 @@
+.jobs-root {
+  max-width: 1100px;
+  padding: 1rem 0;
+}
+
+.resumen {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.filtros {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 1rem;
+}
+
+.aviso {
+  padding: 0.75rem 0;
+  color: var(--bs-secondary-color, #6c757d);
+}
+
+// La tabla se desplaza DENTRO de esta caja; la página nunca de lado.
+.tabla-scroll {
+  overflow-x: auto;
+}
+
+.nombre {
+  text-align: left;
+  text-decoration: none;
+}
+
+// Sin esto la fecha se parte en tres lineas ("25/8/2026," / "7:53:47" / "p.m.") y estira
+// toda la fila, que es lo mismo que hacian los botones antes de quitarles el flex.
+.cuando-celda {
+  white-space: nowrap;
+}
+
+// El motivo suele ser largo. Se recorta con puntos suspensivos y el texto completo queda
+// en el title y en el detalle: una celda de tres lineas rompe la tabla entera.
+.motivo {
+  max-width: 15rem;
+
+  span {
+    display: inline-block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    vertical-align: bottom;
+  }
+}
+
+// OJO: aqui NO va display:flex. Un <td> convertido en contenedor flex deja de participar
+// en el reparto de anchos de la tabla, se queda estrecho y los tres botones se apilan en
+// vertical, estirando cada fila a tres lineas. Se resuelve con la celda como celda:
+// nowrap para que no partan, y width:1% para que el navegador le de justo lo que ocupan.
+.acciones {
+  width: 1%;
+  white-space: nowrap;
+  text-align: right;
+
+  .btn + .btn {
+    margin-left: 0.3rem;
+  }
+}
+
+tr.detalle > td {
+  background: var(--bs-tertiary-bg, #f8f9fa);
+}
+
+.bloque {
+  margin-bottom: 1rem;
+
+  h4 {
+    font-size: 0.95rem;
+    margin-bottom: 0.4rem;
+  }
+}
+
+.fechas {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: 0.9rem;
+}
+
+// Los argumentos y la pila son texto ancho y no envuelven bien: cada uno se desplaza
+// DENTRO de su caja, para que la pagina nunca se desplace de lado.
+.args,
+.pila {
+  max-height: 16rem;
+  overflow: auto;
+  padding: 0.6rem;
+  margin: 0;
+  font-size: 0.8rem;
+  // ⚠️ --ig-blanco y NO --bs-body-bg: en LeptonX Lite esa segunda es el fondo OSCURO del
+  // armazon (#161616), no la superficie de contenido. Con ella este bloque salia negro con
+  // borde claro, que parecia un bloque de codigo a proposito y no lo era.
+  background: var(--ig-blanco, #fff);
+  border: 1px solid var(--bs-border-color, #dee2e6);
+  border-radius: 0.375rem;
+}
+
+.fallo {
+  padding: 0.6rem 0;
+  border-top: 1px solid var(--bs-border-color, #dee2e6);
+
+  &:first-of-type {
+    border-top: 0;
+  }
+}
+
+.cabecera-fallo {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  align-items: baseline;
+  font-size: 0.9rem;
+}
+
+.cuando {
+  color: var(--bs-secondary-color, #6c757d);
+}
+
+.mensaje {
+  margin: 0.35rem 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+// En movil la tabla se apila (.tabla-apilable), y ahi los botones alineados a la derecha
+// quedan colgando: se estiran para poder tocarlos.
+@media (max-width: 767.98px) {
+  // Apilada no hay nada ancho que desplazar, y un contenedor con overflow recortaria el
+  // desplegable del detalle.
+  .tabla-scroll {
+    overflow-x: visible;
+  }
+
+  .motivo {
+    max-width: none;
+  }
+
+  // Apilada, la celda ya no compite por el ancho de una tabla: se deja envolver por si
+  // los botones no caben en pantallas aun mas estrechas.
+  .acciones {
+    width: auto;
+    white-space: normal;
+    text-align: left;
+
+    .btn {
+      margin: 0.15rem 0.3rem 0.15rem 0;
+    }
+
+    .btn + .btn {
+      margin-left: 0;
+    }
+  }
+}

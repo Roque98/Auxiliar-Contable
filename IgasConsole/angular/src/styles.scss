@@ -1,0 +1,4 @@
+/* El design system de ZIA: tokens, tipografía, componentes y el puente que hace
+   que las pantallas de ABP se vean igual que las nuestras. Ver `styles/igas/`.
+   `@use` y no `@import`: el segundo está deprecado y desaparece en Dart Sass 3. */
+@use 'styles/igas';

@@ -1,0 +1,17 @@
+/* To learn more about this file see: https://angular.io/config/tsconfig. */
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": "./out-tsc/spec",
+    "types": [
+      "vitest/globals"
+    ]
+  },
+  "include": [
+    "src/**/*.spec.ts",
+    "src/**/*.d.ts",
+    // Lo compila el arrancador de pruebas igualmente; sin declararlo aquí, cada ejecución
+    // avisa de que no se está comprobando su tipado.
+    "src/polyfills.ts"
+  ]
+}

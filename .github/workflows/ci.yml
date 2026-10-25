@@ -1,0 +1,100 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  # Invocable desde deploy.yml: asi la puerta de calidad del despliegue es
+  # EXACTAMENTE este workflow, y no una copia que se desincroniza.
+  workflow_call:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    # PostgreSQL como servicio del propio workflow (no Testcontainers: eso exigiria
+    # gestionar Docker desde los tests). El runner ya trae Docker, asi que esto no
+    # contradice la regla de "sin Docker", que aplica a la maquina de desarrollo.
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: igas_console
+          POSTGRES_PASSWORD: ci_password_not_secret
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        # Sin healthcheck los tests arrancan antes de que Postgres acepte conexiones.
+        options: >-
+          --health-cmd "pg_isready -U igas_console"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      # El rol de los tests necesita CREATEDB: crean y destruyen sus propias bases.
+      # El superusuario del contenedor ya lo tiene.
+      IGASCONSOLE_TEST_POSTGRES: "Host=localhost;Port=5432;Username=igas_console;Password=ci_password_not_secret"
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Instalar .NET 10
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restaurar
+        run: dotnet restore IgasConsole/IgasConsole.slnx
+
+      # TreatWarningsAsErrors esta activo: un warning rompe el build, que es lo que
+      # queremos que pase aqui y no en la maquina de nadie.
+      - name: Compilar (Release)
+        run: dotnet build IgasConsole/IgasConsole.slnx -c Release --no-restore
+
+      - name: Tests
+        run: dotnet test IgasConsole/IgasConsole.slnx -c Release --no-build --verbosity normal
+
+      # La logica pura del front: la forma de las URLs de los espacios y del logo, que esta
+      # escrita DOS veces (TypeScript y C#) y que si se desincroniza deja a un inquilino sin
+      # poder iniciar sesion, con un error que ocurre en el servidor de autenticacion y no se
+      # ve desde el navegador. La mitad de C# ya tenia tests; esta no.
+      #
+      # Es `vitest run` y no `ng test`: el arrancador de Angular emite un `await` de nivel
+      # superior incompatible con zone.js, y esta aplicacion usa zone.js por diseño. El
+      # porque completo esta en `angular/vitest.config.mts`.
+      - name: Instalar Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+
+      - name: Instalar dependencias del front
+        working-directory: IgasConsole/angular
+        run: yarn install --frozen-lockfile --ignore-engines
+
+      - name: Tests del front
+        working-directory: IgasConsole/angular
+        run: yarn test:unit
+
+      - name: Dependencias vulnerables
+        run: |
+          salida=$(dotnet list IgasConsole/IgasConsole.slnx package --vulnerable --include-transitive)
+          echo "$salida"
+          # 'dotnet list package' devuelve 0 aunque encuentre vulnerabilidades: hay que
+          # mirar el texto para que el job falle de verdad.
+          if echo "$salida" | grep -q "tiene los paquetes vulnerables"; then
+            echo "::error::Se encontraron paquetes vulnerables"
+            exit 1
+          fi
+
+  secretos:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0   # gitleaks necesita el historial completo
+      - name: gitleaks
+        uses: gitleaks/gitleaks-action@v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

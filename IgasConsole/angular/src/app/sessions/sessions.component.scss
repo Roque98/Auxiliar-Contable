@@ -1,0 +1,32 @@
+.ses-root {
+  max-width: 900px;
+  padding: 1rem 0;
+}
+
+.aviso {
+  padding: 0.75rem 0;
+}
+
+.ayuda {
+  margin-top: 1rem;
+  font-size: 0.875rem;
+  color: var(--bs-secondary-color, #6c757d);
+}
+
+/* La sesión actual se distingue: cerrarla te echa a ti, y conviene verlo antes de pulsar. */
+tr.actual {
+  font-weight: 500;
+}
+
+.paginacion {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-top: 0.75rem;
+}
+
+.cuantos {
+  font-size: 0.85rem;
+  color: var(--bs-secondary-color, #666d75);
+  font-variant-numeric: tabular-nums;
+}

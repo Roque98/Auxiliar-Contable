@@ -1,0 +1,129 @@
+<!--
+  La portada de la cuenta: identidad arriba, áreas debajo. Ver el comentario de la clase para
+  el patrón que se copia y por qué cada tarjeta enseña su ESTADO y no solo su nombre.
+-->
+<div class="cuenta">
+  <!-- Identidad. Va fuera de toda tarjeta a propósito: es el sujeto de la pantalla, no una
+       sección más. -->
+  <header class="ficha">
+    <div class="avatar" [class.avatar-foto]="foto">
+      @if (foto) {
+        <img [src]="foto" alt="" />
+      } @else {
+        <span class="iniciales">{{ iniciales }}</span>
+      }
+    </div>
+
+    <div class="ficha-datos">
+      <h1 class="ficha-nombre">{{ nombre }}</h1>
+      <p class="ficha-usuario">&#64;{{ usuario?.userName }}</p>
+
+      <p class="ficha-correo">
+        {{ usuario?.email }}
+        @if (datos && !datos.correoConfirmado) {
+          <!-- Un correo sin confirmar no es cosmético: es por donde se recupera la cuenta. -->
+          <span class="badge text-bg-warning">{{ '::Cuenta:CorreoSinConfirmar' | abpLocalization }}</span>
+        }
+      </p>
+
+      @if (datos) {
+        <div class="ficha-roles">
+          @for (rol of datos.roles; track rol) {
+            <span class="badge rounded-pill chip">{{ rol }}</span>
+          }
+        </div>
+      }
+    </div>
+
+    <a class="btn btn-outline-secondary btn-sm ficha-editar" routerLink="/account/manage">
+      <i class="bi bi-pencil me-1"></i>{{ '::Cuenta:Editar' | abpLocalization }}
+    </a>
+  </header>
+
+  @if (cargando && !datos) {
+    <app-esqueleto [filas]="3" />
+  }
+
+  @if (datos) {
+    <!-- Dos datos que solo tienen sentido juntos: cuánto llevas y cuándo entraste antes. -->
+    <section class="resumen">
+      <div class="dato">
+        <span class="dato-etiqueta">{{ '::Cuenta:Miembro' | abpLocalization }}</span>
+        <span class="dato-valor">{{ desdeHace(datos.creacionUtc) }}</span>
+        <span class="dato-pie">{{ fecha(datos.creacionUtc) }}</span>
+      </div>
+      <div class="dato">
+        <span class="dato-etiqueta">{{ '::Cuenta:AccesoAnterior' | abpLocalization }}</span>
+        <span class="dato-valor">{{ fecha(datos.accesoAnteriorUtc) }}</span>
+        <!-- Explica para qué sirve el dato; si no, parece un reloj sin propósito. -->
+        <span class="dato-pie">{{ '::Cuenta:AccesoAnteriorPista' | abpLocalization }}</span>
+      </div>
+    </section>
+
+    <!-- SEGURIDAD primero: es lo que alguien viene a revisar cuando entra aquí. -->
+    <h2 class="grupo">{{ '::Cuenta:Seguridad' | abpLocalization }}</h2>
+    <div class="rejilla">
+      <a class="tarjeta" routerLink="/account/manage">
+        <i class="bi bi-key tarjeta-icono"></i>
+        <span class="tarjeta-titulo">{{ 'AbpAccount::ChangePassword' | abpLocalization }}</span>
+        <span class="tarjeta-pie">{{ '::Cuenta:ContrasenaPie' | abpLocalization }}</span>
+      </a>
+
+      <a class="tarjeta" routerLink="/telegram" [class.tarjeta-aviso]="!datos.segundoFactorActivo">
+        <i class="bi bi-shield-lock tarjeta-icono"></i>
+        <span class="tarjeta-titulo">{{ '::Cuenta:DosFactores' | abpLocalization }}</span>
+        @if (datos.segundoFactorActivo) {
+          <span class="badge text-bg-success alineado">{{ '::Cuenta:Activo' | abpLocalization }}</span>
+        } @else {
+          <span class="badge text-bg-warning alineado">{{ '::Cuenta:Inactivo' | abpLocalization }}</span>
+        }
+      </a>
+
+      <a class="tarjeta" routerLink="/sessions">
+        <i class="bi bi-display tarjeta-icono"></i>
+        <span class="tarjeta-titulo">{{ '::Menu:Sessions' | abpLocalization }}</span>
+        <span class="tarjeta-cifra">{{ datos.sesionesActivas }}</span>
+      </a>
+    </div>
+
+    <h2 class="grupo">{{ '::Cuenta:Personal' | abpLocalization }}</h2>
+    <div class="rejilla">
+      <a class="tarjeta" routerLink="/profile-picture">
+        <i class="bi bi-person-circle tarjeta-icono"></i>
+        <span class="tarjeta-titulo">{{ '::Menu:ProfilePicture' | abpLocalization }}</span>
+        <span class="tarjeta-pie">{{ (foto ? '::Cuenta:ConFoto' : '::Cuenta:SinFoto') | abpLocalization }}</span>
+      </a>
+
+      <a class="tarjeta" routerLink="/notifications">
+        <i class="bi bi-bell tarjeta-icono"></i>
+        <span class="tarjeta-titulo">{{ '::Menu:Notifications' | abpLocalization }}</span>
+        @if (datos.avisosSinLeer > 0) {
+          <span class="badge text-bg-danger alineado">
+            {{ datos.avisosSinLeer }} {{ '::Cuenta:SinLeer' | abpLocalization }}
+          </span>
+        } @else {
+          <span class="tarjeta-pie">{{ '::Cuenta:AlDia' | abpLocalization }}</span>
+        }
+      </a>
+    </div>
+
+    <h2 class="grupo">{{ '::Cuenta:Conexiones' | abpLocalization }}</h2>
+    <div class="rejilla">
+      <a class="tarjeta" routerLink="/telegram">
+        <i class="bi bi-telegram tarjeta-icono"></i>
+        <span class="tarjeta-titulo">Telegram</span>
+        @if (datos.telegramVinculado) {
+          <span class="badge text-bg-success alineado">{{ '::Cuenta:Vinculado' | abpLocalization }}</span>
+        } @else {
+          <span class="tarjeta-pie">{{ '::Cuenta:SinVincular' | abpLocalization }}</span>
+        }
+      </a>
+
+      <a class="tarjeta" routerLink="/api-keys">
+        <i class="bi bi-key-fill tarjeta-icono"></i>
+        <span class="tarjeta-titulo">{{ '::Menu:ApiKeys' | abpLocalization }}</span>
+        <span class="tarjeta-cifra">{{ datos.clavesDeApi }}</span>
+      </a>
+    </div>
+  }
+</div>

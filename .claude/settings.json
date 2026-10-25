@@ -1,0 +1,30 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}/.claude/hooks/dotnet-build.sh\"",
+            "timeout": 300,
+            "statusMessage": "Compilando la solución (dotnet build)..."
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}/.claude/hooks/arch-tests.sh\"",
+            "timeout": 300,
+            "statusMessage": "Ejecutando tests de arquitectura..."
+          }
+        ]
+      }
+    ]
+  }
+}

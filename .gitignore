@@ -1,0 +1,31 @@
+# Código fuente de ABP clonado como referencia (Regla Cero) — no versionar
+/refs/
+
+# Claves de DataProtection (sensibles, por máquina) — nunca versionar
+data-protection-keys/
+
+# Archivos locales con credenciales/secretos — nunca versionar
+*.local.md
+credenciales*.md
+
+# Config local de Claude Code (por máquina)
+.claude/settings.local.json
+
+# Archivos temporales
+*.tmp
+
+# Variables de entorno locales (usa .env.example como plantilla)
+.env
+.env.local
+
+# Secretos locales de ABP (AddAppSettingsSecretsJson)
+appsettings.secrets.json
+
+
+# Salida de `dotnet publish` del workflow de deploy. ⚠️ NUNCA al repo: estuvo versionada (oct-2026)
+# y, como publish no pisa un archivo de contenido con la misma fecha, producción servía el
+# appsettings.json, global-styles.css y favicon.ico de esa compilación vieja.
+publicado/
+
+# Salida de Playwright (resultado de la última corrida).
+test-results/

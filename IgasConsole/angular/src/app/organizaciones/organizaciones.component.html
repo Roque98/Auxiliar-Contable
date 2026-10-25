@@ -1,0 +1,162 @@
+<div class="ig-encabezado">
+  <div>
+    <h1>Organizaciones</h1>
+    <p class="ig-sub">
+      Cada cliente del despacho es una organización, con las personas que pueden ver y subir su información.
+      El equipo del despacho ve todas sin pertenecer a ninguna.
+    </p>
+  </div>
+  <button type="button" class="ig-btn ig-btn-principal" (click)="nueva()">
+    <i class="bi bi-plus-lg" aria-hidden="true"></i>Nueva organización
+  </button>
+</div>
+
+<div class="or-rejilla" [class.con-detalle]="abierta()">
+  <!-- =================== Lista =================== -->
+  <section class="ig-panel or-lista" aria-label="Organizaciones">
+    <form class="ig-filtros" (ngSubmit)="cargar()">
+      <div class="ig-buscar">
+        <i class="bi bi-search" aria-hidden="true"></i>
+        <input type="search" class="ig-control" name="filtro" placeholder="Buscar por nombre o descripción"
+               aria-label="Buscar organizaciones" [(ngModel)]="filtro" (search)="cargar()" />
+      </div>
+    </form>
+
+    @if (error(); as e) {
+      <div class="ig-alerta ig-alerta-error">{{ e }}</div>
+    }
+
+    @if (!cargando() && !error() && !lista().length) {
+      <div class="ig-vacio">
+        <i class="bi bi-building" aria-hidden="true"></i>
+        @if (filtro) {
+          <strong>No hay organizaciones que coincidan</strong>
+          Prueba con otro nombre.
+        } @else {
+          <strong>Aún no hay organizaciones</strong>
+          Crea la primera para empezar a organizar la información de un cliente.
+        }
+      </div>
+    }
+
+    <ul class="or-items">
+      @for (o of lista(); track o.id) {
+        <li>
+          <button type="button" class="or-item" [class.activa]="detalle()?.id === o.id" (click)="abrir(o)">
+            <span class="or-icono" aria-hidden="true"><i class="bi bi-building"></i></span>
+            <span class="or-item-texto">
+              <strong>{{ o.nombre }}</strong>
+              <small>
+                {{ o.miembros }} {{ o.miembros === 1 ? 'persona' : 'personas' }}
+              </small>
+            </span>
+            <i class="bi bi-chevron-right" aria-hidden="true"></i>
+          </button>
+        </li>
+      }
+    </ul>
+  </section>
+
+  <!-- =================== Detalle / edición =================== -->
+  @if (abierta()) {
+    <section class="or-detalle" [attr.aria-label]="detalle() ? 'Organización ' + detalle()!.nombre : 'Nueva organización'">
+      <div class="ig-panel">
+        <div class="or-cabecera">
+          <h2>{{ detalle() ? detalle()!.nombre : 'Nueva organización' }}</h2>
+          <button type="button" class="ig-btn ig-btn-texto" (click)="cerrar()">Cerrar</button>
+        </div>
+
+        <form (ngSubmit)="guardar()" class="or-form">
+          <label class="or-campo">
+            <span>Nombre</span>
+            <input type="text" class="ig-control" name="nombre" maxlength="128" required
+                   placeholder="Ej. Ferretería del Centro, Grupo Norte"
+                   [ngModel]="borrador().nombre" (ngModelChange)="cambiar('nombre', $event)" />
+          </label>
+          <label class="or-campo">
+            <span>Descripción <small>(opcional)</small></span>
+            <input type="text" class="ig-control" name="descripcion" maxlength="512"
+                   placeholder="Contacto, notas del cliente…"
+                   [ngModel]="borrador().descripcion" (ngModelChange)="cambiar('descripcion', $event)" />
+          </label>
+
+          @if (errorDeEdicion(); as e) {
+            <div class="ig-alerta ig-alerta-error" role="alert">{{ e }}</div>
+          }
+
+          <div class="or-acciones">
+            <button type="submit" class="ig-btn ig-btn-principal" [disabled]="guardando()">
+              {{ detalle() ? 'Guardar cambios' : 'Crear organización' }}
+            </button>
+            @if (detalle()) {
+              <button type="button" class="ig-btn ig-btn-texto ig-btn-peligro" (click)="eliminar()">Eliminar organización</button>
+            }
+          </div>
+        </form>
+      </div>
+
+      @if (detalle(); as d) {
+        <div class="ig-panel">
+          <h3>Personas <span class="ig-cuenta">{{ d.listaDeMiembros.length }}</span></h3>
+          <p class="or-nota">
+            Ven y suben la información de esta organización. Su <b>papel</b> decide qué más hacen:
+            el Administrador gestiona a su propia gente desde «Mi organización».
+          </p>
+
+          @if (!d.listaDeMiembros.length) {
+            <div class="ig-vacio or-vacio-chico">Nadie todavía. Añade a las personas del cliente abajo.</div>
+          }
+          <ul class="or-personas">
+            @for (m of d.listaDeMiembros; track m.userId) {
+              <li>
+                <span class="or-avatar" aria-hidden="true">{{ iniciales(m) }}</span>
+                <div>
+                  <strong>{{ m.nombreCompleto ?? m.userName }}</strong>
+                  <small>{{ m.userName }}@if (m.email) {<span> · {{ m.email }}</span>}</small>
+                </div>
+                <select class="ig-control or-papel" [attr.aria-label]="'Papel de ' + (m.nombreCompleto ?? m.userName)"
+                        [ngModel]="m.rol" (ngModelChange)="cambiarPapel(m, $event)" [disabled]="ocupado() === m.userId">
+                  @for (p of papeles; track p.valor) {
+                    <option [ngValue]="p.valor" [title]="p.detalle">{{ p.texto }}</option>
+                  }
+                </select>
+                <button type="button" class="ig-btn ig-btn-texto ig-btn-peligro" [disabled]="ocupado() === m.userId" (click)="quitar(m)">
+                  Quitar
+                </button>
+              </li>
+            }
+          </ul>
+
+          <h4 class="or-subtitulo">Añadir a alguien</h4>
+          <form class="ig-filtros" (ngSubmit)="buscarCandidatos()">
+            <div class="ig-buscar">
+              <i class="bi bi-search" aria-hidden="true"></i>
+              <input type="search" class="ig-control" name="filtroCandidatos" placeholder="Buscar por usuario, nombre o correo"
+                     aria-label="Buscar personas" [(ngModel)]="filtroCandidatos" (search)="buscarCandidatos()" />
+            </div>
+          </form>
+          @if (!buscandoCandidatos() && !candidatos().length) {
+            <p class="or-nota">
+              No hay nadie más que puedas añadir. Si la persona aún no tiene cuenta, invítala desde Invitaciones con el rol
+              Usuario.
+            </p>
+          }
+          <ul class="or-personas">
+            @for (m of candidatos(); track m.userId) {
+              <li>
+                <span class="or-avatar" aria-hidden="true">{{ iniciales(m) }}</span>
+                <div>
+                  <strong>{{ m.nombreCompleto ?? m.userName }}</strong>
+                  <small>{{ m.userName }}@if (m.email) {<span> · {{ m.email }}</span>}</small>
+                </div>
+                <button type="button" class="ig-btn ig-btn-secundario ig-btn-chico" [disabled]="ocupado() === m.userId" (click)="agregar(m)">
+                  Añadir
+                </button>
+              </li>
+            }
+          </ul>
+        </div>
+      }
+    </section>
+  }
+</div>

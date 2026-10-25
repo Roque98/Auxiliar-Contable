@@ -1,0 +1,362 @@
+:host {
+  display: block;
+}
+
+.us-encabezado {
+  flex-wrap: wrap;
+  gap: var(--ig-esp-4);
+}
+
+.us-acciones-cabecera {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ig-esp-2);
+}
+
+.us-barra {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ig-esp-3);
+  margin-bottom: var(--ig-esp-4);
+
+  .ig-buscar {
+    flex: 1 1 18rem;
+    max-width: 28rem;
+    min-width: 0;
+  }
+}
+
+.us-total {
+  color: var(--ig-texto-secundario);
+  font-size: var(--ig-texto-sm);
+}
+
+/* --- La lista: rejilla en escritorio, tarjetas en el teléfono ------------------- */
+.us-lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: var(--ig-borde);
+  border-radius: var(--ig-radio-md);
+  background: var(--ig-blanco);
+  overflow: hidden;
+  transition: opacity var(--ig-rapido);
+
+  &.us-recargando {
+    opacity: 0.6;
+  }
+}
+
+.us-cabecera,
+.us-ficha {
+  display: grid;
+  // Acciones con ancho fijo: con `auto` cada fila medía distinto y la cabecera no casaba.
+  grid-template-columns: minmax(0, 2.4fr) minmax(0, 1.2fr) minmax(0, 1.3fr) 12rem;
+  gap: var(--ig-esp-4);
+  align-items: center;
+  padding: 12px 18px;
+}
+
+.us-cabecera {
+  background: var(--ig-fondo);
+  border-bottom: var(--ig-borde);
+  font-size: var(--ig-texto-xs);
+  font-weight: var(--ig-peso-semi);
+  color: var(--ig-texto-secundario);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.us-ficha + .us-ficha {
+  border-top: var(--ig-borde);
+}
+
+.us-ficha.us-inactiva .us-persona {
+  opacity: 0.6;
+}
+
+.us-persona {
+  min-width: 0;
+
+  > div {
+    min-width: 0;
+  }
+
+  strong,
+  small {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.us-tu {
+  font-weight: var(--ig-peso-normal);
+  color: var(--ig-texto-secundario);
+}
+
+.us-roles,
+.us-estado {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  min-width: 0;
+}
+
+.us-sin-dato {
+  color: var(--ig-texto-secundario);
+  font-size: var(--ig-texto-sm);
+}
+
+.us-etiqueta-movil {
+  display: none;
+}
+
+.us-acciones {
+  display: flex;
+  gap: var(--ig-esp-2);
+  justify-content: flex-end;
+  white-space: nowrap;
+}
+
+.us-borrar:not(:disabled):hover {
+  color: var(--ig-error);
+}
+
+@media (max-width: 760px) {
+  .us-lista {
+    border: 0;
+    background: none;
+    overflow: visible;
+  }
+
+  .us-cabecera {
+    display: none;
+  }
+
+  .us-ficha {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+    padding: 14px;
+    border: var(--ig-borde);
+    border-radius: var(--ig-radio-md);
+    background: var(--ig-blanco);
+  }
+
+  .us-ficha + .us-ficha {
+    border-top: var(--ig-borde);
+    margin-top: 10px;
+  }
+
+  .us-etiqueta-movil {
+    display: inline;
+    min-width: 3.5rem;
+    font-size: var(--ig-texto-xs);
+    font-weight: var(--ig-peso-semi);
+    color: var(--ig-texto-secundario);
+  }
+
+  .us-acciones {
+    justify-content: flex-start;
+    padding-top: 10px;
+    border-top: 1px solid var(--ig-gris-fondo);
+
+    .ig-btn:first-child {
+      flex: 1;
+      justify-content: center;
+    }
+  }
+}
+
+.us-paginacion {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ig-esp-3);
+  margin-top: var(--ig-esp-4);
+  font-size: var(--ig-texto-sm);
+  color: var(--ig-texto-secundario);
+}
+
+.us-esqueleto-corto {
+  width: 60%;
+  margin-top: var(--ig-esp-3);
+}
+
+/* --- El diálogo ------------------------------------------------------------------ */
+.us-nota {
+  display: flex;
+  gap: var(--ig-esp-2);
+  padding: var(--ig-esp-3);
+  border-radius: var(--ig-radio-sm);
+  background: var(--ig-fondo);
+  margin-bottom: var(--ig-esp-4);
+
+  a {
+    color: inherit;
+    font-weight: var(--ig-peso-semi);
+  }
+}
+
+.us-dos {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 var(--ig-esp-4);
+
+  @media (max-width: 560px) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.us-clave {
+  display: flex;
+  gap: var(--ig-esp-2);
+
+  .ig-control {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+.us-grupo {
+  margin: var(--ig-esp-5) 0 0;
+}
+
+.us-grupo-titulo {
+  font-size: var(--ig-texto-md);
+  font-weight: var(--ig-peso-semi);
+  margin: 0 0 var(--ig-esp-1);
+}
+
+.us-grupo-ayuda {
+  margin: 0 0 var(--ig-esp-3);
+}
+
+/* Un solo rol: tarjetas de opción, como en Invitaciones. */
+.us-roles-opciones {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
+  gap: var(--ig-esp-2);
+}
+
+.us-rol {
+  display: flex;
+  gap: var(--ig-esp-3);
+  align-items: flex-start;
+  padding: 12px 14px;
+  border: var(--ig-borde);
+  border-radius: var(--ig-radio-md);
+  cursor: pointer;
+  min-width: 0;
+  transition: border-color var(--ig-rapido), background var(--ig-rapido);
+
+  > i {
+    color: var(--ig-texto-secundario);
+    font-size: 1.05rem;
+    line-height: 1.4;
+  }
+
+  span {
+    display: grid;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  small {
+    font-size: var(--ig-texto-xs);
+    color: var(--ig-texto-secundario);
+    line-height: 1.4;
+  }
+
+  &:hover {
+    border-color: var(--ig-gris-medio);
+  }
+
+  &:has(input:focus-visible) {
+    box-shadow: var(--ig-anillo-foco);
+  }
+
+  &.elegido {
+    border-color: var(--ig-acento);
+    background: var(--ig-acento-suave);
+    box-shadow: inset 0 0 0 1px var(--ig-acento);
+
+    > i {
+      color: var(--ig-tinta);
+    }
+  }
+}
+
+.us-fijos {
+  margin: var(--ig-esp-2) 0 0;
+}
+
+/* Casilla con su explicación DEBAJO del título, no en una columna aparte. */
+.us-check {
+  display: flex;
+  gap: var(--ig-esp-3);
+  align-items: flex-start;
+  padding: 8px 0;
+  cursor: pointer;
+
+  input {
+    flex: none;
+    margin-top: 3px;
+  }
+
+  span {
+    display: grid;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  strong {
+    font-weight: var(--ig-peso-medio);
+  }
+
+  small {
+    color: var(--ig-texto-secundario);
+    font-size: var(--ig-texto-sm);
+  }
+}
+
+.us-sin-correo {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: var(--ig-radio-sm);
+  background: var(--ig-fondo);
+  font-size: var(--ig-texto-sm);
+  color: var(--ig-texto-secundario);
+}
+
+.us-check-chico {
+  padding: 4px 0 0;
+  font-size: var(--ig-texto-sm);
+}
+
+.us-seguridad {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: var(--ig-esp-2);
+}
+
+.us-seguridad-ayuda {
+  margin: 0 0 var(--ig-esp-2);
+}
+
+.us-org {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 8px;
+  border-radius: var(--ig-radio-pastilla);
+  background: var(--ig-gris-fondo);
+  color: var(--ig-tinta-suave);
+  font-size: var(--ig-texto-xs);
+  font-weight: var(--ig-peso-semi);
+}

@@ -1,0 +1,21 @@
+.db-explorer {
+  padding: 1rem;
+
+  .col-type {
+    font-size: 0.7rem;
+    font-weight: 400;
+    color: var(--bs-secondary-color, #6c757d);
+  }
+
+  .cell {
+    max-width: 320px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .edit-panel {
+    max-width: 640px;
+    margin-top: 1rem;
+  }
+}

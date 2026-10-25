@@ -1,0 +1,120 @@
+<!--
+  Panel de inicio. Ver el comentario de la clase para por qué lo que se ve depende de quién
+  mira, y por qué sin sesión esta pantalla dice deliberadamente muy poco.
+-->
+
+@if (!haEntrado) {
+  <!-- SIN SESIÓN. Ni versión, ni tecnología, ni enlaces: es también lo que ve quien llega a
+       la raíz con el acceso oculto (§6.98). -->
+  <div class="portada">
+    <div class="portada-caja">
+      <h1 class="portada-nombre">{{ nombreDelEspacio }}</h1>
+      <p class="portada-linea">{{ '::Inicio:Bienvenida' | abpLocalization }}</p>
+      <button type="button" class="btn btn-primary btn-lg px-4" (click)="entrar()">
+        <i class="bi bi-box-arrow-in-right me-2"></i>{{ 'AbpAccount::Login' | abpLocalization }}
+      </button>
+    </div>
+  </div>
+} @else {
+  <div class="inicio">
+    <header class="inicio-saludo">
+      <h1>
+        {{ '::Inicio:Hola' | abpLocalization }}<span class="inicio-usuario">{{ usuario }}</span>
+      </h1>
+      <p class="text-body-secondary mb-0">{{ nombreDelEspacio }}</p>
+    </header>
+
+    @if (puedeVerSistema && estado) {
+      <section class="inicio-bloque">
+        <h2 class="inicio-titulo">
+          {{ '::Inicio:Estado' | abpLocalization }}
+          <!-- ⚠️ Claves CORTAS y propias. Reutilizar `SystemStatus:NeedsReview` parecía
+               gratis y no lo era: ahí es una frase entera («Hay algo que revisar. Lo marcado
+               en rojo o ámbar, abajo.»), pensada para una cabecera con sitio de sobra. Como
+               insignia medía 386 px y se salía de la pantalla en un móvil, arrastrando el
+               scroll lateral de toda la página. Se encontró midiendo, no mirando. -->
+          @if (todoEnOrden) {
+            <span class="badge bg-success">{{ '::Inicio:TodoBien' | abpLocalization }}</span>
+          } @else {
+            <span class="badge bg-warning text-dark">{{ '::Inicio:Revisar' | abpLocalization }}</span>
+          }
+        </h2>
+
+        <div class="inicio-tarjetas">
+          <!-- Los contadores que importan van con su cifra grande: la pregunta que trae a
+               alguien aquí es «¿hay algo roto?», y un número se responde de un vistazo. -->
+          <a class="tarjeta" routerLink="/jobs" [class.tarjeta-alerta]="estado.abandonedJobs > 0">
+            <span class="tarjeta-cifra">{{ estado.abandonedJobs }}</span>
+            <span class="tarjeta-pie">{{ '::SystemStatus:AbandonedJobs' | abpLocalization }}</span>
+          </a>
+
+          <a class="tarjeta" routerLink="/jobs">
+            <span class="tarjeta-cifra">{{ estado.pendingJobs }}</span>
+            <span class="tarjeta-pie">{{ '::SystemStatus:QueuedJobs' | abpLocalization }}</span>
+          </a>
+
+          <a class="tarjeta" routerLink="/security">
+            <span class="tarjeta-cifra">{{ estado.activeBlockedIps }}</span>
+            <span class="tarjeta-pie">{{ '::SystemStatus:BlockedIpsNow' | abpLocalization }}</span>
+          </a>
+
+          <a class="tarjeta" routerLink="/system-status"
+             [class.tarjeta-alerta]="estado.backup.state !== 'Ok'">
+            <span class="tarjeta-cifra tarjeta-cifra-texto">
+              <i class="bi" [class.bi-check-circle]="estado.backup.state === 'Ok'"
+                 [class.bi-exclamation-triangle]="estado.backup.state !== 'Ok'"></i>
+            </span>
+            <span class="tarjeta-pie">{{ '::SystemStatus:Backup' | abpLocalization }}</span>
+          </a>
+
+          <div class="tarjeta tarjeta-quieta">
+            <span class="tarjeta-cifra tarjeta-cifra-texto">{{ enMarcha(estado.uptimeSeconds) }}</span>
+            <span class="tarjeta-pie">{{ '::SystemStatus:Uptime' | abpLocalization }}</span>
+          </div>
+        </div>
+      </section>
+    }
+
+    <div class="inicio-columnas">
+      <section class="inicio-bloque">
+        <h2 class="inicio-titulo">
+          {{ '::Inicio:Avisos' | abpLocalization }}
+          <a class="inicio-ver-todo" routerLink="/notifications">
+            {{ '::Inicio:VerTodo' | abpLocalization }} <i class="bi bi-arrow-right"></i>
+          </a>
+        </h2>
+
+        @if (avisos.length === 0) {
+          <p class="inicio-vacio">
+            <i class="bi bi-inbox"></i> {{ '::Inicio:SinAvisos' | abpLocalization }}
+          </p>
+        } @else {
+          <ul class="lista-avisos">
+            @for (aviso of avisos; track aviso.id) {
+              <li [class.no-leido]="!aviso.isRead">
+                <i class="bi" [ngClass]="[iconoAviso(aviso.severity), claseAviso(aviso.severity)]"></i>
+                <span class="lista-avisos-texto">
+                  <span class="lista-avisos-titulo">{{ aviso.title }}</span>
+                  <span class="lista-avisos-cuando">{{ desde(aviso.creationTime) }}</span>
+                </span>
+              </li>
+            }
+          </ul>
+        }
+      </section>
+
+      <section class="inicio-bloque">
+        <h2 class="inicio-titulo">{{ '::Inicio:Atajos' | abpLocalization }}</h2>
+
+        <div class="rejilla-atajos">
+          @for (atajo of atajos; track atajo.ruta) {
+            <a class="atajo" [routerLink]="atajo.ruta">
+              <i class="bi" [ngClass]="atajo.icono"></i>
+              <span>{{ atajo.clave | abpLocalization }}</span>
+            </a>
+          }
+        </div>
+      </section>
+    </div>
+  </div>
+}

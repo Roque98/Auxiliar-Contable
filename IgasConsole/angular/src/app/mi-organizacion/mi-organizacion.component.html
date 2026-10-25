@@ -1,0 +1,104 @@
+<div class="ig-encabezado">
+  <div>
+    <h1>Mi organización</h1>
+    <p class="ig-sub">Las personas de tu organización y qué puede hacer cada una.</p>
+  </div>
+</div>
+
+@if (error(); as e) {
+  <div class="ig-alerta ig-alerta-error" role="alert">{{ e }}</div>
+}
+
+@if (organizaciones(); as lista) {
+  @if (!lista.length) {
+    <div class="ig-panel ig-vacio">
+      <i class="bi bi-building" aria-hidden="true"></i>
+      <strong>Aún no perteneces a ninguna organización</strong>
+      Pide al despacho que te añada a la de tu empresa.
+    </div>
+  }
+
+  @for (o of lista; track o.id) {
+    <section class="ig-panel mo-org" [attr.aria-label]="o.nombre">
+      <header class="mo-cabecera">
+        <h2><i class="bi bi-building" aria-hidden="true"></i>{{ o.nombre }}</h2>
+        <span class="mo-mi-papel">Tu papel: <b>{{ textoDePapel(o.miRol) }}</b></span>
+      </header>
+
+      @if (!o.puedoGestionarPersonas) {
+        <p class="mo-nota">
+          {{ detalleDe(o.miRol) }} A las personas de tu organización las gestiona su administrador.
+        </p>
+      } @else {
+        <h3>Personas <span class="ig-cuenta">{{ o.miembros.length }}</span></h3>
+        <ul class="mo-personas">
+          @for (m of o.miembros; track m.userId) {
+            <li>
+              <span class="mo-avatar" aria-hidden="true">{{ iniciales(m) }}</span>
+              <div class="mo-quien">
+                <strong>{{ m.nombreCompleto ?? m.userName }}@if (m.userId === yo) {<span class="mo-tu"> (tú)</span>}</strong>
+                <small>{{ m.email ?? m.userName }}</small>
+              </div>
+              <select class="ig-control mo-papel" [attr.aria-label]="'Papel de ' + (m.nombreCompleto ?? m.userName)"
+                      [ngModel]="m.rol" (ngModelChange)="cambiarPapel(o, m, $event)" [disabled]="ocupado() === m.userId">
+                @for (p of papeles; track p.valor) {
+                  <option [ngValue]="p.valor">{{ p.texto }}</option>
+                }
+              </select>
+              @if (m.userId !== yo) {
+                <button type="button" class="ig-btn ig-btn-texto ig-btn-peligro ig-btn-chico" [disabled]="ocupado() === m.userId"
+                        (click)="quitar(o, m)">Quitar</button>
+              }
+            </li>
+          }
+        </ul>
+
+        <dl class="mo-papeles">
+          @for (p of papeles; track p.valor) {
+            <div><dt>{{ p.texto }}</dt><dd>{{ p.detalle }}</dd></div>
+          }
+        </dl>
+
+        <h3>Invitar a alguien</h3>
+        <form class="mo-invitar" (ngSubmit)="invitar(o)">
+          <div class="ig-campo">
+            <label [for]="'mo-correo-' + o.id">Correo</label>
+            <input [id]="'mo-correo-' + o.id" type="email" class="ig-control" [name]="'correo-' + o.id" autocomplete="off"
+                   placeholder="nombre@empresa.com" required [(ngModel)]="correo[o.id]" />
+          </div>
+          <div class="ig-campo">
+            <label [for]="'mo-papel-' + o.id">Su papel</label>
+            <select [id]="'mo-papel-' + o.id" class="ig-control" [name]="'papel-' + o.id" [(ngModel)]="papelNuevo[o.id]">
+              @for (p of papeles; track p.valor) {
+                <option [ngValue]="p.valor">{{ p.texto }}</option>
+              }
+            </select>
+          </div>
+          <button type="submit" class="ig-btn ig-btn-principal" [disabled]="!correo[o.id] || ocupado() === 'invitar-' + o.id">
+            <i class="bi bi-envelope" aria-hidden="true"></i>Enviar invitación
+          </button>
+        </form>
+        @if (errorDeInvitacion()[o.id]; as e) {
+          <div class="ig-alerta ig-alerta-error" role="alert">{{ e }}</div>
+        }
+
+        @if (o.pendientes.length) {
+          <h3>Invitaciones sin aceptar</h3>
+          <ul class="mo-pendientes">
+            @for (i of o.pendientes; track i.id) {
+              <li>
+                <span>{{ i.email }}</span>
+                <small>{{ textoDePapel(i.rol) }} · enviada el {{ fecha(i.creationTime) }}</small>
+                <button type="button" class="ig-btn ig-btn-texto ig-btn-chico" [disabled]="ocupado() === i.id" (click)="revocar(o, i.id)">
+                  Cancelar
+                </button>
+              </li>
+            }
+          </ul>
+        }
+      }
+    </section>
+  }
+} @else if (!error()) {
+  <div class="ig-panel ig-vacio"><span class="ig-girando" aria-hidden="true"></span>Cargando…</div>
+}

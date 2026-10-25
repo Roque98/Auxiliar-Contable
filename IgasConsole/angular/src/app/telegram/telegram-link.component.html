@@ -1,0 +1,90 @@
+<div class="tg-root">
+  <app-cabecera [titulo]="'::Menu:Telegram' | abpLocalization">
+    <span descripcion>
+      <!-- El espacio antes de <b> es necesario: `Telegram:Intro1` termina en «poder» sin
+           espacio final, así que sin él la frase se leía «para poderrecuperar». Venía así
+           desde antes; se arregla en la plantilla y no en la traducción, porque un espacio
+           al final de una cadena traducible es justo lo que se pierde al traducirla. -->
+      {{ '::Telegram:Intro1' | abpLocalization }}
+      <b>{{ '::Telegram:RecoverPassword' | abpLocalization }}</b>{{ '::Telegram:Intro2' | abpLocalization }}
+    </span>
+  </app-cabecera>
+
+  <div *ngIf="cargando" class="aviso">{{ '::Common:Loading' | abpLocalization }}<button type="button" class="btn btn-sm btn-outline-secondary ms-2" (click)="reintentar()">{{ '::Common:Retry' | abpLocalization }}</button>
+  </div>
+
+  <div *ngIf="error" class="alert alert-danger">
+    {{ error }}
+    <button type="button" class="btn btn-sm btn-outline-danger ms-2" (click)="reintentar()">{{ '::Common:Retry2' | abpLocalization }}</button>
+  </div>
+
+  <!-- Si la consulta termina sin datos y sin error, se dice: quedarse en blanco es la
+       peor respuesta posible porque no distingue "no hay nada" de "algo se rompió". -->
+  <div *ngIf="!cargando && !error && !estado" class="alert alert-warning">{{ '::Telegram:NoResponse' | abpLocalization }}</div>
+
+  <!-- Sin bot no hay nada que hacer aquí. -->
+  <div *ngIf="estado && !estado.botAvailable" class="alert alert-warning">{{ '::Telegram:NoBot' | abpLocalization }} <b>{{ '::Menu:Metrics' | abpLocalization }}</b>{{ '::Telegram:NoBot2' | abpLocalization }}</div>
+
+  <ng-container *ngIf="estado?.botAvailable">
+    <!-- Ya vinculado -->
+    <div *ngIf="estado?.isLinked" class="tarjeta ok">
+      <div class="tarjeta-cabecera">
+        <i class="fas fa-circle-check" aria-hidden="true"></i>
+        <b>{{ '::Telegram:Linked' | abpLocalization }}</b>
+      </div>
+      <p class="detalle">
+        <span *ngIf="estado?.telegramUserName">{{ '::Telegram:Account' | abpLocalization }} <b>&#64;{{ estado?.telegramUserName }}</b>. </span>
+        <span *ngIf="vinculadoTexto">Vinculada el {{ vinculadoTexto }}.</span>
+      </p>
+      <!-- Segundo factor: solo tiene sentido con la cuenta ya vinculada, porque el
+           vínculo ES el canal por el que llega el código. -->
+      <div class="segundo-factor">
+        <div class="form-check form-switch">
+          <input
+            class="form-check-input"
+            type="checkbox"
+            id="segundoFactor"
+            [checked]="estado?.twoFactorEnabled"
+            [disabled]="cambiandoSegundoFactor"
+            (change)="alternarSegundoFactor()" />
+          <label class="form-check-label" for="segundoFactor">
+            <b>{{ '::Telegram:AskCode' | abpLocalization }}</b>
+          </label>
+        </div>
+        <p class="ayuda">
+          <span *ngIf="estado?.twoFactorEnabled">{{ '::Telegram:TwoFactorOn' | abpLocalization }}</span>
+          <span *ngIf="!estado?.twoFactorEnabled">{{ '::Telegram:TwoFactorOff' | abpLocalization }}</span>
+        </p>
+      </div>
+
+      <button type="button" class="btn btn-sm btn-outline-danger" (click)="desvincular()">{{ '::Telegram:Unlink' | abpLocalization }}</button>
+      <p class="ayuda">{{ '::Telegram:UnlinkWarn' | abpLocalization }} <b *ngIf="estado?.twoFactorEnabled">{{ '::Telegram:UnlinkWarn2' | abpLocalization }}</b>.
+      </p>
+    </div>
+
+    <!-- Sin vincular -->
+    <div *ngIf="estado && !estado.isLinked" class="tarjeta">
+      <p *ngIf="!enlace">{{ '::Telegram:LinkSteps' | abpLocalization }}</p>
+
+      <button
+        *ngIf="!enlace"
+        type="button"
+        class="btn btn-primary"
+        [disabled]="generando"
+        (click)="generar()">
+        {{ generando ? 'Generando…' : 'Generar enlace de vinculación' }}
+      </button>
+
+      <div *ngIf="enlace" class="enlace-generado">
+        <a [href]="enlace.deepLink" target="_blank" rel="noopener" class="btn btn-primary">
+          <i class="fab fa-telegram" aria-hidden="true"></i>{{ '::Telegram:OpenInTelegram' | abpLocalization }}</a>
+
+        <p class="ayuda">
+          Válido {{ enlace.validMinutes }} minutos y de un solo uso. <b>{{ '::Telegram:DoNotShare' | abpLocalization }}</b>{{ '::Telegram:DoNotShare2' | abpLocalization }}</p>
+
+        <p class="esperando">
+          <i class="fas fa-circle-notch fa-spin" aria-hidden="true"></i>{{ '::Telegram:Waiting' | abpLocalization }}</p>
+      </div>
+    </div>
+  </ng-container>
+</div>

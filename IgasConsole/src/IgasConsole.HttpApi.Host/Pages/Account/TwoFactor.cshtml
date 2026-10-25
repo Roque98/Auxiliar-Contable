@@ -1,0 +1,134 @@
+@page
+@model IgasConsole.Pages.Account.TwoFactorModel
+@*
+    Página propia: el módulo Account open source no trae equivalente, porque deja el
+    segundo factor como punto de extensión sin implementar.
+*@
+@{
+    var ruta = new Dictionary<string, string>
+    {
+        { "returnUrl", Model.ReturnUrl ?? string.Empty },
+        { "returnUrlHash", Model.ReturnUrlHash ?? string.Empty },
+        { "rememberMe", Model.RememberMe.ToString() }
+    };
+    // Sin ningún medio para recibir el código, lo único que queda es un código de recuperación.
+    var modoRecuperacion = Model.Recuperacion || Model.Metodo == null;
+}
+<div class="card mt-3 shadow-sm rounded">
+    <div class="card-body p-5">
+        <h4>Verificación en dos pasos</h4>
+
+        @if (Model.Aviso != null)
+        {
+            <div class="alert alert-@Model.AvisoTipo mt-3" role="alert">@Model.Aviso</div>
+        }
+
+        @if (!modoRecuperacion)
+        {
+            <p class="mt-3">
+                @(Model.EnvioFallido ? "Te enviaremos un código por" : "Te enviamos un código por") <b>@IgasConsole.Pages.Account.TwoFactorModel.NombreDe(Model.Metodo!)</b>@if (Model.Destino != null)
+                {<text> a <b>@Model.Destino</b></text>}.
+                Vence en @Model.ValidezMinutos minutos.
+            </p>
+
+            <form method="post">
+                <input type="hidden" asp-for="ReturnUrl" />
+                <input type="hidden" asp-for="ReturnUrlHash" />
+                <input type="hidden" asp-for="RememberMe" />
+                <input type="hidden" asp-for="Metodo" />
+
+                <div class="mb-3">
+                    <label class="form-label" for="Codigo">Código</label>
+                    @* inputmode="numeric" y autocomplete="one-time-code": en el móvil abre el
+                       teclado numérico y permite que el sistema ofrezca el código de un vistazo. *@
+                    <input type="text"
+                           id="Codigo"
+                           name="Codigo"
+                           class="form-control"
+                           inputmode="numeric"
+                           autocomplete="one-time-code"
+                           maxlength="16"
+                           autofocus />
+                </div>
+
+                <div class="d-grid gap-2">
+                    <abp-button button-type="Primary" type="submit" class="mt-2">Verificar</abp-button>
+                </div>
+
+                <div class="d-grid gap-2 mt-2">
+                    <button type="submit" asp-page-handler="Reenviar" class="btn btn-link">
+                        No me llegó, enviarlo de nuevo
+                    </button>
+                </div>
+            </form>
+
+            @if (Model.Metodos.Count > 1)
+            {
+                <p class="mt-3 mb-1 text-center">¿Prefieres otro medio?</p>
+                <div class="d-flex flex-wrap gap-2 justify-content-center">
+                    @foreach (var metodo in Model.Metodos.Where(m => m != Model.Metodo))
+                    {
+                        <a class="btn btn-sm btn-outline-secondary"
+                           asp-page="./TwoFactor"
+                           asp-all-route-data="@(new Dictionary<string, string>(ruta) { { "metodo", metodo } })">
+                            Por @IgasConsole.Pages.Account.TwoFactorModel.NombreDe(metodo)
+                        </a>
+                    }
+                </div>
+            }
+
+            <p class="mt-4 mb-0 text-center">
+                <a asp-page="./TwoFactor" asp-all-route-data="@(new Dictionary<string, string>(ruta) { { "recuperacion", "true" } })">
+                    ¿No te llega nada? Usa un código de recuperación
+                </a>
+            </p>
+        }
+        else
+        {
+            <p class="mt-3">
+                Escribe uno de los códigos de recuperación que guardaste al activar la verificación en dos pasos.
+                Cada código sirve una sola vez.
+            </p>
+
+            <form method="post" asp-page-handler="Recuperacion">
+                <input type="hidden" asp-for="ReturnUrl" />
+                <input type="hidden" asp-for="ReturnUrlHash" />
+                <input type="hidden" asp-for="RememberMe" />
+
+                <div class="mb-3">
+                    <label class="form-label" for="CodigoRecuperacion">Código de recuperación</label>
+                    <input type="text"
+                           id="CodigoRecuperacion"
+                           name="CodigoRecuperacion"
+                           class="form-control"
+                           autocomplete="off"
+                           autocapitalize="off"
+                           spellcheck="false"
+                           maxlength="32"
+                           autofocus />
+                </div>
+
+                <div class="d-grid gap-2">
+                    <abp-button button-type="Primary" type="submit" class="mt-2">Entrar</abp-button>
+                </div>
+            </form>
+
+            <p class="mt-3 mb-0 small text-muted">
+                ¿Tampoco los tienes? Pide a quien administra la consola que te quite la verificación en dos pasos.
+            </p>
+
+            @if (Model.Metodo != null)
+            {
+                <p class="mt-3 mb-0 text-center">
+                    <a asp-page="./TwoFactor" asp-all-route-data="@ruta">Mejor mándame un código</a>
+                </p>
+            }
+        }
+
+        <div class="mt-4">
+            <a asp-page="./Login" asp-all-route-data="@(new Dictionary<string, string> {{"returnUrl", Model.ReturnUrl ?? string.Empty}, {"returnUrlHash", Model.ReturnUrlHash ?? string.Empty}})">
+                <i class="fa fa-long-arrow-left"></i> Volver
+            </a>
+        </div>
+    </div>
+</div>

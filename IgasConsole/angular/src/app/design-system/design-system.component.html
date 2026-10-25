@@ -1,0 +1,237 @@
+<div class="ig-encabezado">
+  <div>
+    <h1>Design system</h1>
+    <p class="ig-sub">
+      Las piezas de ZIA con sus clases reales. Tokens en <code>src/styles/igas/_tokens.scss</code>; nada se escribe
+      a mano fuera de ahí. Solo visible en desarrollo.
+    </p>
+  </div>
+</div>
+
+<!-- ============ Marca ============ -->
+<section class="ds-seccion">
+  <h2>Marca</h2>
+  <div class="ig-panel ds-marca">
+    <img src="assets/images/logo/zia-isotipo.png" alt="Isotipo de ZIA" width="76" height="76" />
+    <img src="assets/images/logo/zia-logotipo.png" alt="Logotipo de ZIA" height="37" />
+    <div class="ig-raya ig-raya-grande" aria-hidden="true"><i></i><i></i></div>
+    <p class="ig-sub">
+      Isotipo (menú, favicon, carga) y logotipo (login, marca), sacados de los SVG oficiales de ZIA con
+      <code>docs/marca/rasterizar.cjs</code>. La raya acento + gris es la firma de la marca: separa la marca del
+      contenido y encabeza los diálogos.
+    </p>
+  </div>
+</section>
+
+<!-- ============ Color ============ -->
+<section class="ds-seccion">
+  <h2>Color</h2>
+  <div class="ds-rejilla">
+    @for (c of colores; track c.token) {
+      <div class="ds-color">
+        <span class="ds-color-muestra" [style.background]="'var(' + c.token + ')'"></span>
+        <strong>{{ c.token }}</strong>
+        <small>{{ c.valor }}</small>
+        <p>{{ c.uso }}</p>
+      </div>
+    }
+  </div>
+</section>
+
+<!-- ============ Tipografía ============ -->
+<section class="ds-seccion">
+  <h2>Tipografía · Sora</h2>
+  <div class="ig-panel">
+    @for (t of tipos; track t.clase) {
+      <div class="ds-tipo">
+        <small>{{ t.nombre }}</small>
+        <span [ngClass]="t.clase">{{ t.texto }}</span>
+      </div>
+    }
+  </div>
+</section>
+
+<!-- ============ Espacio y radios ============ -->
+<section class="ds-seccion">
+  <h2>Espacio y radios</h2>
+  <div class="ig-panel ds-dos">
+    <div>
+      @for (e of espacios; track e) {
+        <div class="ds-espacio"><span [style.width.px]="e"></span><small>{{ e }}px</small></div>
+      }
+    </div>
+    <div class="ds-radios">
+      @for (r of radios; track r.token) {
+        <div class="ds-radio" [style.border-radius]="'var(' + r.token + ')'"><small>{{ r.token }}<br />{{ r.px }}px</small></div>
+      }
+    </div>
+  </div>
+</section>
+
+<!-- ============ Botones ============ -->
+<section class="ds-seccion">
+  <h2>Botones</h2>
+  <div class="ig-panel">
+    <div class="ig-acciones">
+      <button type="button" class="ig-btn ig-btn-principal"><i class="bi bi-plus-lg" aria-hidden="true"></i>Principal</button>
+      <button type="button" class="ig-btn ig-btn-secundario">Secundario</button>
+      <button type="button" class="ig-btn ig-btn-oscuro"><i class="bi bi-play-fill" aria-hidden="true"></i>Oscuro</button>
+      <button type="button" class="ig-btn ig-btn-texto">Texto</button>
+      <button type="button" class="ig-btn ig-btn-texto ig-btn-peligro">Peligro</button>
+      <button type="button" class="ig-btn ig-btn-principal" disabled>Deshabilitado</button>
+    </div>
+    <div class="ig-acciones ds-arriba">
+      <button type="button" class="ig-btn ig-btn-principal ig-btn-chico">Principal chico</button>
+      <button type="button" class="ig-btn ig-btn-secundario ig-btn-chico">Secundario chico</button>
+      <button type="button" class="ig-btn-icono" aria-label="Ampliar">+</button>
+    </div>
+    <p class="ig-ayuda">
+      <code>.ig-btn</code> + variante. Los <code>.btn-primary</code>, <code>.btn-outline-*</code>… de ABP se ven igual
+      (<code>_puente-abp.scss</code>).
+    </p>
+  </div>
+</section>
+
+<!-- ============ Pestañas, etiquetas, alertas ============ -->
+<section class="ds-seccion">
+  <h2>Pestañas, etiquetas y alertas</h2>
+  <div class="ig-panel">
+    <div class="ig-pestanas" role="tablist">
+      <button type="button" role="tab" class="ig-pestana" [attr.aria-selected]="pestana() === 'uno'" (click)="pestana.set('uno')">
+        <i class="bi bi-file-earmark-text" aria-hidden="true"></i>Subir archivo
+      </button>
+      <button type="button" role="tab" class="ig-pestana" [attr.aria-selected]="pestana() === 'dos'" (click)="pestana.set('dos')">
+        <i class="bi bi-list-ul" aria-hidden="true"></i>Guardados <span class="ig-cuenta">3</span>
+      </button>
+    </div>
+    <div class="ig-acciones">
+      <span class="ig-etiqueta">Neutra</span>
+      <span class="ig-etiqueta ig-etiqueta-tinta">Owner</span>
+      <span class="ig-etiqueta ig-etiqueta-acento">Administrador</span>
+      <span class="ig-etiqueta ig-etiqueta-exito">Activo</span>
+      <span class="ig-etiqueta ig-etiqueta-alerta">Pendiente</span>
+      <span class="ig-etiqueta ig-etiqueta-error">Error</span>
+      <span class="ig-etiqueta ig-etiqueta-sello">Simulación</span>
+    </div>
+    <div class="ds-arriba">
+      <div class="ig-alerta ig-alerta-exito">Análisis completado: 183 filas, 5 columnas.</div>
+      <div class="ig-alerta ig-alerta-aviso">Brevo no tiene remitente configurado.</div>
+      <div class="ig-alerta ig-alerta-error">No se completó el paso «Validar».</div>
+      <div class="ig-alerta">Información neutra.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ Formularios ============ -->
+<section class="ds-seccion">
+  <h2>Formularios</h2>
+  <div class="ig-panel ds-dos">
+    <div>
+      <div class="ig-campo">
+        <label for="ds-nombre">Nombre completo</label>
+        <input id="ds-nombre" class="ig-control" placeholder="Laura Méndez" />
+      </div>
+      <div class="ig-campo">
+        <label for="ds-correo">Correo electrónico</label>
+        <input id="ds-correo" class="ig-control" aria-invalid="true" value="laura@" />
+        <div class="ig-msg">Escribe un correo válido.</div>
+      </div>
+    </div>
+    <div>
+      <div class="ig-campo">
+        <label for="ds-rol">Rol</label>
+        <select id="ds-rol" class="form-select"><option>Administrador</option><option>Usuario</option></select>
+      </div>
+      <div class="ig-filtros">
+        <div class="ig-buscar">
+          <i class="bi bi-search" aria-hidden="true"></i>
+          <input type="search" class="ig-control" placeholder="Buscar por nombre o correo" aria-label="Buscar" />
+        </div>
+      </div>
+      <label class="ds-check"><input type="checkbox" class="ig-check" checked /> Recordarme</label>
+    </div>
+  </div>
+</section>
+
+<!-- ============ Tabla ============ -->
+<section class="ds-seccion">
+  <h2>Tabla</h2>
+  <div class="ig-tabla-caja">
+    <table class="ig-tabla tabla-apilable">
+      <thead>
+        <tr><th>Usuario</th><th>Rol</th><th>Estado</th><th class="ig-num">Análisis</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td data-label="Usuario">
+            <div class="ig-persona"><span class="ig-avatar ig-avatar-neutro">LM</span><div><strong>Laura Méndez</strong><small>laura@ziacentro.mx</small></div></div>
+          </td>
+          <td data-label="Rol"><span class="ig-etiqueta ig-etiqueta-tinta">Administrador</span></td>
+          <td data-label="Estado"><span class="ig-etiqueta ig-etiqueta-exito">Activo</span></td>
+          <td data-label="Análisis" class="ig-num">24</td>
+        </tr>
+        <tr class="seleccionada">
+          <td data-label="Usuario">
+            <div class="ig-persona"><span class="ig-avatar ig-avatar-neutro">CR</span><div><strong>Carlos Ruiz</strong><small>carlos@ziacentro.mx</small></div></div>
+          </td>
+          <td data-label="Rol"><span class="ig-etiqueta ig-etiqueta-acento">Usuario</span></td>
+          <td data-label="Estado"><span class="ig-etiqueta">Inactivo</span></td>
+          <td data-label="Análisis" class="ig-num">7</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ============ Flujo ============ -->
+<section class="ds-seccion">
+  <h2>Pasos, archivo, progreso y vacío</h2>
+  <div class="ds-dos">
+    <div class="ig-panel">
+      <div class="ig-archivo"><span class="ig-ext">CSV</span><div><strong>ventas-julio.csv</strong><small>6.4 KB</small></div></div>
+      <ol class="ig-pasos ds-arriba">
+        <li class="ig-paso hecho">
+          <div class="ig-paso-icono"><i class="bi bi-check-lg"></i></div>
+          <div><h3>Subir archivo<span class="ig-paso-tiempo">1.4 s</span></h3><p>6.4 KB recibidos.</p></div>
+        </li>
+        <li class="ig-paso activo">
+          <div class="ig-paso-icono"><span class="ig-girando"></span></div>
+          <div><h3>Analizar</h3><p>Contamos filas y columnas.</p><div class="ig-barra"><i style="width: 60%"></i></div></div>
+        </li>
+        <li class="ig-paso">
+          <div class="ig-paso-icono"><span>3</span></div>
+          <div><h3>Generar resultado</h3><p>Armamos el reporte.</p></div>
+        </li>
+      </ol>
+    </div>
+    <div class="ig-panel">
+      <div class="ig-vacio">
+        <i class="bi bi-inbox" aria-hidden="true"></i>
+        <strong>Aún no hay análisis</strong>
+        El primero que completes aparecerá aquí.
+      </div>
+      <div class="ig-esqueleto"></div>
+      <div class="ig-esqueleto ds-arriba-chico" style="width: 70%"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ Avisos y diálogos ============ -->
+<section class="ds-seccion">
+  <h2>Avisos, confirmaciones y barra de cambios</h2>
+  <div class="ig-panel">
+    <div class="ig-acciones">
+      <button type="button" class="ig-btn ig-btn-secundario ig-btn-chico" (click)="mostrarAviso('success')">Aviso de éxito</button>
+      <button type="button" class="ig-btn ig-btn-secundario ig-btn-chico" (click)="mostrarAviso('error')">Aviso de error</button>
+      <button type="button" class="ig-btn ig-btn-secundario ig-btn-chico" (click)="mostrarAviso('info')">Aviso informativo</button>
+      <button type="button" class="ig-btn ig-btn-secundario ig-btn-chico" (click)="mostrarConfirmacion()">Confirmación</button>
+    </div>
+    <div class="ig-barra-guardar">
+      <span>Tienes cambios sin guardar</span>
+      <div class="ig-acciones">
+        <button type="button" class="ig-btn ig-btn-secundario">Descartar</button>
+        <button type="button" class="ig-btn ig-btn-principal">Guardar permisos</button>
+      </div>
+    </div>
+  </div>
+</section>

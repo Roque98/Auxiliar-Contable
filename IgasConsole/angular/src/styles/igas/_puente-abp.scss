@@ -1,0 +1,905 @@
+/* ===========================================================================
+   DESIGN SYSTEM DE ZIA — PUENTE CON BOOTSTRAP, LEPTONX Y ABP
+   ===========================================================================
+   Las pantallas de ABP (usuarios, roles, permisos, ajustes, sus modales, avisos y
+   confirmaciones) están hechas con clases de Bootstrap y con componentes propios
+   de ABP. Aquí esas clases pasan a ser las piezas del design system, para que una
+   pantalla de ABP y una nuestra no se distingan.
+
+   ⚠️ ESPECIFICIDAD, y no es capricho:
+   - LeptonX inyecta sus hojas EN TIEMPO DE EJECUCIÓN, después de la nuestra. En un
+     empate de especificidad ganan ellas. Por eso todo va bajo `html` (una etiqueta
+     más que su selector) y las variables bajo `html:root` (su `:root` pierde).
+   - Los componentes de ABP (confirmación, avisos) traen estilos ENCAPSULADOS: cada
+     selector suyo lleva además un atributo `[_ngcontent-…]`. Para esos se usa
+     `html:root` + la cadena completa de clases, que suma una clase y una etiqueta
+     más que la suya.
+   Si algo de ABP «no coge» el estilo, casi siempre es esto: mírese en el navegador
+   qué regla gana, no en el CSS.
+   =========================================================================== */
+@use 'mixins' as *;
+
+/* --- Variables de Bootstrap y LeptonX a los tokens ---------------------- */
+html:root {
+  --bs-body-font-family: var(--ig-fuente);
+  --bs-body-font-size: var(--ig-texto-base);
+  --bs-body-line-height: var(--ig-interlineado);
+  --bs-body-color: var(--ig-tinta);
+  --bs-body-bg: var(--ig-blanco);
+  --bs-emphasis-color: var(--ig-tinta);
+  --bs-heading-color: var(--ig-tinta);
+  --bs-secondary-color: var(--ig-texto-secundario);
+  --bs-tertiary-color: var(--ig-texto-secundario);
+  --bs-secondary-bg: var(--ig-gris-fondo);
+  --bs-tertiary-bg: var(--ig-fondo);
+  --bs-border-color: var(--ig-gris-claro);
+  --bs-border-color-translucent: var(--ig-gris-claro);
+  --bs-border-radius: var(--ig-radio);
+  --bs-border-radius-sm: var(--ig-radio-xs);
+  --bs-border-radius-lg: var(--ig-radio-lg);
+  --bs-link-color: var(--ig-tinta);
+  --bs-link-color-rgb: 35, 38, 43;
+  --bs-link-hover-color: var(--ig-tinta);
+  --bs-link-hover-color-rgb: 35, 38, 43;
+  --bs-code-color: var(--ig-tinta);
+  --bs-primary: var(--ig-acento);
+  --bs-primary-rgb: 26, 127, 127;
+  --bs-success: var(--ig-exito);
+  --bs-danger: var(--ig-error);
+  --bs-warning: var(--ig-acento);
+  --bs-dark: var(--ig-tinta);
+  --bs-light: var(--ig-gris-fondo);
+  --bs-focus-ring-color: var(--ig-acento-suave);
+  --bs-backdrop-bg: var(--ig-tinta);
+  --bs-backdrop-opacity: 0.45;
+  --lpx-brand: var(--ig-acento);
+  --lpx-primary: var(--ig-acento);
+  --lpx-card-bg: var(--ig-blanco);
+  --lpx-content-bg: var(--ig-blanco);
+  --lpx-radius: var(--ig-radio);
+}
+
+html {
+  body {
+    background: var(--ig-blanco);
+    color: var(--ig-tinta);
+    font-family: var(--ig-fuente);
+  }
+
+  /* --- Cabecera de las páginas de ABP (`abp-page`) ----------------------- */
+  .content-header-title {
+    color: var(--ig-tinta);
+    font-size: var(--ig-titulo-1);
+    font-weight: var(--ig-peso-fuerte);
+    letter-spacing: var(--ig-tracking-titulo);
+    margin: 0;
+  }
+
+  .entry-row {
+    margin-bottom: var(--ig-esp-6);
+    align-items: flex-end;
+    /* Sin el canal negativo de la fila de Bootstrap: aquí no hay contenedor que lo
+       compense y en móvil sacaba 12px la cabecera por la derecha. */
+    --bs-gutter-x: 0;
+    margin-left: 0;
+    margin-right: 0;
+    gap: var(--ig-esp-3);
+  }
+
+  /* --- Botones ---------------------------------------------------------- */
+  .btn {
+    @include boton-base;
+  }
+
+  .btn-primary,
+  .btn-warning {
+    @include boton-principal;
+    // Deshabilitado, Bootstrap pinta con `.btn:disabled` (dos clases: gana a la nuestra) y
+    // sus variables: el azul de LeptonX. Se le dan las nuestras y queda el amarillo tenue.
+    --bs-btn-disabled-bg: var(--ig-acento);
+    --bs-btn-disabled-border-color: var(--ig-acento);
+    --bs-btn-disabled-color: var(--ig-sobre-acento);
+  }
+
+  .btn-secondary,
+  .btn-light,
+  .btn-outline-primary,
+  .btn-outline-secondary,
+  .btn-outline-dark,
+  .btn-outline-light,
+  .btn-default {
+    @include boton-secundario;
+    --bs-btn-disabled-bg: var(--ig-blanco);
+    --bs-btn-disabled-border-color: var(--ig-gris-claro);
+    --bs-btn-disabled-color: var(--ig-tinta);
+  }
+
+  .btn-dark {
+    @include boton-oscuro;
+  }
+
+  .btn-link {
+    @include boton-texto;
+  }
+
+  .btn-danger {
+    background: var(--ig-error);
+    color: var(--ig-sobre-invertido);
+
+    &:hover,
+    &:focus-visible,
+    &:active {
+      background: var(--ig-error-texto);
+      color: var(--ig-sobre-invertido);
+    }
+  }
+
+  .btn-outline-danger {
+    @include boton-secundario;
+    color: var(--ig-error);
+
+    &:hover,
+    &:focus-visible,
+    &:active {
+      color: var(--ig-error-texto);
+      border-color: var(--ig-error);
+    }
+  }
+
+  .btn-success {
+    background: var(--ig-exito);
+    color: var(--ig-sobre-invertido);
+
+    &:hover,
+    &:active {
+      background: var(--ig-exito-texto);
+      color: var(--ig-sobre-invertido);
+    }
+  }
+
+  .btn-sm,
+  .btn-group-sm > .btn {
+    @include boton-chico;
+  }
+
+  .btn-outline-primary.btn-sm,
+  .btn-outline-secondary.btn-sm,
+  .btn-secondary.btn-sm,
+  .btn-light.btn-sm,
+  .btn-outline-danger.btn-sm {
+    padding: 6.5px 11.5px;
+  }
+
+  /* En pantallas angostas un botón largo («Enviar correo de prueba») se parte en dos
+     líneas en vez de salirse por la derecha. */
+  @media (max-width: 480px) {
+    .btn {
+      white-space: normal;
+      max-width: 100%;
+    }
+  }
+
+  .btn-lg {
+    padding: 14px 22px;
+    font-size: 1rem;
+  }
+
+  .btn-close {
+    border-radius: 50%;
+    background-color: var(--ig-gris-fondo);
+    opacity: 1;
+    padding: 9px;
+  }
+
+  /* --- Superficies ------------------------------------------------------ */
+  .card {
+    border: var(--ig-borde);
+    border-radius: var(--ig-radio-lg);
+    background: var(--ig-blanco);
+    box-shadow: none;
+  }
+
+  .card-header {
+    background: transparent;
+    border-bottom: var(--ig-borde);
+    padding: var(--ig-esp-4) var(--ig-esp-6);
+    font-weight: var(--ig-peso-semi);
+  }
+
+  .card-body {
+    padding: var(--ig-esp-6);
+  }
+
+  .card-title {
+    font-size: var(--ig-titulo-2);
+    font-weight: var(--ig-peso-fuerte);
+  }
+
+  .list-group {
+    border-radius: var(--ig-radio-md);
+  }
+
+  .list-group-item {
+    border-color: var(--ig-gris-claro);
+  }
+
+  /* --- Formularios ------------------------------------------------------ */
+  .form-control,
+  .form-select {
+    @include control;
+
+    // ⚠️ bootstrap-dim trae `.form-control:hover/:focus` con fondo #f5f5f7 y texto
+    // #161616 fijos. Pesan más que `html .form-control` (dos clases contra una), así que
+    // en modo oscuro el campo con el foco salía blanco con texto negro.
+    &:hover,
+    &:focus {
+      background-color: var(--ig-blanco);
+      color: var(--ig-tinta);
+    }
+  }
+
+  .form-select {
+    padding-right: 38px;
+    background-position: right 13px center;
+  }
+
+  .form-control-sm,
+  .form-select-sm {
+    padding: 7px 11px;
+    font-size: var(--ig-texto-md);
+    border-radius: var(--ig-radio-sm);
+  }
+
+  .form-select-sm {
+    padding-right: 34px;
+  }
+
+  .form-label,
+  .col-form-label {
+    font-weight: var(--ig-peso-semi);
+    font-size: var(--ig-texto-md);
+    margin-bottom: 6px;
+    color: var(--ig-tinta);
+  }
+
+  .form-text {
+    color: var(--ig-texto-secundario);
+    font-size: var(--ig-texto-sm);
+  }
+
+  .invalid-feedback {
+    color: var(--ig-error);
+    font-size: var(--ig-texto-sm);
+  }
+
+  .text-danger {
+    color: var(--ig-error) !important;
+  }
+
+  .input-group-text {
+    background: var(--ig-gris-fondo);
+    border: var(--ig-borde-control);
+    border-radius: var(--ig-radio);
+    color: var(--ig-tinta-suave);
+  }
+
+  .form-check-input {
+    width: 1.1em;
+    height: 1.1em;
+    border: var(--ig-borde-control);
+    border-color: var(--ig-gris-medio) !important;
+    background-color: var(--ig-blanco);
+    cursor: pointer;
+
+    // !important porque bootstrap-dim pone el rosa de LeptonX (#f72585) con !important.
+    &:checked {
+      background-color: var(--ig-marcado) !important;
+      border-color: var(--ig-marcado) !important;
+    }
+
+    // «Seleccionar todo» a medias (permisos). bootstrap-dim lo pinta rosa con una regla de
+    // más peso ([type=checkbox]:indeterminate).
+    &[type='checkbox']:indeterminate {
+      background-color: var(--ig-marcado) !important;
+      border-color: var(--ig-marcado) !important;
+    }
+
+    &:focus {
+      border-color: var(--ig-acento);
+      box-shadow: var(--ig-anillo-foco);
+    }
+  }
+
+  .form-switch .form-check-input {
+    width: 2.2em;
+
+    &:checked {
+      background-color: var(--ig-acento) !important;
+      border-color: var(--ig-acento) !important;
+    }
+  }
+
+  .form-check-label {
+    cursor: pointer;
+  }
+
+  /* --- Tablas ----------------------------------------------------------- */
+  .table {
+    --bs-table-bg: transparent;
+    --bs-table-border-color: var(--ig-gris-claro);
+    --bs-table-hover-bg: var(--ig-fondo);
+    --bs-table-striped-bg: transparent;
+    font-size: 0.88rem;
+    color: var(--ig-tinta);
+    margin-bottom: 0;
+
+    > thead > tr > th {
+      font-weight: var(--ig-peso-semi);
+      color: var(--ig-texto-secundario);
+      font-size: var(--ig-texto-sm);
+      padding: 12px 16px;
+      background: var(--ig-fondo);
+      border-bottom: var(--ig-borde);
+      white-space: nowrap;
+      text-transform: none;
+      letter-spacing: 0;
+    }
+
+    > tbody > tr > td {
+      padding: 13px 16px;
+      border-bottom: var(--ig-borde);
+      vertical-align: middle;
+    }
+
+    > tbody > tr:last-child > td {
+      border-bottom: 0;
+    }
+
+    /* Bootstrap 5.3 pinta hover y rayado con un box-shadow interior que lee estas
+       variables; tocar `background` no haría nada. */
+    > tbody > tr:hover > * {
+      --bs-table-bg-state: var(--ig-fondo);
+    }
+  }
+
+  .table-striped > tbody > tr:nth-of-type(odd) > * {
+    --bs-table-bg-type: transparent;
+  }
+
+  .table-responsive {
+    border: var(--ig-borde);
+    border-radius: var(--ig-radio-md);
+    background: var(--ig-blanco);
+  }
+
+  /* Las tablas de ABP (usuarios, roles…) son ngx-datatable con el tema «material». */
+  .ngx-datatable.material {
+    background: var(--ig-blanco);
+    box-shadow: none;
+    border: var(--ig-borde);
+    border-radius: var(--ig-radio-md);
+    font-family: var(--ig-fuente);
+
+    .datatable-header {
+      background: var(--ig-fondo);
+      border-bottom: var(--ig-borde);
+
+      .datatable-header-cell {
+        padding: 12px 16px;
+        background: var(--ig-fondo);
+
+        /* LeptonX la pone en versalitas de 11px con una regla más específica, sobre la
+           celda y sobre su etiqueta interior: se fuerza en las dos. */
+        &,
+        * {
+          color: var(--ig-texto-secundario) !important;
+          font-size: var(--ig-texto-sm) !important;
+          font-weight: var(--ig-peso-semi) !important;
+          text-transform: none !important;
+          letter-spacing: 0 !important;
+        }
+      }
+    }
+
+    /* El tema «material» pinta filas y pie en blanco fijo: en oscuro quedaban blancas. */
+    .datatable-body,
+    .datatable-body .datatable-body-row,
+    .datatable-body .datatable-row-group,
+    .datatable-footer,
+    .datatable-footer .datatable-footer-inner {
+      background: var(--ig-blanco);
+    }
+
+    .datatable-body .datatable-body-row.datatable-row-even,
+    .datatable-body .datatable-body-row.datatable-row-odd {
+      background: var(--ig-blanco);
+    }
+
+    // `.datatable-row-wrapper` en el selector: ng-bundle (LeptonX) lo incluye y con esa
+    // clase de más ganaba al nuestro, dejando el texto de las celdas en gris #686b6e
+    // (en oscuro, 3,3:1: no se leía el nombre de los roles).
+    .datatable-body .datatable-body-row,
+    .datatable-body .datatable-row-wrapper .datatable-body-row {
+      border-bottom: var(--ig-borde);
+
+      .datatable-body-cell {
+        color: var(--ig-tinta);
+        font-size: 0.88rem;
+        padding: 13px 16px;
+      }
+    }
+
+    &.single-selection .datatable-body-row.active,
+    &.multi-selection .datatable-body-row.active,
+    .datatable-body-row.active {
+      background: var(--ig-acento-suave);
+    }
+
+    // !important: ng-bundle pinta el hover con #e7e9ec !important, y en modo oscuro la fila
+    // se volvía blanca bajo el ratón (o con su menú de opciones abierto).
+    &:not(.cell-selection) .datatable-body-row:hover,
+    &:not(.cell-selection) .datatable-body-row:hover .datatable-row-group {
+      background: var(--ig-fondo) !important;
+    }
+
+    .datatable-footer {
+      border-top: var(--ig-borde);
+      color: var(--ig-texto-secundario);
+      font-size: var(--ig-texto-md);
+
+      .datatable-pager li a {
+        border-radius: var(--ig-radio-xs);
+        color: var(--ig-tinta-suave);
+      }
+
+      .datatable-pager li.active a {
+        background: var(--ig-invertido);
+        color: var(--ig-acento);
+        font-weight: var(--ig-peso-semi);
+      }
+    }
+  }
+
+  /* --- Pestañas --------------------------------------------------------- */
+  .nav-tabs {
+    @include pestanas-contenedor;
+    margin-bottom: var(--ig-esp-5);
+    // Sin la raya rosa de LeptonX bajo la pestaña activa.
+    --bs-nav-tabs-link-active-border-color: transparent;
+    --bs-nav-tabs-border-color: transparent;
+
+    .nav-item {
+      margin: 0;
+    }
+
+    .nav-link {
+      @include pestana;
+      margin: 0;
+
+      &.active {
+        @include pestana-activa;
+        border: 0;
+      }
+    }
+  }
+
+  .nav-pills .nav-link {
+    border-radius: var(--ig-radio-sm);
+    color: var(--ig-tinta-suave);
+
+    &.active {
+      background: var(--ig-acento-suave);
+      color: var(--ig-tinta);
+      font-weight: var(--ig-peso-semi);
+    }
+  }
+
+  /* --- Etiquetas -------------------------------------------------------- */
+  .badge {
+    @include etiqueta;
+    background: var(--ig-gris-fondo);
+    color: var(--ig-tinta-suave);
+  }
+
+  .badge.bg-primary,
+  .badge.bg-dark,
+  .badge.text-bg-primary,
+  .badge.text-bg-dark {
+    background: var(--ig-invertido) !important;
+    color: var(--ig-acento) !important;
+  }
+
+  .badge.bg-success,
+  .badge.text-bg-success {
+    background: var(--ig-exito-suave) !important;
+    color: var(--ig-exito-texto) !important;
+  }
+
+  .badge.bg-danger,
+  .badge.text-bg-danger {
+    background: var(--ig-error-suave) !important;
+    color: var(--ig-error-texto) !important;
+  }
+
+  .badge.bg-warning,
+  .badge.text-bg-warning {
+    background: var(--ig-alerta-suave) !important;
+    color: var(--ig-alerta-texto) !important;
+  }
+
+  .badge.bg-info,
+  .badge.text-bg-info,
+  .badge.bg-secondary,
+  .badge.text-bg-secondary,
+  .badge.bg-light,
+  .badge.text-bg-light {
+    background: var(--ig-gris-fondo) !important;
+    color: var(--ig-tinta-suave) !important;
+  }
+
+  /* --- Alertas ---------------------------------------------------------- */
+  .alert {
+    @include alerta;
+    background: var(--ig-info-suave);
+    color: var(--ig-info-texto);
+  }
+
+  .alert-success {
+    background: var(--ig-exito-suave);
+    color: var(--ig-exito-texto);
+  }
+
+  .alert-danger {
+    background: var(--ig-error-suave);
+    color: var(--ig-error-texto);
+  }
+
+  .alert-warning {
+    background: var(--ig-alerta-suave);
+    color: var(--ig-alerta-texto);
+  }
+
+  .alert-heading {
+    color: inherit;
+    font-size: var(--ig-titulo-3);
+  }
+
+  .alert-link {
+    color: inherit;
+  }
+
+  /* abp-bundle quita el fondo del contenedor de pestañas dentro de modales y tarjetas
+     (`.modal-body .nav-tabs { background: none }`, dos clases). Sin ese gris la pestaña
+     activa —blanca— no se distingue de las demás sobre el fondo blanco del diálogo. */
+  .modal-body .nav-tabs,
+  .card .nav-tabs,
+  .tab-content .nav-tabs {
+    background: var(--ig-gris-fondo);
+  }
+
+  /* Los grupos del modal de permisos (componente de LeptonX). Su pestaña activa va en
+     morado con !important y selectores con atributos de encapsulado (7 de peso): se repiten
+     clases para pasar por encima. */
+  .lpx-scroll-pills-container.lpx-scroll-pills-container .nav-item.nav-item .nav-link.nav-link {
+    border-color: var(--ig-gris-claro) !important;
+    color: var(--ig-tinta-suave) !important;
+
+    &.active.active {
+      background-color: var(--ig-acento-suave) !important;
+      border-color: var(--ig-acento) !important;
+      color: var(--ig-tinta) !important;
+    }
+  }
+
+  /* --- Fondos de los componentes de Bootstrap ------------------------------
+     bootstrap-dim (LeptonX) fija cada fondo a #ffffff en su variable, sin mirar el tema.
+     Se redirigen a nuestros tokens para que el modo oscuro llegue a todos, no solo a los
+     que tienen regla propia aquí. */
+  .modal {
+    --bs-modal-bg: var(--ig-blanco);
+    --bs-modal-color: var(--ig-tinta);
+  }
+
+  .dropdown-menu {
+    --bs-dropdown-bg: var(--ig-blanco);
+    --bs-dropdown-color: var(--ig-tinta);
+    --bs-dropdown-link-color: var(--ig-tinta-suave);
+    --bs-dropdown-link-hover-bg: var(--ig-gris-fondo);
+    --bs-dropdown-link-hover-color: var(--ig-tinta);
+    --bs-dropdown-border-color: var(--ig-gris-claro);
+    background-color: var(--ig-blanco);
+  }
+
+  .list-group {
+    --bs-list-group-bg: var(--ig-blanco);
+    --bs-list-group-color: var(--ig-tinta);
+    --bs-list-group-border-color: var(--ig-gris-claro);
+  }
+
+  .pagination {
+    --bs-pagination-bg: var(--ig-blanco);
+    --bs-pagination-color: var(--ig-tinta-suave);
+    --bs-pagination-border-color: var(--ig-gris-claro);
+    --bs-pagination-hover-bg: var(--ig-gris-fondo);
+    --bs-pagination-hover-color: var(--ig-tinta);
+    --bs-pagination-disabled-bg: var(--ig-blanco);
+  }
+
+  .popover {
+    --bs-popover-bg: var(--ig-blanco);
+    --bs-popover-body-color: var(--ig-tinta);
+    --bs-popover-border-color: var(--ig-gris-claro);
+  }
+
+  .card {
+    --bs-card-bg: var(--ig-blanco);
+    --bs-card-color: var(--ig-tinta);
+  }
+
+  /* --- Diálogos (los modales de ABP son ngb-modal) ------------------------ */
+  .modal-backdrop {
+    background-color: var(--ig-invertido);
+
+    &.show {
+      opacity: 0.45;
+    }
+  }
+
+  .modal-content {
+    // Sin esto el fondo sale de --bs-modal-bg, que es blanco siempre: en modo oscuro el
+    // diálogo quedaba blanco con los campos y los textos en oscuro.
+    background-color: var(--ig-blanco);
+    border: 0;
+    border-radius: var(--ig-radio-xl);
+    box-shadow: var(--ig-sombra-dialogo);
+    overflow: hidden;
+    color: var(--ig-tinta);
+
+    &::before {
+      @include franja-de-marca;
+    }
+  }
+
+  .modal-header {
+    border-bottom: 0;
+    padding: 22px 26px 6px;
+
+    // ABP pone el título como un <h3> suelto (sin .modal-title), con el color fijo de
+    // LeptonX (#161616): en modo oscuro no se veía.
+    .modal-title,
+    > h1,
+    > h2,
+    > h3,
+    > h4,
+    > h5 {
+      font-size: var(--ig-titulo-2);
+      font-weight: var(--ig-peso-fuerte);
+      color: var(--ig-tinta);
+      margin: 0;
+    }
+  }
+
+  .modal-body {
+    padding: 14px 26px;
+  }
+
+  .modal-footer {
+    border-top: 0;
+    padding: 6px 26px 24px;
+    gap: 10px;
+
+    > * {
+      margin: 0;
+    }
+  }
+
+  /* --- Menús desplegables ----------------------------------------------- */
+  .dropdown-menu {
+    border: var(--ig-borde);
+    border-radius: var(--ig-radio-md);
+    box-shadow: var(--ig-sombra-flotante);
+    padding: 6px;
+    font-size: 0.9rem;
+    color: var(--ig-tinta);
+  }
+
+  .dropdown-item {
+    border-radius: var(--ig-radio-sm);
+    padding: 9px 12px;
+    color: var(--ig-tinta-suave);
+    font-weight: var(--ig-peso-medio);
+
+    &:hover,
+    &:focus {
+      background: var(--ig-gris-fondo);
+      color: var(--ig-tinta);
+    }
+
+    &.active,
+    &:active {
+      background: var(--ig-acento-suave);
+      color: var(--ig-tinta);
+    }
+  }
+
+  .dropdown-divider {
+    border-color: var(--ig-gris-claro);
+  }
+
+  /* --- Paginación ------------------------------------------------------- */
+  .page-link {
+    border: 0;
+    border-radius: var(--ig-radio-xs);
+    color: var(--ig-tinta-suave);
+    margin: 0 2px;
+
+    &:hover {
+      background: var(--ig-gris-fondo);
+      color: var(--ig-tinta);
+    }
+  }
+
+  .page-item.active .page-link {
+    background: var(--ig-invertido);
+    color: var(--ig-acento);
+  }
+
+  /* --- Texto y utilidades de color -------------------------------------- */
+  .text-muted,
+  .text-secondary,
+  .text-body-secondary {
+    color: var(--ig-texto-secundario) !important;
+  }
+
+  /* El acento como texto no se lee: `text-primary` pasa al tono oscuro del acento. */
+  .text-primary {
+    color: var(--ig-acento-texto) !important;
+  }
+
+  .text-success {
+    color: var(--ig-exito-texto) !important;
+  }
+
+  .text-warning {
+    color: var(--ig-alerta-texto) !important;
+  }
+
+  .bg-light {
+    background-color: var(--ig-gris-fondo) !important;
+  }
+
+  .border,
+  .border-top,
+  .border-bottom,
+  .border-start,
+  .border-end {
+    border-color: var(--ig-gris-claro) !important;
+  }
+
+  .progress {
+    height: 6px;
+    background: var(--ig-gris-fondo);
+    border-radius: 3px;
+  }
+
+  .progress-bar {
+    background: var(--ig-acento);
+  }
+
+  .spinner-border {
+    color: var(--ig-acento);
+  }
+}
+
+/* --- Confirmación de ABP (encapsulada) ---------------------------------- */
+html:root .confirmation {
+  .confirmation-backdrop {
+    background: var(--ig-velo);
+  }
+
+  .confirmation-dialog {
+    width: min(440px, calc(100vw - 32px));
+    min-height: 0;
+    background: var(--ig-blanco);
+    border-radius: var(--ig-radio-xl);
+    box-shadow: var(--ig-sombra-dialogo);
+    overflow: hidden;
+    padding: 0;
+
+    &::before {
+      @include franja-de-marca;
+    }
+
+    /* El prototipo no pone icono en la confirmación: el título ya dice lo que es. */
+    .icon-container {
+      display: none;
+    }
+
+    .content {
+      padding: 26px 26px 0;
+
+      .title {
+        font-size: var(--ig-titulo-2);
+        font-weight: var(--ig-peso-fuerte);
+        text-align: left;
+        margin: 0 0 var(--ig-esp-2);
+        color: var(--ig-tinta);
+      }
+
+      .message {
+        padding: 0;
+        margin: 0 0 var(--ig-esp-5);
+        font-size: var(--ig-texto-base);
+        text-align: left;
+        color: var(--ig-tinta-suave);
+      }
+    }
+
+    .footer {
+      padding: 0 26px 26px;
+      gap: 10px;
+    }
+  }
+}
+
+/* --- Avisos de ABP (encapsulados) --------------------------------------- */
+html:root .abp-toast-container {
+  .abp-toast,
+  .abp-toast.abp-toast-success,
+  .abp-toast.abp-toast-info,
+  .abp-toast.abp-toast-warning,
+  .abp-toast.abp-toast-error {
+    width: min(380px, calc(100vw - 32px));
+    grid-template-columns: 28px 1fr;
+    gap: 8px;
+    padding: 12px 16px 12px 14px;
+    border: 0;
+    border-left: 4px solid var(--ig-acento);
+    border-radius: var(--ig-radio);
+    background: var(--ig-invertido);
+    color: var(--ig-sobre-invertido);
+    font-family: var(--ig-fuente);
+    font-size: 0.88rem;
+    box-shadow: var(--ig-sombra-flotante);
+
+    &:hover {
+      border: 0;
+      border-left: 4px solid var(--ig-acento);
+      background: var(--ig-invertido-hover);
+      box-shadow: var(--ig-sombra-flotante);
+    }
+  }
+
+  .abp-toast.abp-toast-success .abp-toast-icon {
+    color: #5fd39a;
+  }
+
+  .abp-toast.abp-toast-error,
+  .abp-toast.abp-toast-error:hover {
+    border-left-color: var(--ig-error);
+  }
+
+  .abp-toast .abp-toast-icon {
+    color: var(--ig-acento);
+    align-self: start;
+    font-size: 1.1rem;
+  }
+
+  .abp-toast.abp-toast-error .abp-toast-icon {
+    color: #ff8a7d;
+  }
+
+  .abp-toast .abp-toast-title {
+    font-weight: var(--ig-peso-semi);
+  }
+
+  .abp-toast .abp-toast-message {
+    margin: 2px 0 0;
+    color: rgba(255, 255, 255, 0.85);
+  }
+
+  .abp-toast .abp-toast-close-button {
+    color: var(--ig-sobre-invertido);
+    opacity: 0.8;
+  }
+}

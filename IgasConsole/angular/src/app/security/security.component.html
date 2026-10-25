@@ -1,0 +1,245 @@
+<div class="sec-root">
+  <app-cabecera [titulo]="'::Menu:Security' | abpLocalization"
+                [descripcion]="'::Security:Intro' | abpLocalization" />
+
+  <app-esqueleto *ngIf="cargando" [filas]="5" [etiqueta]="'::Common:Loading' | abpLocalization" />
+  <div *ngIf="error" class="alert alert-danger">{{ error }}</div>
+
+  <ng-container *ngIf="!cargando && !error">
+    <div class="tarjeta">
+      <h3 class="subtitulo">{{ '::Security:BlockAddress' | abpLocalization }}</h3>
+      <div class="form-bloqueo">
+        <input
+          type="text"
+          class="form-control form-control-sm"
+          placeholder="Dirección IP"
+          aria-label="Dirección IP"
+          [(ngModel)]="nuevaIp" />
+        <input
+          type="text"
+          class="form-control form-control-sm motivo"
+          placeholder="Motivo (obligatorio)"
+          aria-label="Motivo"
+          [(ngModel)]="nuevoMotivo" />
+        <input
+          type="number"
+          class="form-control form-control-sm horas"
+          placeholder="Horas"
+          aria-label="Horas (vacío = indefinido)"
+          title="Vacío = indefinido"
+          min="1"
+          [(ngModel)]="nuevasHoras" />
+        <button
+          type="button"
+          class="btn btn-sm btn-danger"
+          [disabled]="bloqueando"
+          (click)="bloquear()">
+          {{ bloqueando ? 'Bloqueando…' : 'Bloquear' }}
+        </button>
+      </div>
+      <p class="ayuda">{{ '::Security:CannotBlockSelf' | abpLocalization }}</p>
+    </div>
+
+    <p *ngIf="automaticas > 0" class="nota-auto">
+      <i class="fas fa-robot" aria-hidden="true"></i>
+      {{ automaticas }} de las activas las puso el bloqueo automático. Caducan solas.
+    </p>
+
+    <div class="ig-desplazable">
+      <table *ngIf="ips.length > 0" class="table table-sm table-striped tabla-apilable mt-3">
+        <thead>
+          <tr>
+            <th scope="col">IP</th>
+            <th scope="col">{{ '::Security:Reason' | abpLocalization }}</th>
+            <th scope="col">{{ '::Security:Origin' | abpLocalization }}</th>
+            <th scope="col">{{ '::Common:From' | abpLocalization }}</th>
+            <th scope="col">{{ '::Common:Until' | abpLocalization }}</th>
+            <th scope="col"></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let b of ips" [class.caducada]="!b.isActive">
+            <td data-label="IP">{{ b.ipAddress }}</td>
+            <td data-label="Motivo">{{ b.reason }}</td>
+            <td data-label="Origen">
+              <!-- Distinguir origen cambia como se lee la fila: uno automatico es la
+                   consecuencia de un umbral; uno manual, una decision de alguien. -->
+              <span *ngIf="b.isAutomatic" class="badge text-bg-secondary">{{ '::Security:Automatic' | abpLocalization }}</span>
+              <span *ngIf="!b.isAutomatic" class="badge text-bg-dark">{{ '::Security:Manual' | abpLocalization }}</span>
+            </td>
+            <td data-label="Desde">{{ fecha(b.creationTime) }}</td>
+            <td data-label="Hasta">
+              <span *ngIf="b.expiresUtc">{{ fecha(b.expiresUtc) }}</span>
+              <span *ngIf="!b.expiresUtc">{{ '::Security:Indefinite' | abpLocalization }}</span>
+              <span *ngIf="!b.isActive" class="etiqueta">{{ '::Security:Expired' | abpLocalization }}</span>
+            </td>
+            <td>
+              <button type="button" class="btn btn-sm btn-outline-secondary" (click)="desbloquear(b)">{{ '::Common:Remove' | abpLocalization }}</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <app-vacio *ngIf="ips.length === 0"
+               icono="bi-shield-check"
+               [texto]="'::Security:NoBlockedIps' | abpLocalization" />
+
+    <!-- ===== Registro de seguridad ============================================
+         La tabla la llena ABP sola desde el primer dia (inicios de sesion,
+         bloqueos, cambios de contrasena). Hasta ahora no habia forma de verla. -->
+    <ng-container *ngIf="puedeVerRegistro">
+      <h3 class="subtitulo mt-4">{{ '::Security:LogTitle' | abpLocalization }}</h3>
+      <p class="ayuda">{{ '::Security:LogIntro' | abpLocalization }}</p>
+
+      <div class="filtros-registro">
+        <select class="form-select form-select-sm" [(ngModel)]="filtroDias" (change)="filtrarRegistro()"
+                aria-label="Periodo">
+          <option [ngValue]="1">{{ '::Common:LastDay' | abpLocalization }}</option>
+          <option [ngValue]="7">{{ '::Common:LastWeek' | abpLocalization }}</option>
+          <option [ngValue]="30">{{ '::Common:LastMonth' | abpLocalization }}</option>
+          <option [ngValue]="90">{{ '::Common:Last90Days' | abpLocalization }}</option>
+        </select>
+
+        <select class="form-select form-select-sm" [(ngModel)]="filtroAccion" (change)="filtrarRegistro()"
+                aria-label="Acción">
+          <option value="">{{ '::Security:AllActions' | abpLocalization }}</option>
+          <option *ngFor="let a of accionesDisponibles" [value]="a">{{ a }}</option>
+        </select>
+
+        <input type="text" class="form-control form-control-sm" placeholder="Usuario"
+               aria-label="Usuario" [(ngModel)]="filtroUsuario" (keyup.enter)="filtrarRegistro()" />
+
+        <input type="text" class="form-control form-control-sm" placeholder="IP exacta"
+               aria-label="IP" [(ngModel)]="filtroIp" (keyup.enter)="filtrarRegistro()" />
+
+        <button type="button" class="btn btn-sm btn-outline-secondary" (click)="filtrarRegistro()">{{ '::Common:Filter' | abpLocalization }}</button>
+      </div>
+
+      <app-esqueleto *ngIf="cargandoRegistro" [filas]="5" [etiqueta]="'::Common:Loading' | abpLocalization" />
+
+      <div class="ig-desplazable">
+        <table *ngIf="registro.length > 0" class="table table-sm table-striped tabla-apilable mt-2">
+          <thead>
+            <tr>
+              <th scope="col">{{ '::Common:When' | abpLocalization }}</th>
+              <th scope="col">{{ '::Security:Action' | abpLocalization }}</th>
+              <th scope="col">{{ '::Common:User' | abpLocalization }}</th>
+              <th scope="col">IP</th>
+              <th scope="col">{{ '::Security:Browser' | abpLocalization }}</th>
+              <th scope="col"></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let r of registro" [class.fallido]="r.isFailure">
+              <td data-label="Cuándo">{{ fecha(r.creationTime) }}</td>
+              <td data-label="Acción">
+                <span class="badge" [class.text-bg-danger]="r.isFailure"
+                      [class.text-bg-secondary]="!r.isFailure">{{ r.action }}</span>
+                <!-- Lo que la entrada guardó aparte. Casi siempre vacío; lo estrenó la
+                     suplantación, donde la fila sin esto decía que alguien entró en un espacio
+                     sin decir en cuál — que es justo lo que se viene a leer. -->
+                <span *ngIf="r.detalle" class="detalle-registro">{{ r.detalle }}</span>
+              </td>
+              <td data-label="Usuario">{{ r.userName || '—' }}</td>
+              <td data-label="IP">{{ r.clientIpAddress || '—' }}</td>
+              <td data-label="Navegador" class="navegador" [title]="r.browserInfo || ''">
+                {{ r.browserInfo || '—' }}
+              </td>
+              <td>
+                <!-- Lleva la IP al formulario de arriba: es la accion natural al ver una
+                     racha de intentos fallidos desde la misma direccion. -->
+                <button *ngIf="r.clientIpAddress" type="button"
+                        class="btn btn-sm btn-outline-danger" (click)="bloquearDesdeRegistro(r)">{{ '::Security:BlockIp' | abpLocalization }}</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <app-vacio *ngIf="!cargandoRegistro && registro.length === 0"
+                 icono="bi-search"
+                 [texto]="'::Common:NoEntriesForFilters' | abpLocalization" />
+
+      <div *ngIf="totalRegistro > porPagina" class="paginacion">
+        <button type="button" class="btn btn-sm btn-outline-secondary"
+                [disabled]="paginaRegistro === 0" (click)="paginaAnterior()">{{ '::Common:Previous' | abpLocalization }}</button>
+        <span class="cuantos">
+          {{ paginaRegistro * porPagina + 1 }}–{{ paginaRegistro * porPagina + registro.length }}
+          de {{ totalRegistro }}
+        </span>
+        <button type="button" class="btn btn-sm btn-outline-secondary"
+                [disabled]="!hayPaginaSiguiente" (click)="paginaSiguiente()">{{ '::Common:Next' | abpLocalization }}</button>
+      </div>
+    </ng-container>
+  </ng-container>
+
+  <!-- ⚠️ Trafico bloqueado por el rate limiter. Venia de /metrics, y aqui es donde
+       pertenece: esta pantalla ya es la del bloqueo de IPs y el registro de seguridad, o sea
+       «quien esta llamando a la puerta». En metricas competia con los graficos de CPU sin
+       tener nada que ver con ellos. -->
+  <!-- ------------------- Tráfico bloqueado por rate limiting -------------------
+       Solo se muestra si hubo algo que mostrar: una tabla vacía no aporta nada. -->
+  <section *ngIf="bloqueados.length > 0" class="tabla-envoltura bloqueados">
+    <h3 class="subtitulo">
+      <i class="fas fa-shield-halved" aria-hidden="true"></i>
+      Tráfico bloqueado ({{ bloqueados.length }})
+      <button
+        type="button"
+        class="btn btn-sm btn-outline-secondary boton-export"
+        [disabled]="exportandoBloqueados"
+        (click)="exportarBloqueados()">
+        <i class="fas fa-file-csv" aria-hidden="true"></i>
+        {{ exportandoBloqueados ? 'Generando…' : 'CSV' }}
+      </button>
+    </h3>
+    <div class="ig-desplazable">
+      <table class="table table-sm table-striped">
+        <thead>
+          <tr>
+            <th scope="col">{{ '::Common:LastTime' | abpLocalization }}</th>
+            <th scope="col">IP</th>
+            <th scope="col">{{ '::Metrics:Endpoint' | abpLocalization }}</th>
+            <th scope="col" class="num">{{ '::Metrics:Times' | abpLocalization }}</th>
+            <th scope="col">{{ '::Metrics:FirstTime' | abpLocalization }}</th>
+            <!-- Columna de la accion de bloquear; sin titulo, el boton se explica solo. -->
+            <th scope="col"></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let e of bloqueados">
+            <td>{{ hora(e.lastRejectedUtc) }}</td>
+            <!-- Atajo: de "esta IP fue bloqueada" a "qué más hizo esta IP", que es
+                 la pregunta siguiente y hasta ahora obligaba a copiarla a mano. -->
+            <td>
+              <!-- ⚠️ Ahora NAVEGA, antes filtraba una tabla de esta misma pantalla. El
+                   registro de peticiones se mudó a /audit al partir /metrics, así que el atajo
+                   pasa a ser un enlace con la IP en la consulta — y allí se recoge y se aplica
+                   como filtro. Si no se tiene permiso de auditoría, el guardia de la ruta
+                   corta: no hace falta esconderlo aquí. -->
+              <a class="enlace-ip"
+                 [routerLink]="['/audit']" [queryParams]="{ ip: e.ipAddress }"
+                 [title]="('::Security:SeePetitions' | abpLocalization) + ' ' + e.ipAddress">
+                {{ e.ipAddress }}
+              </a>
+            </td>
+            <td class="endpoint">{{ e.endpoint }}</td>
+            <td class="num">{{ e.rejectionCount }}</td>
+            <td>{{ hora(e.firstRejectedUtc) }}</td>
+            <!-- El otro atajo: de "esta IP insiste" a vetarla, sin copiarla a mano. -->
+            <td>
+              <!-- Lleva a Seguridad con la IP ya puesta: el panel vive alli, pero la
+                   pregunta "y a este, lo veto?" nace aqui. -->
+              <a
+                class="btn btn-sm btn-outline-danger"
+                [routerLink]="['/security']"
+                [queryParams]="{ ip: e.ipAddress }"
+                [title]="'Bloquear ' + e.ipAddress">{{ '::Security:Block' | abpLocalization }}</a>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+</div>

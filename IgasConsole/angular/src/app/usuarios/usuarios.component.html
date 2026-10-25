@@ -1,0 +1,313 @@
+<div class="ig-encabezado us-encabezado">
+  <div>
+    <h1>Usuarios</h1>
+    <p class="ig-sub">Las personas que puedes gestionar. Para dar de alta a alguien, lo normal es invitarlo por correo.</p>
+  </div>
+  @if (puedeCrear) {
+    <div class="us-acciones-cabecera">
+      <a class="ig-btn ig-btn-principal" routerLink="/invitaciones">
+        <i class="bi bi-envelope-plus" aria-hidden="true"></i>Invitar
+      </a>
+      <button type="button" class="ig-btn ig-btn-secundario" (click)="nuevo()">
+        <i class="bi bi-person-plus" aria-hidden="true"></i>Crear a mano
+      </button>
+    </div>
+  }
+</div>
+
+<div class="us-barra">
+  <div class="ig-buscar">
+    <i class="bi bi-search" aria-hidden="true"></i>
+    <input type="search" class="ig-control" placeholder="Buscar por nombre, usuario o correo" aria-label="Buscar usuarios"
+           [(ngModel)]="busqueda" (ngModelChange)="alBuscar()" />
+  </div>
+  <span class="us-total">{{ total() }} {{ total() === 1 ? 'persona' : 'personas' }}</span>
+</div>
+
+@if (error(); as e) {
+  <div class="ig-alerta ig-alerta-error">{{ e }}</div>
+}
+
+@if (cargando() && !filas().length) {
+  <div class="ig-panel">
+    <div class="ig-esqueleto"></div>
+    <div class="ig-esqueleto us-esqueleto-corto"></div>
+  </div>
+} @else if (!filas().length) {
+  <div class="ig-panel">
+    <div class="ig-vacio">
+      <i class="bi bi-people" aria-hidden="true"></i>
+      @if (busqueda.trim()) {
+        <strong>Nadie coincide con «{{ busqueda.trim() }}»</strong>
+        Prueba con otra parte del nombre o del correo.
+      } @else {
+        <strong>Todavía no hay nadie a tu cargo</strong>
+        Invita a alguien por correo para empezar.
+      }
+    </div>
+  </div>
+} @else {
+  <ul class="us-lista" [class.us-recargando]="cargando()" aria-label="Usuarios">
+    <li class="us-cabecera" aria-hidden="true">
+      <span>Persona</span><span>Rol</span><span>Estado</span><span></span>
+    </li>
+    @for (f of filas(); track f.usuario.id) {
+      @let u = f.usuario;
+      <li class="us-ficha" [class.us-inactiva]="!u.isActive">
+        <div class="ig-persona us-persona">
+          <span class="ig-avatar" aria-hidden="true">{{ iniciales(u) }}</span>
+          <div>
+            <strong>
+              {{ nombreCompleto(u) }}
+              @if (esUnoMismo(u)) {
+                <span class="us-tu">(tú)</span>
+              }
+            </strong>
+            <small>
+              {{ u.userName }}@if (u.email && !esCorreoProvisional(u.email)) {<span aria-hidden="true"> · </span>{{ u.email }}}
+            </small>
+          </div>
+        </div>
+
+        <div class="us-roles">
+          <span class="us-etiqueta-movil">Rol</span>
+          @for (r of f.roles; track r) {
+            <span class="ig-etiqueta {{ claseRol(r) }}">{{ etiquetaRol(r) }}</span>
+          } @empty {
+            <span class="us-sin-dato">Sin rol</span>
+          }
+          @for (o of f.organizaciones; track o.id) {
+            <span class="us-org"><i class="bi bi-building" aria-hidden="true"></i>{{ o.nombre }}</span>
+          }
+        </div>
+
+        <div class="us-estado">
+          <span class="us-etiqueta-movil">Estado</span>
+          @if (!u.isActive) {
+            <span class="ig-etiqueta">Inactivo</span>
+          } @else if (bloqueado(u)) {
+            <span class="ig-etiqueta ig-etiqueta-error" [title]="'Bloqueado hasta ' + (u.lockoutEnd | date: 'd MMM, HH:mm')">Bloqueado</span>
+          } @else {
+            <span class="ig-etiqueta ig-etiqueta-exito">Activo</span>
+          }
+          @if (esCorreoProvisional(u.email)) {
+            <span class="ig-etiqueta ig-etiqueta-alerta" title="Se dio de alta sin correo; lo registra desde «Seguridad»">Sin correo</span>
+          } @else if (!u.emailConfirmed) {
+            <span class="ig-etiqueta ig-etiqueta-alerta" title="Todavía no confirmó su correo">Correo sin confirmar</span>
+          }
+        </div>
+
+        <div class="us-acciones">
+          @if (puedeEditar) {
+            <button type="button" class="ig-btn ig-btn-secundario ig-btn-chico" [disabled]="ocupado() === u.id" (click)="editar(f)">
+              <i class="bi bi-pencil" aria-hidden="true"></i>Editar
+            </button>
+          }
+          @if (puedePermisos && !esUnoMismo(u)) {
+            <button type="button" class="ig-btn ig-btn-secundario ig-btn-chico ig-btn-icono" title="Permisos individuales"
+                    aria-label="Permisos individuales de {{ u.userName }}" (click)="abrirPermisos(u)">
+              <i class="bi bi-key" aria-hidden="true"></i>
+            </button>
+          }
+          @if (puedeBorrar && !esUnoMismo(u)) {
+            <button type="button" class="ig-btn ig-btn-texto ig-btn-chico ig-btn-icono us-borrar" title="Eliminar"
+                    aria-label="Eliminar a {{ u.userName }}" [disabled]="ocupado() === u.id" (click)="eliminar(u)">
+              <i class="bi bi-trash" aria-hidden="true"></i>
+            </button>
+          }
+        </div>
+      </li>
+    }
+  </ul>
+
+  @if (paginas() > 1) {
+    <nav class="us-paginacion" aria-label="Páginas">
+      <button type="button" class="ig-btn ig-btn-secundario ig-btn-chico" [disabled]="pagina() === 0" (click)="irAPagina(pagina() - 1)">
+        <i class="bi bi-chevron-left" aria-hidden="true"></i>Anterior
+      </button>
+      <span>Página {{ pagina() + 1 }} de {{ paginas() }}</span>
+      <button type="button" class="ig-btn ig-btn-secundario ig-btn-chico" [disabled]="pagina() + 1 >= paginas()" (click)="irAPagina(pagina() + 1)">
+        Siguiente<i class="bi bi-chevron-right" aria-hidden="true"></i>
+      </button>
+    </nav>
+  }
+}
+
+<!-- Alta y edición -->
+<abp-modal [visible]="dialogo()" (visibleChange)="dialogo.set($event)" [busy]="guardando()" [options]="{ size: 'lg' }">
+  <ng-template #abpHeader>
+    <h3>{{ form.id ? 'Editar a ' + form.userName : 'Crear usuario a mano' }}</h3>
+  </ng-template>
+
+  <ng-template #abpBody>
+    <form id="form-usuario" class="us-form" (ngSubmit)="guardar()" autocomplete="off">
+      @if (!form.id) {
+        <p class="ig-ayuda us-nota">
+          <i class="bi bi-info-circle" aria-hidden="true"></i>
+          <span>Tendrás que darle tú la contraseña. Es más cómodo <a routerLink="/invitaciones" abpClose>invitarlo por correo</a>:
+          elige la suya y su correo queda confirmado.</span>
+        </p>
+      }
+      @if (errorDialogo(); as e) {
+        <div class="ig-alerta ig-alerta-error" role="alert">{{ e }}</div>
+      }
+
+      <div class="us-dos">
+        <div class="ig-campo">
+          <label for="us-usuario">Usuario *</label>
+          <input id="us-usuario" name="userName" class="ig-control" required [(ngModel)]="form.userName" />
+        </div>
+        <div class="ig-campo">
+          <label for="us-correo">Correo{{ form.sinCorreo ? '' : ' *' }}</label>
+          @if (form.sinCorreo) {
+            <p class="us-sin-correo">Sin correo por ahora. Al entrar, se le pedirá registrar y verificar el suyo.</p>
+          } @else {
+            <input id="us-correo" name="email" type="email" class="ig-control" required [(ngModel)]="form.email" />
+          }
+          <label class="us-check us-check-chico">
+            <input type="checkbox" class="form-check-input" name="sinCorreo" [(ngModel)]="form.sinCorreo" />
+            Aún no tiene correo
+          </label>
+        </div>
+        <div class="ig-campo">
+          <label for="us-nombre">Nombre</label>
+          <input id="us-nombre" name="name" class="ig-control" [(ngModel)]="form.name" />
+        </div>
+        <div class="ig-campo">
+          <label for="us-apellido">Apellidos</label>
+          <input id="us-apellido" name="surname" class="ig-control" [(ngModel)]="form.surname" />
+        </div>
+        <div class="ig-campo">
+          <label for="us-telefono">Teléfono</label>
+          <input id="us-telefono" name="phoneNumber" type="tel" class="ig-control" placeholder="+52 55 1234 5678" [(ngModel)]="form.phoneNumber" />
+        </div>
+        <div class="ig-campo">
+          <label for="us-clave">{{ form.id ? 'Contraseña nueva' : 'Contraseña *' }}</label>
+          <div class="us-clave">
+            <input id="us-clave" name="password" class="ig-control" autocomplete="new-password"
+                   [type]="verClave() ? 'text' : 'password'" [(ngModel)]="form.password"
+                   [placeholder]="form.id ? 'Déjala vacía para no cambiarla' : ''" />
+            <button type="button" class="ig-btn ig-btn-secundario ig-btn-icono" [attr.aria-label]="verClave() ? 'Ocultar contraseña' : 'Ver contraseña'"
+                    (click)="verClave.set(!verClave())">
+              <i class="bi" [class.bi-eye]="!verClave()" [class.bi-eye-slash]="verClave()" aria-hidden="true"></i>
+            </button>
+          </div>
+          <div class="ig-ayuda">Mínimo 6 caracteres, con mayúscula, minúscula, número y símbolo.</div>
+        </div>
+      </div>
+
+      @if (puedeRoles) {
+        <div class="us-grupo">
+          <p class="us-grupo-titulo" id="us-rol-titulo">Rol</p>
+          <p class="ig-ayuda us-grupo-ayuda">Cada rol incluye lo que pueden hacer los de abajo, así que se elige uno solo.</p>
+          <div class="us-roles-opciones" role="radiogroup" aria-labelledby="us-rol-titulo">
+            @for (r of rolesDelFormulario(); track r.nombre) {
+              <label class="us-rol" [class.elegido]="form.rol === r.nombre">
+                <input type="radio" class="ig-solo-lector" name="rol" [value]="r.nombre" [checked]="form.rol === r.nombre"
+                       (change)="form.rol = r.nombre" />
+                <i class="bi {{ r.icono }}" aria-hidden="true"></i>
+                <span>
+                  <strong>{{ r.etiqueta }}</strong>
+                  <small>{{ r.texto }}</small>
+                </span>
+              </label>
+            } @empty {
+              <p class="ig-ayuda">Cargando roles…</p>
+            }
+          </div>
+          @if (rolesFijos().length) {
+            <p class="ig-ayuda us-fijos">
+              También tiene: {{ rolesFijos().map(etiquetaRol).join(', ') }}. Eso no puedes cambiarlo tú.
+            </p>
+          }
+        </div>
+      }
+
+      @if (pideOrganizacion()) {
+        <div class="us-grupo">
+          @if (form.organizacionesActuales.length) {
+            <p class="us-grupo-titulo">Organización</p>
+            <p class="ig-ayuda us-grupo-ayuda">
+              Pertenece a {{ form.organizacionesActuales.map(o => o.nombre).join(', ') }}. Para sacarlo de una, ve a
+              Organizaciones.
+            </p>
+          }
+          <app-selector-organizacion idCampo="us-organizacion"
+                                     [organizaciones]="form.id ? organizacionesElegibles() : organizaciones()"
+                                     [puedeCrear]="opcionesOrg()?.puedeCrear ?? false"
+                                     [requerida]="organizacionObligatoria()"
+                                     [(valor)]="form.organizacionId" (creada)="anadirOrganizacion($event)" />
+        </div>
+      }
+
+      <div class="us-grupo">
+        <p class="us-grupo-titulo">Acceso</p>
+        <label class="us-check">
+          <input type="checkbox" class="form-check-input" name="isActive" [(ngModel)]="form.isActive" />
+          <span>
+            <strong>Activo</strong>
+            <small>Si lo desmarcas, no puede entrar, pero se conserva todo lo suyo.</small>
+          </span>
+        </label>
+        <label class="us-check">
+          <input type="checkbox" class="form-check-input" name="lockoutEnabled" [(ngModel)]="form.lockoutEnabled" />
+          <span>
+            <strong>Bloquear tras varios intentos fallidos</strong>
+            <small>Protege la cuenta de quien intente adivinar la contraseña.</small>
+          </span>
+        </label>
+      </div>
+
+      @if (seguridad(); as sg) {
+        <div class="us-grupo">
+          <p class="us-grupo-titulo">Seguridad</p>
+          <div class="us-seguridad">
+            <span class="ig-etiqueta" [class.ig-etiqueta-exito]="sg.segundoFactorActivo">
+              {{ sg.segundoFactorActivo ? 'Dos pasos activa' : 'Sin verificación en dos pasos' }}
+            </span>
+            @if (sg.sinCorreo) {
+              <span class="ig-etiqueta ig-etiqueta-alerta">Sin correo</span>
+            } @else {
+              <span class="ig-etiqueta" [class.ig-etiqueta-exito]="sg.correoConfirmado">
+                {{ sg.correoConfirmado ? 'Correo verificado' : 'Correo sin verificar' }}
+              </span>
+            }
+            @if (sg.segundoFactorActivo) {
+              <span class="ig-etiqueta">{{ sg.codigosDeRecuperacionRestantes }} códigos de recuperación</span>
+            }
+          </div>
+          @if (sg.segundoFactorActivo) {
+            <p class="ig-ayuda us-seguridad-ayuda">
+              @if (confirmarQuitar2fa()) {
+                Podrá entrar solo con su contraseña. Hazlo únicamente si confirmaste que es esa persona quien lo pide.
+              } @else {
+                Si no le llega el código y no tiene códigos de recuperación, puedes quitársela para que vuelva a entrar.
+              }
+            </p>
+            <button type="button" class="ig-btn ig-btn-chico" [class.ig-btn-peligro-solido]="confirmarQuitar2fa()"
+                    [class.ig-btn-secundario]="!confirmarQuitar2fa()" [disabled]="quitando2fa()" (click)="quitarSegundoFactor()">
+              <i class="bi bi-shield-x" aria-hidden="true"></i>
+              {{ confirmarQuitar2fa() ? 'Sí, quitarla' : 'Quitar verificación en dos pasos' }}
+            </button>
+          }
+        </div>
+      }
+    </form>
+  </ng-template>
+
+  <ng-template #abpFooter>
+    <button type="button" class="ig-btn ig-btn-secundario" abpClose>Cancelar</button>
+    <button type="submit" form="form-usuario" class="ig-btn ig-btn-principal" [disabled]="!formularioValido || guardando()">
+      <i class="bi bi-check-lg" aria-hidden="true"></i>{{ form.id ? 'Guardar' : 'Crear usuario' }}
+    </button>
+  </ng-template>
+</abp-modal>
+
+@if (permisosDe) {
+  <abp-permission-management
+    providerName="U"
+    [providerKey]="permisosDe.id ?? ''"
+    [entityDisplayName]="permisosDe.userName ?? ''"
+    [hideBadges]="true"
+    [(visible)]="permisosVisibles" />
+}

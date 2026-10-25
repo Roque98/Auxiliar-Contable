@@ -1,0 +1,90 @@
+<div class="ig-encabezado">
+  <div>
+    <h1>Actividad</h1>
+    <p class="ig-sub">
+      Qué hizo cada quien en la consola: quién entró, qué reportes subió, abrió o descargó, a quién invitó.
+      @if (opciones(); as o) {
+        <span>Las vistas y descargas se guardan {{ o.diasDeRegistro }} días; lo que se subió y las invitaciones, siempre.</span>
+      }
+    </p>
+  </div>
+</div>
+
+<div class="ig-panel">
+  <div class="ac-filtros">
+    <div class="ig-pestanas" role="tablist" aria-label="Tipo de actividad">
+      @for (t of tipos; track t.etiqueta) {
+        <button type="button" role="tab" class="ig-pestana" [attr.aria-selected]="tipo() === t.valor" (click)="elegirTipo(t.valor)">
+          <i class="bi {{ t.icono }}" aria-hidden="true"></i>{{ t.etiqueta }}
+        </button>
+      }
+    </div>
+    <div class="ac-selects">
+      <!-- En móvil, cinco pestañas en tres filas quedaban descuadradas: el tipo pasa a ser un selector más. -->
+      <select class="ig-control ac-tipo" aria-label="Tipo de actividad" [ngModel]="tipo()" (ngModelChange)="elegirTipo($event)">
+        @for (t of tipos; track t.etiqueta) {
+          <option [ngValue]="t.valor">{{ t.valor === null ? 'Toda la actividad' : t.etiqueta }}</option>
+        }
+      </select>
+      <select class="ig-control" aria-label="Persona" [(ngModel)]="usuarioId" (ngModelChange)="buscar()">
+        <option [ngValue]="null">Todas las personas</option>
+        @for (p of opciones()?.personas ?? []; track p.id) {
+          <option [ngValue]="p.id">{{ p.nombreCompleto ? p.nombreCompleto + ' (' + p.usuario + ')' : p.usuario }}</option>
+        }
+      </select>
+      <select class="ig-control" aria-label="Organización" [(ngModel)]="organizacionId" (ngModelChange)="buscar()">
+        <option [ngValue]="null">Todas las organizaciones</option>
+        @for (o of opciones()?.organizaciones ?? []; track o.id) {
+          <option [ngValue]="o.id">{{ o.nombre }}</option>
+        }
+      </select>
+    </div>
+  </div>
+
+  @if (error(); as e) {
+    <div class="ig-alerta ig-alerta-error" role="alert">{{ e }}</div>
+  }
+
+  @if (!cargando() && !error() && !items().length) {
+    <div class="ig-vacio">
+      <i class="bi bi-clock-history" aria-hidden="true"></i>
+      <strong>Sin actividad</strong>
+      No hay nada con estos filtros en los últimos {{ opciones()?.diasDeRegistro ?? 30 }} días.
+    </div>
+  }
+
+  @for (d of dias(); track d.titulo) {
+    <section class="ac-dia" [attr.aria-label]="d.titulo">
+      <h2>{{ d.titulo }}</h2>
+      <ol class="ac-lista">
+        @for (i of d.items; track $index) {
+          <li class="ac-item" [attr.data-tipo]="i.tipo">
+            <span class="ac-hora">{{ hora(i.fecha) }}</span>
+            <span class="ac-avatar" aria-hidden="true">{{ iniciales(i) }}</span>
+            <div class="ac-cuerpo">
+              <p>
+                <strong>{{ i.nombreCompleto ?? i.usuario }}</strong>
+                @if (i.organizaciones.length) {
+                  <span class="ac-org">{{ i.organizaciones.join(', ') }}</span>
+                }
+              </p>
+              <p class="ac-texto">
+                <i class="bi {{ icono(i.tipo) }}" aria-hidden="true"></i>{{ i.texto }}
+                @if (i.veces > 1) {<span class="ac-veces" title="Veces seguidas">×{{ i.veces }}</span>}
+              </p>
+              @if (i.ip) {<small class="ac-ip">IP {{ i.ip }}</small>}
+            </div>
+          </li>
+        }
+      </ol>
+    </section>
+  }
+
+  @if (cargando()) {
+    <div class="ig-vacio"><span class="ig-girando" aria-hidden="true"></span>Cargando…</div>
+  } @else if (siguiente()) {
+    <div class="ac-mas">
+      <button type="button" class="ig-btn ig-btn-secundario" (click)="mas()">Cargar más</button>
+    </div>
+  }
+</div>

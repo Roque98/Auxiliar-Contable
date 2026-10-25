@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <title>ZIA</title>
+    <base href="/" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#ffffff" />
+    <link rel="icon" type="image/png" sizes="32x32" href="assets/images/logo/zia-isotipo-32.png" />
+    <link rel="icon" href="favicon.ico" sizes="any" />
+    <link rel="apple-touch-icon" href="assets/images/logo/zia-isotipo-180.png" />
+    <link rel="preload" href="assets/fonts/sora-latin.woff2" as="font" type="font/woff2" crossorigin />
+    <!-- El tema ANTES de pintar (mismo cálculo que TemaService): sin esto, en modo oscuro la
+         página destella en blanco al cargar. -->
+    <script>
+      (function () {
+        var t = null;
+        try { t = localStorage.getItem('ig-tema'); } catch (e) {}
+        if (t !== 'claro' && t !== 'oscuro') {
+          t = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'oscuro' : 'claro';
+        }
+        document.documentElement.setAttribute('data-tema', t);
+        document.documentElement.setAttribute('data-bs-theme', t === 'oscuro' ? 'dark' : 'light');
+      })();
+    </script>
+
+    <!--
+      Pantalla de arranque. Va EN LÍNEA a propósito: lo que cubre es justo el rato en que
+      todavía no ha llegado ninguna hoja de estilos. Sin esto la web se queda EN BLANCO al
+      refrescar, y un blanco de un segundo se lee como «se ha roto».
+
+      Usa el logo y las rayas de la marca, igual que el login: es lo primero que se ve.
+      Los colores van escritos aquí porque los tokens (`styles/igas/_tokens.scss`) aún no
+      han cargado; son los mismos valores.
+
+      Lo borra el propio Angular: vive DENTRO de <app-root>.
+    -->
+    <style>
+      .arranque {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 18px;
+        background: #ffffff;
+      }
+
+      .arranque img {
+        width: 64px;
+        height: 64px;
+      }
+
+      .arranque-raya {
+        display: flex;
+        gap: 6px;
+      }
+
+      .arranque-raya i {
+        display: block;
+        height: 4px;
+        border-radius: 2px;
+      }
+
+      .arranque-raya i:first-child {
+        width: 44px;
+        background: #1a7f7f;
+        animation: arranque-pulso 1.2s ease-in-out infinite;
+      }
+
+      .arranque-raya i:last-child {
+        width: 16px;
+        background: #8a8f98;
+      }
+
+      @keyframes arranque-pulso {
+        50% {
+          width: 24px;
+        }
+      }
+
+      html[data-tema='oscuro'] .arranque {
+        background: #16181b;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .arranque-raya i:first-child {
+          animation: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <app-root>
+      <div class="arranque" role="status" aria-label="Cargando">
+        <img src="assets/images/logo/zia-isotipo.png" alt="" width="64" height="64" />
+        <div class="arranque-raya"><i></i><i></i></div>
+      </div>
+    </app-root>
+  </body>
+</html>

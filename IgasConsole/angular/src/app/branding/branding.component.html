@@ -1,0 +1,129 @@
+<div class="marca-root">
+  <app-cabecera [titulo]="'::Branding:Title' | abpLocalization"
+                [descripcion]="'::Branding:Intro' | abpLocalization" />
+
+  <app-esqueleto *ngIf="cargando" [filas]="5" [etiqueta]="'::Common:Loading' | abpLocalization" />
+
+  <div *ngIf="error" class="alert alert-danger">{{ error }}</div>
+  <div *ngIf="aviso" class="alert alert-success">{{ aviso }}</div>
+
+  <ng-container *ngIf="!cargando && estado">
+    <!-- El formulario es el mismo para el host y para un inquilino, y lo que guarda NO lo
+         es: el host escribe el valor que heredan todos. Sin decirlo, cambiar el nombre
+         "de prueba" desde el host repintaría la instalación entera. -->
+    <div *ngIf="estado.isHost" class="alert alert-warning">
+      {{ '::Branding:HostWarning' | abpLocalization }}
+    </div>
+
+    <div class="columnas">
+      <div class="formulario">
+        <div class="campo">
+          <label for="marca-nombre" class="form-label">
+            {{ '::Branding:NameLabel' | abpLocalization }}
+          </label>
+          <input
+            id="marca-nombre"
+            type="text"
+            class="form-control"
+            [maxlength]="maxNombre"
+            [placeholder]="heredado"
+            [(ngModel)]="nombre"
+            [disabled]="guardando || subiendo" />
+          <p class="ayuda">{{ '::Branding:NameHint' | abpLocalization }}</p>
+        </div>
+
+        <div class="campo">
+          <label for="marca-color" class="form-label">
+            {{ '::Branding:ColorLabel' | abpLocalization }}
+          </label>
+          <div class="color-fila">
+            <input
+              id="marca-color"
+              type="color"
+              class="form-control form-control-color"
+              [(ngModel)]="color"
+              [disabled]="guardando || subiendo" />
+            <code class="color-texto">{{ color }}</code>
+            <button
+              type="button"
+              class="btn btn-sm btn-outline-secondary"
+              [disabled]="color === colorPorDefecto || guardando || subiendo"
+              (click)="restablecerColor()">
+              {{ '::Branding:Reset' | abpLocalization }}
+            </button>
+          </div>
+          <p class="ayuda">{{ '::Branding:ColorHint' | abpLocalization }}</p>
+        </div>
+
+        <div class="campo">
+          <label class="form-label">{{ '::Branding:LogoLabel' | abpLocalization }}</label>
+
+          <div class="logo-fila">
+            <div class="logo-caja">
+              <img *ngIf="logoUrl" [src]="logoUrl" alt="" class="logo-imagen" />
+              <i *ngIf="!logoUrl" class="fas fa-image sin-logo" aria-hidden="true"></i>
+            </div>
+
+            <div class="logo-acciones">
+              <!-- El input va oculto y se dispara desde el label: el control nativo de
+                   archivo no se puede estilar y queda fuera de sitio junto a los botones. -->
+              <label class="btn btn-primary btn-sm" [class.disabled]="subiendo || guardando">
+                {{
+                  (estado.hasLogo ? '::Branding:ChangeLogo' : '::Branding:ChooseLogo')
+                    | abpLocalization
+                }}
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  class="oculto"
+                  [disabled]="subiendo || guardando"
+                  (change)="elegirLogo($event)" />
+              </label>
+
+              <button
+                *ngIf="estado.hasLogo"
+                type="button"
+                class="btn btn-outline-danger btn-sm"
+                [disabled]="subiendo || guardando"
+                (click)="quitarLogo()">
+                {{ '::Branding:RemoveLogo' | abpLocalization }}
+              </button>
+            </div>
+          </div>
+
+          <p class="ayuda">{{ '::Branding:LogoHint' | abpLocalization: ladoMaximoTexto }}</p>
+        </div>
+
+        <button
+          type="button"
+          class="btn btn-primary"
+          [disabled]="guardando || subiendo"
+          (click)="guardar()">
+          {{ (guardando ? '::Branding:Saving' : '::Branding:Save') | abpLocalization }}
+        </button>
+      </div>
+
+      <!-- Vista previa. El logo se guarda al instante (es una subida), así que aquí ya se ve
+           el definitivo; el nombre y el color siguen a lo que hay escrito, que es lo que
+           permite probar un color antes de dejarlo puesto para todo el inquilino. -->
+      <div class="vista-previa">
+        <h3 class="previa-titulo">{{ '::Branding:Preview' | abpLocalization }}</h3>
+
+        <div class="previa-marco" [style.--acento]="color">
+          <div class="previa-barra">
+            <div class="previa-logo">
+              <img *ngIf="logoUrl" [src]="logoUrl" alt="" />
+              <i *ngIf="!logoUrl" class="fas fa-cube" aria-hidden="true"></i>
+            </div>
+            <span class="previa-nombre">{{ nombreEnVistaPrevia }}</span>
+          </div>
+
+          <ul class="previa-menu">
+            <li class="activo"><i class="fas fa-home"></i> {{ '::Menu:Home' | abpLocalization }}</li>
+            <li><i class="fas fa-server"></i> {{ '::Menu:Sistema' | abpLocalization }}</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </ng-container>
+</div>

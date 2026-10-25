@@ -1,0 +1,94 @@
+<div class="estado-root">
+  <app-cabecera [titulo]="'::SystemStatus:Title' | abpLocalization"
+                [descripcion]="'::SystemStatus:Intro' | abpLocalization">
+    <button type="button" class="btn btn-sm btn-outline-secondary" (click)="cargar()">
+      <i class="fas fa-rotate" aria-hidden="true"></i>{{ '::Common:Refresh' | abpLocalization }}</button>
+  </app-cabecera>
+
+  <app-esqueleto *ngIf="cargando && !estado" [filas]="5" [etiqueta]="'::Common:Loading' | abpLocalization" />
+  <div *ngIf="error" class="alert alert-danger">{{ error }}</div>
+
+  <ng-container *ngIf="estado as e">
+    <div class="resumen" [class.bien]="todoEnOrden" [class.mal]="!todoEnOrden">
+      <i class="fas" [class.fa-circle-check]="todoEnOrden" [class.fa-triangle-exclamation]="!todoEnOrden" aria-hidden="true"></i>
+      <span *ngIf="todoEnOrden">{{ '::SystemStatus:AllGood' | abpLocalization }}</span>
+      <span *ngIf="!todoEnOrden">{{ '::SystemStatus:NeedsReview' | abpLocalization }}</span>
+    </div>
+
+    <div class="tarjetas">
+      <!-- Copias: lo primero, porque es lo único que no se puede rehacer si falla. -->
+      <div class="tarjeta">
+        <div class="tarjeta-cabecera">
+          <h3>{{ '::SystemStatus:Backup' | abpLocalization }}</h3>
+          <span class="badge" [ngClass]="claseEstado(e.backup.state)">
+            {{ textoEstado(e.backup.state) }}
+          </span>
+        </div>
+        <p class="resumen-tarjeta">{{ e.backup.summary }}</p>
+        <ul class="detalles">
+          <li><span>{{ '::Common:Last' | abpLocalization }}</span><span>{{ fecha(e.backup.lastRunUtc) }}</span></li>
+          <li><span>{{ '::Common:Size' | abpLocalization }}</span><span>{{ tamano(e.backup.dumpBytes) }}</span></li>
+          <li><span>{{ '::SystemStatus:OffSiteCopies' | abpLocalization }}</span><span>{{ e.backup.remoteSnapshots }}</span></li>
+        </ul>
+      </div>
+
+      <div class="tarjeta">
+        <div class="tarjeta-cabecera">
+          <h3>{{ '::SystemStatus:RestoreVerified' | abpLocalization }}</h3>
+          <span class="badge" [ngClass]="claseEstado(e.restoreCheck.state)">
+            {{ textoEstado(e.restoreCheck.state) }}
+          </span>
+        </div>
+        <p class="resumen-tarjeta">{{ e.restoreCheck.summary }}</p>
+        <ul class="detalles">
+          <li><span>{{ '::SystemStatus:LastTest' | abpLocalization }}</span><span>{{ fecha(e.restoreCheck.lastRunUtc) }}</span></li>
+          <li><span>{{ '::SystemStatus:TablesRestored' | abpLocalization }}</span><span>{{ e.restoreCheck.tablesRestored || '—' }}</span></li>
+        </ul>
+        <p class="nota">
+          {{ '::SystemStatus:RestoreHint' | abpLocalization }}
+        </p>
+      </div>
+
+      <div class="tarjeta">
+        <div class="tarjeta-cabecera">
+          <h3>{{ '::SystemStatus:Application' | abpLocalization }}</h3>
+          <span class="badge" [ngClass]="claseEstado(e.health)">{{ e.health }}</span>
+        </div>
+        <ul class="detalles">
+          <li><span>{{ '::SystemStatus:Uptime' | abpLocalization }}</span><span>{{ enMarcha(e.uptimeSeconds) }}</span></li>
+          <li><span>{{ '::SystemStatus:UnreadNotices' | abpLocalization }}</span><span>{{ e.unreadNotifications }}</span></li>
+        </ul>
+        <p class="nota">
+          {{ '::SystemStatus:UptimeHint' | abpLocalization }}
+        </p>
+      </div>
+
+      <div class="tarjeta">
+        <div class="tarjeta-cabecera">
+          <h3>{{ '::SystemStatus:JobsAndSecurity' | abpLocalization }}</h3>
+        </div>
+        <ul class="detalles">
+          <li>
+            <span>{{ '::SystemStatus:AbandonedJobs' | abpLocalization }}</span>
+            <span class="badge" [ngClass]="claseContador(e.abandonedJobs)">{{ e.abandonedJobs }}</span>
+          </li>
+          <li>
+            <span>{{ '::SystemStatus:QueuedJobs' | abpLocalization }}</span>
+            <span class="badge" [ngClass]="claseContador(e.pendingJobs, false)">{{ e.pendingJobs }}</span>
+          </li>
+          <li>
+            <span>{{ '::SystemStatus:BlockedIpsNow' | abpLocalization }}</span>
+            <span class="badge" [ngClass]="claseContador(e.activeBlockedIps, false)">{{ e.activeBlockedIps }}</span>
+          </li>
+        </ul>
+        <p class="nota">
+          {{ '::SystemStatus:CountsHint' | abpLocalization }}
+        </p>
+      </div>
+    </div>
+
+    <p class="pie" *ngIf="actualizado">
+      Actualizado a las {{ actualizado | date: 'HH:mm:ss' }}
+    </p>
+  </ng-container>
+</div>

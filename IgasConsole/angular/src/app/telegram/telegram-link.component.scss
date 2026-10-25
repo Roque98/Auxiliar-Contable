@@ -1,0 +1,85 @@
+/* Paleta alineada con la de /metrics: los mismos tokens, resueltos por tema. */
+.tg-root {
+  color-scheme: light;
+  --superficie: #fcfcfb;
+  --texto-primario: #0b0b0b;
+  --texto-secundario: #52514e;
+  --rejilla: #e3e3df;
+  --estado-ok: #1baf7a;
+
+  color: var(--texto-primario);
+  max-width: 42rem;
+}
+
+/* :host-context y no `:root[...] .tg-root`: con la encapsulación de Angular `:root` también
+   recibe el atributo del componente y la regla no casaba nunca (mismo fallo que /metrics). */
+:host-context(html[data-tema='oscuro']) .tg-root {
+  color-scheme: dark;
+  --superficie: #1a1a19;
+  --texto-primario: #ffffff;
+  --texto-secundario: #c3c2b7;
+  --rejilla: #34342f;
+  --estado-ok: #199e70;
+}
+
+.aviso {
+  padding: 1rem 0;
+  color: var(--texto-secundario);
+}
+
+.tarjeta {
+  padding: 1rem 1.15rem;
+  border: 1px solid var(--rejilla);
+  border-radius: 8px;
+  background: var(--superficie);
+
+  &.ok {
+    border-color: var(--estado-ok);
+  }
+}
+
+.tarjeta-cabecera {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--estado-ok);
+  margin-bottom: 0.4rem;
+}
+
+.detalle {
+  color: var(--texto-secundario);
+  margin-bottom: 0.75rem;
+}
+
+.enlace-generado {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.6rem;
+}
+
+.ayuda {
+  font-size: 0.82rem;
+  color: var(--texto-secundario);
+  margin: 0;
+}
+
+.esperando {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.85rem;
+  color: var(--texto-secundario);
+  margin: 0;
+}
+
+.segundo-factor {
+  margin: 1rem 0 1.25rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--bs-border-color, #dee2e6);
+  border-radius: 0.5rem;
+}
+
+.segundo-factor .ayuda {
+  margin: 0.5rem 0 0;
+}

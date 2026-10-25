@@ -1,0 +1,87 @@
+:host {
+  display: block;
+
+  h1 {
+    font-size: var(--ig-titulo-2);
+    font-weight: var(--ig-peso-semi);
+    margin: 0 0 var(--ig-esp-5);
+  }
+}
+
+/* La caja de acceso centra el texto; un formulario se lee mejor alineado a la izquierda. */
+.rg-caja {
+  text-align: left;
+  background: var(--ig-blanco);
+  border: var(--ig-borde);
+  border-radius: var(--ig-radio-lg);
+  box-shadow: var(--ig-sombra-sutil);
+  padding: var(--ig-esp-6);
+
+  > p {
+    margin: 0 0 var(--ig-esp-4);
+  }
+
+  .ig-alerta {
+    margin-bottom: var(--ig-esp-4);
+  }
+}
+
+.rg-invitado {
+  line-height: 1.7;
+
+  strong {
+    overflow-wrap: anywhere;
+  }
+}
+
+.rg-dos {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--ig-esp-3);
+
+  @media (max-width: 420px) {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+}
+
+.rg-clave {
+  display: flex;
+  gap: var(--ig-esp-2);
+
+  .ig-control {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+.rg-reglas {
+  list-style: none;
+  margin: var(--ig-esp-2) 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 2px var(--ig-esp-3);
+  font-size: var(--ig-texto-xs);
+  color: var(--ig-texto-secundario);
+
+  li {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+
+  li.ok {
+    color: var(--ig-exito-texto);
+  }
+}
+
+.rg-enlace {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}

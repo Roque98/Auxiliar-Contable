@@ -1,0 +1,264 @@
+@let e = estado();
+
+<div class="ig-encabezado">
+  <div>
+    <h1>Seguridad de tu cuenta</h1>
+    <p class="ig-sub">
+      Con tu correo y tu teléfono verificados puedes recuperar la cuenta si olvidas la contraseña y recibir códigos para
+      entrar. Cada dato se confirma con un código de un solo uso.
+    </p>
+  </div>
+</div>
+
+@if (error(); as err) {
+  <div class="ig-alerta ig-alerta-error">{{ err }}</div>
+}
+
+@if (cargando()) {
+  <div class="ig-panel"><div class="ig-esqueleto"></div><div class="ig-esqueleto sg-corto"></div></div>
+} @else if (e) {
+  @if (completo()) {
+    <div class="ig-alerta ig-alerta-exito sg-resumen">
+      <i class="bi bi-shield-check" aria-hidden="true"></i>
+      <span>Tu cuenta está protegida: correo y teléfono registrados y verificación en dos pasos activa.</span>
+    </div>
+  }
+
+  <div class="sg-pasos">
+    <!-- ===== Correo ===== -->
+    <section class="ig-panel sg-paso" [class.sg-hecho]="e.correoConfirmado" aria-labelledby="sg-t-correo">
+      <header>
+        <span class="sg-icono" aria-hidden="true"><i class="bi bi-envelope"></i></span>
+        <div>
+          <h2 id="sg-t-correo">Correo</h2>
+          <p>Para recuperar tu contraseña y recibir códigos de acceso.</p>
+        </div>
+        @if (e.correoConfirmado) {
+          <span class="ig-etiqueta ig-etiqueta-exito">Verificado</span>
+        } @else {
+          <span class="ig-etiqueta ig-etiqueta-alerta">Pendiente</span>
+        }
+      </header>
+
+      @if (!e.correoDisponible && !e.correoConfirmado) {
+        <div class="ig-alerta ig-alerta-aviso">El envío de correos aún no está configurado; vuelve a intentarlo más tarde.</div>
+      }
+
+      @switch (pasoCorreo()) {
+        @case ('ver') {
+          <div class="sg-dato">
+            <strong>{{ e.correo || 'Sin correo registrado' }}</strong>
+            <button type="button" class="ig-btn ig-btn-secundario ig-btn-chico" (click)="cambiarCorreo()">
+              {{ e.correo ? 'Cambiar' : 'Agregar' }}
+            </button>
+          </div>
+        }
+        @case ('editar') {
+          <form class="sg-form" (ngSubmit)="enviarCodigoCorreo()">
+            <div class="ig-campo">
+              <label for="sg-correo">Tu correo</label>
+              <input id="sg-correo" name="correo" type="email" class="ig-control" autocomplete="email" placeholder="nombre@empresa.com"
+                     [(ngModel)]="correo" />
+            </div>
+            <div class="sg-botones">
+              <button type="submit" class="ig-btn ig-btn-principal" [disabled]="!correo.trim() || ocupadoCorreo() || !e.correoDisponible">
+                <i class="bi bi-send" aria-hidden="true"></i>Enviarme un código
+              </button>
+              @if (e.correoConfirmado) {
+                <button type="button" class="ig-btn ig-btn-texto" (click)="pasoCorreo.set('ver')">Cancelar</button>
+              }
+            </div>
+          </form>
+        }
+        @case ('codigo') {
+          <form class="sg-form" (ngSubmit)="confirmarCorreo()">
+            <p class="sg-enviado">Enviamos un código a <strong>{{ correo }}</strong>. Vence en {{ e.minutosDeValidez }} minutos; revisa también spam.</p>
+            <div class="ig-campo">
+              <label for="sg-codigo-correo">Código</label>
+              <input id="sg-codigo-correo" name="codigo" class="ig-control sg-codigo" inputmode="numeric" autocomplete="one-time-code"
+                     maxlength="10" placeholder="000000" [(ngModel)]="codigoCorreo" />
+            </div>
+            <div class="sg-botones">
+              <button type="submit" class="ig-btn ig-btn-principal" [disabled]="codigoCorreo.trim().length < 6 || ocupadoCorreo()">
+                <i class="bi bi-check-lg" aria-hidden="true"></i>Verificar
+              </button>
+              <button type="button" class="ig-btn ig-btn-texto" [disabled]="ocupadoCorreo()" (click)="enviarCodigoCorreo()">Reenviar</button>
+              <button type="button" class="ig-btn ig-btn-texto" (click)="pasoCorreo.set('editar')">Usar otro correo</button>
+            </div>
+          </form>
+        }
+      }
+      @if (errorCorreo(); as err) {
+        <div class="ig-alerta ig-alerta-error sg-error" role="alert">{{ err }}</div>
+      }
+    </section>
+
+    <!-- ===== Teléfono ===== -->
+    <section class="ig-panel sg-paso" [class.sg-hecho]="e.telefonoConfirmado || (!e.smsDisponible && !!e.telefono)"
+             aria-labelledby="sg-t-telefono">
+      <header>
+        <span class="sg-icono" aria-hidden="true"><i class="bi bi-phone"></i></span>
+        <div>
+          <h2 id="sg-t-telefono">Teléfono</h2>
+          <p>Un segundo medio de contacto para recuperar tu cuenta{{ e.smsDisponible ? ' y recibir códigos por SMS' : '' }}.</p>
+        </div>
+        @if (e.telefonoConfirmado) {
+          <span class="ig-etiqueta ig-etiqueta-exito">Verificado</span>
+        } @else if (e.telefono) {
+          <span class="ig-etiqueta">Guardado</span>
+        } @else {
+          <span class="ig-etiqueta ig-etiqueta-alerta">Pendiente</span>
+        }
+      </header>
+
+      @if (!e.smsDisponible) {
+        <p class="ig-ayuda sg-nota">
+          <i class="bi bi-info-circle" aria-hidden="true"></i>
+          <span>Los SMS todavía no están activos: tu número se guarda y se verificará cuando se activen.</span>
+        </p>
+      }
+
+      @switch (pasoTelefono()) {
+        @case ('ver') {
+          <div class="sg-dato">
+            <strong>{{ e.telefono || 'Sin teléfono registrado' }}</strong>
+            <button type="button" class="ig-btn ig-btn-secundario ig-btn-chico" (click)="cambiarTelefono()">
+              {{ e.telefono ? 'Cambiar' : 'Agregar' }}
+            </button>
+          </div>
+        }
+        @case ('editar') {
+          <form class="sg-form" (ngSubmit)="enviarTelefono()">
+            <div class="ig-campo">
+              <label for="sg-telefono">Tu celular, con código de país</label>
+              <input id="sg-telefono" name="telefono" type="tel" class="ig-control" autocomplete="tel" placeholder="+52 55 1234 5678"
+                     [(ngModel)]="telefono" />
+            </div>
+            <div class="sg-botones">
+              <button type="submit" class="ig-btn ig-btn-principal" [disabled]="!telefono.trim() || ocupadoTelefono()">
+                @if (e.smsDisponible) {
+                  <i class="bi bi-send" aria-hidden="true"></i>Enviarme un SMS
+                } @else {
+                  <i class="bi bi-check-lg" aria-hidden="true"></i>Guardar
+                }
+              </button>
+              @if (e.telefono) {
+                <button type="button" class="ig-btn ig-btn-texto" (click)="pasoTelefono.set('ver')">Cancelar</button>
+              }
+            </div>
+          </form>
+        }
+        @case ('codigo') {
+          <form class="sg-form" (ngSubmit)="confirmarTelefono()">
+            <p class="sg-enviado">Enviamos un SMS a <strong>{{ telefono }}</strong>. Vence en {{ e.minutosDeValidez }} minutos.</p>
+            <div class="ig-campo">
+              <label for="sg-codigo-telefono">Código</label>
+              <input id="sg-codigo-telefono" name="codigo" class="ig-control sg-codigo" inputmode="numeric" autocomplete="one-time-code"
+                     maxlength="10" placeholder="000000" [(ngModel)]="codigoTelefono" />
+            </div>
+            <div class="sg-botones">
+              <button type="submit" class="ig-btn ig-btn-principal" [disabled]="codigoTelefono.trim().length < 6 || ocupadoTelefono()">
+                <i class="bi bi-check-lg" aria-hidden="true"></i>Verificar
+              </button>
+              <button type="button" class="ig-btn ig-btn-texto" [disabled]="ocupadoTelefono()" (click)="enviarTelefono()">Reenviar</button>
+              <button type="button" class="ig-btn ig-btn-texto" (click)="pasoTelefono.set('editar')">Usar otro número</button>
+            </div>
+          </form>
+        }
+      }
+      @if (errorTelefono(); as err) {
+        <div class="ig-alerta ig-alerta-error sg-error" role="alert">{{ err }}</div>
+      }
+    </section>
+
+    <!-- ===== Dos pasos ===== -->
+    <section class="ig-panel sg-paso" [class.sg-hecho]="e.segundoFactorActivo" aria-labelledby="sg-t-2fa">
+      <header>
+        <span class="sg-icono" aria-hidden="true"><i class="bi bi-shield-lock"></i></span>
+        <div>
+          <h2 id="sg-t-2fa">Verificación en dos pasos</h2>
+          <p>Además de tu contraseña, al entrar te pediremos un código que te llega {{ e.smsDisponible ? 'por correo o SMS' : 'por correo' }}{{ e.telegramVinculado ? ' o Telegram' : '' }}.</p>
+        </div>
+        @if (e.segundoFactorActivo) {
+          <span class="ig-etiqueta ig-etiqueta-exito">Activa</span>
+        } @else {
+          <span class="ig-etiqueta ig-etiqueta-alerta">Desactivada</span>
+        }
+      </header>
+
+      <div class="sg-dato">
+        @if (e.segundoFactorActivo) {
+          <span>Aunque alguien consiga tu contraseña, sin el código no puede entrar.</span>
+          <button type="button" class="ig-btn ig-btn-secundario ig-btn-chico" [disabled]="ocupado2fa()" (click)="alternar2fa(false)">
+            Desactivar
+          </button>
+        } @else if (puedeActivar2fa()) {
+          <span>Recomendado: protege tu cuenta aunque se filtre la contraseña.</span>
+          <button type="button" class="ig-btn ig-btn-principal ig-btn-chico" [disabled]="ocupado2fa()" (click)="alternar2fa(true)">
+            <i class="bi bi-shield-check" aria-hidden="true"></i>Activar
+          </button>
+        } @else {
+          <span class="sg-bloqueado">Primero verifica tu correo: es donde te llegarán los códigos.</span>
+        }
+      </div>
+
+      @if (codigosNuevos(); as codigos) {
+        <!-- Los códigos recién generados: se ven UNA vez. -->
+        <div class="sg-codigos" role="region" aria-label="Tus códigos de recuperación">
+          <p class="sg-codigos-aviso">
+            <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
+            <span>
+              <strong>Guárdalos ahora: no se vuelven a mostrar.</strong>
+              Si un día no te llega el código, cada uno de estos te deja entrar una vez.
+            </span>
+          </p>
+          <ol class="sg-codigos-lista">
+            @for (c of codigos; track c) {
+              <li><code>{{ c }}</code></li>
+            }
+          </ol>
+          <div class="sg-botones">
+            <button type="button" class="ig-btn ig-btn-secundario ig-btn-chico" (click)="copiarCodigos()">
+              <i class="bi" [class.bi-clipboard]="!copiados()" [class.bi-clipboard-check]="copiados()" aria-hidden="true"></i>
+              {{ copiados() ? 'Copiados' : 'Copiar' }}
+            </button>
+            <button type="button" class="ig-btn ig-btn-secundario ig-btn-chico" (click)="descargarCodigos()">
+              <i class="bi bi-download" aria-hidden="true"></i>Descargar
+            </button>
+            <button type="button" class="ig-btn ig-btn-principal ig-btn-chico" (click)="cerrarCodigos()">Ya los guardé</button>
+          </div>
+        </div>
+      } @else if (e.segundoFactorActivo) {
+        <div class="sg-dato sg-recuperacion">
+          <span>
+            <strong>Códigos de recuperación:</strong>
+            {{ e.codigosDeRecuperacionRestantes > 0 ? e.codigosDeRecuperacionRestantes + ' sin usar' : 'no tienes; genera unos por si no te llega el código' }}
+            @if (confirmarRegenerar()) {
+              <br /><em>Los que tienes dejarán de valer. ¿Seguro?</em>
+            }
+          </span>
+          <button type="button" class="ig-btn ig-btn-chico" [class.ig-btn-principal]="confirmarRegenerar() || !e.codigosDeRecuperacionRestantes"
+                  [class.ig-btn-secundario]="!confirmarRegenerar() && e.codigosDeRecuperacionRestantes > 0"
+                  [disabled]="ocupadoCodigos()" (click)="pedirNuevosCodigos()">
+            {{ confirmarRegenerar() ? 'Sí, generar nuevos' : (e.codigosDeRecuperacionRestantes > 0 ? 'Generar nuevos' : 'Generar') }}
+          </button>
+        </div>
+      }
+    </section>
+
+    <!-- ===== Contraseña ===== -->
+    <section class="ig-panel sg-paso" aria-labelledby="sg-t-clave">
+      <header>
+        <span class="sg-icono" aria-hidden="true"><i class="bi bi-key"></i></span>
+        <div>
+          <h2 id="sg-t-clave">Contraseña</h2>
+          <p>Si te la dio otra persona al crear tu cuenta, cámbiala por una que solo sepas tú.</p>
+        </div>
+      </header>
+      <div class="sg-dato">
+        <span>Usa al menos 6 caracteres con mayúsculas, minúsculas, números y símbolos.</span>
+        <a class="ig-btn ig-btn-secundario ig-btn-chico" routerLink="/account/manage">Cambiar contraseña</a>
+      </div>
+    </section>
+  </div>
+}

@@ -1,0 +1,63 @@
+# Actualizaciones automaticas de dependencias.
+# El CI (build + tests + gitleaks) corre sobre cada PR que abre Dependabot, asi que
+# un PR en verde ya viene probado contra PostgreSQL.
+version: 2
+
+updates:
+  # --- NuGet -----------------------------------------------------------------
+  # El directorio es el de la solucion porque las versiones estan centralizadas en
+  # Directory.Packages.props (Central Package Management).
+  - package-ecosystem: nuget
+    directory: /IgasConsole
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      # Los ~68 paquetes de ABP van EN BLOQUE. Subir uno suelto rompe la solucion:
+      # comparten version y se referencian entre si. Un PR por paquete seria ademas
+      # ruido insoportable.
+      abp:
+        patterns:
+          - "Volo.*"
+      # El resto, agrupado por tipo de salto para no abrir un PR por parche.
+      menores-y-parches:
+        update-types:
+          - minor
+          - patch
+
+  # --- Angular ---------------------------------------------------------------
+  # Ecosistema npm: Dependabot entiende el yarn.lock de este proyecto.
+  - package-ecosystem: npm
+    directory: /IgasConsole/angular
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      angular:
+        patterns:
+          - "@angular*"
+          - "@ngx*"
+          - "zone.js"
+          - "rxjs"
+      abp-ng:
+        patterns:
+          - "@abp/*"
+      menores-y-parches:
+        update-types:
+          - minor
+          - patch
+
+  # --- GitHub Actions --------------------------------------------------------
+  # Lo que nos acaba de pillar el toro con la retirada de Node 20: sin esto, las
+  # versiones de las actions se quedan atras hasta que algo deja de funcionar.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      actions:
+        patterns:
+          - "*"

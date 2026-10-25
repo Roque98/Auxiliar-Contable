@@ -1,0 +1,195 @@
+/* ===========================================================================
+   DESIGN SYSTEM DE ZIA — BASE
+   Tipografía, cuerpo, títulos, enlaces y foco.
+   =========================================================================== */
+
+/* Sora, variable (400–700), servida desde nuestro dominio: ver
+   `assets/fonts/README.md`. Los `unicode-range` son los de Google y hacen que el
+   archivo de latín extendido solo se baje si la página lo necesita. */
+@font-face {
+  font-family: 'Sora';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('/assets/fonts/sora-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+    U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215,
+    U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'Sora';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('/assets/fonts/sora-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304,
+    U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB,
+    U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+html {
+  scroll-padding-top: calc(var(--ig-alto-barra) + env(safe-area-inset-top, 0px));
+}
+
+body {
+  margin: 0;
+  background: var(--ig-blanco);
+  color: var(--ig-tinta);
+  font-family: var(--ig-fuente);
+  font-size: var(--ig-texto-base);
+  line-height: var(--ig-interlineado);
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  color: var(--ig-tinta);
+  font-family: var(--ig-fuente);
+  font-weight: var(--ig-peso-fuerte);
+  letter-spacing: var(--ig-tracking-titulo);
+  line-height: 1.25;
+}
+
+h1 {
+  font-size: var(--ig-titulo-1);
+  margin: 0 0 var(--ig-esp-1);
+}
+
+h2 {
+  font-size: var(--ig-titulo-2);
+  margin: 0 0 14px;
+}
+
+h3 {
+  font-size: var(--ig-titulo-3);
+}
+
+/* Los enlaces van en TINTA con el subrayado del acento: el acento como color de
+   texto no se leería (el amarillo sobre blanco da 1,8:1). */
+a {
+  color: var(--ig-tinta);
+  text-decoration-color: var(--ig-acento);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+}
+
+a:hover {
+  color: var(--ig-tinta);
+  text-decoration-color: var(--ig-tinta);
+}
+
+/* Foco visible SIEMPRE con teclado, en tinta como en el prototipo. `:focus-visible`
+   y no `:focus`, para no pintarlo al hacer clic. */
+:focus-visible {
+  outline: 2px solid var(--ig-tinta);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: var(--ig-acento-suave);
+  color: var(--ig-tinta);
+}
+
+hr {
+  border: 0;
+  border-top: var(--ig-borde);
+  opacity: 1;
+}
+
+code,
+kbd,
+pre {
+  font-family: var(--ig-fuente-mono);
+}
+
+code {
+  color: var(--ig-tinta);
+  background: var(--ig-gris-fondo);
+  border-radius: 5px;
+  padding: 1px 5px;
+  font-size: 0.85em;
+}
+
+kbd {
+  background: var(--ig-invertido);
+  color: var(--ig-sobre-invertido);
+  border-radius: 5px;
+  padding: 1px 6px;
+  font-size: 0.8em;
+}
+
+/* Las cifras se comparan en columna: con números de ancho fijo, sí. */
+table,
+.badge,
+.ig-etiqueta,
+.ig-cifra {
+  font-variant-numeric: tabular-nums;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+/* --- Cambio de tema claro/oscuro: fundido en vez de salto -------------------------------
+   Lo lanza TemaService.aplicarConFundido. Pasar toda la pantalla de blanco a casi negro de
+   golpe molesta a la vista; en ~¾ s el ojo se acomoda. */
+:root {
+  --ig-cambio-tema: 750ms;
+}
+
+/* Con transiciones de vista: se funde la «foto» vieja sobre la nueva. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: var(--ig-cambio-tema);
+  animation-timing-function: ease-in-out;
+}
+
+/* Sin ellas (navegadores antiguos): se animan los colores mientras dura la clase. */
+html.ig-cambiando-tema,
+html.ig-cambiando-tema *,
+html.ig-cambiando-tema *::before,
+html.ig-cambiando-tema *::after {
+  transition:
+    background-color var(--ig-cambio-tema) ease-in-out,
+    color var(--ig-cambio-tema) ease-in-out,
+    border-color var(--ig-cambio-tema) ease-in-out,
+    fill var(--ig-cambio-tema) ease-in-out,
+    stroke var(--ig-cambio-tema) ease-in-out,
+    box-shadow var(--ig-cambio-tema) ease-in-out !important;
+}
+
+/* «Reducir movimiento» del sistema: fuera transiciones y animaciones.
+   ⚠️ Antes ponía `animation-duration: 2s` a TODO: en vez de quitar el movimiento, alargaba
+   cada animación a 2 segundos —justo lo contrario de lo que pide esa preferencia—. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* Excepción: los indicadores de carga siguen girando (más despacio). Parados, la pantalla
+     parece colgada. */
+  .ig-girando,
+  .spinner-border,
+  .spinner-grow {
+    animation-duration: 1.6s !important;
+    animation-iteration-count: infinite !important;
+  }
+}

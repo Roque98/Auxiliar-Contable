@@ -1,0 +1,12 @@
+/* ===========================================================================
+   DESIGN SYSTEM DE ZIA
+   ===========================================================================
+   Orden: tokens → base → componentes propios → puente con Bootstrap/ABP →
+   utilidades. Lo de abajo puede pisar lo de arriba, nunca al revés.
+   Catálogo vivo: `/design-system` (solo en desarrollo).
+   =========================================================================== */
+@forward 'tokens';
+@forward 'base';
+@forward 'componentes';
+@forward 'puente-abp';
+@forward 'utilidades';

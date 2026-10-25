@@ -1,0 +1,275 @@
+@let m = marca | async;
+@let secciones = menu().secciones;
+@let cuenta = menu().cuenta;
+
+<!-- La marca de serie: el isotipo de ZIA. Si el Owner sube un logo en «Marca», manda el suyo. -->
+<ng-template #logoDeSerie>
+  <img src="assets/images/logo/zia-isotipo.png" alt="" />
+</ng-template>
+
+<!-- El avatar: la foto si la hay; si no, las iniciales. -->
+<ng-template #avatar let-chico="chico">
+  <span class="ig-avatar" [class.chico]="chico" aria-hidden="true">
+    @if (foto(); as src) {
+      <img [src]="src" alt="" />
+    } @else {
+      {{ iniciales() }}
+    }
+  </span>
+</ng-template>
+
+<!-- Lo que hay en el menú de la sesión: las pantallas de «Mi cuenta» y salir. -->
+<ng-template #opcionesSesion>
+  <div class="ig-menu-sesion" role="menu">
+    <div class="ig-menu-sesion-cabecera">
+      <strong>{{ nombreUsuario() }}</strong>
+      <small>{{ correo() }}</small>
+    </div>
+    @for (item of cuenta; track item.ruta) {
+      <a class="ig-menu-opcion" role="menuitem" [routerLink]="item.ruta">
+        <i [ngClass]="item.icono" aria-hidden="true"></i>{{ item.nombre }}
+      </a>
+    }
+    <button type="button" class="ig-menu-opcion ig-menu-salir" role="menuitem" (click)="salir()">
+      <i class="bi bi-box-arrow-right" aria-hidden="true"></i>Cerrar sesión
+    </button>
+  </div>
+</ng-template>
+
+<!-- Las líneas de fondo y la marca de las pantallas sin menú (acceso y registro). -->
+<ng-template #fondoAcceso>
+  <svg class="ig-lineas-fondo" viewBox="0 0 300 200" aria-hidden="true">
+    <g fill="none" stroke-linecap="round">
+      <path d="M110 -20 L330 200" stroke="var(--ig-acento)" stroke-width="10" />
+      <path d="M150 -20 L330 160" stroke="var(--ig-gris-claro)" stroke-width="7" />
+      <path d="M185 -20 L330 125" stroke="#8A8F98" stroke-width="2" />
+      <path d="M215 -20 L330 95" stroke="var(--ig-acento)" stroke-width="3" />
+    </g>
+  </svg>
+</ng-template>
+<ng-template #marcaAcceso>
+  @if (m?.logoUrl; as logo) {
+    <img class="ig-acceso-logo" [src]="logo" alt="" />
+    <span class="ig-acceso-nombre">{{ m?.appName }}</span>
+  } @else {
+    <img class="ig-acceso-logo" src="assets/images/logo/zia-isotipo.png" alt="" />
+    <img class="ig-acceso-logotipo ig-solo-claro" src="assets/images/logo/zia-logotipo.png" [alt]="m?.appName || 'ZIA'" />
+    <img class="ig-acceso-logotipo ig-solo-oscuro" src="assets/images/logo/zia-logotipo-claro.png" [alt]="m?.appName || 'ZIA'" />
+  }
+  <div class="ig-raya ig-raya-grande" aria-hidden="true"><i></i><i></i></div>
+</ng-template>
+
+@if (esPublica()) {
+  <!-- Pantallas para quien aún no tiene cuenta (registro por invitación): sin menú, con o
+       sin sesión. La pantalla pone su propio contenido bajo la marca. -->
+  <main class="ig-acceso" id="contenido-principal" tabindex="-1">
+    <ng-container [ngTemplateOutlet]="fondoAcceso" />
+    <div class="ig-acceso-caja ig-acceso-caja-ancha">
+      <ng-container [ngTemplateOutlet]="marcaAcceso" />
+      <router-outlet />
+    </div>
+  </main>
+} @else if (!autenticado()) {
+  <!-- Sin sesión no hay menú que enseñar: la portada de acceso, como el login. -->
+  <main class="ig-acceso" id="contenido-principal" tabindex="-1">
+    <ng-container [ngTemplateOutlet]="fondoAcceso" />
+    <div class="ig-acceso-caja">
+      <ng-container [ngTemplateOutlet]="marcaAcceso" />
+      <h1>Inicia sesión para continuar</h1>
+      <button type="button" class="ig-btn ig-btn-principal ig-btn-bloque" (click)="entrar()">Iniciar sesión</button>
+      <p class="ig-acceso-pie">¿No tienes cuenta? Pide acceso a tu administrador.</p>
+    </div>
+  </main>
+} @else {
+<div class="ig-app" [class.menu-cerrado]="cerrado()" [class.menu-abierto]="abiertoMovil()">
+  <aside class="ig-lateral" id="ig-lateral" aria-label="Menú principal">
+    <div class="ig-marca">
+      @if (m?.logoUrl; as logo) {
+        <img class="ig-marca-logo" [src]="logo" alt="" />
+        <div class="ig-marca-texto">
+          <strong>{{ m?.appName }}</strong>
+          <small>Administración</small>
+        </div>
+      } @else {
+        <span class="ig-marca-logo"><ng-container [ngTemplateOutlet]="logoDeSerie" /></span>
+        <div class="ig-marca-texto">
+          <img class="ig-logotipo ig-solo-claro" src="assets/images/logo/zia-logotipo.png" [alt]="m?.appName || 'ZIA'" />
+          <img class="ig-logotipo ig-solo-oscuro" src="assets/images/logo/zia-logotipo-claro.png" [alt]="m?.appName || 'ZIA'" />
+          <small>Administración</small>
+        </div>
+      }
+      <button type="button" class="ig-cerrar-lateral" aria-label="Cerrar menú" (click)="cerrarMovil()">
+        <i class="bi bi-x-lg" aria-hidden="true"></i>
+      </button>
+    </div>
+    <div class="ig-raya" aria-hidden="true"><i></i><i></i></div>
+
+    <nav class="ig-nav" aria-label="Secciones">
+      <!-- Secciones y subgrupos plegables (arrancan cerrados; se abre solo el de la pantalla
+           actual). Patrón «disclosure»: botón con aria-expanded + aria-controls; el cuerpo
+           cerrado queda inert, fuera del orden de tabulación. -->
+      @for (seccion of secciones; track seccion.clave ?? '') {
+        @if (seccion.titulo && seccion.clave) {
+          <button
+            type="button"
+            class="ig-nav-grupo ig-nav-plegable"
+            [attr.aria-expanded]="abierto(seccion.clave)"
+            [attr.aria-controls]="idDeGrupo(seccion.clave)"
+            (click)="alternarGrupo(seccion.clave)">
+            <span>{{ seccion.titulo }}</span>
+            <i class="bi bi-chevron-down ig-nav-chevron" aria-hidden="true"></i>
+          </button>
+          <div
+            class="ig-nav-cuerpo"
+            [id]="idDeGrupo(seccion.clave)"
+            [class.abierto]="abierto(seccion.clave)"
+            [attr.inert]="abierto(seccion.clave) ? null : ''">
+            <div class="ig-nav-interior">
+              <ng-container [ngTemplateOutlet]="entradasDelMenu" [ngTemplateOutletContext]="{ $implicit: seccion.entradas }" />
+            </div>
+          </div>
+        } @else {
+          <ng-container [ngTemplateOutlet]="entradasDelMenu" [ngTemplateOutletContext]="{ $implicit: seccion.entradas }" />
+        }
+      }
+    </nav>
+
+    <ng-template #entradasDelMenu let-entradas>
+      @for (e of entradas; track e.tipo === 'item' ? e.item.ruta : e.grupo.clave) {
+        @if (e.tipo === 'item') {
+          <ng-container [ngTemplateOutlet]="enlaceDelMenu" [ngTemplateOutletContext]="{ $implicit: e.item }" />
+        } @else {
+          <button
+            type="button"
+            class="ig-nav-btn ig-nav-sub"
+            [attr.aria-expanded]="abierto(e.grupo.clave)"
+            [attr.aria-controls]="idDeGrupo(e.grupo.clave)"
+            (click)="alternarGrupo(e.grupo.clave)">
+            <i [ngClass]="e.grupo.icono" aria-hidden="true"></i>
+            <span>{{ e.grupo.titulo }}</span>
+            <i class="bi bi-chevron-down ig-nav-chevron" aria-hidden="true"></i>
+          </button>
+          <div
+            class="ig-nav-cuerpo ig-nav-anidado"
+            [id]="idDeGrupo(e.grupo.clave)"
+            [class.abierto]="abierto(e.grupo.clave)"
+            [attr.inert]="abierto(e.grupo.clave) ? null : ''">
+            <div class="ig-nav-interior">
+              @for (item of e.grupo.items; track item.ruta) {
+                <ng-container [ngTemplateOutlet]="enlaceDelMenu" [ngTemplateOutletContext]="{ $implicit: item }" />
+              }
+            </div>
+          </div>
+        }
+      }
+    </ng-template>
+
+    <ng-template #enlaceDelMenu let-item>
+      <a
+        class="ig-nav-btn"
+        [routerLink]="item.ruta"
+        routerLinkActive="activa"
+        ariaCurrentWhenActive="page"
+        [routerLinkActiveOptions]="{ exact: item.ruta === '/' }">
+        <i [ngClass]="item.icono" aria-hidden="true"></i>
+        <span>{{ item.nombre }}</span>
+      </a>
+    </ng-template>
+
+    <div class="ig-sesion ig-sesion-zona">
+      <button
+        type="button"
+        class="ig-sesion-btn"
+        aria-haspopup="menu"
+        [attr.aria-expanded]="menuSesion() === 'lateral'"
+        (click)="alternarSesion('lateral')">
+        <ng-container [ngTemplateOutlet]="avatar" />
+        <span class="ig-sesion-datos">
+          <strong>{{ nombreUsuario() }}</strong>
+          <small>{{ correo() }}</small>
+        </span>
+        <i class="bi bi-chevron-expand" aria-hidden="true"></i>
+      </button>
+      @if (menuSesion() === 'lateral') {
+        <div class="ig-flotante ig-flotante-arriba">
+          <ng-container [ngTemplateOutlet]="opcionesSesion" />
+        </div>
+      }
+    </div>
+  </aside>
+
+  <div class="ig-velo" aria-hidden="true" (click)="cerrarMovil()"></div>
+
+  <div class="ig-contenido">
+    <header class="ig-barra-sup">
+      <button
+        type="button"
+        class="ig-hamburguesa"
+        aria-controls="ig-lateral"
+        [attr.aria-label]="menuVisible() ? 'Cerrar menú' : 'Abrir menú'"
+        [attr.aria-expanded]="menuVisible()"
+        (click)="alternarMenu()">
+        <span></span>
+      </button>
+      <span class="ig-titulo-sup">{{ tituloPagina() }}</span>
+      <span class="ig-marca-sup">
+        @if (m?.logoUrl; as logo) {
+          <img [src]="logo" alt="" />
+          {{ m?.appName }}
+        } @else {
+          <ng-container [ngTemplateOutlet]="logoDeSerie" />
+          <img class="ig-logotipo ig-solo-claro" src="assets/images/logo/zia-logotipo.png" [alt]="m?.appName || 'ZIA'" />
+          <img class="ig-logotipo ig-solo-oscuro" src="assets/images/logo/zia-logotipo-claro.png" [alt]="m?.appName || 'ZIA'" />
+        }
+      </span>
+
+      <div class="ig-sup-derecha">
+        <button
+          type="button"
+          class="ig-sup-icono"
+          [attr.aria-label]="temas.tema() === 'oscuro' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'"
+          [title]="temas.tema() === 'oscuro' ? 'Modo claro' : 'Modo oscuro'"
+          (click)="temas.alternar()">
+          <i class="bi" [class.bi-sun]="temas.tema() === 'oscuro'" [class.bi-moon-stars]="temas.tema() !== 'oscuro'" aria-hidden="true"></i>
+        </button>
+        <button type="button" class="ig-sup-icono" aria-label="Buscar (Ctrl+K)" title="Buscar (Ctrl+K)" (click)="abrirBuscador()">
+          <i class="bi bi-search" aria-hidden="true"></i>
+        </button>
+        <app-campana />
+        <div class="ig-sesion-zona ig-sup-sesion">
+          <button
+            type="button"
+            class="ig-sup-usuario"
+            aria-haspopup="menu"
+            [attr.aria-expanded]="menuSesion() === 'barra'"
+            [attr.aria-label]="'Cuenta de ' + nombreUsuario()"
+            (click)="alternarSesion('barra')">
+            <span class="ig-sup-nombre">{{ nombreUsuario() }}</span>
+            <ng-container [ngTemplateOutlet]="avatar" [ngTemplateOutletContext]="{ chico: true }" />
+          </button>
+          @if (menuSesion() === 'barra') {
+            <div class="ig-flotante ig-flotante-abajo">
+              <ng-container [ngTemplateOutlet]="opcionesSesion" />
+            </div>
+          }
+        </div>
+      </div>
+    </header>
+
+    <main class="ig-main" id="contenido-principal" tabindex="-1">
+      <svg class="ig-lineas-fondo" viewBox="0 0 300 200" aria-hidden="true">
+        <g fill="none" stroke-linecap="round">
+          <path d="M110 -20 L330 200" stroke="var(--ig-acento)" stroke-width="10" />
+          <path d="M150 -20 L330 160" stroke="var(--ig-gris-claro)" stroke-width="7" />
+          <path d="M185 -20 L330 125" stroke="#8A8F98" stroke-width="2" />
+          <path d="M215 -20 L330 95" stroke="var(--ig-acento)" stroke-width="3" />
+        </g>
+      </svg>
+      <div class="ig-pagina">
+        <app-aviso-seguridad />
+        <router-outlet />
+      </div>
+    </main>
+  </div>
+</div>
+}

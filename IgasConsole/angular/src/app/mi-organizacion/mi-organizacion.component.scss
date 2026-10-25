@@ -1,0 +1,152 @@
+/* Solo la composición de esta pantalla: las piezas (`.ig-*`) son del design system. */
+
+.mo-org + .mo-org {
+  margin-top: var(--ig-esp-5);
+}
+
+.mo-cabecera {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--ig-esp-2) var(--ig-esp-4);
+  margin-bottom: var(--ig-esp-3);
+
+  h2 {
+    display: flex;
+    align-items: center;
+    gap: var(--ig-esp-2);
+    margin: 0;
+    font-size: 1.2rem;
+  }
+}
+
+.mo-mi-papel {
+  font-size: var(--ig-texto-md);
+  color: var(--ig-texto-secundario);
+}
+
+h3 {
+  margin: var(--ig-esp-5) 0 var(--ig-esp-2);
+  font-size: var(--ig-texto-lg);
+}
+
+.mo-nota {
+  margin: 0;
+  color: var(--ig-texto-secundario);
+}
+
+.mo-personas,
+.mo-pendientes {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+
+  > li {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--ig-esp-2) var(--ig-esp-3);
+    padding: var(--ig-esp-2) 0;
+    border-bottom: var(--ig-borde);
+  }
+}
+
+.mo-avatar {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--ig-invertido);
+  color: var(--ig-sobre-invertido);
+  font-size: var(--ig-texto-xs);
+  font-weight: var(--ig-peso-fuerte);
+}
+
+.mo-quien {
+  flex: 1 1 12rem;
+  min-width: 0;
+  display: grid;
+
+  small {
+    color: var(--ig-texto-secundario);
+    overflow-wrap: anywhere;
+  }
+}
+
+.mo-tu {
+  color: var(--ig-texto-secundario);
+  font-weight: var(--ig-peso-normal);
+}
+
+.mo-papel {
+  flex: 0 0 auto;
+  width: auto;
+  padding-block: 4px;
+}
+
+.mo-pendientes > li {
+  span {
+    flex: 1 1 12rem;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  small {
+    color: var(--ig-texto-secundario);
+  }
+}
+
+/* Qué hace cada papel: a la vista, para elegir sin adivinar. */
+.mo-papeles {
+  display: grid;
+  gap: var(--ig-esp-1);
+  margin: var(--ig-esp-3) 0 0;
+  padding: var(--ig-esp-3);
+  border-radius: var(--ig-radio-md);
+  background: var(--ig-fondo);
+  font-size: var(--ig-texto-md);
+
+  div {
+    display: grid;
+    grid-template-columns: 8rem minmax(0, 1fr);
+    gap: var(--ig-esp-3);
+  }
+
+  dt {
+    font-weight: var(--ig-peso-semi);
+  }
+
+  dd {
+    margin: 0;
+    color: var(--ig-tinta-suave);
+  }
+}
+
+.mo-invitar {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) auto;
+  align-items: end;
+  gap: var(--ig-esp-3);
+
+  .ig-campo {
+    margin-bottom: 0;
+  }
+}
+
+@media (max-width: 760px) {
+  .mo-invitar {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .mo-papeles div {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+
+  .mo-papel {
+    margin-left: 46px;
+  }
+}

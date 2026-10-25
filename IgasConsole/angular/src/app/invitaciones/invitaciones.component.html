@@ -1,0 +1,166 @@
+<div class="ig-encabezado">
+  <div>
+    <h1>Invitaciones</h1>
+    <p class="ig-sub">
+      Invita a alguien por correo con el rol que tendrá. Recibirá un enlace para elegir su usuario y contraseña; al
+      abrirlo queda confirmado que el correo es suyo.
+    </p>
+  </div>
+</div>
+
+@if (error(); as e) {
+  <div class="ig-alerta ig-alerta-error">{{ e }}</div>
+}
+
+@if (!correoListo()) {
+  <div class="ig-alerta ig-alerta-aviso">
+    <i class="bi bi-envelope-exclamation" aria-hidden="true"></i>
+    El envío de correos todavía no está configurado, así que las invitaciones no pueden salir. El Developer tiene que
+    dar de alta en Brevo la API key y un remitente verificado.
+  </div>
+}
+
+<form class="ig-panel inv-nueva" (ngSubmit)="invitar()">
+  <h2 class="inv-titulo">Invitar a alguien</h2>
+
+  @if (roles().length) {
+    <p class="inv-pregunta" id="inv-pregunta">¿Con qué rol?</p>
+    <div class="inv-roles" role="radiogroup" aria-labelledby="inv-pregunta">
+      @for (r of roles(); track r.nombre) {
+        <label class="inv-rol" [class.elegido]="rol() === r.nombre">
+          <input type="radio" name="rol" class="ig-solo-lector" [value]="r.nombre" [checked]="rol() === r.nombre" (change)="rol.set(r.nombre)" />
+          <i class="bi {{ descripcion(r).icono }}" aria-hidden="true"></i>
+          <span>
+            <strong>{{ r.etiqueta }}</strong>
+            <small>{{ descripcion(r).texto }}</small>
+          </span>
+        </label>
+      }
+    </div>
+  } @else if (opciones()) {
+    <p class="ig-ayuda">No hay roles por debajo del tuyo, así que no puedes invitar a nadie.</p>
+  }
+
+  @if (pideOrganizacion()) {
+    <app-selector-organizacion class="inv-organizacion" idCampo="inv-organizacion"
+                               [organizaciones]="organizaciones()" [puedeCrear]="opcionesOrg()?.puedeCrear ?? false"
+                               [(valor)]="organizacionId" (creada)="anadirOrganizacion($event)" />
+    <div class="ig-campo inv-papel">
+      <label for="inv-papel">Su papel en la organización</label>
+      <select id="inv-papel" name="papel" class="ig-control" [ngModel]="papel()" (ngModelChange)="papel.set($event)">
+        @for (p of papeles; track p.valor) {
+          <option [ngValue]="p.valor">{{ p.texto }}</option>
+        }
+      </select>
+      <small class="ig-ayuda">{{ detalleDelPapel() }}</small>
+    </div>
+  }
+
+  <div class="inv-fila">
+    <div class="ig-campo inv-correo">
+      <label for="inv-email">Correo de la persona</label>
+      <input id="inv-email" name="email" type="email" class="ig-control" autocomplete="off" placeholder="nombre@empresa.com"
+             [(ngModel)]="email" />
+    </div>
+    <button type="submit" class="ig-btn ig-btn-principal" [disabled]="enviando() || !email.trim() || !listo()">
+      @if (enviando()) {
+        <span class="ig-girando" aria-hidden="true"></span>Enviando…
+      } @else {
+        <i class="bi bi-send" aria-hidden="true"></i>Enviar invitación
+      }
+    </button>
+  </div>
+  <p class="ig-ayuda">
+    El enlace vale {{ opciones()?.diasDeVigencia ?? 7 }} días y sirve una sola vez. Si no le llega, reenvíalo desde la lista:
+    se manda uno nuevo y el anterior deja de funcionar.
+  </p>
+</form>
+
+<div class="inv-lista-cabecera">
+  <div class="ig-pestanas" role="tablist" aria-label="Filtrar por estado">
+    @for (f of filtros; track f.etiqueta) {
+      <button type="button" role="tab" class="ig-pestana" [attr.aria-selected]="filtro() === f.estado" (click)="cambiarFiltro(f.estado)">
+        {{ f.etiqueta }}
+        @if (filtro() === f.estado) {
+          <span class="ig-cuenta">{{ total() }}</span>
+        }
+      </button>
+    }
+  </div>
+  <div class="ig-buscar">
+    <i class="bi bi-search" aria-hidden="true"></i>
+    <input type="search" class="ig-control" placeholder="Buscar por correo" aria-label="Buscar por correo"
+           [(ngModel)]="busqueda" (keyup.enter)="cargar()" (search)="cargar()" />
+  </div>
+</div>
+
+@if (cargando() && !lista().length) {
+  <div class="ig-panel">
+    <div class="ig-esqueleto"></div>
+    <div class="ig-esqueleto inv-esqueleto-corto"></div>
+  </div>
+} @else if (!lista().length) {
+  <div class="ig-panel">
+    <div class="ig-vacio">
+      <i class="bi bi-envelope" aria-hidden="true"></i>
+      <strong>No hay invitaciones{{ filtro() !== null ? ' con ese estado' : '' }}</strong>
+      Las que envíes aparecerán aquí con su estado.
+    </div>
+  </div>
+} @else {
+  <div class="ig-tabla-caja">
+    <table class="ig-tabla tabla-apilable">
+      <thead>
+        <tr>
+          <th scope="col">Correo</th>
+          <th scope="col">Rol</th>
+          <th scope="col">Estado</th>
+          <th scope="col">Enviada</th>
+          <th scope="col">Invitó</th>
+          <th scope="col"><span class="ig-solo-lector">Acciones</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (inv of lista(); track inv.id) {
+          <tr>
+            <td data-label="Correo"><strong class="inv-email">{{ inv.email }}</strong></td>
+            <td data-label="Rol">
+              <span class="ig-etiqueta ig-etiqueta-tinta">{{ inv.rolEtiqueta }}</span>
+              @if (inv.organizacion) {
+                <small class="inv-org"><i class="bi bi-building" aria-hidden="true"></i>{{ inv.organizacion }}</small>
+              }
+            </td>
+            <td data-label="Estado">
+              <span class="ig-etiqueta {{ etiquetaEstado(inv).clase }}">{{ etiquetaEstado(inv).texto }}</span>
+              @if (inv.estado === Estado.Pendiente && inv.expiraEn) {
+                <small class="inv-detalle">vence {{ inv.expiraEn | date: 'd MMM, HH:mm' }}</small>
+              }
+              @if (inv.estado === Estado.Aceptada && inv.aceptadaEn) {
+                <small class="inv-detalle">{{ inv.aceptadaEn | date: 'd MMM y' }}</small>
+              }
+            </td>
+            <td data-label="Enviada">
+              {{ (inv.ultimoEnvio ?? inv.creationTime) | date: 'd MMM y, HH:mm' }}
+              @if (inv.envios > 1) {
+                <small class="inv-detalle">{{ inv.envios }} envíos</small>
+              }
+            </td>
+            <td data-label="Invitó">{{ inv.invitadoPor || '—' }}</td>
+            <td class="inv-acciones">
+              @if (puedeReenviar(inv)) {
+                <button type="button" class="ig-btn ig-btn-secundario ig-btn-chico" [disabled]="ocupada() === inv.id || !correoListo()" (click)="reenviar(inv)">
+                  <i class="bi bi-arrow-repeat" aria-hidden="true"></i>Reenviar
+                </button>
+              }
+              @if (puedeRevocar(inv)) {
+                <button type="button" class="ig-btn ig-btn-texto ig-btn-chico" [disabled]="ocupada() === inv.id" (click)="revocar(inv)">
+                  Revocar
+                </button>
+              }
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+}

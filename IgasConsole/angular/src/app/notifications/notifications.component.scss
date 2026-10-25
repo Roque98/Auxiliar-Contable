@@ -1,0 +1,90 @@
+.avisos-root {
+  max-width: 900px;
+  padding: 1rem 0;
+}
+
+.acciones-arriba {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 1rem;
+}
+
+.aviso-vacio {
+  padding: 0.75rem 0;
+  color: var(--bs-secondary-color, #6c757d);
+}
+
+// Lista de fichas y NO una tabla: un aviso es un titulo, un texto y una fecha, no seis
+// columnas. Ademas se apila sola en movil sin necesitar .tabla-apilable.
+.lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.fila {
+  padding: 0.8rem 1rem;
+  margin-bottom: 0.6rem;
+  border: 1px solid var(--bs-border-color, #dee2e6);
+  border-radius: 0.5rem;
+  // Ver la nota de campana.component.ts: --bs-body-bg es el fondo oscuro del armazon.
+  background: var(--ig-blanco, #fff);
+}
+
+// Sin leer: barra a la izquierda en vez de fondo de color, para que se distinga tambien
+// cuando el tema es oscuro.
+.fila.no-leido {
+  border-left: 4px solid var(--bs-primary, #0d6efd);
+}
+
+.fila.clicable {
+  cursor: pointer;
+}
+
+.cabecera {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: baseline;
+}
+
+.titulo-aviso {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.cuando {
+  margin-left: auto;
+  font-size: 0.8rem;
+  color: var(--bs-secondary-color, #6c757d);
+}
+
+.cuerpo {
+  margin: 0.45rem 0 0;
+  // Los cuerpos traen saltos de linea (la lista de IPs bloqueadas, por ejemplo) y pueden
+  // llevar dentro un mensaje de excepcion sin espacios.
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.pie {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  align-items: center;
+  margin-top: 0.6rem;
+}
+
+.destino {
+  font-size: 0.82rem;
+  color: var(--bs-secondary-color, #6c757d);
+}
+
+@media (max-width: 767.98px) {
+  // En movil la fecha en su propia linea: junto al titulo lo empuja fuera de la ficha.
+  .cuando {
+    margin-left: 0;
+    flex-basis: 100%;
+  }
+}

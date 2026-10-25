@@ -1,0 +1,147 @@
+name: Deploy a VPS
+
+# Manual por defecto. Cuando confies en el pipeline, descomenta el bloque 'push'
+# para desplegar en cada merge a main.
+on:
+  workflow_dispatch:
+  # push:
+  #   branches: [main]
+
+concurrency:
+  group: deploy-produccion
+  cancel-in-progress: false   # nunca cortar un deploy a medias
+
+jobs:
+  # Puerta de calidad: build, tests contra PostgreSQL, dependencias vulnerables y
+  # gitleaks, sobre el commit que se va a desplegar. Sin esto se podia desplegar un
+  # commit con los tests rojos, porque el CI corre en paralelo y nadie lo miraba.
+  verificar:
+    uses: ./.github/workflows/ci.yml
+    secrets: inherit
+
+  publicar-y-desplegar:
+    needs: verificar          # si el CI falla, no se publica ni se sube nada
+    runs-on: ubuntu-latest
+    environment: produccion   # permite exigir aprobacion manual en Settings > Environments
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.x'
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          # El proyecto usa yarn (yarn.lock versionado, no hay package-lock.json).
+          cache: yarn
+          cache-dependency-path: IgasConsole/angular/yarn.lock
+
+      # --- API ---------------------------------------------------------------
+      # Las librerias cliente (wwwroot/libs) NO estan versionadas y las paginas de
+      # login/consentimiento de OpenIddict las necesitan: sin este paso el login
+      # se ve roto en produccion.
+      - name: Instalar ABP CLI y libs cliente
+        run: |
+          dotnet tool install -g Volo.Abp.Studio.Cli
+          echo "$HOME/.dotnet/tools" >> $GITHUB_PATH
+          cd IgasConsole && abp install-libs
+
+      - name: Publicar API
+        run: |
+          dotnet publish IgasConsole/src/IgasConsole.HttpApi.Host/IgasConsole.HttpApi.Host.csproj \
+            -c Release -o publicado/api
+
+      # El DbMigrator se publica aparte: deploy.sh lo ejecuta ANTES de intercambiar
+      # las versiones, para que un fallo de migracion no tumbe la que esta sirviendo.
+      - name: Publicar DbMigrator
+        run: |
+          dotnet publish IgasConsole/src/IgasConsole.DbMigrator/IgasConsole.DbMigrator.csproj \
+            -c Release -o publicado/migrator
+
+      # --- Angular -----------------------------------------------------------
+      - name: Compilar Angular
+        working-directory: IgasConsole/angular
+        run: |
+          yarn install --frozen-lockfile
+          yarn build:prod
+
+      # --- Envio -------------------------------------------------------------
+      - name: Preparar clave SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          # known_hosts en vez de StrictHostKeyChecking=no: sin esto el deploy acepta
+          # cualquier servidor que responda, incluido uno suplantado.
+          echo "${{ secrets.VPS_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+
+      - name: Subir artefactos
+        env:
+          DESTINO: ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}
+        run: |
+          # A un directorio de staging: el servicio sigue sirviendo la version vieja
+          # mientras se copia. El intercambio lo hace deploy.sh en el servidor.
+          rsync -az --delete -e "ssh -i ~/.ssh/id_deploy" \
+            publicado/api/ "$DESTINO:/srv/zia-console/staging/api/"
+          rsync -az --delete -e "ssh -i ~/.ssh/id_deploy" \
+            IgasConsole/angular/dist/IgasConsole/browser/ "$DESTINO:/srv/zia-console/staging/web/"
+          rsync -az --delete -e "ssh -i ~/.ssh/id_deploy" \
+            publicado/migrator/ "$DESTINO:/srv/zia-console/staging/migrator/"
+          rsync -az -e "ssh -i ~/.ssh/id_deploy" \
+            deploy/deploy.sh "$DESTINO:/srv/zia-console/deploy.sh"
+
+      - name: Activar en el servidor
+        env:
+          DESTINO: ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}
+        run: |
+          ssh -i ~/.ssh/id_deploy "$DESTINO" "chmod +x /srv/zia-console/deploy.sh && sudo /srv/zia-console/deploy.sh"
+
+      - name: Comprobar salud
+        run: |
+          for i in $(seq 1 30); do
+            codigo=$(curl -s -o /dev/null -w "%{http_code}" "https://${{ secrets.VPS_DOMINIO }}/health-status" || true)
+            if [ "$codigo" = "200" ]; then echo "Sano."; exit 0; fi
+            echo "Intento $i: HTTP $codigo"; sleep 5
+          done
+          echo "::error::La API no respondio sana tras el despliegue"
+          exit 1
+
+      # Guarda contra una clase de fallo que SOLO existe fuera de Development y que ya
+      # rompio esto una vez: UseErrorPage() (UseStatusCodePagesWithRedirects) convierte
+      # cualquier 4xx sin cuerpo en un 302 a /Error. El rate limiting devolvia entonces
+      # un redirect en vez de un 429, y la jail de fail2ban que busca 429 en el log de
+      # nginx no habria baneado nunca a nadie. Ningun test local puede detectarlo porque
+      # en Development ese middleware no se registra. Ver CLAUDE.md, seccion 5.
+      #
+      # Va DESPUES de comprobar la salud, y a proposito: si esto banease al runner por
+      # abuso, el despliegue ya esta dado por bueno. Usa una ruta de credenciales (limite
+      # bajo, 10/min) para provocar UN solo 429, por debajo del maxretry=3 de la jail.
+      #
+      # ⚠️ Es /api/account/send-password-reset-code y NO /Account/Login. Con el acceso
+      # oculto (Acceso__SegmentoDelHost) el formulario de login se mueve a una ruta secreta y
+      # /Account/Login pasa a responder 404: el paso seguiria "pasando" sin comprobar nada.
+      # Esta ruta no se mueve y esta en la particion estricta. Con GET responde 405 (es
+      # POST): cuenta para el limite y NO manda ningun correo.
+      # Antes se usaba /connect/token, pero ahora tiene su propio limite holgado (lo pide el
+      # Angular en cada carga de pagina) y ya no llegaria a 429 en 11 intentos.
+      - name: Verificar que el rate limiting responde 429 y no un redirect
+        run: |
+          url="https://${{ secrets.VPS_DOMINIO }}/api/account/send-password-reset-code"
+          visto=""
+          for i in $(seq 1 11); do
+            codigo=$(curl -s -o /dev/null -w "%{http_code}" "$url" || echo "000")
+            echo "  intento $i -> $codigo"
+            case "$codigo" in
+              429) visto="429"; break ;;
+              30*) echo "::error::El limite devolvio $codigo (redirect) en vez de 429."
+                   echo "::error::Sintoma de que StatusCodePages se traga la respuesta: OnRejected debe escribir cuerpo y ContentType."
+                   exit 1 ;;
+            esac
+          done
+          if [ "$visto" != "429" ]; then
+            echo "::warning::No se alcanzo el limite en 11 intentos; no se pudo verificar el 429."
+          else
+            echo "OK: el limite responde 429."
+          fi

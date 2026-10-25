@@ -1,0 +1,21 @@
+/* -----------------------------------------------------------------------------
+   Sustituye al `font-bundle.css` de LeptonX.
+
+   El original es UNA sola línea:
+
+       @import url("https://fonts.googleapis.com/css2?family=Inter:...");
+
+   O sea, una ida a un tercero para traer la tipografía, y encadenada: un `@import`
+   no se descubre hasta que ha llegado la hoja que lo contiene, así que no se
+   paraleliza con nada. Dos orígenes más (`googleapis` y `gstatic`), con su DNS y su
+   TLS, en el camino de pintar texto.
+
+   La tipografía de la aplicación es Sora y se sirve desde el mismo dominio
+   (`assets/fonts/`, 37 KB, declarada en `styles/igas/_base.scss`). Este archivo existe solo
+   para OCUPAR EL SITIO del original: LeptonX carga ese bundle POR SU NOMBRE en
+   tiempo de ejecución, así que no basta con quitarlo de `angular.json` — hay que
+   darle algo que cargar, o el tema pediría un archivo que no existe.
+
+   ⚠️ Si algún día vuelve a hacer falta Inter, NO se recupera este bundle: se añade
+   su `@font-face` junto al de Sora, sirviéndola también desde `assets/fonts/`.
+   ----------------------------------------------------------------------------- */

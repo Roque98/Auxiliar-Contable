@@ -1,0 +1,108 @@
+@switch (paso()) {
+  @case ('cargando') {
+    <h1>Comprobando tu invitación…</h1>
+    <div class="ig-esqueleto"></div>
+  }
+
+  @case ('invalida') {
+    <h1>Este enlace ya no sirve</h1>
+    <div class="rg-caja">
+      <p>
+        {{ error() || 'La invitación se usó, se revocó o venció. Pide a quien te invitó que te la reenvíe: te llegará un enlace nuevo.' }}
+      </p>
+      <p class="ig-ayuda">¿Ya creaste tu cuenta? Entra con tu usuario y contraseña.</p>
+      <button type="button" class="ig-btn ig-btn-secundario ig-btn-bloque" (click)="entrar()">Iniciar sesión</button>
+    </div>
+  }
+
+  @case ('formulario') {
+    <h1>Crea tu cuenta</h1>
+    <form class="rg-caja" (ngSubmit)="crear()" autocomplete="on">
+      <p class="rg-invitado">
+        Te invitaron como <span class="ig-etiqueta ig-etiqueta-tinta">{{ invitacion()?.rolEtiqueta }}</span>
+        @if (invitacion()?.organizacion; as org) {<span>de <strong>{{ org }}</strong></span>}
+        con el correo <strong>{{ invitacion()?.email }}</strong>.
+      </p>
+
+      @if (conSesion()) {
+        <div class="ig-alerta ig-alerta-aviso">
+          Tienes una sesión abierta con otra cuenta. La cuenta nueva se crea igual; para usarla,
+          <button type="button" class="ig-btn-texto rg-enlace" (click)="salir()">cierra la sesión actual</button>.
+        </div>
+      }
+
+      @if (error(); as e) {
+        <div class="ig-alerta ig-alerta-error" role="alert">{{ e }}</div>
+      }
+
+      <div class="ig-campo">
+        <label for="rg-usuario">Usuario</label>
+        <input id="rg-usuario" name="userName" class="ig-control" autocomplete="username" required
+               [(ngModel)]="userName" />
+        <div class="ig-ayuda">Con esto entrarás. También puedes entrar con tu correo.</div>
+      </div>
+
+      <div class="rg-dos">
+        <div class="ig-campo">
+          <label for="rg-nombre">Nombre</label>
+          <input id="rg-nombre" name="name" class="ig-control" autocomplete="given-name" [(ngModel)]="name" />
+        </div>
+        <div class="ig-campo">
+          <label for="rg-apellido">Apellidos</label>
+          <input id="rg-apellido" name="surname" class="ig-control" autocomplete="family-name" [(ngModel)]="surname" />
+        </div>
+      </div>
+
+      <div class="ig-campo">
+        <label for="rg-clave">Contraseña</label>
+        <div class="rg-clave">
+          <input id="rg-clave" name="password" class="ig-control" autocomplete="new-password" required
+                 [type]="verClave() ? 'text' : 'password'" [(ngModel)]="password" />
+          <button type="button" class="ig-btn ig-btn-icono" [attr.aria-label]="verClave() ? 'Ocultar contraseña' : 'Ver contraseña'"
+                  (click)="verClave.set(!verClave())">
+            <i class="bi" [class.bi-eye]="!verClave()" [class.bi-eye-slash]="verClave()" aria-hidden="true"></i>
+          </button>
+        </div>
+        <ul class="rg-reglas" aria-label="Requisitos de la contraseña">
+          @for (r of reglas; track r.texto) {
+            <li [class.ok]="r.ok">
+              <i class="bi" [class.bi-check-circle-fill]="r.ok" [class.bi-circle]="!r.ok" aria-hidden="true"></i>{{ r.texto }}
+            </li>
+          }
+        </ul>
+      </div>
+
+      <div class="ig-campo">
+        <label for="rg-repetir">Repite la contraseña</label>
+        <input id="rg-repetir" name="repetir" class="ig-control" autocomplete="new-password" required
+               [type]="verClave() ? 'text' : 'password'" [(ngModel)]="repetir"
+               [attr.aria-invalid]="repetir.length > 0 && !coinciden" />
+        @if (repetir.length > 0 && !coinciden) {
+          <div class="ig-msg">No coincide con la de arriba.</div>
+        }
+      </div>
+
+      <button type="submit" class="ig-btn ig-btn-principal ig-btn-bloque" [disabled]="!listo || enviando()">
+        @if (enviando()) {
+          <span class="ig-girando" aria-hidden="true"></span>Creando tu cuenta…
+        } @else {
+          Crear mi cuenta
+        }
+      </button>
+    </form>
+  }
+
+  @case ('lista') {
+    <h1>¡Listo, ya tienes cuenta!</h1>
+    <div class="rg-caja">
+      <div class="ig-alerta ig-alerta-exito">
+        Tu correo quedó confirmado. Ya puedes entrar con tu usuario <strong>{{ userName }}</strong> o con tu correo.
+      </div>
+      @if (conSesion()) {
+        <button type="button" class="ig-btn ig-btn-principal ig-btn-bloque" (click)="salir()">Cerrar la sesión actual para entrar</button>
+      } @else {
+        <button type="button" class="ig-btn ig-btn-principal ig-btn-bloque" (click)="entrar()">Iniciar sesión</button>
+      }
+    </div>
+  }
+}

@@ -1,0 +1,81 @@
+@let r = resumen();
+
+<div class="ig-encabezado">
+  <div>
+    <h1>Ayuda</h1>
+    <p class="ig-sub">Cómo se usa la consola. Aquí solo aparece lo que tú puedes hacer con tus permisos.</p>
+  </div>
+</div>
+
+<div class="ig-panel ay-resumen">
+  <span class="ig-etiqueta ig-etiqueta-tinta">{{ r.rol }}</span>
+  <p>{{ r.texto }}</p>
+</div>
+
+@for (s of secciones(); track s.titulo) {
+  <section class="ay-seccion">
+    <h2 class="ay-seccion-titulo">{{ s.titulo }}</h2>
+    <div class="ay-temas">
+      @for (t of s.temas; track t.titulo) {
+        <article class="ig-panel ay-tema">
+          <h3><i class="bi {{ t.icono }}" aria-hidden="true"></i>{{ t.titulo }}</h3>
+          @for (p of t.texto ?? []; track p) {
+            <p>{{ p }}</p>
+          }
+          @if (t.pasos?.length) {
+            <ol class="ay-pasos">
+              @for (p of t.pasos; track p) {
+                <li>{{ p }}</li>
+              }
+            </ol>
+          }
+          @if (t.nota) {
+            <p class="ay-nota"><i class="bi bi-info-circle" aria-hidden="true"></i><span>{{ t.nota }}</span></p>
+          }
+          @if (t.ruta) {
+            <a class="ig-btn ig-btn-secundario ig-btn-chico ay-ir" [routerLink]="t.ruta">
+              Ir a la pantalla<i class="bi bi-arrow-right" aria-hidden="true"></i>
+            </a>
+          }
+        </article>
+      }
+    </div>
+  </section>
+}
+
+@if (verMatriz()) {
+  <section class="ay-matriz">
+    <h2>Qué puede hacer cada rol</h2>
+    <p class="ig-ayuda">
+      Así nacen los roles. El Owner puede ajustar sus permisos en Roles; nadie puede dar más permisos de los que tiene.
+    </p>
+    <div class="ig-tabla-caja">
+      <table class="ig-tabla">
+        <thead>
+          <tr>
+            <th scope="col">Puede…</th>
+            <th scope="col" class="ay-centro">Usuario</th>
+            <th scope="col" class="ay-centro">Administrador</th>
+            <th scope="col" class="ay-centro">Owner</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (f of matriz; track f.accion) {
+            <tr>
+              <td>{{ f.accion }}</td>
+              @for (si of [f.usuario, f.administrador, f.owner]; track $index) {
+                <td class="ay-centro">
+                  @if (si) {
+                    <i class="bi bi-check-lg ay-si" aria-label="Sí"></i>
+                  } @else {
+                    <i class="bi bi-dash ay-no" aria-label="No"></i>
+                  }
+                </td>
+              }
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
+}
