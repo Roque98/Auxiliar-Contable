@@ -1,3 +1,4 @@
+using AuxiliarContable.EstadosDeCuenta;
 using AuxiliarContable.Cfdis;
 using AuxiliarContable.Conversaciones;
 using AuxiliarContable.Documentos;
@@ -66,6 +67,10 @@ public class AuxiliarContableDbContext :
     public DbSet<MensajeDeConversacion> MensajesDeConversaciones { get; set; }
 
     public DbSet<Cfdi> Cfdis { get; set; }
+
+    public DbSet<EstadoDeCuenta> EstadosDeCuenta { get; set; }
+
+    public DbSet<MovimientoBancario> MovimientosBancarios { get; set; }
 
     // ⚠️ ESTOS DbSet NO SON DECORATIVOS. ABP aplica sus filtros globales (multi-tenancy y
     // soft delete) recorriendo las entidades que YA ESTAN en el modelo en el momento en que
@@ -291,6 +296,40 @@ public class AuxiliarContableDbContext :
 
             b.HasIndex(x => new { x.OrganizacionId, x.Uuid }).IsUnique().HasFilter("\"IsDeleted\" = false");
             b.HasIndex(x => x.DocumentoId);
+            b.HasIndex(x => new { x.OrganizacionId, x.Fecha });
+        });
+
+        // Estados de cuenta — AppEstadosDeCuenta (uno por documento) y AppMovimientosBancarios
+        // (sus renglones; OrganizacionId repetido para conciliar sin pasar por el estado).
+        builder.Entity<EstadoDeCuenta>(b =>
+        {
+            b.ToTable(AuxiliarContableConsts.DbTablePrefix + "EstadosDeCuenta", AuxiliarContableConsts.DbSchema);
+            b.ConfigureByConvention();
+            b.Property(x => x.Banco).IsRequired().HasMaxLength(EstadoDeCuentaConsts.MaxBancoLength);
+            b.Property(x => x.Cuenta).HasMaxLength(EstadoDeCuentaConsts.MaxCuentaLength);
+            b.Property(x => x.Moneda).IsRequired().HasMaxLength(10);
+            foreach (var monto in new[] { nameof(EstadoDeCuenta.SaldoInicial), nameof(EstadoDeCuenta.SaldoFinal),
+                         nameof(EstadoDeCuenta.TotalAbonos), nameof(EstadoDeCuenta.TotalCargos), nameof(EstadoDeCuenta.Diferencia) })
+            {
+                b.Property(monto).HasPrecision(18, 2);
+            }
+
+            b.Ignore(x => x.Cuadra);
+            b.HasIndex(x => x.DocumentoId);
+            b.HasIndex(x => x.OrganizacionId);
+            b.HasMany(x => x.Movimientos).WithOne().HasForeignKey(x => x.EstadoDeCuentaId).IsRequired();
+            b.Navigation(x => x.Movimientos).AutoInclude();
+        });
+
+        builder.Entity<MovimientoBancario>(b =>
+        {
+            b.ToTable(AuxiliarContableConsts.DbTablePrefix + "MovimientosBancarios", AuxiliarContableConsts.DbSchema);
+            b.ConfigureByConvention();
+            b.Property(x => x.Concepto).IsRequired().HasMaxLength(EstadoDeCuentaConsts.MaxConceptoLength);
+            b.Property(x => x.Referencia).HasMaxLength(EstadoDeCuentaConsts.MaxReferenciaLength);
+            b.Property(x => x.Cargo).HasPrecision(18, 2);
+            b.Property(x => x.Abono).HasPrecision(18, 2);
+            b.Property(x => x.Saldo).HasPrecision(18, 2);
             b.HasIndex(x => new { x.OrganizacionId, x.Fecha });
         });
 

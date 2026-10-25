@@ -151,6 +151,17 @@ export const SECCIONES: Seccion[] = [
           'Una factura «Otro RFC» no es ni del cliente ni para él: revisa si se subió al cliente equivocado.',
         ],
       },
+      {
+        titulo: 'Revisar un estado de cuenta',
+        icono: 'bi-bank',
+        ruta: '/estados-de-cuenta',
+        pasos: [
+          'Sube el estado de cuenta en Documentos eligiendo «Estado de cuenta». Se lee solo en unos segundos.',
+          'En Estados de cuenta ábrelo: si dice «Cuadra al centavo», revísalo y toca «Está bien, confirmar».',
+          'Si no cuadra, el renglón marcado «revisar» es donde el saldo no sigue: corrígelo con el lápiz.',
+        ],
+        nota: 'Que cuadre lo comprueba el sistema con una suma, no la IA: saldo inicial + abonos − cargos = saldo final.',
+      },
     ],
   },
   {

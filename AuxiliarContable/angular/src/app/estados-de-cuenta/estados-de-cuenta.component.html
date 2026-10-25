@@ -1,0 +1,128 @@
+<header class="ec-cabecera">
+  <h1>Estados de cuenta</h1>
+  @if (clientes(); as lista) {
+    @if (lista.length > 1) {
+      <label class="ec-campo">
+        <span>Cliente</span>
+        <select class="ig-control" [ngModel]="clienteId()" (ngModelChange)="elegir($event)">
+          <option [ngValue]="null" disabled>Elige un cliente…</option>
+          @for (c of lista; track c.id) {
+            <option [ngValue]="c.id">{{ c.nombre }}</option>
+          }
+        </select>
+      </label>
+    }
+  }
+  @if (cliente(); as c) {
+    <p class="ec-activo" data-testid="cliente-activo">
+      <i class="bi bi-bank" aria-hidden="true"></i>
+      <span>De <strong>{{ c.nombre }}</strong></span>
+      <a [routerLink]="['/documentos']" [queryParams]="{ cliente: c.id }">Subir más</a>
+    </p>
+  }
+</header>
+
+@if (error(); as e) {
+  <div class="ig-alerta ig-alerta-error" role="alert">{{ e }}</div>
+}
+
+@if (estado(); as e) {
+  <section class="ec-tarjeta" aria-labelledby="ec-detalle">
+    <button type="button" class="btn btn-link ec-volver" (click)="cerrar()"><i class="bi bi-arrow-left" aria-hidden="true"></i> Todos</button>
+    <h2 id="ec-detalle">{{ e.banco }} @if (e.cuenta) { <small>·{{ e.cuenta }}</small> }</h2>
+    <p class="ec-periodo">{{ fecha(e.periodoInicio) }} – {{ fecha(e.periodoFin) }}</p>
+
+    <dl class="ec-cuentas">
+      <div><dt>Saldo inicial</dt><dd>{{ dinero(e.saldoInicial, e.moneda) }}</dd></div>
+      <div><dt>+ Abonos</dt><dd>{{ dinero(e.totalAbonos, e.moneda) }}</dd></div>
+      <div><dt>− Cargos</dt><dd>{{ dinero(e.totalCargos, e.moneda) }}</dd></div>
+      <div><dt>Saldo final</dt><dd>{{ dinero(e.saldoFinal, e.moneda) }}</dd></div>
+    </dl>
+
+    @if (e.cuadra) {
+      <p class="ec-veredicto ec-ok" role="status"><i class="bi bi-check-circle-fill" aria-hidden="true"></i>Cuadra al centavo.</p>
+    } @else {
+      <p class="ec-veredicto ec-mal" role="status">
+        <i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i>
+        @if (e.diferencia == null) {
+          Faltan los saldos inicial o final: escríbelos abajo.
+        } @else {
+          No cuadra por {{ dinero(e.diferencia, e.moneda) }}.
+          @if (e.saltosDeSaldo) { Revisa los renglones marcados: su saldo no sigue del anterior. }
+        }
+      </p>
+    }
+
+    @if (e.puedeEditar && e.revision !== Revision.Confirmado) {
+      <form class="ec-saldos" (ngSubmit)="guardarSaldos()">
+        <label class="ec-campo"><span>Saldo inicial</span><input class="ig-control" type="number" step="0.01" name="si" [(ngModel)]="saldoInicial" /></label>
+        <label class="ec-campo"><span>Saldo final</span><input class="ig-control" type="number" step="0.01" name="sf" [(ngModel)]="saldoFinal" /></label>
+        <button type="submit" class="btn btn-outline-primary" [disabled]="guardando()">Guardar saldos</button>
+      </form>
+    }
+
+    <ul class="ec-renglones">
+      @for (m of e.renglones; track m.id) {
+        <li class="ec-renglon" [class.ec-salto]="m.saltoDeSaldo">
+          @if (editando() === m.id && borrador) {
+            <form class="ec-editar" (ngSubmit)="guardarRenglon()">
+              <label class="ec-campo"><span>Fecha</span><input class="ig-control" type="date" name="f" [(ngModel)]="borrador.fecha" required /></label>
+              <label class="ec-campo ec-ancho"><span>Concepto</span><input class="ig-control" name="c" [(ngModel)]="borrador.concepto" required /></label>
+              <label class="ec-campo"><span>Cargo</span><input class="ig-control" type="number" step="0.01" min="0" name="cg" [(ngModel)]="borrador.cargo" /></label>
+              <label class="ec-campo"><span>Abono</span><input class="ig-control" type="number" step="0.01" min="0" name="ab" [(ngModel)]="borrador.abono" /></label>
+              <div class="ec-botones">
+                <button type="submit" class="btn btn-primary" [disabled]="guardando()">Guardar</button>
+                <button type="button" class="btn btn-outline-secondary" (click)="editando.set(null)">Cancelar</button>
+              </div>
+            </form>
+          } @else {
+            <div class="ec-linea">
+              <span class="ec-fecha">{{ fecha(m.fecha) }}</span>
+              <span class="ec-concepto">
+                {{ m.concepto }}
+                @if (m.saltoDeSaldo) { <span class="ec-marca">revisar</span> }
+              </span>
+              <span class="ec-monto" [class.ec-abono]="m.abono > 0">{{ m.abono > 0 ? '+' + dinero(m.abono, e.moneda) : '−' + dinero(m.cargo, e.moneda) }}</span>
+              <span class="ec-saldo">{{ dinero(m.saldo, e.moneda) }}</span>
+              @if (e.puedeEditar && e.revision !== Revision.Confirmado) {
+                <button type="button" class="btn btn-outline-secondary ec-lapiz" (click)="editar(m)" [attr.aria-label]="'Corregir ' + m.concepto">
+                  <i class="bi bi-pencil" aria-hidden="true"></i>
+                </button>
+              }
+            </div>
+          }
+        </li>
+      }
+    </ul>
+
+    @if (e.puedeEditar) {
+      <div class="ec-botones">
+        @if (e.revision !== Revision.Confirmado) {
+          @if (e.cuadra) {
+            <button type="button" class="btn btn-primary" (click)="confirmar(false)" [disabled]="guardando()">Está bien, confirmar</button>
+          } @else {
+            <button type="button" class="btn btn-outline-danger" (click)="confirmar(true)" [disabled]="guardando()">Aceptarlo aunque no cuadre</button>
+          }
+        }
+        <button type="button" class="btn btn-outline-secondary" (click)="volverALeer()">Volver a leer</button>
+      </div>
+    }
+  </section>
+} @else if (lista(); as l) {
+  @if (!l.length) {
+    <p class="ec-vacio">Aún no hay estados de cuenta leídos. Súbelos en «Documentos» eligiendo «Estado de cuenta»; se leen en unos segundos.</p>
+  }
+  <ul class="ec-lista">
+    @for (x of l; track x.id) {
+      <li>
+        <button type="button" class="ec-item" (click)="abrir(x.id)">
+          <span class="ec-item-titulo">{{ x.banco }} @if (x.cuenta) { ·{{ x.cuenta }} }</span>
+          <span class="ec-item-periodo">{{ fecha(x.periodoInicio) }} – {{ fecha(x.periodoFin) }} · {{ x.movimientos }} movimientos</span>
+          <span class="ec-pastilla" [class.ec-pastilla-ok]="x.revision === Revision.Confirmado" [class.ec-pastilla-mal]="x.revision === Revision.RequiereRevision">{{ etiqueta(x) }}</span>
+        </button>
+      </li>
+    }
+  </ul>
+} @else if (clienteId()) {
+  <div class="ig-esqueleto"></div>
+}

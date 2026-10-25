@@ -312,6 +312,22 @@ cuenta en frases lo que ya se registra, por día y con filtros (persona, organiz
   (`deploy/instalar-antivirus.sh`).
 - El chat busca en la bóveda con `buscar_documentos` y `resumen_de_documentos`.
 
+### 1.2.10.2 Estados de cuenta
+
+- Subir a la bóveda con tipo `EstadoDeCuenta` encola `auxiliar:leer-estado-de-cuenta`
+  (`ProcesadorDeEstadoDeCuenta`): texto con PdfPig (hasta 40 páginas) o el PDF/foto si es escaneo;
+  el modelo TRANSCRIBE (esquema `registrar_estado_de_cuenta`, `MaxTokens` 32000) y el CÓDIGO cuadra
+  (`EstadoDeCuenta.Cuadrar`: inicial + abonos − cargos = final, tolerancia 0.01; `SaltosDeSaldo` =
+  renglones cuyo saldo corrido no sigue del anterior → dónde mirar).
+- `Revision`: `PorConfirmar` (cuadra) / `RequiereRevision` (no cuadra o faltan saldos) /
+  `Confirmado` (una persona; si no cuadra, solo con `aunqueNoCuadre`, queda en auditoría).
+  Corregir un renglón o los saldos vuelve a cuadrar y a pedir confirmación.
+- Cuenta: solo últimos 4 dígitos. Renglones sin fecha válida se descartan (log). Montos negativos
+  se reacomodan (cargo negativo = abono) al leer; a mano, se rechazan.
+- `EstadosDeCuentaAppService` (`/estados-de-cuenta?cliente=`): lista, `GetDetalleAsync` (⚠️ no
+  `GetAsync`: chocaba con `GetListAsync`, ver docs/trampas/nucleo-abp.md), corregir, confirmar,
+  volver a leer. Borrar el documento en la bóveda borra su estado de cuenta.
+
 ### 1.2.11 Chat (asistente)
 
 - **Modelo**: `IModeloConversacional` (Domain/IA) — UN turno por llamada; el bucle de herramientas

@@ -152,3 +152,16 @@ cancela el primero antes de que vuelva la cookie); en producción, con latencia,
 - `Pages/Index` (raíz de la API) redirige a `App:AngularUrl`.
 - Prueba: `e2e/pruebas/acceso.spec.ts` (la de «reenviar el login» reproduce el 400 exacto:
   formulario cargado sin sesión en una pestaña, sesión iniciada en otra, se envía el viejo).
+
+## Dos `Get*` con solo parámetros sueltos chocan en la misma ruta (2026-10-25)
+
+**Síntoma**: `/swagger/v1/swagger.json` devuelve un error de Swashbuckle («Conflicting method/path
+combination "GET api/app/estados-de-cuenta"») y, en ejecución, la ruta es ambigua.
+
+**Causa**: el auto API de ABP quita el prefijo `Get` y saca de la ruta los parámetros que no se
+llaman `id`. `GetListAsync(Guid organizacionId)` y `GetAsync(Guid organizacionId, Guid estadoDeCuentaId)`
+quedaban los dos en `GET /api/app/estados-de-cuenta` con query string.
+
+**Arreglo**: nombre propio para el segundo (`GetDetalleAsync` → `/detalle`). Al añadir un
+servicio, levantar la API y abrir el swagger.json: es la forma rápida de ver las rutas reales
+(los `Post` con un Guid lo ponen en la ruta: `/subir/{organizacionId}`).

@@ -45,11 +45,17 @@ done
 
 echo "==> Prueba con EICAR (archivo de prueba estándar, inofensivo)"
 eicar='X5O!P%@AP[4\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*'
-if printf '%s' "$eicar" | clamdscan --stream - 2>/dev/null | grep -q FOUND; then
+# Por archivo y no por stdin: «clamdscan --stream -» no lee la entrada estándar y la prueba fallaba
+# con clamd funcionando bien (pasó en la primera instalación, 2026-10-25).
+prueba=$(mktemp)
+printf '%s' "$eicar" > "$prueba"
+chmod 644 "$prueba"
+if clamdscan --no-summary --fdpass "$prueba" 2>/dev/null | grep -q FOUND; then
     echo "    Detecta EICAR: OK."
 else
     echo "!! clamd no detectó EICAR; revisa 'systemctl status clamav-daemon'." >&2
 fi
+rm -f "$prueba"
 
 if ! grep -q '^Antivirus__Host=' /etc/auxiliar-contable/env; then
     printf '\n# Antivirus de documentos (deploy/instalar-antivirus.sh)\nAntivirus__Host=127.0.0.1\n' >> /etc/auxiliar-contable/env

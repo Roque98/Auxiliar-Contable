@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using AuxiliarContable.Autorizacion;
+using AuxiliarContable.BackgroundJobs;
 using AuxiliarContable.Cfdis;
 using AuxiliarContable.Documentos;
 using AuxiliarContable.Files;
@@ -12,6 +13,7 @@ using AuxiliarContable.PerfilesFiscales;
 using Microsoft.AspNetCore.Authorization;
 using Volo.Abp;
 using Volo.Abp.Application.Dtos;
+using Volo.Abp.BackgroundJobs;
 using Volo.Abp.Content;
 using Volo.Abp.Domain.Entities;
 using Volo.Abp.Domain.Repositories;
@@ -27,21 +29,27 @@ public class BovedaAppService : AuxiliarContableAppService, IBovedaAppService
 {
     private readonly IRepository<Documento, Guid> _documentos;
     private readonly IRepository<Cfdi, Guid> _cfdis;
+    private readonly IRepository<EstadosDeCuenta.EstadoDeCuenta, Guid> _estados;
     private readonly IRepository<PerfilFiscal, Guid> _perfiles;
     private readonly GestorDeDocumentos _gestor;
     private readonly AlmacenDeDocumentos _almacen;
     private readonly Autorizador _autorizador;
+    private readonly IBackgroundJobManager _trabajos;
 
     public BovedaAppService(
         IRepository<Documento, Guid> documentos,
         IRepository<Cfdi, Guid> cfdis,
+        IRepository<EstadosDeCuenta.EstadoDeCuenta, Guid> estados,
         IRepository<PerfilFiscal, Guid> perfiles,
         GestorDeDocumentos gestor,
         AlmacenDeDocumentos almacen,
-        Autorizador autorizador)
+        Autorizador autorizador,
+        IBackgroundJobManager trabajos)
     {
+        _trabajos = trabajos;
         _documentos = documentos;
         _cfdis = cfdis;
+        _estados = estados;
         _perfiles = perfiles;
         _gestor = gestor;
         _almacen = almacen;
@@ -83,6 +91,12 @@ public class BovedaAppService : AuxiliarContableAppService, IBovedaAppService
 
         var (documento, duplicado) = await _gestor.RecibirAsync(organizacionId, tipo, nombre, bytes,
             mime => mime != DetectorDeDocumento.Xml);
+        if (!duplicado && tipo == TipoDeDocumento.EstadoDeCuenta)
+        {
+            // Leerlo cuesta segundos y dinero: en segundo plano (ver ProcesadorDeEstadoDeCuenta).
+            await _trabajos.EnqueueAsync(new LeerEstadoDeCuentaArgs { DocumentoId = documento.Id });
+        }
+
         return new ResultadoDeSubidaDto { Documento = Describir(documento, null, rfc), EsDuplicado = duplicado };
     }
 
@@ -257,6 +271,7 @@ public class BovedaAppService : AuxiliarContableAppService, IBovedaAppService
         var documento = await DocumentoAsync(organizacionId, documentoId);
         // Borrado lógico (queda en la auditoría y el archivo cifrado sigue en disco).
         await _cfdis.DeleteAsync(c => c.DocumentoId == documento.Id, autoSave: true);
+        await _estados.DeleteAsync(e => e.DocumentoId == documento.Id, autoSave: true);
         await _documentos.DeleteAsync(documento, autoSave: true);
     }
 

@@ -10,6 +10,7 @@ export const RUTAS = [
   '/',
   '/asistente',
   '/documentos',
+  '/estados-de-cuenta',
   '/perfil-fiscal',
   '/organizaciones',
   '/actividad',

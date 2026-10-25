@@ -114,6 +114,15 @@ function configureRoutes() {
       layout: eLayoutType.application,
     },
 
+    // Revisión de los estados de cuenta leídos (cuadran o no). Mismo criterio.
+    {
+      path: '/estados-de-cuenta',
+      name: '::Menu:EstadosDeCuenta',
+      iconClass: 'bi bi-bank',
+      order: 1.8,
+      layout: eLayoutType.application,
+    },
+
     // El perfil fiscal: para el cliente, el suyo; para el despacho, el de cada cliente. Sin
     // permiso propio: quién ve y cambia qué lo decide el servidor (Autorizador, 404 a lo ajeno).
     {
