@@ -19,6 +19,12 @@ versionado**; la escritura y el modelo de dominio usan **EF Core / LINQ**.
 
 ### 1.0 El producto (lo que pidió el usuario)
 
+> ⚠️ **Lee primero [`docs/vision-producto.md`](docs/vision-producto.md)**: la visión completa
+> (el chat como interfaz principal, perfil fiscal con CSF, bóveda, el chat del equipo) y las
+> **reglas de trabajo** (ser proactivo, cuándo decidir y cuándo preguntar, el resumen al final
+> de cada sesión, principios de IA no negociables). Manda sobre este resumen. El plan vigente y
+> las decisiones pendientes están en [`docs/plan/`](docs/plan/).
+
 - Un despacho contable lleva **varios clientes** (cada uno, una organización; ver 1.2.6).
 - El cliente manda: **estados de cuenta** en cualquier formato (PDF, imágenes, fotos y lo que
   tenga), **facturas emitidas y recibidas** (CFDI) e información adicional para el **perfil del
