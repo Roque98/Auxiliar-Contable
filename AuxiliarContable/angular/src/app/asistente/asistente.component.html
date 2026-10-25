@@ -151,11 +151,21 @@
         </div>
       }
 
+      <!-- Mantener presionado (o clic derecho) abre el menú del mensaje, como en Telegram. -->
       @for (m of mensajes(); track m.id) {
         @if (m.rol === Rol.Asistente) {
           <div class="as-fila">
             <span class="as-firma" aria-hidden="true"><i class="bi bi-stars"></i></span>
-            <article class="as-globo as-globo-asistente">
+            <article
+              class="as-globo as-globo-asistente"
+              [attr.data-mensaje]="m.id"
+              [class.as-globo-elegido]="menu()?.id === m.id"
+              [class.as-globo-seleccionable]="seleccionando() === m.id"
+              (touchstart)="alTocar($event, m)"
+              (touchmove)="alMover($event)"
+              (touchend)="alSoltarDedo($event)"
+              (touchcancel)="alSoltarDedo()"
+              (contextmenu)="abrirMenu($event, m)">
               <p class="as-texto">{{ m.texto }}</p>
               @if (m.acciones.length) {
                 <ul class="as-acciones">
@@ -164,13 +174,31 @@
                   }
                 </ul>
               }
-              @if (m.creadoUtc) {
-                <time class="as-hora">{{ hora(m.creadoUtc) }}</time>
-              }
+              <div class="as-pie">
+                <button type="button" class="as-pie-boton" (click)="copiar(m.texto)" aria-label="Copiar respuesta" title="Copiar">
+                  <i class="bi bi-clipboard" aria-hidden="true"></i>
+                </button>
+                <button type="button" class="as-pie-boton" (click)="abrirMenu($event, m)" aria-label="Más opciones" title="Más">
+                  <i class="bi bi-three-dots" aria-hidden="true"></i>
+                </button>
+                @if (m.creadoUtc) {
+                  <time class="as-hora">{{ hora(m.creadoUtc) }}</time>
+                }
+              </div>
             </article>
           </div>
         } @else {
-          <article class="as-globo as-globo-yo" [class.as-globo-enviando]="m.id === 'pendiente'">
+          <article
+            class="as-globo as-globo-yo"
+            [attr.data-mensaje]="m.id"
+            [class.as-globo-enviando]="m.id === 'pendiente'"
+            [class.as-globo-elegido]="menu()?.id === m.id"
+            [class.as-globo-seleccionable]="seleccionando() === m.id"
+            (touchstart)="alTocar($event, m)"
+            (touchmove)="alMover($event)"
+            (touchend)="alSoltarDedo($event)"
+            (touchcancel)="alSoltarDedo()"
+            (contextmenu)="abrirMenu($event, m)">
             <p class="as-texto">{{ m.texto }}</p>
             @if (m.creadoUtc) {
               <time class="as-hora">{{ hora(m.creadoUtc) }}</time>
@@ -269,6 +297,37 @@
       </div>
       <p class="as-aviso">IA: puede equivocarse. Las decisiones fiscales las revisa tu contador.</p>
     </form>
+
+    @if (menu(); as elegido) {
+      <div class="as-velo" (click)="cerrarMenu()" aria-hidden="true"></div>
+      <div class="as-hoja" role="menu" aria-label="Opciones del mensaje" (keydown.escape)="cerrarMenu()">
+        <p class="as-hoja-cita">{{ elegido.texto }}</p>
+        <button type="button" role="menuitem" class="as-hoja-opcion" (click)="copiar(elegido.texto); cerrarMenu()">
+          <i class="bi bi-clipboard" aria-hidden="true"></i>Copiar
+        </button>
+        <button type="button" role="menuitem" class="as-hoja-opcion" (click)="seleccionar(elegido)">
+          <i class="bi bi-cursor-text" aria-hidden="true"></i>Seleccionar texto
+        </button>
+        <button type="button" role="menuitem" class="as-hoja-opcion" (click)="responder(elegido)">
+          <i class="bi bi-reply" aria-hidden="true"></i>Responder citando
+        </button>
+        @if (elegido.rol === Rol.Usuario) {
+          <button type="button" role="menuitem" class="as-hoja-opcion" (click)="editar(elegido)">
+            <i class="bi bi-pencil" aria-hidden="true"></i>Editar y reenviar
+          </button>
+        }
+        @if (puedeCompartir) {
+          <button type="button" role="menuitem" class="as-hoja-opcion" (click)="compartir(elegido)">
+            <i class="bi bi-share" aria-hidden="true"></i>Compartir
+          </button>
+        }
+        <button type="button" class="as-hoja-cancelar" (click)="cerrarMenu()">Cancelar</button>
+      </div>
+    }
+
+    @if (aviso(); as a) {
+      <div class="as-toast" role="status">{{ a }}</div>
+    }
 
     @if (arrastrando()) {
       <div class="as-soltar" aria-hidden="true">

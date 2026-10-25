@@ -3,6 +3,7 @@ import {
   Component,
   DestroyRef,
   ElementRef,
+  HostListener,
   OnInit,
   computed,
   inject,
@@ -501,6 +502,151 @@ export class AsistenteComponent implements OnInit {
 
   hora(utc: string): string {
     return utc ? new Date(utc).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }) : '';
+  }
+
+  // ---- Menú del mensaje (como en Telegram) ----------------------------------------------------
+
+  /** El mensaje cuyo menú está abierto. */
+  readonly menu = signal<MensajeDto | null>(null);
+  /** El mensaje en modo «seleccionar texto»: ahí el toque largo vuelve a ser el del sistema. */
+  readonly seleccionando = signal<string | null>(null);
+  readonly aviso = signal<string | null>(null);
+  readonly puedeCompartir = typeof navigator !== 'undefined' && typeof navigator.share === 'function';
+
+  /** Lo que dura el «mantener presionado» antes de abrir el menú. */
+  private static readonly PresionMs = 450;
+  private presion?: ReturnType<typeof setTimeout>;
+  private inicioDelToque = { x: 0, y: 0 };
+  private relojDelAviso?: ReturnType<typeof setTimeout>;
+  private abiertoPorPresion = false;
+
+  alTocar(evento: TouchEvent, m: MensajeDto): void {
+    if (m.id === 'pendiente' || this.seleccionando() === m.id || evento.touches.length !== 1) {
+      return;
+    }
+    const t = evento.touches[0];
+    this.inicioDelToque = { x: t.clientX, y: t.clientY };
+    clearTimeout(this.presion);
+    this.presion = setTimeout(() => {
+      this.abiertoPorPresion = true;
+      this.mostrarMenu(m);
+    }, AsistenteComponent.PresionMs);
+  }
+
+  /** Si el dedo se mueve, es desplazamiento, no un toque largo. */
+  alMover(evento: TouchEvent): void {
+    const t = evento.touches[0];
+    if (t && Math.hypot(t.clientX - this.inicioDelToque.x, t.clientY - this.inicioDelToque.y) > 10) {
+      clearTimeout(this.presion);
+    }
+  }
+
+  /**
+   * ⚠️ Si el menú se abrió con el dedo aún abajo, al soltarlo el navegador fabrica un «click» en
+   * ese punto, que ya cae sobre el velo y cerraba el menú en el acto. Cancelar el touchend lo evita.
+   */
+  alSoltarDedo(evento?: TouchEvent): void {
+    clearTimeout(this.presion);
+    if (this.abiertoPorPresion) {
+      this.abiertoPorPresion = false;
+      evento?.preventDefault();
+    }
+  }
+
+  /** Clic derecho, el toque largo de Android (llega como `contextmenu`) o el botón «Más». */
+  abrirMenu(evento: Event, m: MensajeDto): void {
+    if (m.id === 'pendiente' || (evento.type === 'contextmenu' && this.seleccionando() === m.id)) {
+      return;
+    }
+    evento.preventDefault();
+    this.mostrarMenu(m);
+  }
+
+  @HostListener('document:keydown.escape')
+  cerrarMenu(): void {
+    this.menu.set(null);
+  }
+
+  async copiar(texto: string): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(texto);
+    } catch {
+      // Sin permiso de portapapeles (o sin HTTPS): el método viejo, que sigue funcionando en móviles.
+      const area = document.createElement('textarea');
+      area.value = texto;
+      area.setAttribute('readonly', '');
+      area.style.position = 'fixed';
+      area.style.opacity = '0';
+      document.body.appendChild(area);
+      area.select();
+      document.execCommand('copy');
+      area.remove();
+    }
+    this.avisar('Copiado');
+  }
+
+  /** Deja el texto del globo seleccionado y con las asas del sistema para ajustarlo. */
+  seleccionar(m: MensajeDto): void {
+    this.menu.set(null);
+    this.seleccionando.set(m.id);
+    setTimeout(() => {
+      const p = document.querySelector(`[data-mensaje="${m.id}"] .as-texto`);
+      const seleccion = window.getSelection();
+      if (p && seleccion) {
+        const rango = document.createRange();
+        rango.selectNodeContents(p);
+        seleccion.removeAllRanges();
+        seleccion.addRange(rango);
+      }
+    });
+    this.avisar('Ajusta la selección y copia');
+  }
+
+  responder(m: MensajeDto): void {
+    this.menu.set(null);
+    const cita = m.texto.length > 160 ? `${m.texto.slice(0, 160).trimEnd()}…` : m.texto;
+    this.texto = `«${cita}»\n${this.texto}`;
+    this.enfocarCaja();
+  }
+
+  /** El historial no se reescribe (el asistente ya respondió a lo que decía): se edita una copia y se manda de nuevo. */
+  editar(m: MensajeDto): void {
+    this.menu.set(null);
+    this.texto = m.texto;
+    this.enfocarCaja();
+    this.avisar('Edítalo y vuelve a enviarlo');
+  }
+
+  async compartir(m: MensajeDto): Promise<void> {
+    this.menu.set(null);
+    try {
+      await navigator.share({ text: m.texto });
+    } catch {
+      // Cancelado por la persona: nada que hacer.
+    }
+  }
+
+  private mostrarMenu(m: MensajeDto): void {
+    clearTimeout(this.presion);
+    this.seleccionando.set(null);
+    navigator.vibrate?.(10);
+    this.menu.set(m);
+  }
+
+  private enfocarCaja(): void {
+    setTimeout(() => {
+      const caja = this.caja()?.nativeElement;
+      if (caja) {
+        caja.focus();
+        caja.setSelectionRange(caja.value.length, caja.value.length);
+      }
+    });
+  }
+
+  private avisar(texto: string): void {
+    clearTimeout(this.relojDelAviso);
+    this.aviso.set(texto);
+    this.relojDelAviso = setTimeout(() => this.aviso.set(null), 1800);
   }
 
   /** Dos letras para la pastilla del cliente: «Panadería La Espiga» → «PL». */

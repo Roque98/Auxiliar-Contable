@@ -740,6 +740,142 @@
   }
 }
 
+/* ---- Menú del mensaje (mantener presionado, como en Telegram) ----------------------------- */
+
+.as-globo {
+  /* El toque largo abre NUESTRO menú: sin la burbuja de «copiar/buscar» de iOS encima. */
+  -webkit-touch-callout: none;
+  transition: transform var(--ig-rapido), box-shadow var(--ig-rapido);
+}
+
+.as-globo-elegido {
+  transform: scale(0.98);
+  box-shadow: 0 0 0 3px var(--ig-acento-suave);
+}
+
+/* «Seleccionar texto»: vuelve el comportamiento del sistema (asas para ajustar). */
+.as-globo-seleccionable {
+  -webkit-touch-callout: default;
+  user-select: text;
+  box-shadow: 0 0 0 2px var(--ig-acento);
+}
+
+.as-pie {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-top: var(--ig-esp-1);
+
+  .as-hora {
+    margin: 0 0 0 auto;
+  }
+}
+
+.as-pie-boton {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ig-texto-secundario);
+  font-size: 0.9rem;
+
+  &:hover {
+    background: var(--ig-gris-fondo);
+    color: var(--ig-tinta);
+  }
+}
+
+.as-velo {
+  position: fixed;
+  inset: 0;
+  z-index: var(--ig-z-velo);
+  background: var(--ig-velo);
+  animation: as-aparecer var(--ig-rapido) ease-out;
+}
+
+/* Hoja que sube desde abajo en el teléfono; una tarjeta centrada en pantallas grandes. */
+.as-hoja {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: var(--ig-z-lateral);
+  display: flex;
+  flex-direction: column;
+  padding: var(--ig-esp-3) var(--ig-esp-3) max(var(--ig-esp-3), env(safe-area-inset-bottom));
+  background: var(--ig-blanco);
+  border-radius: var(--ig-radio-xl) var(--ig-radio-xl) 0 0;
+  box-shadow: var(--ig-sombra-dialogo);
+  animation: as-hoja-subir var(--ig-medio) ease-out;
+}
+
+.as-hoja-cita {
+  margin: 0 0 var(--ig-esp-2);
+  padding: var(--ig-esp-2) var(--ig-esp-3);
+  background: var(--ig-gris-fondo);
+  border-radius: var(--ig-radio-md);
+  color: var(--ig-texto-secundario);
+  font-size: var(--ig-texto-sm);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  white-space: pre-wrap;
+}
+
+.as-hoja-opcion,
+.as-hoja-cancelar {
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+  gap: var(--ig-esp-3);
+  padding: 0 var(--ig-esp-3);
+  border: 0;
+  border-radius: var(--ig-radio-md);
+  background: transparent;
+  color: var(--ig-tinta);
+  font: inherit;
+  text-align: left;
+
+  .bi {
+    width: 24px;
+    font-size: 1.15rem;
+    color: var(--ig-acento-texto);
+  }
+
+  &:hover,
+  &:focus-visible {
+    background: var(--ig-gris-fondo);
+  }
+}
+
+.as-hoja-cancelar {
+  justify-content: center;
+  margin-top: var(--ig-esp-1);
+  font-weight: var(--ig-peso-semi);
+  color: var(--ig-texto-secundario);
+}
+
+.as-toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(110px + env(safe-area-inset-bottom));
+  z-index: var(--ig-z-aviso);
+  transform: translateX(-50%);
+  padding: var(--ig-esp-2) var(--ig-esp-4);
+  background: var(--ig-invertido);
+  color: var(--ig-sobre-invertido);
+  border-radius: 999px;
+  font-size: var(--ig-texto-md);
+  box-shadow: var(--ig-sombra-flotante);
+  animation: as-aparecer var(--ig-rapido) ease-out;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
 /* Al arrastrar archivos sobre el chat: todo el chat es la zona para soltar. */
 .as-soltar {
   position: absolute;
@@ -782,6 +918,15 @@
   }
   to {
     opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes as-hoja-subir {
+  from {
+    transform: translateY(100%);
+  }
+  to {
     transform: none;
   }
 }
@@ -851,6 +996,22 @@
 
   .as-idea-subir {
     grid-column: 1 / -1;
+  }
+}
+
+@media (min-width: 768px) {
+  .as-hoja {
+    left: 50%;
+    right: auto;
+    bottom: 50%;
+    width: 360px;
+    transform: translate(-50%, 50%);
+    border-radius: var(--ig-radio-xl);
+    animation: as-aparecer var(--ig-medio) ease-out;
+  }
+
+  .as-toast {
+    bottom: 130px;
   }
 }
 
