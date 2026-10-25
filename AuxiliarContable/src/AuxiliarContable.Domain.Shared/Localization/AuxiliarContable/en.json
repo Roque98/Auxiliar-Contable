@@ -527,6 +527,7 @@
     "Permission:Organizaciones": "Organizations: create them and assign stations and people",
     "Menu:Organizaciones": "Organizations",
     "Menu:PerfilFiscal": "Tax profile",
+    "Menu:Asistente": "Assistant",
     "AuxiliarContable:OrganizacionObligatoria": "A client user (User role) must join an organization: choose one.",
     "AuxiliarContable:OrganizacionNoExiste": "The chosen organization no longer exists. Reload and choose another.",
     "AuxiliarContable:InvitacionSinOrganizacion": "This invitation's organization no longer exists. Ask for a new invitation.",

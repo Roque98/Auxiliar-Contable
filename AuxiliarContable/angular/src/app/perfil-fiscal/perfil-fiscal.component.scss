@@ -33,6 +33,14 @@ h2 {
   }
 }
 
+.pf-platicar {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ig-esp-2);
+}
+
 .pf-de {
   margin: 0;
 }

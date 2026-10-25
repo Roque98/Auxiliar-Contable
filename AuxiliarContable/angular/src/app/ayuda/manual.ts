@@ -97,6 +97,34 @@ export const SECCIONES: Seccion[] = [
     ],
   },
   {
+    titulo: 'Asistente',
+    temas: [
+      {
+        titulo: 'Platica con el asistente',
+        icono: 'bi-chat-dots',
+        ruta: '/asistente',
+        salvoPermisos: ['AuxiliarContable.Organizaciones'],
+        pasos: [
+          'Abre Asistente y escríbele como a tu contador: «tengo una panadería», «¿qué me falta?».',
+          'Lo que le digas de tu negocio lo anota en tu perfil fiscal; abajo de su respuesta ves qué guardó.',
+          'Si algo quedó mal, díselo o corrígelo en Perfil fiscal.',
+        ],
+        nota: 'Es orientación general hecha con IA y puede equivocarse: las decisiones fiscales las revisa tu contador.',
+      },
+      {
+        titulo: 'El asistente para el despacho',
+        icono: 'bi-chat-dots',
+        ruta: '/asistente',
+        permisos: ['AuxiliarContable.Organizaciones'],
+        texto: [
+          'Elige al cliente: arriba queda siempre a la vista con quién estás platicando.',
+          'Pídele un resumen del perfil, qué falta o un borrador de mensaje para el cliente (no lo envía: lo copias tú).',
+          'Lo que guarde a partir de lo que le digas queda como «Del despacho». Cada quien tiene su propia conversación.',
+        ],
+      },
+    ],
+  },
+  {
     titulo: 'Perfil fiscal',
     temas: [
       {

@@ -77,6 +77,7 @@ public class AuxiliarContablePostgreSqlTestModule : AbpModule
         Configure<AuxiliarContable.Documentos.DocumentosOptions>(options =>
             options.ClaveDeCifrado = System.Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32)));
         context.Services.Replace(ServiceDescriptor.Singleton<AuxiliarContable.IA.IModeloDeIA, ModeloDeIADePrueba>());
+        context.Services.Replace(ServiceDescriptor.Singleton<AuxiliarContable.IA.IModeloConversacional, ModeloConversacionalDePrueba>());
         context.Services.Configure<AbpDbConnectionOptions>(options =>
         {
             options.ConnectionStrings.Default = PostgresTestConsts.MainConnectionString;

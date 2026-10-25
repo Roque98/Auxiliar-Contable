@@ -31,8 +31,8 @@ namespace AuxiliarContable.IA.Claude;
 /// <para>⚠️ Nada del contenido (documentos de los clientes) ni de la respuesta va al log: solo
 /// propósito, modelo, tokens, duración y el <c>request-id</c> de Anthropic para soporte.</para>
 /// </summary>
-[ExposeServices(typeof(IModeloDeIA), typeof(ClaudeModeloDeIA))]
-public class ClaudeModeloDeIA : IModeloDeIA, ITransientDependency
+[ExposeServices(typeof(IModeloDeIA), typeof(IModeloConversacional), typeof(ClaudeModeloDeIA))]
+public class ClaudeModeloDeIA : IModeloDeIA, IModeloConversacional, ITransientDependency
 {
     public const string NombreHttpClient = "Claude";
     public const string NombreDelMedidor = "AuxiliarContable.IA";
@@ -129,6 +129,128 @@ public class ClaudeModeloDeIA : IModeloDeIA, ITransientDependency
             Llamadas.Add(1, etiquetas);
             Duracion.Record(cronometro.Elapsed.TotalSeconds, new TagList { { "proposito", solicitud.Proposito } });
         }
+    }
+
+    public async Task<RespuestaDeConversacion> ConversarAsync(SolicitudDeConversacion solicitud, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(solicitud);
+
+        if (!EstaConfigurado)
+        {
+            throw new ErrorDeIAException(MotivoDeErrorDeIA.NoConfigurado, "Claude no está configurado (falta Claude:ApiKey).");
+        }
+
+        var cronometro = Stopwatch.StartNew();
+        var resultado = "error";
+        try
+        {
+            var respuesta = await LlamarAsync(ConstruirConversacion(solicitud), solicitud.Proposito, cancellationToken);
+            var uso = respuesta.Usage?.AUso() ?? new UsoDeIA(0, 0, 0, 0);
+            ContarTokens(solicitud.Proposito, respuesta.Model, uso);
+
+            var bloques = new List<BloqueDeTurno>();
+            foreach (var bloque in respuesta.Content ?? new List<BloqueDeContenido>())
+            {
+                if (bloque.Type == "text" && !string.IsNullOrEmpty(bloque.Text))
+                {
+                    bloques.Add(new BloqueDeTexto(bloque.Text));
+                }
+                else if (bloque.Type == "tool_use" && bloque.Id is { } id && bloque.Name is { } nombre)
+                {
+                    bloques.Add(new BloqueDeUsoDeHerramienta(id, nombre, bloque.Input ?? JsonDocument.Parse("{}").RootElement));
+                }
+            }
+
+            resultado = respuesta.StopReason == "max_tokens" ? "truncada" : "ok";
+            _logger.LogInformation(
+                "IA {Proposito}: {Modelo}, {Entrada}+{Salida} tokens (caché: {CacheLeidos} leídos, {CacheEscritos} escritos) en {Ms} ms, parada {Parada}.",
+                solicitud.Proposito, respuesta.Model, uso.TokensDeEntrada, uso.TokensDeSalida,
+                uso.TokensLeidosDeCache, uso.TokensEscritosEnCache, cronometro.ElapsedMilliseconds, respuesta.StopReason);
+
+            return new RespuestaDeConversacion(bloques, respuesta.StopReason, uso, respuesta.Model ?? ModeloDelChat);
+        }
+        catch (ErrorDeIAException ex) when (ex.Motivo is MotivoDeErrorDeIA.Rechazada or MotivoDeErrorDeIA.NoDisponible)
+        {
+            resultado = ex.Motivo == MotivoDeErrorDeIA.Rechazada ? "rechazada" : "no-disponible";
+            throw;
+        }
+        finally
+        {
+            Llamadas.Add(1, new TagList { { "proposito", solicitud.Proposito }, { "resultado", resultado } });
+            Duracion.Record(cronometro.Elapsed.TotalSeconds, new TagList { { "proposito", solicitud.Proposito } });
+        }
+    }
+
+    private string ModeloDelChat => string.IsNullOrWhiteSpace(_opciones.ModeloDelChat) ? _opciones.Modelo : _opciones.ModeloDelChat;
+
+    private JsonObject ConstruirConversacion(SolicitudDeConversacion solicitud)
+    {
+        var mensajes = new JsonArray();
+        foreach (var turno in solicitud.Turnos)
+        {
+            var contenido = new JsonArray();
+            foreach (var bloque in turno.Bloques)
+            {
+                contenido.Add(bloque switch
+                {
+                    BloqueDeTexto texto => new JsonObject { ["type"] = "text", ["text"] = texto.Texto },
+                    BloqueDeUsoDeHerramienta uso => new JsonObject
+                    {
+                        ["type"] = "tool_use",
+                        ["id"] = uso.Id,
+                        ["name"] = uso.Nombre,
+                        ["input"] = JsonNode.Parse(uso.Entrada.GetRawText()),
+                    },
+                    BloqueDeResultadoDeHerramienta r => new JsonObject
+                    {
+                        ["type"] = "tool_result",
+                        ["tool_use_id"] = r.IdDelUso,
+                        ["content"] = r.Contenido,
+                        ["is_error"] = r.EsError,
+                    },
+                    _ => throw new NotSupportedException(bloque.GetType().Name),
+                });
+            }
+
+            mensajes.Add(new JsonObject
+            {
+                ["role"] = turno.Rol == RolDelTurno.Usuario ? "user" : "assistant",
+                ["content"] = contenido,
+            });
+        }
+
+        var cuerpo = new JsonObject
+        {
+            ["model"] = ModeloDelChat,
+            ["max_tokens"] = solicitud.MaxTokens ?? _opciones.MaxTokensDelChat,
+            ["system"] = new JsonArray(new JsonObject
+            {
+                ["type"] = "text",
+                ["text"] = solicitud.Instrucciones,
+                ["cache_control"] = new JsonObject { ["type"] = "ephemeral" },
+            }),
+            ["messages"] = mensajes,
+        };
+
+        if (solicitud.Herramientas.Count > 0)
+        {
+            var herramientas = new JsonArray();
+            foreach (var h in solicitud.Herramientas)
+            {
+                herramientas.Add(new JsonObject
+                {
+                    ["name"] = h.Nombre,
+                    ["description"] = h.Descripcion,
+                    ["input_schema"] = JsonNode.Parse(h.JsonSchema),
+                });
+            }
+
+            // La caché cubre system + tools hasta la marca: se pone en la última herramienta.
+            ((JsonObject)herramientas[^1]!)["cache_control"] = new JsonObject { ["type"] = "ephemeral" };
+            cuerpo["tools"] = herramientas;
+        }
+
+        return cuerpo;
     }
 
     /// <summary>Espera entre reintentos. Virtual para que los tests no esperen de verdad.</summary>
@@ -293,6 +415,8 @@ public class ClaudeModeloDeIA : IModeloDeIA, ITransientDependency
     private sealed class BloqueDeContenido
     {
         [JsonPropertyName("type")] public string? Type { get; set; }
+        [JsonPropertyName("id")] public string? Id { get; set; }
+        [JsonPropertyName("text")] public string? Text { get; set; }
         [JsonPropertyName("name")] public string? Name { get; set; }
         [JsonPropertyName("input")] public JsonElement? Input { get; set; }
     }

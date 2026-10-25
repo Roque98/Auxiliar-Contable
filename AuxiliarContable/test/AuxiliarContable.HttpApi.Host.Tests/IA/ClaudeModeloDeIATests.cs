@@ -215,6 +215,67 @@ public class ClaudeModeloDeIATests
         api.Peticiones.ShouldHaveSingleItem().Cuerpo.RootElement.GetProperty("max_tokens").GetInt32().ShouldBe(500);
     }
 
+    [Fact]
+    public async Task El_chat_manda_el_historial_con_herramientas_y_lee_texto_y_usos()
+    {
+        var api = new ApiFalsa(Respuesta(HttpStatusCode.OK, """
+            { "model": "claude-haiku-5-5", "stop_reason": "tool_use",
+              "content": [
+                { "type": "text", "text": "Déjame revisar." },
+                { "type": "tool_use", "id": "toolu_9", "name": "consultar_perfil", "input": {} } ],
+              "usage": { "input_tokens": 300, "output_tokens": 20 } }
+            """));
+        var entrada = JsonDocument.Parse("""{"campo":"giro"}""").RootElement;
+        var solicitud = new SolicitudDeConversacion("chat", "Eres el asistente.",
+        [
+            TurnoDeConversacion.DelUsuario("Hola"),
+            TurnoDeConversacion.DelAsistente([new BloqueDeUsoDeHerramienta("toolu_1", "consultar_perfil", entrada)]),
+            TurnoDeConversacion.DelUsuario(new BloqueDeResultadoDeHerramienta("toolu_1", "sin datos", EsError: true)),
+        ],
+        [new HerramientaDelModelo("consultar_perfil", "Lee el perfil", """{"type":"object","properties":{}}""")]);
+
+        var respuesta = await Modelo(api, o => o.ModeloDelChat = "claude-sonnet-5-5").ConversarAsync(solicitud);
+
+        var cuerpo = api.Peticiones.ShouldHaveSingleItem().Cuerpo.RootElement;
+        cuerpo.GetProperty("model").GetString().ShouldBe("claude-sonnet-5-5");
+        cuerpo.GetProperty("max_tokens").GetInt32().ShouldBe(2048);
+        cuerpo.TryGetProperty("tool_choice", out _).ShouldBeFalse("en el chat el modelo decide si usa herramientas");
+        cuerpo.GetProperty("tools")[0].GetProperty("cache_control").GetProperty("type").GetString().ShouldBe("ephemeral");
+
+        var mensajes = cuerpo.GetProperty("messages").EnumerateArray().ToList();
+        mensajes.Select(m => m.GetProperty("role").GetString()).ShouldBe(["user", "assistant", "user"]);
+        var uso = mensajes[1].GetProperty("content")[0];
+        uso.GetProperty("type").GetString().ShouldBe("tool_use");
+        uso.GetProperty("input").GetProperty("campo").GetString().ShouldBe("giro");
+        var resultado = mensajes[2].GetProperty("content")[0];
+        resultado.GetProperty("type").GetString().ShouldBe("tool_result");
+        resultado.GetProperty("tool_use_id").GetString().ShouldBe("toolu_1");
+        resultado.GetProperty("is_error").GetBoolean().ShouldBeTrue();
+
+        respuesta.Texto.ShouldBe("Déjame revisar.");
+        var pedido = respuesta.UsosDeHerramientas.ShouldHaveSingleItem();
+        pedido.Id.ShouldBe("toolu_9");
+        pedido.Nombre.ShouldBe("consultar_perfil");
+        respuesta.MotivoDeParada.ShouldBe("tool_use");
+    }
+
+    [Fact]
+    public void Los_bloques_se_guardan_y_se_leen_igual()
+    {
+        var bloques = new BloqueDeTurno[]
+        {
+            new BloqueDeTexto("hola"),
+            new BloqueDeUsoDeHerramienta("u1", "guardar", JsonDocument.Parse("""{"valor":"Panadería"}""").RootElement),
+            new BloqueDeResultadoDeHerramienta("u1", "ok"),
+        };
+
+        var leidos = BloqueDeTurno.Deserializar(BloqueDeTurno.Serializar(bloques));
+
+        leidos[0].ShouldBe(new BloqueDeTexto("hola"));
+        leidos[1].ShouldBeOfType<BloqueDeUsoDeHerramienta>().Entrada.GetProperty("valor").GetString().ShouldBe("Panadería");
+        leidos[2].ShouldBe(new BloqueDeResultadoDeHerramienta("u1", "ok"));
+    }
+
     // --- Andamiaje -------------------------------------------------------------------------
 
     private static ModeloSinEsperas Modelo(ApiFalsa api, Action<ClaudeOptions>? ajustar = null)

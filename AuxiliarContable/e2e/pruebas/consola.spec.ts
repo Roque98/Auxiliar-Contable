@@ -189,7 +189,7 @@ test('Seguridad: correo, teléfono, dos pasos y contraseña', async () => {
 test('Ayuda: el Developer ve todas las secciones', async () => {
   await ir(pagina, '/ayuda');
   await expect(pagina.locator('.ay-seccion-titulo')).toHaveText([
-    'Lo básico', 'Perfil fiscal', 'Actividad', 'Organizaciones', 'Personas', 'Roles y marca', 'Operación',
+    'Lo básico', 'Asistente', 'Perfil fiscal', 'Actividad', 'Organizaciones', 'Personas', 'Roles y marca', 'Operación',
   ]);
 });
 

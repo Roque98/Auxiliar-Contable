@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Subscription, timer } from 'rxjs';
 import { mensajeDeError } from '../invitaciones/invitaciones.service';
@@ -37,7 +37,7 @@ const MAX_INTENTOS = 60;
 @Component({
   selector: 'app-perfil-fiscal',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, RouterLink],
   templateUrl: './perfil-fiscal.component.html',
   styleUrls: ['./perfil-fiscal.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,

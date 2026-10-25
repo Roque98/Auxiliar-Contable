@@ -55,7 +55,7 @@ describe('manual por rol', () => {
 
   it('las secciones sin temas desaparecen', () => {
     const secciones = manualPara(() => false, 0).map(s => s.titulo);
-    expect(secciones).toEqual(['Lo básico', 'Perfil fiscal', 'Organizaciones']);
+    expect(secciones).toEqual(['Lo básico', 'Asistente', 'Perfil fiscal', 'Organizaciones']);
     expect(SECCIONES.length).toBeGreaterThan(1);
   });
 });

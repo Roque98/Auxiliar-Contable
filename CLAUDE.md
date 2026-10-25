@@ -296,6 +296,27 @@ cuenta en frases lo que ya se registra, por día y con filtros (persona, organiz
 - Tests: `Domain.Tests/{Documentos,PerfilesFiscales}`, `Application.Tests/PerfilesFiscales`,
   `Integration.Tests/PerfilesFiscales` (IA falsa `ModeloDeIADePrueba`, PDF generado con PdfPig).
 
+### 1.2.11 Chat (asistente)
+
+- **Modelo**: `IModeloConversacional` (Domain/IA) — UN turno por llamada; el bucle de herramientas
+  lo lleva `AsistenteAppService` (máx. `ConversacionConsts.MaxVueltasDeHerramientas`). Claude lo
+  implementa en `ClaudeModeloDeIA.ConversarAsync` (sin `tool_choice`: el modelo decide). Modelo
+  `Claude:ModeloDelChat` (null = `Claude:Modelo`), tope `Claude:MaxTokensDelChat`.
+- **El cliente activo lo pone el CÓDIGO**: `organizacionId` va en la URL y en la conversación;
+  ningún esquema de herramienta lo lleva, así el modelo no puede saltar a otro cliente.
+- **Herramientas** (`HerramientasDelAsistente`): llaman a los MISMOS servicios que la pantalla
+  (`IPerfilFiscalAppService`…) con los permisos de quien escribe. Sin `Subir`, al modelo ni se le
+  ofrecen las de guardar/confirmar. Los errores (validación) vuelven al modelo como `is_error`.
+- **Guardado**: `Conversacion` (una abierta por persona y cliente; «empezar de nuevo» la cierra) y
+  `MensajeDeConversacion` (solo se añaden; `Bloques` = turno tal cual para repetírselo al modelo,
+  columna TEXTO y no jsonb: jsonb reordena claves y el discriminador `t` tiene que ir primero). Los
+  mensajes de un turno se guardan AL FINAL: si el modelo falla no queda nada a medias.
+- **Costo**: historial de `MensajesDeHistorial` mensajes, `MaxMensajesPorDia` por persona.
+- **Instrucciones** (`InstruccionesDelAsistente`): cliente vs despacho, no inventar, orientación (no
+  asesoría), texto plano. La pantalla pinta el texto como TEXTO (nunca `innerHTML`) + aviso de IA.
+- Pantalla `/asistente?cliente=` (mobile first). Tests: `Integration.Tests/Conversaciones`
+  (`ModeloConversacionalDePrueba`) y `HttpApi.Host.Tests` (forma de la petición a Anthropic).
+
 ### 1.3 Design system (el aspecto de TODO el front)
 
 El design system viene tal cual de ZIA-Console; solo cambian la marca y el acento.

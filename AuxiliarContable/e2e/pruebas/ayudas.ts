@@ -8,6 +8,7 @@ export const CLAVE = process.env.AUXILIAR_E2E_CLAVE ?? '1q2w3E*';
 /** Las pantallas que se recorren en las pruebas generales. */
 export const RUTAS = [
   '/',
+  '/asistente',
   '/perfil-fiscal',
   '/organizaciones',
   '/actividad',

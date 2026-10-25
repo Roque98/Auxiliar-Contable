@@ -96,6 +96,15 @@ function configureRoutes() {
       layout: eLayoutType.application,
     },
 
+    // El chat: la puerta principal («platicar con tu contador»). Mismo criterio que el perfil.
+    {
+      path: '/asistente',
+      name: '::Menu:Asistente',
+      iconClass: 'bi bi-chat-dots',
+      order: 1.5,
+      layout: eLayoutType.application,
+    },
+
     // El perfil fiscal: para el cliente, el suyo; para el despacho, el de cada cliente. Sin
     // permiso propio: quién ve y cambia qué lo decide el servidor (Autorizador, 404 a lo ajeno).
     {

@@ -1,0 +1,109 @@
+<header class="as-cabecera">
+  <div class="as-titulo">
+    <h1>Asistente</h1>
+    @if (conversacion()?.mensajes?.length) {
+      <button type="button" class="btn btn-outline-secondary as-nueva" (click)="empezarDeNuevo()" [disabled]="!!pendiente()">
+        <i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i> Empezar de nuevo
+      </button>
+    }
+  </div>
+  @if (clientes(); as lista) {
+    @if (lista.length > 1) {
+      <label class="as-cliente">
+        <span>Cliente</span>
+        <select class="ig-control" [ngModel]="clienteId()" (ngModelChange)="elegir($event)" [disabled]="!!pendiente()">
+          <option [ngValue]="null" disabled>Elige un cliente…</option>
+          @for (c of lista; track c.id) {
+            <option [ngValue]="c.id">{{ c.nombre }}</option>
+          }
+        </select>
+      </label>
+    } @else if (!lista.length) {
+      <p class="ig-ayuda">Todavía no perteneces a ningún cliente. Pide al despacho que te invite.</p>
+    }
+  }
+  @if (cliente(); as c) {
+    <!-- El cliente activo, SIEMPRE a la vista (visión: «chat del equipo»). -->
+    <p class="as-activo" data-testid="cliente-activo">
+      <i class="bi bi-person-badge" aria-hidden="true"></i>
+      <span>Platicando sobre <strong>{{ c.nombre }}</strong></span>
+      <a [routerLink]="['/perfil-fiscal']" [queryParams]="{ cliente: c.id }">Ver perfil</a>
+    </p>
+  }
+</header>
+
+@if (conversacion(); as conv) {
+  @if (!conv.disponible) {
+    <div class="ig-alerta ig-alerta-aviso" role="status">El asistente no está disponible por ahora.</div>
+  }
+
+  <section class="as-mensajes" aria-label="Conversación" aria-live="polite">
+    @if (!mensajes().length) {
+      <div class="as-vacio">
+        <p>
+          @if (conv.esDelDespacho) {
+            Pregúntame lo que necesites de este cliente: lo que tiene su perfil, qué falta o un mensaje para pedírselo.
+          } @else {
+            ¡Hola! Te ayudo a tener tu información en orden. Puedes empezar con algo como:
+          }
+        </p>
+        <div class="as-sugerencias">
+          @for (s of sugerencias(); track s) {
+            <button type="button" class="as-sugerencia" (click)="enviar(s)" [disabled]="!conv.disponible">{{ s }}</button>
+          }
+        </div>
+      </div>
+    }
+
+    @for (m of mensajes(); track m.id) {
+      <article class="as-globo" [class.as-globo-yo]="m.rol === Rol.Usuario" [class.as-globo-asistente]="m.rol === Rol.Asistente">
+        <p class="as-texto">{{ m.texto }}</p>
+        @if (m.acciones.length) {
+          <ul class="as-acciones">
+            @for (a of m.acciones; track a) {
+              <li><i class="bi bi-check2" aria-hidden="true"></i>{{ a }}</li>
+            }
+          </ul>
+        }
+        @if (m.creadoUtc) {
+          <time class="as-hora">{{ hora(m.creadoUtc) }}</time>
+        }
+      </article>
+    }
+
+    @if (pendiente()) {
+      <p class="as-escribiendo" role="status"><span class="ig-girando" aria-hidden="true"></span>Escribiendo…</p>
+    }
+    <div #fondo></div>
+  </section>
+
+  @if (error(); as e) {
+    <div class="ig-alerta ig-alerta-error" role="alert">{{ e }}</div>
+  }
+
+  <form class="as-caja" (ngSubmit)="enviar()">
+    <label class="visually-hidden" for="as-texto">Tu mensaje</label>
+    <textarea
+      id="as-texto"
+      name="texto"
+      class="ig-control"
+      rows="1"
+      [(ngModel)]="texto"
+      [maxlength]="maxTexto"
+      (keydown)="alTeclear($event)"
+      [disabled]="!conv.disponible"
+      placeholder="Escribe tu mensaje…"
+      enterkeyhint="send"
+    ></textarea>
+    <button type="submit" class="btn btn-primary as-enviar" [disabled]="!texto.trim() || !!pendiente() || !conv.disponible" aria-label="Enviar">
+      <i class="bi bi-send-fill" aria-hidden="true"></i>
+    </button>
+    <p class="as-aviso">
+      Orientación general generada con IA: puede equivocarse. Las decisiones fiscales las revisa tu contador.
+    </p>
+  </form>
+} @else if (error(); as e) {
+  <div class="ig-alerta ig-alerta-error" role="alert">{{ e }}</div>
+} @else if (clienteId()) {
+  <div class="ig-esqueleto"></div>
+}

@@ -1,3 +1,4 @@
+using AuxiliarContable.Conversaciones;
 using AuxiliarContable.Documentos;
 using AuxiliarContable.PerfilesFiscales;
 using AuxiliarContable.Organizaciones;
@@ -58,6 +59,10 @@ public class AuxiliarContableDbContext :
     public DbSet<PerfilFiscal> PerfilesFiscales { get; set; }
 
     public DbSet<DatoDelPerfil> DatosDePerfiles { get; set; }
+
+    public DbSet<Conversacion> Conversaciones { get; set; }
+
+    public DbSet<MensajeDeConversacion> MensajesDeConversaciones { get; set; }
 
     // ⚠️ ESTOS DbSet NO SON DECORATIVOS. ABP aplica sus filtros globales (multi-tenancy y
     // soft delete) recorriendo las entidades que YA ESTAN en el modelo en el momento en que
@@ -286,6 +291,26 @@ public class AuxiliarContableDbContext :
             // Una fila por persona y version: aceptar dos veces la misma no duplica (y la
             // carrera de dos pestanas a la vez la para la base).
             b.HasIndex(x => new { x.UserId, x.Version }).IsUnique();
+        });
+
+        // Chat — AppConversaciones (una abierta por persona y cliente) y AppMensajesDeConversaciones
+        // (solo se anaden). Bloques es el turno tal cual se le repite al modelo, en JSON. Texto y no
+        // jsonb a proposito: jsonb reordena las claves y el discriminador de tipo tiene que ir primero.
+        builder.Entity<Conversacion>(b =>
+        {
+            b.ToTable(AuxiliarContableConsts.DbTablePrefix + "Conversaciones", AuxiliarContableConsts.DbSchema);
+            b.ConfigureByConvention();
+            b.HasIndex(x => new { x.UsuarioId, x.OrganizacionId, x.Cerrada });
+        });
+
+        builder.Entity<MensajeDeConversacion>(b =>
+        {
+            b.ToTable(AuxiliarContableConsts.DbTablePrefix + "MensajesDeConversaciones", AuxiliarContableConsts.DbSchema);
+            b.ConfigureByConvention();
+            b.Property(x => x.Texto).IsRequired().HasMaxLength(ConversacionConsts.MaxTextoLength);
+            b.Property(x => x.Bloques).IsRequired();
+            b.HasIndex(x => new { x.ConversacionId, x.Numero }).IsUnique();
+            b.HasIndex(x => x.CreadoUtc);
         });
 
         // Intentos fallidos de un trabajo en segundo plano — tabla AppJobFailures.

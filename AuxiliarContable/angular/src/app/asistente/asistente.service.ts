@@ -1,0 +1,55 @@
+import { inject, Injectable } from '@angular/core';
+import { RestService } from '@abp/ng.core';
+import { Observable } from 'rxjs';
+
+/** Igual que `RolDelMensaje` en el backend (los de herramientas no llegan aquí). */
+export enum RolDelMensaje {
+  Usuario = 1,
+  Asistente = 2,
+}
+
+export interface MensajeDto {
+  id: string;
+  rol: RolDelMensaje;
+  texto: string;
+  creadoUtc: string;
+  acciones: string[];
+}
+
+export interface ConversacionDto {
+  organizacionId: string;
+  nombreDelCliente: string;
+  disponible: boolean;
+  puedeEditar: boolean;
+  esDelDespacho: boolean;
+  mensajes: MensajeDto[];
+}
+
+/** Igual que `ConversacionConsts.MaxTextoDelUsuario`. */
+export const MAX_TEXTO = 4000;
+
+/** `AsistenteAppService` (`/api/app/asistente`). */
+@Injectable({ providedIn: 'root' })
+export class AsistenteService {
+  private readonly rest = inject(RestService);
+  private readonly base = '/api/app/asistente';
+  private readonly opciones = { apiName: 'Default', skipHandleError: true };
+
+  obtener(organizacionId: string): Observable<ConversacionDto> {
+    return this.rest.request<void, ConversacionDto>({ method: 'GET', url: this.base, params: { organizacionId } }, this.opciones);
+  }
+
+  enviar(organizacionId: string, texto: string): Observable<ConversacionDto> {
+    return this.rest.request<{ texto: string }, ConversacionDto>(
+      { method: 'POST', url: `${this.base}/enviar/${organizacionId}`, body: { texto } },
+      this.opciones,
+    );
+  }
+
+  empezarDeNuevo(organizacionId: string): Observable<ConversacionDto> {
+    return this.rest.request<void, ConversacionDto>(
+      { method: 'POST', url: `${this.base}/empezar-de-nuevo/${organizacionId}` },
+      this.opciones,
+    );
+  }
+}

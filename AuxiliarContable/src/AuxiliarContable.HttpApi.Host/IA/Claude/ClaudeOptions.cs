@@ -26,6 +26,15 @@ public class ClaudeOptions
     /// <summary>Tope de tokens de respuesta por defecto. Un estado de cuenta de muchos movimientos puede necesitar más.</summary>
     public int MaxTokens { get; set; } = 8192;
 
+    /// <summary>
+    /// Modelo del chat (cliente y despacho). Null = <see cref="Modelo"/>. Va aparte porque el chat
+    /// es lo que más se usa: si Haiku se queda corto conversando, se sube solo aquí.
+    /// </summary>
+    public string? ModeloDelChat { get; set; }
+
+    /// <summary>Tope de tokens de cada turno del chat: respuestas cortas, como en una plática.</summary>
+    public int MaxTokensDelChat { get; set; } = 2048;
+
     /// <summary>Un PDF de varias páginas tarda; por debajo de un minuto se cortaban respuestas válidas.</summary>
     public int TimeoutSegundos { get; set; } = 180;
 
