@@ -360,9 +360,11 @@ cuenta en frases lo que ya se registra, por día y con filtros (persona, organiz
 - **Instrucciones** (`InstruccionesDelAsistente`): cliente vs despacho, no inventar, orientación (no
   asesoría), texto plano. La pantalla pinta el texto como TEXTO (nunca `innerHTML`) + aviso de IA.
 - **Toda la cartera** (solo equipo): conversación con `organizacionId = Guid.Empty`
-  (`AsistenteAppService.ExigirVerAsync`). Herramientas: SOLO `resumen_de_cartera`
-  (`HerramientasDelAsistente.DeCartera`); `EjecutarAsync` lleva un candado: en la cartera solo el
-  resumen y en un cliente nunca el resumen. Nada del detalle de un cliente sale ahí.
+  (`AsistenteAppService.ExigirVerAsync`). Herramientas: SOLO `resumen_de_cartera` y `crear_cliente`
+  (`HerramientasDelAsistente.DeCartera`; el alta usa `IOrganizacionAppService.CreateAsync`, mismas
+  reglas que la pantalla, y las instrucciones piden confirmar el nombre antes). `EjecutarAsync` lleva
+  un candado: en la cartera solo esas y en un cliente nunca esas. Una acción cuyo resultado fue
+  error no se enseña bajo la respuesta. Nada del detalle de un cliente sale ahí.
 - **Cartera** (`CarteraAppService`, `/cartera`): permiso `Organizaciones` + `Autorizador.Equipo`
   (en los tests la autorización es «todo permitido»: el atributo no basta). Semáforo por cliente
   (urgente = sin RFC, sin estado de cuenta del mes o uno que no cuadra) y pendientes en palabras.

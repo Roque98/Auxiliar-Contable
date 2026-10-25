@@ -255,13 +255,22 @@ public class AsistenteAppService : AuxiliarContableAppService, IAsistenteAppServ
         }
 
         var mensajes = (await _mensajes.GetListAsync(m => m.ConversacionId == conversacion.Id)).OrderBy(m => m.Numero);
-        var acciones = new List<string>();
+        // Lo que hizo el asistente, por id del uso. Un uso cuyo resultado fue error NO se enseña:
+        // «Dio de alta al cliente» con un nombre repetido sería mentira.
+        var acciones = new List<(string Id, string Texto)>();
         foreach (var m in mensajes)
         {
             if (m.Rol == RolDelMensaje.Asistente)
             {
                 acciones.AddRange(m.ATurno().Bloques.OfType<BloqueDeUsoDeHerramienta>()
-                    .Select(HerramientasDelAsistente.Describir).OfType<string>());
+                    .Select(u => (u.Id, Texto: HerramientasDelAsistente.Describir(u)))
+                    .Where(a => a.Texto is not null)
+                    .Select(a => (a.Id, a.Texto!)));
+            }
+            else if (m.Rol == RolDelMensaje.Herramientas)
+            {
+                var fallidos = m.ATurno().Bloques.OfType<BloqueDeResultadoDeHerramienta>().Where(r => r.EsError).Select(r => r.IdDelUso).ToHashSet();
+                acciones.RemoveAll(a => fallidos.Contains(a.Id));
             }
 
             if (m.Rol == RolDelMensaje.Herramientas || string.IsNullOrWhiteSpace(m.Texto))
@@ -275,7 +284,7 @@ public class AsistenteAppService : AuxiliarContableAppService, IAsistenteAppServ
                 Rol = m.Rol,
                 Texto = m.Texto,
                 CreadoUtc = m.CreadoUtc,
-                Acciones = m.Rol == RolDelMensaje.Asistente ? acciones.Distinct().ToList() : [],
+                Acciones = m.Rol == RolDelMensaje.Asistente ? acciones.Select(a => a.Texto).Distinct().ToList() : [],
             });
             if (m.Rol == RolDelMensaje.Asistente)
             {

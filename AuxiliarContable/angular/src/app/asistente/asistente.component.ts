@@ -219,6 +219,16 @@ export class AsistenteComponent implements OnInit {
     this.cargarPulso(id);
   }
 
+  private recargarClientes(): void {
+    this.perfiles.clientes().subscribe({
+      next: delServidor => {
+        const cartera = this.clientes()?.filter(c => c.id === CARTERA) ?? [];
+        this.clientes.set([...cartera, ...delServidor]);
+      },
+      error: () => undefined,
+    });
+  }
+
   alternarSelector(): void {
     if (!this.ocupado()) {
       this.selectorAbierto.update(v => !v);
@@ -252,6 +262,10 @@ export class AsistenteComponent implements OnInit {
         this.adjuntos.set([]);
         this.mostrar(c);
         this.cargarPulso(id);
+        // Si dio de alta un cliente, que aparezca ya en la pastilla de arriba.
+        if (c.mensajes.at(-1)?.acciones.some(a => a.startsWith('Dio de alta'))) {
+          this.recargarClientes();
+        }
       },
       error: e => {
         // Lo escrito vuelve a la caja: el servidor no guardó nada del turno. Los archivos sí

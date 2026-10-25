@@ -91,7 +91,8 @@ public class CarteraIntegrationTests : ConJerarquiaTestBase
 
         conversacion.NombreDelCliente.ShouldBe(AsistenteAppService.NombreDeLaCartera);
         conversacion.PuedeEditar.ShouldBeFalse();
-        _modelo.Solicitudes[0].Herramientas.Select(h => h.Nombre).ShouldBe([HerramientasDelAsistente.ResumenDeCartera]);
+        _modelo.Solicitudes[0].Herramientas.Select(h => h.Nombre)
+            .ShouldBe([HerramientasDelAsistente.ResumenDeCartera, HerramientasDelAsistente.CrearCliente]);
         var resumen = _modelo.Solicitudes[1].Turnos.Last().Bloques.Single().ShouldBeOfType<BloqueDeResultadoDeHerramienta>();
         resumen.Contenido.ShouldContain("Taller Pepe");
         var perfil = _modelo.Solicitudes[2].Turnos.Last().Bloques.Single().ShouldBeOfType<BloqueDeResultadoDeHerramienta>();
@@ -111,5 +112,36 @@ public class CarteraIntegrationTests : ConJerarquiaTestBase
         var resultado = _modelo.Solicitudes[1].Turnos.Last().Bloques.Single().ShouldBeOfType<BloqueDeResultadoDeHerramienta>();
         resultado.EsError.ShouldBeTrue();
         resultado.Contenido.ShouldNotContain("Taller Pepe");
+    }
+
+    [Fact]
+    public async Task Desde_el_chat_de_la_cartera_se_da_de_alta_un_cliente_y_un_nombre_repetido_no_se_presume()
+    {
+        _modelo.UsarHerramienta(HerramientasDelAsistente.CrearCliente, new { nombre = "Ferretería Don Beto" });
+        _modelo.UsarHerramienta(HerramientasDelAsistente.CrearCliente, new { nombre = "Ferretería Don Beto" });
+        _modelo.Contestar("Listo, di de alta a Ferretería Don Beto.");
+
+        var conversacion = await ComoAsync(Administrador, () =>
+            _asistente.EnviarAsync(Guid.Empty, new EnviarMensajeDto { Texto = "Sí, créalo como Ferretería Don Beto" }));
+
+        var nombres = await WithUnitOfWorkAsync(async () =>
+            (await GetRequiredService<Volo.Abp.Domain.Repositories.IRepository<Organizacion, Guid>>().GetListAsync()).Select(o => o.Nombre).ToList());
+        nombres.Count(n => n == "Ferretería Don Beto").ShouldBe(1);
+        _modelo.Solicitudes[2].Turnos.Last().Bloques.Single().ShouldBeOfType<BloqueDeResultadoDeHerramienta>().EsError.ShouldBeTrue();
+        // La acción se enseña UNA vez: la del uso que falló (nombre repetido) no aparece.
+        conversacion.Mensajes.Last().Acciones.ShouldBe(["Dio de alta al cliente: Ferretería Don Beto"]);
+    }
+
+    [Fact]
+    public async Task Desde_el_chat_de_un_cliente_no_se_dan_de_alta_clientes()
+    {
+        _modelo.UsarHerramienta(HerramientasDelAsistente.CrearCliente, new { nombre = "Colado" });
+        _modelo.Contestar("No puedo.");
+
+        var conversacion = await ComoAsync(Administrador, () => _asistente.EnviarAsync(_alDia, new EnviarMensajeDto { Texto = "Crea un cliente" }));
+
+        _modelo.Solicitudes[0].Herramientas.Select(h => h.Nombre).ShouldNotContain(HerramientasDelAsistente.CrearCliente);
+        _modelo.Solicitudes[1].Turnos.Last().Bloques.Single().ShouldBeOfType<BloqueDeResultadoDeHerramienta>().EsError.ShouldBeTrue();
+        conversacion.Mensajes.Last().Acciones.ShouldBeEmpty();
     }
 }

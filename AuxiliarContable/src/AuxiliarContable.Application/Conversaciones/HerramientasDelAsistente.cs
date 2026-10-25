@@ -12,6 +12,7 @@ using AuxiliarContable.Cfdis;
 using AuxiliarContable.Conciliaciones;
 using AuxiliarContable.Documentos;
 using AuxiliarContable.IA;
+using AuxiliarContable.Organizaciones;
 using AuxiliarContable.PerfilesFiscales;
 using Volo.Abp;
 using Volo.Abp.DependencyInjection;
@@ -35,6 +36,7 @@ public class HerramientasDelAsistente : ITransientDependency
     public const string ResumenDeDocumentos = "resumen_de_documentos";
     public const string ConciliacionDelMes = "conciliacion_del_mes";
     public const string ResumenDeCartera = "resumen_de_cartera";
+    public const string CrearCliente = "crear_cliente";
 
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
     {
@@ -45,10 +47,16 @@ public class HerramientasDelAsistente : ITransientDependency
     private readonly IBovedaAppService _boveda;
     private readonly IConciliacionAppService _conciliacion;
     private readonly ICarteraAppService _cartera;
+    private readonly IOrganizacionAppService _organizaciones;
 
     public HerramientasDelAsistente(
-        IPerfilFiscalAppService perfiles, IBovedaAppService boveda, IConciliacionAppService conciliacion, ICarteraAppService cartera)
+        IPerfilFiscalAppService perfiles,
+        IBovedaAppService boveda,
+        IConciliacionAppService conciliacion,
+        ICarteraAppService cartera,
+        IOrganizacionAppService organizaciones)
     {
+        _organizaciones = organizaciones;
         _perfiles = perfiles;
         _boveda = boveda;
         _conciliacion = conciliacion;
@@ -117,6 +125,8 @@ public class HerramientasDelAsistente : ITransientDependency
         {
             GuardarDato => $"Guardó: {Etiqueta()}",
             ConfirmarDato => $"Confirmó: {Etiqueta()}",
+            CrearCliente when uso.Entrada.ValueKind == JsonValueKind.Object && uso.Entrada.TryGetProperty("nombre", out var n) =>
+                $"Dio de alta al cliente: {n.GetString()}",
             _ => null,
         };
     }
@@ -129,13 +139,18 @@ public class HerramientasDelAsistente : ITransientDependency
             "documentos, facturas y estados de cuenta del mes, estados que no cuadran, parejas por confirmar, movimientos sin " +
             "factura y la lista de pendientes de cada uno.",
             """{"type":"object","properties":{"anio":{"type":"integer","minimum":2000,"maximum":2100},"mes":{"type":"integer","minimum":1,"maximum":12}},"required":["anio","mes"]}"""),
+        new(CrearCliente,
+            "Da de alta un cliente nuevo del despacho (una organización: 1 cliente = 1 RFC). Úsala SOLO después de que la persona " +
+            "confirme el nombre exacto que le propusiste. Después, el cliente aparece en la lista de arriba para elegirlo, llenar su " +
+            "perfil e invitarlo. Si ya existe uno con ese nombre, devuelve error.",
+            """{"type":"object","properties":{"nombre":{"type":"string","minLength":2,"maxLength":128},"descripcion":{"type":"string","maxLength":256}},"required":["nombre"]}"""),
     ];
 
     public async Task<BloqueDeResultadoDeHerramienta> EjecutarAsync(Guid organizacionId, BloqueDeUsoDeHerramienta uso)
     {
-        // El candado entre las dos clases de conversación: en la de la cartera (Guid.Empty) solo el
-        // resumen; en la de un cliente, nunca el resumen de todos. Lo que pida el modelo no lo salta.
-        if ((organizacionId == Guid.Empty) != (uso.Nombre == ResumenDeCartera))
+        // El candado entre las dos clases de conversación: en la de la cartera (Guid.Empty) solo sus
+        // herramientas (resumen y alta); en la de un cliente, nunca esas. Lo que pida el modelo no lo salta.
+        if ((organizacionId == Guid.Empty) != (uso.Nombre is ResumenDeCartera or CrearCliente))
         {
             return new BloqueDeResultadoDeHerramienta(uso.Id, $"La herramienta «{uso.Nombre}» no está disponible en esta conversación.", EsError: true);
         }
@@ -145,6 +160,7 @@ public class HerramientasDelAsistente : ITransientDependency
             var contenido = uso.Nombre switch
             {
                 ResumenDeCartera => await CarteraAsync(uso.Entrada),
+                CrearCliente => await CrearClienteAsync(uso.Entrada),
                 ConsultarPerfil => Perfil(await _perfiles.GetAsync(organizacionId)),
                 ResumenDeDocumentos => await ResumenAsync(organizacionId),
                 ConciliacionDelMes => await ConciliacionAsync(organizacionId, uso.Entrada),
@@ -291,6 +307,15 @@ public class HerramientasDelAsistente : ITransientDependency
                     },
             }),
         }, Json);
+    }
+
+    private async Task<string> CrearClienteAsync(JsonElement entrada)
+    {
+        var nombre = Texto(entrada, "nombre").Trim();
+        var descripcion = entrada.TryGetProperty("descripcion", out var d) && d.ValueKind == JsonValueKind.String ? d.GetString() : null;
+        // El mismo servicio que la pantalla de Organizaciones: mismas validaciones (nombre libre) y permiso.
+        var creada = await _organizaciones.CreateAsync(new GuardarOrganizacionDto { Nombre = nombre, Descripcion = descripcion });
+        return JsonSerializer.Serialize(new { creado = true, nombre = creada.Nombre }, Json);
     }
 
     private async Task<string> CarteraAsync(JsonElement entrada)
