@@ -89,14 +89,13 @@ jobs:
             AuxiliarContable/angular/dist/AuxiliarContable/browser/ "$DESTINO:/srv/auxiliar-contable/staging/web/"
           rsync -az --delete -e "ssh -i ~/.ssh/id_deploy" \
             publicado/migrator/ "$DESTINO:/srv/auxiliar-contable/staging/migrator/"
-          rsync -az -e "ssh -i ~/.ssh/id_deploy" \
-            deploy/deploy.sh "$DESTINO:/srv/auxiliar-contable/deploy.sh"
 
       - name: Activar en el servidor
         env:
           DESTINO: ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}
         run: |
-          ssh -i ~/.ssh/id_deploy "$DESTINO" "chmod +x /srv/auxiliar-contable/deploy.sh && sudo /srv/auxiliar-contable/deploy.sh"
+          # El script de activacion es de root y no se sube desde aqui (ver deploy/deploy.sh).
+          ssh -i ~/.ssh/id_deploy "$DESTINO" "sudo /usr/local/sbin/auxiliar-contable-deploy"
 
       - name: Comprobar salud
         run: |

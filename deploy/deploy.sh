@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 # Activa lo que el workflow dejo en staging/. Se ejecuta EN EL SERVIDOR, con sudo.
 #
+# ⚠️ Vive en /usr/local/sbin/auxiliar-contable-deploy (de root, 755) y el workflow NO lo sube.
+# Si el usuario de despliegue pudiera reescribir el script que ejecuta con sudo, su llave
+# valdria root. Al cambiar este archivo, instalarlo a mano como root:
+#   install -m 755 -o root -g root deploy/deploy.sh /usr/local/sbin/auxiliar-contable-deploy
+#
 # Estrategia: current/ es lo que sirven nginx y systemd. La version anterior se guarda
 # en previous/, se intercambia, se reinicia y se comprueba la salud; si la API no
 # responde sana, se revierte sola.
@@ -9,7 +14,7 @@ set -euo pipefail
 RAIZ=/srv/auxiliar-contable
 SERVICIO=auxiliar-contable
 USUARIO_APP=auxiliar
-USUARIO_DEPLOY=deploy
+USUARIO_DEPLOY=deploy-auxiliar
 CERT=/etc/auxiliar-contable/openiddict.pfx
 LOGS=/var/log/auxiliar-contable
 

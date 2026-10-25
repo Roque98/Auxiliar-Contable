@@ -4,7 +4,19 @@
        Los .csproj referencian <PackageReference Include="..." /> sin Version. -->
   <PropertyGroup>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <!-- Las versiones de aqui tambien mandan sobre las dependencias TRANSITIVAS: es lo que permite
+         subir una dependencia vulnerable que trae otro paquete sin esperar a que ese paquete la suba. -->
+    <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
   </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Parches de seguridad de dependencias transitivas (las traen ABP, EF Core y compania).
+         Quitar cuando el paquete que las trae ya pida una version igual o mayor. -->
+    <!-- CVE-2026-84008 (DoS), corregida en 10.0.13. -->
+    <PackageVersion Include="System.Security.Cryptography.Pkcs" Version="10.0.13" />
+    <!-- GHSA-qhrr-8q5h-9q3h (arreglos anidados), corregida en 3.1.9. -->
+    <PackageVersion Include="MessagePack" Version="3.1.12" />
+  </ItemGroup>
 
   <ItemGroup>
     <!-- Terceros -->

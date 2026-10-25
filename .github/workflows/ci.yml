@@ -79,12 +79,16 @@ jobs:
 
       - name: Dependencias vulnerables
         run: |
-          salida=$(dotnet list AuxiliarContable/AuxiliarContable.slnx package --vulnerable --include-transitive)
-          echo "$salida"
-          # 'dotnet list package' devuelve 0 aunque encuentre vulnerabilidades: hay que
-          # mirar el texto para que el job falle de verdad.
-          if echo "$salida" | grep -q "tiene los paquetes vulnerables"; then
-            echo "::error::Se encontraron paquetes vulnerables"
+          dotnet list AuxiliarContable/AuxiliarContable.slnx package --vulnerable --include-transitive
+          # 'dotnet list package' devuelve 0 aunque encuentre vulnerabilidades: hay que mirar la
+          # salida para que el job falle de verdad. En JSON y NO buscando el texto: antes se
+          # buscaba la frase en español y el runner la imprime en inglés, así que este paso pasaba
+          # siempre (salió verde con una vulnerabilidad alta en System.Security.Cryptography.Pkcs).
+          vulnerables=$(dotnet list AuxiliarContable/AuxiliarContable.slnx package --vulnerable --include-transitive --format json \
+            | jq -r '[.projects[]?.frameworks[]? | (.topLevelPackages // []) + (.transitivePackages // []) | .[]
+                      | select((.vulnerabilities // []) | length > 0) | "\(.id) \(.resolvedVersion)"] | unique | .[]')
+          if [ -n "$vulnerables" ]; then
+            echo "::error::Paquetes vulnerables: $(echo $vulnerables)"
             exit 1
           fi
 

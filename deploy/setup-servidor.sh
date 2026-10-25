@@ -7,7 +7,7 @@
 set -euo pipefail
 
 USUARIO_APP=auxiliar
-USUARIO_DEPLOY=${USUARIO_DEPLOY:-deploy}
+USUARIO_DEPLOY=${USUARIO_DEPLOY:-deploy-auxiliar}
 RAIZ=/srv/auxiliar-contable
 
 echo "==> Paquetes base"
@@ -36,7 +36,7 @@ mkdir -p "$RAIZ"/{staging,current}
 # y se las llevaria por delante -> se invalidan las cookies y el login da 400.
 mkdir -p /var/lib/auxiliar-contable /var/log/auxiliar-contable/api /var/log/auxiliar-contable/migrator /etc/auxiliar-contable
 chown -R "$USUARIO_APP:$USUARIO_APP" "$RAIZ/current" /var/lib/auxiliar-contable /var/log/auxiliar-contable
-# El workflow entra como $USUARIO_DEPLOY y hace rsync a staging/ y a $RAIZ/deploy.sh:
+# El workflow entra como $USUARIO_DEPLOY y hace rsync a staging/:
 # si esto fuera de $USUARIO_APP, la subida fallaria con "Permission denied".
 chown "$USUARIO_DEPLOY:$USUARIO_DEPLOY" "$RAIZ"
 chown -R "$USUARIO_DEPLOY:$USUARIO_DEPLOY" "$RAIZ/staging"
@@ -122,9 +122,12 @@ rm -f /etc/nginx/sites-enabled/default
 nginx -t && systemctl reload nginx
 
 echo "==> Permiso de despliegue"
-# El workflow entra como $USUARIO_DEPLOY y necesita ejecutar SOLO deploy.sh con sudo.
+# El workflow entra como $USUARIO_DEPLOY y necesita ejecutar SOLO el script de activacion con
+# sudo. El script es de root y vive fuera de $RAIZ: si el usuario pudiera reescribirlo, su
+# llave valdria root.
+install -m 755 -o root -g root "$(dirname "$0")/deploy.sh" /usr/local/sbin/auxiliar-contable-deploy
 cat > /etc/sudoers.d/auxiliar-contable <<SUDOEOF
-$USUARIO_DEPLOY ALL=(root) NOPASSWD: $RAIZ/deploy.sh
+$USUARIO_DEPLOY ALL=(root) NOPASSWD: /usr/local/sbin/auxiliar-contable-deploy
 SUDOEOF
 chmod 440 /etc/sudoers.d/auxiliar-contable
 visudo -c

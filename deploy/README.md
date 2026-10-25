@@ -20,7 +20,7 @@ GitHub Actions                         VPS (Ubuntu)
 | `auxiliar-contable.service` | `/etc/systemd/system/` | La API bajo systemd, en `127.0.0.1:5030` |
 | `auxiliar-contable-migrator.service` | `/etc/systemd/system/` | Unidad oneshot que aplica migraciones y seed |
 | `nginx.conf` | `/etc/nginx/sites-available/auxiliar-contable` | TLS, proxy inverso a la API y estáticos del Angular |
-| `deploy.sh` | `/srv/auxiliar-contable/` (lo sube el workflow) | Migra, intercambia versiones, reinicia y verifica |
+| `deploy.sh` | `/usr/local/sbin/auxiliar-contable-deploy` (de root; el workflow NO lo sube: se instala a mano al cambiarlo) | Migra, intercambia versiones, reinicia y verifica |
 | `endurecer-ssh.sh` | se ejecuta una vez, como root | Deja SSH solo con clave y monta fail2ban |
 
 ## Puesta en marcha (una vez)
@@ -82,9 +82,12 @@ abt-template, ZIA-Console y el chatbot de ZIA. No comparten nada que se pise:
 Lo que es del servidor (snippets de Cloudflare, OpenObserve, fail2ban, swap, SSH) lo mantiene
 ZIA-Console; esta app solo lo usa.
 
-El usuario `deploy` es el mismo, con una línea de sudoers por aplicación (cada una solo
-autoriza su propio `deploy.sh`). La clave SSH de despliegue conviene que sea **otra**:
-se carga en los secretos de un repositorio distinto.
+El usuario de despliegue es **propio**, `deploy-auxiliar`, y NO el `deploy` de ZIA: con el
+compartido, la llave de este repo podía subir archivos al staging de ZIA y ejecutar su
+activación. Su sudoers solo permite `/usr/local/sbin/auxiliar-contable-deploy`, que es de root:
+si el script estuviera en una carpeta que el usuario puede escribir (como el `deploy.sh` de ZIA,
+que el workflow sube a `/srv/zia-console/`), reescribirlo daría root a quien tenga la llave.
+La llave es **solo** de este repositorio (`github-actions@Roque98/Auxiliar-Contable`).
 
 Qué cambia respecto a la puesta en marcha de arriba:
 
@@ -169,7 +172,7 @@ En GitHub → Settings → Secrets and variables → Actions:
 | Secreto | Valor |
 |---|---|
 | `VPS_HOST` | IP o hostname del servidor |
-| `VPS_USER` | `deploy` |
+| `VPS_USER` | `deploy-auxiliar` |
 | `VPS_SSH_KEY` | Clave **privada** de despliegue, completa, incluidas las líneas `BEGIN`/`END` |
 | `VPS_KNOWN_HOSTS` | Salida de `ssh-keyscan TU_IP` |
 | `VPS_DOMINIO` | `api-contable.ziacentro.mx` |
