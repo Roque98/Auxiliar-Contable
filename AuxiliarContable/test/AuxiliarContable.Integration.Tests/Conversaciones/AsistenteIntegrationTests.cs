@@ -221,4 +221,30 @@ public class AsistenteIntegrationTests : ConJerarquiaTestBase
         var mensajes = await WithUnitOfWorkAsync(() => GetRequiredService<IRepository<MensajeDeConversacion, Guid>>().GetCountAsync());
         mensajes.ShouldBe(0);
     }
+
+    [Fact]
+    public async Task El_despacho_invita_desde_el_chat_a_alguien_del_cliente_activo()
+    {
+        _modelo.UsarHerramienta(HerramientasDelAsistente.InvitarPersona, new { email = "lupita@panaderia.mx", papel = "dueño" });
+        _modelo.Contestar("Listo, le llegará un correo a lupita@panaderia.mx.");
+
+        var conversacion = await ComoAsync(Administrador, () => _asistente.EnviarAsync(_cliente, Mensaje("Sí, invítala como dueña")));
+
+        _modelo.Solicitudes[0].Herramientas.Select(h => h.Nombre).ShouldContain(HerramientasDelAsistente.InvitarPersona);
+        var invitacion = await WithUnitOfWorkAsync(() =>
+            GetRequiredService<IRepository<AuxiliarContable.Invitaciones.Invitacion, Guid>>().SingleAsync(i => i.Email == "lupita@panaderia.mx"));
+        invitacion.OrganizacionId.ShouldBe(_cliente);
+        invitacion.RolEnOrganizacion.ShouldBe(RolEnOrganizacion.Administrador);
+        conversacion.Mensajes.Last().Acciones.ShouldBe(["Invitó a lupita@panaderia.mx"]);
+    }
+
+    [Fact]
+    public async Task Un_cliente_no_recibe_la_herramienta_de_invitar()
+    {
+        _modelo.Contestar("Hola.");
+
+        await ComoAsync(Usuario, () => _asistente.EnviarAsync(_cliente, Mensaje("hola")));
+
+        _modelo.Solicitudes[0].Herramientas.Select(h => h.Nombre).ShouldNotContain(HerramientasDelAsistente.InvitarPersona);
+    }
 }

@@ -6,6 +6,7 @@ using AuxiliarContable.Autorizacion;
 using AuxiliarContable.IA;
 using AuxiliarContable.Organizaciones;
 using Microsoft.AspNetCore.Authorization;
+using Volo.Abp.Identity;
 using Microsoft.Extensions.Logging;
 using Volo.Abp;
 using Volo.Abp.Domain.Repositories;
@@ -112,8 +113,13 @@ public class AsistenteAppService : AuxiliarContableAppService, IAsistenteAppServ
 
         await GuardarAsync(RolDelMensaje.Usuario, texto, new BloqueDeTurno[] { new BloqueDeTexto(texto) });
 
-        var instrucciones = await InstruccionesAsync(organizacionId, quien.Equipo, puedeEditar);
-        var herramientas = organizacionId == Guid.Empty ? HerramientasDelAsistente.DeCartera() : HerramientasDelAsistente.Disponibles(puedeEditar);
+        // Invitar desde el chat: el equipo con permiso de dar de alta personas, sobre un cliente.
+        var puedeInvitar = organizacionId != Guid.Empty && quien.Equipo
+                           && await AuthorizationService.IsGrantedAsync(IdentityPermissions.Users.Create);
+        var instrucciones = await InstruccionesAsync(organizacionId, quien.Equipo, puedeEditar, puedeInvitar);
+        var herramientas = organizacionId == Guid.Empty
+            ? HerramientasDelAsistente.DeCartera()
+            : HerramientasDelAsistente.Disponibles(puedeEditar, puedeInvitar);
 
         for (var vuelta = 1; ; vuelta++)
         {
@@ -232,10 +238,10 @@ public class AsistenteAppService : AuxiliarContableAppService, IAsistenteAppServ
 
     public const string NombreDeLaCartera = "Toda la cartera";
 
-    private async Task<string> InstruccionesAsync(Guid organizacionId, bool delDespacho, bool puedeEditar) =>
+    private async Task<string> InstruccionesAsync(Guid organizacionId, bool delDespacho, bool puedeEditar, bool puedeInvitar) =>
         organizacionId == Guid.Empty
             ? InstruccionesDelAsistente.ConstruirParaLaCartera(Clock.Now)
-            : InstruccionesDelAsistente.Construir(await NombreAsync(organizacionId), Clock.Now, delDespacho, puedeEditar);
+            : InstruccionesDelAsistente.Construir(await NombreAsync(organizacionId), Clock.Now, delDespacho, puedeEditar, puedeInvitar);
 
     private async Task<ConversacionDto> DescribirAsync(Guid organizacionId, Conversacion? conversacion)
     {

@@ -12,6 +12,8 @@ using AuxiliarContable.Cfdis;
 using AuxiliarContable.Conciliaciones;
 using AuxiliarContable.Documentos;
 using AuxiliarContable.IA;
+using AuxiliarContable.Identity;
+using AuxiliarContable.Invitaciones;
 using AuxiliarContable.Organizaciones;
 using AuxiliarContable.PerfilesFiscales;
 using Volo.Abp;
@@ -37,6 +39,7 @@ public class HerramientasDelAsistente : ITransientDependency
     public const string ConciliacionDelMes = "conciliacion_del_mes";
     public const string ResumenDeCartera = "resumen_de_cartera";
     public const string CrearCliente = "crear_cliente";
+    public const string InvitarPersona = "invitar_persona";
 
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
     {
@@ -48,14 +51,17 @@ public class HerramientasDelAsistente : ITransientDependency
     private readonly IConciliacionAppService _conciliacion;
     private readonly ICarteraAppService _cartera;
     private readonly IOrganizacionAppService _organizaciones;
+    private readonly IInvitacionAppService _invitaciones;
 
     public HerramientasDelAsistente(
         IPerfilFiscalAppService perfiles,
         IBovedaAppService boveda,
         IConciliacionAppService conciliacion,
         ICarteraAppService cartera,
-        IOrganizacionAppService organizaciones)
+        IOrganizacionAppService organizaciones,
+        IInvitacionAppService invitaciones)
     {
+        _invitaciones = invitaciones;
         _organizaciones = organizaciones;
         _perfiles = perfiles;
         _boveda = boveda;
@@ -63,8 +69,11 @@ public class HerramientasDelAsistente : ITransientDependency
         _cartera = cartera;
     }
 
-    /// <summary>Las que puede usar quien escribe: sin permiso de cambiar, solo las de consulta.</summary>
-    public static IReadOnlyList<HerramientaDelModelo> Disponibles(bool puedeEditar)
+    /// <summary>
+    /// Las que puede usar quien escribe: sin permiso de cambiar, solo las de consulta. Invitar, solo
+    /// el equipo con permiso de dar de alta personas (el servicio lo vuelve a exigir).
+    /// </summary>
+    public static IReadOnlyList<HerramientaDelModelo> Disponibles(bool puedeEditar, bool puedeInvitar = false)
     {
         var lista = new List<HerramientaDelModelo>
         {
@@ -110,6 +119,15 @@ public class HerramientasDelAsistente : ITransientDependency
                 $$$"""{"type":"object","properties":{"campo":{"type":"string","enum":[{{{claves}}}]}},"required":["campo"]}"""));
         }
 
+        if (puedeInvitar)
+        {
+            lista.Add(new(InvitarPersona,
+                "Manda por correo una invitación para que una persona entre a la app como parte del cliente activo. papel: " +
+                "«dueño» (además invita a otros de su negocio), «miembro» (sube documentos y platica) o «lector» (solo consulta). " +
+                "Úsala SOLO después de que la persona confirme el correo exacto y el papel que le propusiste.",
+                """{"type":"object","properties":{"email":{"type":"string","format":"email","maxLength":256},"papel":{"type":"string","enum":["dueño","miembro","lector"]}},"required":["email","papel"]}"""));
+        }
+
         return lista;
     }
 
@@ -127,6 +145,8 @@ public class HerramientasDelAsistente : ITransientDependency
             ConfirmarDato => $"Confirmó: {Etiqueta()}",
             CrearCliente when uso.Entrada.ValueKind == JsonValueKind.Object && uso.Entrada.TryGetProperty("nombre", out var n) =>
                 $"Dio de alta al cliente: {n.GetString()}",
+            InvitarPersona when uso.Entrada.ValueKind == JsonValueKind.Object && uso.Entrada.TryGetProperty("email", out var e) =>
+                $"Invitó a {e.GetString()}",
             _ => null,
         };
     }
@@ -161,6 +181,7 @@ public class HerramientasDelAsistente : ITransientDependency
             {
                 ResumenDeCartera => await CarteraAsync(uso.Entrada),
                 CrearCliente => await CrearClienteAsync(uso.Entrada),
+                InvitarPersona => await InvitarAsync(organizacionId, uso.Entrada),
                 ConsultarPerfil => Perfil(await _perfiles.GetAsync(organizacionId)),
                 ResumenDeDocumentos => await ResumenAsync(organizacionId),
                 ConciliacionDelMes => await ConciliacionAsync(organizacionId, uso.Entrada),
@@ -307,6 +328,27 @@ public class HerramientasDelAsistente : ITransientDependency
                     },
             }),
         }, Json);
+    }
+
+    private async Task<string> InvitarAsync(Guid organizacionId, JsonElement entrada)
+    {
+        var papel = Texto(entrada, "papel") switch
+        {
+            "dueño" => RolEnOrganizacion.Administrador,
+            "miembro" => RolEnOrganizacion.Miembro,
+            "lector" => RolEnOrganizacion.Lector,
+            var otro => throw new UserFriendlyException($"Papel desconocido: «{otro}». Usa dueño, miembro o lector."),
+        };
+        // El mismo servicio que la pantalla de Invitaciones: permiso, jerarquía, correo ya con cuenta
+        // y el envío (en segundo plano). El cliente es el activo: el modelo no lo elige.
+        var invitacion = await _invitaciones.CreateAsync(new CrearInvitacionDto
+        {
+            Email = Texto(entrada, "email").Trim(),
+            Rol = AuxiliarRoles.Usuario,
+            OrganizacionId = organizacionId,
+            RolEnOrganizacion = papel,
+        });
+        return JsonSerializer.Serialize(new { invitado = invitacion.Email, papel = Texto(entrada, "papel"), correo = "en camino" }, Json);
     }
 
     private async Task<string> CrearClienteAsync(JsonElement entrada)
