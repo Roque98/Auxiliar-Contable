@@ -114,6 +114,16 @@ Tres cosas de fuera que hacen falta para que los mensajes salgan de verdad:
 
 Sin `Brevo__ApiKey` la aplicación arranca igual y cada envío queda en el log como aviso.
 
+## Claude (IA)
+
+La API key de Anthropic va en `/etc/auxiliar-contable/env` como `Claude__ApiKey` (se crea en
+<https://console.anthropic.com/settings/keys>; conviene una clave **solo para esta app** y un
+**límite de gasto** en la consola de Anthropic). El modelo se cambia con `Claude__Modelo`
+(por defecto `claude-haiku-5-5`). Tras editar el `env`: `sudo systemctl restart auxiliar-contable`.
+
+Sin `Claude__ApiKey` la aplicación arranca igual; lo que necesite IA lanza «no configurado».
+Ver `CLAUDE.md` §1.2.8.
+
 ## Esconder la puerta del superadministrador (opcional)
 
 Por defecto el panel del host está en `https://TU-DOMINIO.com/` y el formulario de login

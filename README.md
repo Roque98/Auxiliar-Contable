@@ -14,6 +14,8 @@ Producción: `contable.ziacentro.mx` (web) y `api-contable.ziacentro.mx` (API).
 - **Roles**: Developer → Owner → Administrador → Usuario. Cada uno ve y gestiona solo lo
   que tiene por debajo; el Developer es invisible para los demás. Ver `CLAUDE.md` §1.1.
 - **Correo, SMS y WhatsApp** por **Brevo**. Ver `CLAUDE.md` §1.2.
+- **IA** con **Claude Haiku** (Anthropic) para leer estados de cuenta con esquema fijo.
+  Ver `CLAUDE.md` §1.2.8.
 
 La solución vive en [`AuxiliarContable/`](./AuxiliarContable). La guía para agentes está en
 [`CLAUDE.md`](./CLAUDE.md).
@@ -39,6 +41,7 @@ dotnet user-secrets set "StringEncryption:DefaultPassPhrase" "<tu-frase>"
 dotnet user-secrets set "ConnectionStrings:Default" "Host=localhost;Port=5432;Database=auxiliar_contable;Username=...;Password=..."
 dotnet user-secrets set "Brevo:ApiKey" "<api-key-de-brevo>"
 dotnet user-secrets set "Brevo:SenderEmail" "<remitente-verificado-en-brevo>"
+dotnet user-secrets set "Claude:ApiKey" "<api-key-de-anthropic>"   # opcional: sin ella no hay IA
 ```
 
 El DbMigrator lee su propia cadena de conexión (mismo comando desde

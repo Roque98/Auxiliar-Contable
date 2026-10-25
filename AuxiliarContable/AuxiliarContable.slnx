@@ -21,5 +21,6 @@
         <Project Path="test/AuxiliarContable.HttpApi.Client.ConsoleTestApp/AuxiliarContable.HttpApi.Client.ConsoleTestApp.csproj" />
         <Project Path="test/AuxiliarContable.Architecture.Tests/AuxiliarContable.Architecture.Tests.csproj" />
         <Project Path="test/AuxiliarContable.Integration.Tests/AuxiliarContable.Integration.Tests.csproj" />
+        <Project Path="test/AuxiliarContable.HttpApi.Host.Tests/AuxiliarContable.HttpApi.Host.Tests.csproj" />
     </Folder>
 </Solution>

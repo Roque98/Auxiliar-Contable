@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Volo.Abp.Emailing;
+using AuxiliarContable.IA.Claude;
 using AuxiliarContable.Notifications.Brevo;
 using System;
 using System.Collections.Generic;
@@ -227,6 +228,15 @@ public class AuxiliarContableHttpApiHostModule : AbpModule
             cliente.Timeout = TimeSpan.FromSeconds(20);
         });
         context.Services.Replace(ServiceDescriptor.Transient<IEmailSender, BrevoEmailSender>());
+
+        // Claude (IA): lectura de estados de cuenta y casos dudosos de conciliacion. La API key
+        // llega igual que la de Brevo; sin ella el modelo queda «sin configurar» y no se llama.
+        Configure<ClaudeOptions>(configuration.GetSection(ClaudeOptions.Seccion));
+        var claude = configuration.GetSection(ClaudeOptions.Seccion).Get<ClaudeOptions>() ?? new ClaudeOptions();
+        context.Services.AddHttpClient(ClaudeModeloDeIA.NombreHttpClient, cliente =>
+        {
+            cliente.Timeout = TimeSpan.FromSeconds(claude.TimeoutSegundos);
+        });
 
         // Rate limiting por IP. Igual que Monitoring: umbrales desde appsettings, no
         // desde AbpSettings, porque se leen en caliente en cada peticion.

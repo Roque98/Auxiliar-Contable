@@ -217,6 +217,38 @@ cuenta en frases lo que ya se registra, por día y con filtros (persona, organiz
   contraseña del registro por invitación). `SecretosFueraDelRegistroTests` lo vigila.
 - Tests: `test/*.Integration.Tests/Actividad/` (siembran con `IAuditingStore` e `ISecurityLogStore`).
 
+### 1.2.8 IA (Claude Haiku) — leer documentos con esquema fijo
+
+- Contrato en el dominio: `IModeloDeIA.ExtraerAsync<T>(SolicitudDeIA)` (`Domain/IA/`). Una
+  solicitud = propósito (etiqueta fija para logs/métricas) + instrucciones (system prompt) +
+  `EsquemaDeSalida` (JSON Schema, `"type": "object"`) + partes de contenido (texto, imagen,
+  PDF). Devuelve `T` deserializado en camelCase y el uso de tokens. **No hay chat ni texto
+  libre**: todo lo que sale se valida por código antes de guardarse (§1.0).
+- Implementación: `HttpApi.Host/IA/Claude/ClaudeModeloDeIA.cs`, Messages API con HttpClient (como
+  Brevo, sin SDK). La salida estructurada se fuerza con UNA herramienta cuyo `input_schema` es el
+  esquema y `tool_choice` obligatorio. Las instrucciones van con `cache_control` (caché de
+  prompts: abarata si son largas y se repiten).
+- Configuración `Claude:*` (appsettings sin secretos); `Claude__ApiKey` en user-secrets (dev) /
+  `/etc/auxiliar-contable/env` (prod). Modelo por defecto `claude-haiku-5-5`. Sin clave,
+  `EstaConfigurado = false` y cada uso lanza sin llamar (DbMigrator y tests:
+  `ModeloDeIASinConfigurar`).
+- Errores: `ErrorDeIAException` con `Motivo`. Solo `NoDisponible` (429, 5xx, 529, timeout) es
+  `EsReintentable`; el cliente ya reintenta 3 veces respetando `retry-after`. `Truncada`
+  (`stop_reason: max_tokens`) y `RespuestaInvalida` NO se dan por buenas: van a revisión humana
+  o se sube `MaxTokens`. El timeout NO se reintenta (con un PDF grande pasaría otra vez y se
+  pagaría doble).
+- Límites comprobados antes de llamar (`IAConsts`): imagen jpeg/png/gif/webp ≤ 5 MB (HEIC de
+  iPhone NO: convertir antes), petición ≤ 32 MB **en base64** (un PDF de 25 MB ya no cabe).
+- ⚠️ **Nada del contenido ni de la respuesta va al log ni a los mensajes de error**: son datos
+  financieros de los clientes. Solo propósito, modelo, tokens, duración y `request-id`.
+- ⚠️ Cada llamada cuesta dinero y tarda segundos: **solo desde trabajos en segundo plano**, nunca
+  dentro de la petición del usuario.
+- Métricas (OpenObserve, medidor `AuxiliarContable.IA`): `auxiliar.ia.tokens` por propósito,
+  modelo y tipo (entrada/salida/caché), `auxiliar.ia.llamadas` por resultado y
+  `auxiliar.ia.duracion`.
+- Tests: `test/*.HttpApi.Host.Tests/IA/` (API falsa; nunca se llama a Anthropic) y
+  `test/*.Domain.Tests/IA/` (validaciones).
+
 ### 1.3 Design system (el aspecto de TODO el front)
 
 El design system viene tal cual de ZIA-Console; solo cambian la marca y el acento.

@@ -88,6 +88,9 @@ Brevo__SenderEmail=CAMBIAME
 Brevo__SenderName=Auxiliar contable
 # Remitente de SMS: alfanumerico de hasta 11 caracteres o un numero.
 Brevo__SmsSender=AuxContable
+
+# Claude (IA): API key de Anthropic (console.anthropic.com > API keys). Sin ella no se usa IA.
+Claude__ApiKey=CAMBIAME
 ENVEOF
     chmod 600 /etc/auxiliar-contable/env
     chown root:root /etc/auxiliar-contable/env

@@ -51,6 +51,7 @@ public static class ObservabilidadServiceCollectionExtensions
                 .AddAspNetCoreInstrumentation()
                 .AddHttpClientInstrumentation()
                 .AddRuntimeInstrumentation()
+                .AddMeter(AuxiliarContable.IA.Claude.ClaudeModeloDeIA.NombreDelMedidor)
                 .AddOtlpExporter(o => Exportar(o, opciones.Otlp, "metrics")));
         return services;
     }
