@@ -162,6 +162,17 @@ export const SECCIONES: Seccion[] = [
         ],
         nota: 'Que cuadre lo comprueba el sistema con una suma, no la IA: saldo inicial + abonos − cargos = saldo final.',
       },
+      {
+        titulo: 'Conciliar el banco con las facturas',
+        icono: 'bi-arrow-left-right',
+        ruta: '/conciliacion',
+        pasos: [
+          'Abre Conciliación, elige el mes y toca «Buscar parejas»: se unen movimientos y facturas del mismo monto y fechas cercanas.',
+          'Revisa cada pareja: «Sí, es esa» o «No». «Confirmar las seguras» acepta de una vez las de puntaje alto.',
+          'Lo que queda es lo que falta: un depósito sin factura o un gasto sin factura. Elige su factura a mano o marca «No lleva factura» con el porqué.',
+        ],
+        nota: 'El sistema solo propone por reglas (monto, fecha, RFC); nada cuenta como conciliado hasta que una persona lo confirma.',
+      },
     ],
   },
   {

@@ -72,6 +72,8 @@ public class AuxiliarContableDbContext :
 
     public DbSet<MovimientoBancario> MovimientosBancarios { get; set; }
 
+    public DbSet<Conciliaciones.Conciliacion> Conciliaciones { get; set; }
+
     // ⚠️ ESTOS DbSet NO SON DECORATIVOS. ABP aplica sus filtros globales (multi-tenancy y
     // soft delete) recorriendo las entidades que YA ESTAN en el modelo en el momento en que
     // se llama a base.OnModelCreating(), que aqui es la PRIMERA linea de OnModelCreating.
@@ -330,7 +332,21 @@ public class AuxiliarContableDbContext :
             b.Property(x => x.Cargo).HasPrecision(18, 2);
             b.Property(x => x.Abono).HasPrecision(18, 2);
             b.Property(x => x.Saldo).HasPrecision(18, 2);
+            b.Property(x => x.SinFacturaPorque).HasMaxLength(EstadoDeCuentaConsts.MaxConceptoLength);
             b.HasIndex(x => new { x.OrganizacionId, x.Fecha });
+        });
+
+        // Conciliaciones — AppConciliaciones. Las rechazadas se quedan (no volver a proponerlas);
+        // entre las VIVAS (propuesta o confirmada, no borradas) un movimiento y una factura solo
+        // pueden estar en una: lo garantiza la base, no solo el codigo.
+        builder.Entity<AuxiliarContable.Conciliaciones.Conciliacion>(b =>
+        {
+            b.ToTable(AuxiliarContableConsts.DbTablePrefix + "Conciliaciones", AuxiliarContableConsts.DbSchema);
+            b.ConfigureByConvention();
+            b.Property(x => x.Motivo).IsRequired().HasMaxLength(AuxiliarContable.Conciliaciones.ConciliacionConsts.MaxMotivoLength);
+            b.HasIndex(x => x.MovimientoId).IsUnique().HasFilter("\"Estado\" <> 2 AND \"IsDeleted\" = false").HasDatabaseName("IX_AppConciliaciones_MovimientoVivo");
+            b.HasIndex(x => x.CfdiId).IsUnique().HasFilter("\"Estado\" <> 2 AND \"IsDeleted\" = false").HasDatabaseName("IX_AppConciliaciones_CfdiVivo");
+            b.HasIndex(x => x.OrganizacionId);
         });
 
         // Perfil fiscal — AppPerfilesFiscales (uno por organizacion) y AppDatosDePerfiles (un

@@ -171,6 +171,18 @@ public class MovimientoBancario : Entity<Guid>
     public decimal Abono { get; protected set; }
     public decimal? Saldo { get; protected set; }
 
+    /// <summary>
+    /// Una persona dijo que este movimiento NO lleva factura (traspaso entre cuentas propias,
+    /// retiro para gastos personales…) y por qué. Así deja de salir como faltante al conciliar.
+    /// </summary>
+    public string? SinFacturaPorque { get; protected set; }
+
+    public void MarcarSinFactura(string? porque)
+    {
+        var p = porque?.Trim();
+        SinFacturaPorque = string.IsNullOrEmpty(p) ? null : p.Length <= EstadoDeCuentaConsts.MaxConceptoLength ? p : p[..EstadoDeCuentaConsts.MaxConceptoLength];
+    }
+
     protected MovimientoBancario()
     {
     }

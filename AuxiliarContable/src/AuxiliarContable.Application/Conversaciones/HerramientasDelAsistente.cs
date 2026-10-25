@@ -8,6 +8,7 @@ using System.Text.Unicode;
 using System.Threading.Tasks;
 using AuxiliarContable.Boveda;
 using AuxiliarContable.Cfdis;
+using AuxiliarContable.Conciliaciones;
 using AuxiliarContable.Documentos;
 using AuxiliarContable.IA;
 using AuxiliarContable.PerfilesFiscales;
@@ -31,6 +32,7 @@ public class HerramientasDelAsistente : ITransientDependency
     public const string ConfirmarDato = "confirmar_dato_del_perfil";
     public const string BuscarDocumentos = "buscar_documentos";
     public const string ResumenDeDocumentos = "resumen_de_documentos";
+    public const string ConciliacionDelMes = "conciliacion_del_mes";
 
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
     {
@@ -39,11 +41,13 @@ public class HerramientasDelAsistente : ITransientDependency
 
     private readonly IPerfilFiscalAppService _perfiles;
     private readonly IBovedaAppService _boveda;
+    private readonly IConciliacionAppService _conciliacion;
 
-    public HerramientasDelAsistente(IPerfilFiscalAppService perfiles, IBovedaAppService boveda)
+    public HerramientasDelAsistente(IPerfilFiscalAppService perfiles, IBovedaAppService boveda, IConciliacionAppService conciliacion)
     {
         _perfiles = perfiles;
         _boveda = boveda;
+        _conciliacion = conciliacion;
     }
 
     /// <summary>Las que puede usar quien escribe: sin permiso de cambiar, solo las de consulta.</summary>
@@ -60,6 +64,11 @@ public class HerramientasDelAsistente : ITransientDependency
                 "(ventas) y recibidas (gastos) por mes. Úsala para «¿qué me falta?», «¿cuánto facturé en…?» o detectar meses sin documentos. " +
                 "Las sumas son informativas (ingresos menos notas de crédito), no un cálculo de impuestos.",
                 """{"type":"object","properties":{}}"""),
+            new(ConciliacionDelMes,
+                "La conciliación de un mes del cliente activo: cuántos movimientos del banco ya están unidos a su factura y, sobre todo, " +
+                "lo que FALTA: depósitos sin factura, cargos sin factura, ventas de contado sin depósito y gastos sin cargo. " +
+                "Úsala para «¿qué me falta?» o «¿qué facturas me faltan de octubre?». No cambia nada.",
+                """{"type":"object","properties":{"anio":{"type":"integer","minimum":2000,"maximum":2100},"mes":{"type":"integer","minimum":1,"maximum":12}},"required":["anio","mes"]}"""),
             new(BuscarDocumentos,
                 "Busca en la bóveda del cliente activo. Filtros opcionales: año, mes (1-12), tipo, dirección de la factura " +
                 "(emitida = venta, recibida = gasto) y texto (RFC, nombre del emisor o receptor, UUID, concepto o nombre del archivo). " +
@@ -115,6 +124,7 @@ public class HerramientasDelAsistente : ITransientDependency
             {
                 ConsultarPerfil => Perfil(await _perfiles.GetAsync(organizacionId)),
                 ResumenDeDocumentos => await ResumenAsync(organizacionId),
+                ConciliacionDelMes => await ConciliacionAsync(organizacionId, uso.Entrada),
                 BuscarDocumentos => await BuscarAsync(organizacionId, uso.Entrada),
                 GuardarDato => await GuardarAsync(organizacionId, uso.Entrada),
                 ConfirmarDato => await ConfirmarAsync(organizacionId, uso.Entrada),
@@ -257,6 +267,41 @@ public class HerramientasDelAsistente : ITransientDependency
                         uuid = d.Cfdi.Uuid,
                     },
             }),
+        }, Json);
+    }
+
+    private async Task<string> ConciliacionAsync(Guid organizacionId, JsonElement entrada)
+    {
+        var anio = Entero(entrada, "anio") ?? throw new UserFriendlyException("Falta «anio».");
+        var mes = Entero(entrada, "mes") ?? throw new UserFriendlyException("Falta «mes».");
+        var c = await _conciliacion.GetDelMesAsync(organizacionId, anio, mes);
+
+        object Mov(MovimientoDelBancoDto m) => new
+        {
+            fecha = m.Fecha.ToString("yyyy-MM-dd"),
+            concepto = m.Concepto,
+            monto = m.Abono > 0 ? m.Abono : m.Cargo,
+        };
+
+        object Fac(FacturaDelMesDto f) => new
+        {
+            fecha = f.Fecha.ToString("yyyy-MM-dd"),
+            contraparte = $"{f.Contraparte} ({f.RfcContraparte})",
+            total = f.Total,
+        };
+
+        return JsonSerializer.Serialize(new
+        {
+            periodo = $"{anio}-{mes:00}",
+            hayEstadosDeCuenta = c.HayEstadosDeCuenta,
+            estadosQueNoCuadran = c.EstadosSinRevisar,
+            conciliados = c.Confirmadas.Count,
+            propuestasPorRevisar = c.Propuestas.Count,
+            depositosSinFactura = c.DepositosSinFactura.Select(Mov),
+            cargosSinFactura = c.CargosSinFactura.Select(Mov),
+            ventasSinDeposito = c.VentasSinDeposito.Select(Fac),
+            gastosSinCargoEnElBanco = c.GastosSinCargo.Select(Fac),
+            sinFacturaJustificados = c.SinFacturaJustificados.Count,
         }, Json);
     }
 

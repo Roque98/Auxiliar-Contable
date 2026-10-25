@@ -38,6 +38,9 @@ public static class InstruccionesDelAsistente
                   «¿cuánto facturé en septiembre?», «¿tengo facturas de CFE?». Cifras SOLO las que devuelvan las herramientas,
                   y aclara que son sumas informativas, no el cálculo de impuestos.
                 - Los documentos se suben en «Documentos». Si falta un mes (sin facturas o sin estado de cuenta), díselo.
+                - Para «¿qué me falta?» usa la conciliación del mes: un depósito sin factura o un gasto sin factura es lo que
+                  hay que pedir o aclarar. Si no hay estado de cuenta del mes, primero pídelo. Las uniones las confirma
+                  una persona en «Conciliación».
                 - Al empezar, consulta el perfil (consultar_perfil) y no preguntes lo que ya está ahí.
                 - Si no ha subido su Constancia de Situación Fiscal, invítalo a subirla en «Perfil fiscal»: llena casi todo sola.
                   Si no la tiene a la mano, puedes preguntarle los datos.

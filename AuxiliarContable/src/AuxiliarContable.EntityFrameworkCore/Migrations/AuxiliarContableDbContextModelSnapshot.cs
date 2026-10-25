@@ -232,6 +232,90 @@ namespace AuxiliarContable.Migrations
                     b.ToTable("AppCfdis", (string)null);
                 });
 
+            modelBuilder.Entity("AuxiliarContable.Conciliaciones.Conciliacion", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CfdiId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("ConcurrencyStamp");
+
+                    b.Property<DateTime>("CreationTime")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("CreationTime");
+
+                    b.Property<Guid?>("CreatorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("CreatorId");
+
+                    b.Property<Guid?>("DeleterId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("DeleterId");
+
+                    b.Property<DateTime?>("DeletionTime")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("DeletionTime");
+
+                    b.Property<int>("Estado")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ExtraProperties")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("ExtraProperties");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("IsDeleted");
+
+                    b.Property<DateTime?>("LastModificationTime")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("LastModificationTime");
+
+                    b.Property<Guid?>("LastModifierId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("LastModifierId");
+
+                    b.Property<string>("Motivo")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<Guid>("MovimientoId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("OrganizacionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Puntaje")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CfdiId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_AppConciliaciones_CfdiVivo")
+                        .HasFilter("\"Estado\" <> 2 AND \"IsDeleted\" = false");
+
+                    b.HasIndex("MovimientoId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_AppConciliaciones_MovimientoVivo")
+                        .HasFilter("\"Estado\" <> 2 AND \"IsDeleted\" = false");
+
+                    b.HasIndex("OrganizacionId");
+
+                    b.ToTable("AppConciliaciones", (string)null);
+                });
+
             modelBuilder.Entity("AuxiliarContable.Conversaciones.Conversacion", b =>
                 {
                     b.Property<Guid>("Id")
@@ -550,6 +634,10 @@ namespace AuxiliarContable.Migrations
                     b.Property<decimal?>("Saldo")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
+
+                    b.Property<string>("SinFacturaPorque")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
 
                     b.HasKey("Id");
 

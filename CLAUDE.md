@@ -328,6 +328,19 @@ cuenta en frases lo que ya se registra, por día y con filtros (persona, organiz
   `GetAsync`: chocaba con `GetListAsync`, ver docs/trampas/nucleo-abp.md), corregir, confirmar,
   volver a leer. Borrar el documento en la bóveda borra su estado de cuenta.
 
+### 1.2.10.3 Conciliación
+
+- `Emparejador` (Domain, función pura, SIN IA): abono ↔ factura EMITIDA, cargo ↔ RECIBIDA; mismo
+  monto ±0.01 MXN, fecha ±5 días; desempata RFC/UUID en concepto o referencia y la fecha más
+  cercana; cada uno se usa una vez (codicioso por puntaje); lo ambiguo baja puntaje y lo dice.
+- `Conciliacion` (Propuesta/Confirmada/Rechazada). Índices ÚNICOS filtrados: un movimiento y una
+  factura en UNA unión viva como máximo (lo garantiza la base). Las rechazadas no se reproponen.
+- `ConciliacionAppService.GetDelMesAsync/ProponerAsync(org, anio, mes)`: solo movimientos de estados
+  que NO están en `RequiereRevision`; facturas tipo I con RFC del cliente (±5 días del mes).
+  Faltantes: depósitos/cargos sin factura, ventas PUE sin depósito, gastos PUE sin cargo (las PPD
+  no: se cobran con complemento). `MovimientoBancario.SinFacturaPorque` = «no lleva factura».
+- El chat lo usa con `conciliacion_del_mes` («¿qué me falta?»). Pantalla `/conciliacion?cliente=&anio=&mes=`.
+
 ### 1.2.11 Chat (asistente)
 
 - **Modelo**: `IModeloConversacional` (Domain/IA) — UN turno por llamada; el bucle de herramientas
