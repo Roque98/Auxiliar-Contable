@@ -1,0 +1,241 @@
+// Capturas y videos del manual de usuario, por rol, contra la consola LOCAL con los datos de
+// ejemplo de sembrar.mjs. Deja todo en docs/manuales/ (img/<rol>/*.png y video/<rol>.webm).
+//   node manual/sembrar.mjs && node manual/capturar.mjs
+import { chromium } from '@playwright/test';
+import { mkdirSync, renameSync, rmSync, existsSync } from 'node:fs';
+import { join, resolve, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { CUENTAS, CLIENTES, WEB, API } from './comun.mjs';
+
+if (!/localhost|127\.0\.0\.1/.test(API)) {
+  throw new Error(`Solo contra la consola local (API = ${API}).`);
+}
+
+const AQUI = dirname(fileURLToPath(import.meta.url));
+const DOCS = resolve(AQUI, '..', '..', '..', 'docs', 'manuales');
+const TAM = { width: 1280, height: 760 };
+const SOLO = process.argv[2]; // opcional: un rol
+
+/** Qué se captura de cada rol. `antes` hace algo en la pantalla antes de la foto. */
+const ESCENAS = {
+  usuario: [
+    { ruta: '/', archivo: '01-asistente' },
+    { ruta: '/documentos', archivo: '02-documentos' },
+    { ruta: '/perfil-fiscal', archivo: '03-perfil-fiscal' },
+    { ruta: '/mi-organizacion', archivo: '04-mi-organizacion' },
+    { ruta: '/mi-cuenta', archivo: '05-mi-cuenta' },
+    { ruta: '/seguridad', archivo: '06-seguridad' },
+    { ruta: '/ayuda', archivo: '07-ayuda' },
+  ],
+  administrador: [
+    { ruta: '/', archivo: '01-asistente-cartera' },
+    { ruta: '/cartera', archivo: '02-cartera' },
+    { ruta: '/documentos', archivo: '03-documentos-cliente', cliente: 'Panadería La Espiga' },
+    { ruta: '/perfil-fiscal', archivo: '04-perfil-fiscal-cliente', cliente: 'Panadería La Espiga' },
+    { ruta: '/organizaciones', archivo: '05-organizaciones' },
+    { ruta: '/invitaciones', archivo: '06-invitaciones' },
+    { ruta: '/identity/users', archivo: '07-usuarios' },
+    { ruta: '/actividad', archivo: '08-actividad' },
+  ],
+  owner: [
+    { ruta: '/cartera', archivo: '01-cartera-y-metricas' },
+    { ruta: '/identity/users', archivo: '02-usuarios' },
+    { ruta: '/identity/roles', archivo: '03-roles' },
+    { ruta: '/invitaciones', archivo: '04-invitaciones' },
+    { ruta: '/branding', archivo: '05-marca' },
+    { ruta: '/actividad', archivo: '06-actividad' },
+  ],
+  developer: [
+    { ruta: '/system-status', archivo: '01-estado-del-sistema' },
+    { ruta: '/metrics', archivo: '02-metricas' },
+    { ruta: '/jobs', archivo: '03-trabajos' },
+    { ruta: '/audit', archivo: '04-auditoria' },
+    { ruta: '/security', archivo: '05-seguridad-ips' },
+    { ruta: '/api-keys', archivo: '06-llaves-api' },
+    { ruta: '/alertas', archivo: '07-alertas' },
+    { ruta: '/sessions', archivo: '08-sesiones' },
+  ],
+};
+
+async function ir(pagina, ruta) {
+  await pagina.goto(`${WEB}${ruta}`);
+  await pagina.locator('.ig-pagina, .ig-acceso-caja').first().waitFor({ timeout: 30_000 }).catch(() => undefined);
+  await pagina.waitForLoadState('networkidle').catch(() => undefined);
+  await pagina.waitForTimeout(900);
+}
+
+async function elegirCliente(pagina, nombre) {
+  const select = pagina.locator('select').filter({ has: pagina.locator('option', { hasText: nombre }) }).first();
+  if (await select.count()) {
+    await select.selectOption({ label: nombre });
+    await pagina.waitForLoadState('networkidle').catch(() => undefined);
+    await pagina.waitForTimeout(900);
+  }
+}
+
+async function aceptarAviso(pagina, foto) {
+  const boton = pagina.getByRole('button', { name: 'Acepto el aviso de privacidad' });
+  if (await boton.waitFor({ timeout: 6000 }).then(() => true).catch(() => false)) {
+    if (foto) {
+      await pagina.screenshot({ path: foto });
+    }
+    await boton.click();
+    await boton.waitFor({ state: 'detached', timeout: 15_000 }).catch(() => undefined);
+  }
+}
+
+async function entrar(navegador, c, video) {
+  const contexto = await navegador.newContext({
+    ignoreHTTPSErrors: true, locale: 'es-MX', viewport: TAM,
+    recordVideo: video ? { dir: video, size: TAM } : undefined,
+  });
+  const pagina = await contexto.newPage();
+  await pagina.goto(`${WEB}/account/login`);
+  await pagina.waitForURL(/\/Account\/Login/i, { timeout: 60_000 });
+  await pagina.waitForTimeout(600);
+  return { contexto, pagina };
+}
+
+/** Quita las pistas "Default username/password" que pone dev-login-helper.js (solo en desarrollo). */
+async function limpiarPistas(pagina) {
+  await pagina.waitForTimeout(300);
+  await pagina.evaluate(() => document.querySelectorAll('span.text-muted.small').forEach(s => {
+    if (/^Default (username|password)/.test(s.textContent ?? '')) {
+      s.remove();
+    }
+  }));
+}
+
+async function escribirLogin(pagina, c, lento, intento = 1) {
+  const usuario = pagina.locator('#LoginInput_UserNameOrEmailAddress');
+  const clave = pagina.locator('#LoginInput_Password');
+  // dev-login-helper.js rellena admin/1q2w3E* al primer foco: enfocar antes, luego vaciar y escribir.
+  await usuario.focus();
+  await clave.focus();
+  await pagina.waitForTimeout(250);
+  await usuario.fill('');
+  await clave.fill('');
+  await limpiarPistas(pagina);
+  await usuario.pressSequentially(c.usuario, { delay: lento ? 70 : 0 });
+  await clave.pressSequentially(c.clave, { delay: lento ? 40 : 0 });
+  await pagina.click('button[name=Action]');
+  const entro = await pagina.waitForURL(u => !/\/Account\//i.test(u.pathname), { timeout: 20_000 }).then(() => true).catch(() => false);
+  if (!entro) {
+    if (intento >= 3) {
+      throw new Error(`No se pudo entrar como ${c.usuario}. ¿Corriste sembrar.mjs?`);
+    }
+    // Límite de intentos por minuto: esperar a que se abra la ventana y volver a intentar.
+    console.log('  esperando el límite de intentos de entrar…');
+    await pagina.waitForTimeout(65_000);
+    await pagina.goto(`${WEB}/account/login`);
+    await pagina.waitForURL(/\/Account\/Login/i, { timeout: 60_000 });
+    return escribirLogin(pagina, c, lento, intento + 1);
+  }
+  await pagina.waitForTimeout(1500);
+}
+
+// --- Recorridos en video (más lentos, con acciones) ----------------------------------------
+const RECORRIDOS = {
+  usuario: async p => {
+    await p.waitForTimeout(1500);
+    await ir(p, '/documentos');
+    const entrada = p.locator('input[type=file]').first();
+    if (await entrada.count()) {
+      await entrada.setInputFiles({
+        name: 'ticket-gasolina.pdf', mimeType: 'application/pdf',
+        buffer: Buffer.from('%PDF-1.4\n% ticket de ejemplo\n%%EOF\n'),
+      });
+      await p.waitForTimeout(2500);
+    }
+    await ir(p, '/perfil-fiscal');
+    await p.mouse.wheel(0, 500);
+    await p.waitForTimeout(1500);
+    await ir(p, '/mi-organizacion');
+    await ir(p, '/ayuda');
+    await p.mouse.wheel(0, 600);
+    await p.waitForTimeout(1500);
+  },
+  administrador: async p => {
+    await p.waitForTimeout(1500);
+    await ir(p, '/cartera');
+    await p.waitForTimeout(1500);
+    await ir(p, '/documentos');
+    await elegirCliente(p, 'Panadería La Espiga');
+    await p.waitForTimeout(1500);
+    await ir(p, '/perfil-fiscal');
+    await elegirCliente(p, 'Panadería La Espiga');
+    await p.mouse.wheel(0, 500);
+    await p.waitForTimeout(1500);
+    await ir(p, '/organizaciones');
+    await ir(p, '/invitaciones');
+    await p.waitForTimeout(1500);
+  },
+  owner: async p => {
+    await p.waitForTimeout(1500);
+    await ir(p, '/cartera');
+    await p.waitForTimeout(2000);
+    await ir(p, '/identity/users');
+    await ir(p, '/identity/roles');
+    await ir(p, '/branding');
+    await p.waitForTimeout(1500);
+  },
+  developer: async p => {
+    await p.waitForTimeout(1500);
+    await ir(p, '/system-status');
+    await p.waitForTimeout(1500);
+    await ir(p, '/metrics');
+    await ir(p, '/jobs');
+    await ir(p, '/audit');
+    await p.waitForTimeout(1500);
+  },
+};
+
+const navegador = await chromium.launch({ args: ['--ignore-certificate-errors'] });
+mkdirSync(join(DOCS, 'img', 'comun'), { recursive: true });
+mkdirSync(join(DOCS, 'video'), { recursive: true });
+
+// Pantalla de entrar (sin sesión), una vez.
+{
+  const { contexto, pagina } = await entrar(navegador, CUENTAS.usuario);
+  await limpiarPistas(pagina);
+  await pagina.locator('#LoginInput_UserNameOrEmailAddress, #LoginInput_Password').evaluateAll(es => es.forEach(e => (e.value = '')));
+  await pagina.screenshot({ path: join(DOCS, 'img', 'comun', '01-entrar.png') });
+  await contexto.close();
+}
+
+for (const [rol, escenas] of Object.entries(ESCENAS)) {
+  if (SOLO && SOLO !== rol) {
+    continue;
+  }
+  const c = CUENTAS[rol];
+  const carpeta = join(DOCS, 'img', rol);
+  mkdirSync(carpeta, { recursive: true });
+
+  // Una sola sesión por rol: el video graba el recorrido y las capturas salen del mismo recorrido
+  // (el login tiene límite de intentos por minuto).
+  const tmp = join(DOCS, 'video', `_${rol}`);
+  rmSync(tmp, { recursive: true, force: true });
+  const { contexto, pagina } = await entrar(navegador, c, tmp);
+  await escribirLogin(pagina, c, true);
+  await aceptarAviso(pagina, rol === 'usuario' ? join(DOCS, 'img', 'comun', '02-aviso-de-privacidad.png') : null);
+  await pagina.waitForTimeout(1200);
+  for (const e of escenas) {
+    await ir(pagina, e.ruta);
+    if (e.cliente) {
+      await elegirCliente(pagina, e.cliente);
+    }
+    await pagina.screenshot({ path: join(carpeta, `${e.archivo}.png`) });
+    console.log(rol, e.archivo);
+    await pagina.waitForTimeout(700);
+  }
+  await RECORRIDOS[rol](pagina);
+  const video = pagina.video();
+  await contexto.close();
+  const destino = join(DOCS, 'video', `${rol}.webm`);
+  rmSync(destino, { force: true });
+  renameSync(await video.path(), destino);
+  rmSync(tmp, { recursive: true, force: true });
+  console.log(rol, 'video listo');
+}
+await navegador.close();
+console.log('listo:', DOCS, existsSync(DOCS));

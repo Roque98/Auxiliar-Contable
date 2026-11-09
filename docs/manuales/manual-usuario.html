@@ -1,0 +1,464 @@
+<title>Manual de usuario</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Source+Sans+3:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: misma identidad que el manual de desarrollador. Un capítulo por rol: video del recorrido, luego cada pantalla con sus pasos. */
+:root{
+  --bg:#F4F6F8; --surface:#FFFFFF; --fg:#151C24; --muted:#56616E; --line:#D6DCE3;
+  --accent:#2E4A7D; --accent-soft:#E3EAF5; --ok:#1D7438; --ok-soft:#E3F2E6;
+  --warn:#B42318; --warn-soft:#FBE7E4; --code-bg:#EDF1F6;
+  --r-usuario:#1D7438; --r-admin:#2E4A7D; --r-owner:#8A5A00; --r-dev:#6B3FA0;
+  --f-display:"Bricolage Grotesque","Segoe UI",system-ui,sans-serif;
+  --f-body:"Source Sans 3","Segoe UI",system-ui,sans-serif;
+  --f-mono:"JetBrains Mono",Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0F141A; --surface:#161D25; --fg:#E3E9F0; --muted:#9AA6B4; --line:#2A3440;
+  --accent:#8FB0E8; --accent-soft:#1C2A40; --ok:#7ACF91; --ok-soft:#18301F;
+  --warn:#F28B80; --warn-soft:#3B1E1B; --code-bg:#1B2430;
+  --r-usuario:#7ACF91; --r-admin:#8FB0E8; --r-owner:#E8B65A; --r-dev:#C3A3F0; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0F141A; --surface:#161D25; --fg:#E3E9F0; --muted:#9AA6B4; --line:#2A3440;
+  --accent:#8FB0E8; --accent-soft:#1C2A40; --ok:#7ACF91; --ok-soft:#18301F;
+  --warn:#F28B80; --warn-soft:#3B1E1B; --code-bg:#1B2430;
+  --r-usuario:#7ACF91; --r-admin:#8FB0E8; --r-owner:#E8B65A; --r-dev:#C3A3F0; color-scheme:dark}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){html{scroll-behavior:auto}}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:16.5px;line-height:1.6;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 64px}
+a{color:var(--accent)}
+code{font-family:var(--f-mono);font-size:.84em;background:var(--code-bg);padding:.08em .35em;border-radius:4px;overflow-wrap:anywhere}
+h1,h2,h3,h4{font-family:var(--f-display);line-height:1.2;text-wrap:balance;margin:0}
+h1{font-size:clamp(1.9rem,4vw,2.7rem)} h2{font-size:1.6rem;padding-top:6px} h3{font-size:1.15rem}
+p{margin:0} ul,ol{margin:0;padding-left:1.25em;display:grid;gap:4px}
+.top{max-width:1180px;margin:0 auto;padding-block:40px 24px;border-bottom:1px solid var(--line);display:grid;gap:10px}
+.eyebrow{font-family:var(--f-mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+.lede{font-size:1.12rem;max-width:70ch}
+.layout{max-width:1180px;margin:0 auto;display:grid;grid-template-columns:220px minmax(0,1fr);gap:44px;padding-top:26px}
+nav.toc{position:sticky;top:calc(env(safe-area-inset-top,0px) + 16px);align-self:start;font-size:.92rem;max-height:calc(100vh - 32px);overflow:auto}
+nav.toc ol{list-style:none;padding:0;gap:2px}
+nav.toc a{display:flex;align-items:center;gap:8px;padding:4px 10px;border-radius:6px;color:var(--muted);text-decoration:none}
+nav.toc a:hover{background:var(--accent-soft);color:var(--fg)}
+main{min-width:0;display:grid;gap:56px}
+section{display:grid;gap:18px;scroll-margin-top:16px}
+section>p,section>ul,section>ol{max-width:74ch}
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:.92rem}
+th,td{text-align:left;vertical-align:top;padding:9px 12px;border-bottom:1px solid var(--line)}
+th{font-family:var(--f-mono);font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600;background:var(--code-bg)}
+td.c{text-align:center} tr:last-child td{border-bottom:0}
+.si{color:var(--ok);font-weight:700} .no{color:var(--muted)}
+.nota{border-left:3px solid var(--accent);background:var(--accent-soft);padding:12px 16px;border-radius:0 8px 8px 0;max-width:78ch}
+.alerta{border:1px solid var(--warn);background:var(--warn-soft);border-radius:10px;padding:12px 16px;max-width:78ch}
+.alerta strong{color:var(--warn)}
+figure{margin:0;display:grid;gap:8px} figcaption{font-size:.9rem;color:var(--muted);max-width:78ch}
+.captura,video{border:1px solid var(--line);border-radius:10px;max-width:100%;height:auto;display:block;background:var(--surface)}
+video{width:100%;aspect-ratio:1280/760}
+/* Rol: franja de color propia, para saber en qué capítulo estás. */
+.punto{width:9px;height:9px;border-radius:50%;background:var(--rol,var(--muted));flex:none}
+.rol-usuario{--rol:var(--r-usuario)} .rol-admin{--rol:var(--r-admin)} .rol-owner{--rol:var(--r-owner)} .rol-dev{--rol:var(--r-dev)}
+.cap-rol{border-top:4px solid var(--rol);padding-top:18px}
+.cap-rol>.encab{display:grid;gap:6px}
+.chip{display:inline-flex;align-items:center;gap:6px;font-family:var(--f-mono);font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--rol)}
+.roles{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.roles>a{display:grid;gap:6px;padding:14px 16px;border:1px solid var(--line);border-left:4px solid var(--rol);border-radius:10px;background:var(--surface);color:var(--fg);text-decoration:none}
+.roles>a:hover{border-color:var(--rol)}
+.roles strong{font-family:var(--f-display);font-size:1.1rem}
+.roles span{color:var(--muted);font-size:.93rem}
+.pantalla{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:22px;align-items:start;padding-top:8px}
+.pantalla>div{display:grid;gap:10px;min-width:0}
+.pantalla .ruta{font-family:var(--f-mono);font-size:.78rem;color:var(--muted)}
+.pantalla ol{gap:6px}
+@media (max-width:900px){.layout{grid-template-columns:1fr} nav.toc{position:static;max-height:none;border:1px solid var(--line);border-radius:10px;padding:8px;background:var(--surface)} .pantalla{grid-template-columns:1fr}}
+</style>
+
+<header class="top">
+  <div class="eyebrow">Auxiliar Contable · para quien la usa</div>
+  <h1>Manual de usuario</h1>
+  <p class="lede">Qué ve y qué puede hacer cada quien en la consola: el cliente (Usuario), el contador del despacho (Administrador) y la dueña del despacho (Owner). Cada capítulo trae un video corto del recorrido y la explicación de cada pantalla.</p>
+</header>
+
+<div class="layout">
+<nav class="toc" aria-label="Índice">
+  <ol>
+    <li><a href="#roles">1. ¿Qué rol tengo?</a></li>
+    <li><a href="#entrar">2. Entrar</a></li>
+    <li><a href="#usuario" class="rol-usuario"><span class="punto"></span>3. Usuario</a></li>
+    <li><a href="#administrador" class="rol-admin"><span class="punto"></span>4. Administrador</a></li>
+    <li><a href="#owner" class="rol-owner"><span class="punto"></span>5. Owner</a></li>
+    <li><a href="#developer" class="rol-dev"><span class="punto"></span>6. Developer</a></li>
+    <li><a href="#ayuda">7. Si algo falla</a></li>
+  </ol>
+</nav>
+
+<main>
+
+<section id="roles">
+  <h2>1. ¿Qué rol tengo?</h2>
+  <p>Cada persona tiene un rol. Los roles van en escalera: cada uno puede hacer lo del de abajo y además gestionar a la gente que está por debajo. Nadie ve ni toca a quien está a su nivel o arriba.</p>
+  <div class="roles">
+    <a href="#usuario" class="rol-usuario"><span class="chip"><span class="punto"></span>Nivel 0</span><strong>Usuario</strong><span>El cliente. Ves y subes la información de tu organización (según tu papel en ella) y gestionas tu propia cuenta.</span></a>
+    <a href="#administrador" class="rol-admin"><span class="chip"><span class="punto"></span>Nivel 1</span><strong>Administrador</strong><span>El contador. Ves la información de todos los clientes, los organizas y das de alta a los Usuarios.</span></a>
+    <a href="#owner" class="rol-owner"><span class="chip"><span class="punto"></span>Nivel 2</span><strong>Owner</strong><span>La dueña del despacho. Gestionas a tu gente, sus roles y la imagen de la consola.</span></a>
+    <a href="#developer" class="rol-dev"><span class="chip"><span class="punto"></span>Nivel 3</span><strong>Developer</strong><span>Quien mantiene la consola. Tiene todos los permisos y nadie más ve su cuenta.</span></a>
+  </div>
+  <div class="tbl"><table>
+    <thead><tr><th>Qué se puede hacer</th><th>Usuario</th><th>Administrador</th><th>Owner</th></tr></thead>
+    <tbody>
+      <tr><td>Ver la información de su organización (según su papel en ella)</td><td class="c si">Sí</td><td class="c si">Sí</td><td class="c si">Sí</td></tr>
+      <tr><td>Gestionar a la gente de su organización (si es su Administrador)</td><td class="c si">Sí</td><td class="c si">Sí</td><td class="c si">Sí</td></tr>
+      <tr><td>Ver y gestionar a todos los clientes (organizaciones) y sus personas</td><td class="c no">—</td><td class="c si">Sí</td><td class="c si">Sí</td></tr>
+      <tr><td>Ver la actividad (quién hizo qué)</td><td class="c no">—</td><td class="c si">Sí</td><td class="c si">Sí</td></tr>
+      <tr><td>Invitar y gestionar Usuarios</td><td class="c no">—</td><td class="c si">Sí</td><td class="c si">Sí</td></tr>
+      <tr><td>Invitar y gestionar Administradores</td><td class="c no">—</td><td class="c no">—</td><td class="c si">Sí</td></tr>
+      <tr><td>Crear roles y decidir sus permisos</td><td class="c no">—</td><td class="c no">—</td><td class="c si">Sí</td></tr>
+      <tr><td>Cambiar la marca (logo y color)</td><td class="c no">—</td><td class="c no">—</td><td class="c si">Sí</td></tr>
+    </tbody>
+  </table></div>
+  <div class="nota"><p><strong>Rol y papel no son lo mismo.</strong> El <em>rol</em> es tu lugar en la consola. El <em>papel</em> es tu lugar dentro de tu organización (un cliente = un RFC): <strong>Administrador</strong> (además gestiona a su gente), <strong>Miembro</strong> (sube y ve) o <strong>Solo ve</strong>.</p></div>
+  <p>Las capturas y videos de este manual usan datos inventados: «Panadería La Espiga», «Taller Mecánico Ruiz» y «Consultoría Vega» no son clientes reales.</p>
+</section>
+
+<section id="entrar">
+  <h2>2. Entrar</h2>
+  <div class="pantalla">
+    <figure>
+      <img class="captura" src="img/comun/01-entrar.png" alt="Pantalla para iniciar sesión con usuario y contraseña" loading="lazy">
+      <figcaption>La pantalla de entrar es igual para todos los roles.</figcaption>
+    </figure>
+    <div>
+      <h3>La primera vez</h3>
+      <ol>
+        <li>Abre el enlace del correo «Tu invitación a Auxiliar contable». Vale 7 días y sirve una sola vez.</li>
+        <li>Elige tu usuario y tu contraseña. Al hacerlo tu correo queda confirmado.</li>
+        <li>Entra con tu usuario (o tu correo) y la contraseña que elegiste.</li>
+      </ol>
+      <p class="nota">¿Te dieron la cuenta sin invitación? Entra con lo que te pasaron y cambia la contraseña en <strong>Seguridad</strong>.</p>
+    </div>
+  </div>
+  <div class="pantalla">
+    <figure>
+      <img class="captura" src="img/comun/02-aviso-de-privacidad.png" alt="Aviso de privacidad con el botón Acepto el aviso de privacidad" loading="lazy">
+      <figcaption>Solo aparece la primera vez (y cuando el aviso cambia).</figcaption>
+    </figure>
+    <div>
+      <h3>El aviso de privacidad</h3>
+      <p>Antes de usar la consola hay que leer y aceptar el aviso de privacidad: explica qué datos fiscales se guardan, para qué y cómo se protegen. Pulsa <strong>«Acepto el aviso de privacidad»</strong> para continuar.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= USUARIO ======================= -->
+<section id="usuario" class="cap-rol rol-usuario">
+  <div class="encab">
+    <span class="chip"><span class="punto"></span>Nivel 0 · el cliente</span>
+    <h2>3. Usuario</h2>
+    <p>Eres la persona del cliente: por ejemplo, Lupita, de «Panadería La Espiga». Platicas con el asistente, subes tus documentos y mantienes tu perfil fiscal al día. Solo ves lo de tu organización.</p>
+  </div>
+  <figure>
+    <video src="video/usuario.webm" controls muted playsinline preload="metadata" poster="img/usuario/01-asistente.png"></video>
+    <figcaption>Recorrido del Usuario: entrar, subir un ticket, revisar el perfil fiscal, su organización y la ayuda.</figcaption>
+  </figure>
+
+  <div class="pantalla">
+    <figure><img class="captura" src="img/usuario/01-asistente.png" alt="Asistente del cliente con indicadores de avance" loading="lazy"></figure>
+    <div>
+      <span class="ruta">Inicio</span>
+      <h3>Platica con el asistente</h3>
+      <ol>
+        <li>Al entrar te recibe el asistente: escríbele como a tu contador, «tengo una panadería», «¿qué me falta?».</li>
+        <li>Con el clip (o arrastrando) le mandas facturas XML, estados de cuenta, tickets o tu constancia: los guarda en tus documentos.</li>
+        <li>Arriba ves cómo vas (perfil, documentos del mes, constancia): toca una cifra para preguntarle por ella.</li>
+        <li>Lo que le digas de tu negocio lo anota en tu perfil fiscal; abajo de su respuesta ves qué guardó.</li>
+      </ol>
+      <p class="nota">Es orientación general hecha con IA y puede equivocarse: las decisiones fiscales las revisa tu contador.</p>
+    </div>
+  </div>
+
+  <div class="pantalla">
+    <figure><img class="captura" src="img/usuario/02-documentos.png" alt="Documentos del cliente organizados por mes" loading="lazy"></figure>
+    <div>
+      <span class="ruta">Documentos</span>
+      <h3>Sube tus facturas y estados de cuenta</h3>
+      <ol>
+        <li>Toca «Elegir archivos». Puedes elegir varios a la vez.</li>
+        <li>De tus facturas sube el XML.</li>
+        <li>Estados de cuenta y tickets: PDF o foto. Antes elige qué son en «Si no es factura, ¿qué es?».</li>
+        <li>Navega por año y mes, o busca por el nombre del archivo.</li>
+      </ol>
+      <p class="nota">Si subes el mismo archivo dos veces no se duplica. Todo se guarda cifrado.</p>
+    </div>
+  </div>
+
+  <div class="pantalla">
+    <figure><img class="captura" src="img/usuario/03-perfil-fiscal.png" alt="Perfil fiscal con RFC, régimen y origen de cada dato" loading="lazy"></figure>
+    <div>
+      <span class="ruta">Perfil fiscal</span>
+      <h3>Llena tu perfil con tu constancia</h3>
+      <ol>
+        <li>Descarga tu Constancia de Situación Fiscal (PDF) del portal del SAT, de los últimos 3 meses.</li>
+        <li>Toca «Subir mi constancia»: queda guardada en tu expediente.</li>
+        <li>Llena tus datos (RFC, régimen, domicilio) o platícaselos al asistente.</li>
+        <li>Completa lo que la constancia no dice: a qué te dedicas, si facturas, tus bancos, si tienes trabajadores.</li>
+      </ol>
+      <p class="nota">Nada se da por bueno hasta que lo confirmas. Cada dato dice de dónde salió: de tu constancia, de ti o del despacho.</p>
+    </div>
+  </div>
+
+  <div class="pantalla">
+    <figure><img class="captura" src="img/usuario/04-mi-organizacion.png" alt="Mi organización con sus miembros y su papel" loading="lazy"></figure>
+    <div>
+      <span class="ruta">Mi cuenta → Mi organización</span>
+      <h3>La gente de tu organización</h3>
+      <p>Ves tu organización y tu papel en ella. Si eres su <strong>Administrador</strong>, desde aquí invitas a personas de tu empresa, cambias su papel o las quitas.</p>
+      <p class="nota">Una organización no puede quedarse sin administrador: nombra a otro antes de dejar de serlo.</p>
+    </div>
+  </div>
+
+  <div class="pantalla">
+    <figure><img class="captura" src="img/usuario/05-mi-cuenta.png" alt="Mi cuenta con datos personales" loading="lazy"></figure>
+    <div>
+      <span class="ruta">Mi cuenta</span>
+      <h3>Tu cuenta</h3>
+      <p>Desde el menú de tu nombre llegas a Mi cuenta: tus datos, tu seguridad, tu foto, tus sesiones y tus avisos. En <strong>Sesiones</strong> ves desde qué equipos has entrado y puedes cerrar las que no reconozcas.</p>
+    </div>
+  </div>
+
+  <div class="pantalla">
+    <figure><img class="captura" src="img/usuario/06-seguridad.png" alt="Seguridad: correo, celular y verificación en dos pasos" loading="lazy"></figure>
+    <div>
+      <span class="ruta">Mi cuenta → Seguridad</span>
+      <h3>Protege tu cuenta</h3>
+      <ol>
+        <li>Registra tu correo y escribe el código que te llega para verificarlo.</li>
+        <li>Registra tu celular con código de país (por ejemplo +52 55 1234 5678).</li>
+        <li>Activa la verificación en dos pasos: al entrar te pediremos además un código.</li>
+        <li>Guarda los 10 códigos de recuperación: cada uno te deja entrar una vez si no te llega el código.</li>
+      </ol>
+      <p class="alerta"><strong>Nadie del despacho te va a pedir un código</strong> por teléfono ni mensaje. Si alguien lo hace, no se lo des.</p>
+    </div>
+  </div>
+
+  <div class="pantalla">
+    <figure><img class="captura" src="img/usuario/07-ayuda.png" alt="Ayuda dentro de la consola" loading="lazy"></figure>
+    <div>
+      <span class="ruta">Ayuda</span>
+      <h3>La ayuda dentro de la consola</h3>
+      <p>La consola trae su propia ayuda, que muestra solo lo que tu rol puede hacer. Trucos: <strong>Ctrl + K</strong> (⌘ + K en Mac) abre el buscador de pantallas, y el botón del sol / la luna cambia entre modo claro y oscuro.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= ADMINISTRADOR ======================= -->
+<section id="administrador" class="cap-rol rol-admin">
+  <div class="encab">
+    <span class="chip"><span class="punto"></span>Nivel 1 · el contador</span>
+    <h2>4. Administrador</h2>
+    <p>Eres parte del equipo del despacho: por ejemplo, Jorge, el contador. Ves a <strong>todos</strong> los clientes sin pertenecer a ninguno, das de alta a sus personas y les das seguimiento mes a mes. Puedes hacer todo lo del Usuario, pero para cualquier cliente.</p>
+  </div>
+  <figure>
+    <video src="video/administrador.webm" controls muted playsinline preload="metadata" poster="img/administrador/02-cartera.png"></video>
+    <figcaption>Recorrido del Administrador: la cartera, los documentos y el perfil de un cliente, organizaciones e invitaciones.</figcaption>
+  </figure>
+
+  <div class="pantalla">
+    <figure><img class="captura" src="img/administrador/01-asistente-cartera.png" alt="Asistente en modo Toda la cartera" loading="lazy"></figure>
+    <div>
+      <span class="ruta">Inicio</span>
+      <h3>El asistente para el despacho</h3>
+      <ol>
+        <li>Al entrar abre «Toda la cartera» con el semáforo del mes.</li>
+        <li>Toca la pastilla de arriba para cambiar a un cliente: siempre está a la vista con quién estás platicando.</li>
+        <li>Pídele un resumen del perfil, qué falta o un borrador de mensaje para el cliente (no lo envía: lo copias tú).</li>
+      </ol>
+      <p class="nota">Lo que guarde a partir de lo que le digas queda como «Del despacho». Cada quien tiene su propia conversación.</p>
+    </div>
+  </div>
+
+  <div class="pantalla">
+    <figure><img class="captura" src="img/administrador/02-cartera.png" alt="Cartera con el semáforo de cada cliente" loading="lazy"></figure>
+    <div>
+      <span class="ruta">Cartera</span>
+      <h3>La cartera del despacho</h3>
+      <p>Todos los clientes del mes con un semáforo: <strong>urgente</strong> (sin RFC o sin estado de cuenta del mes), <strong>atención</strong> o <strong>al día</strong>. Cada tarjeta dice qué falta y lleva directo a su asistente, documentos o perfil.</p>
+    </div>
+  </div>
+
+  <div class="pantalla">
+    <figure><img class="captura" src="img/administrador/03-documentos-cliente.png" alt="Bóveda de documentos de Panadería La Espiga" loading="lazy"></figure>
+    <div>
+      <span class="ruta">Documentos</span>
+      <h3>La bóveda de cada cliente</h3>
+      <p>Elige al cliente arriba: ves sus documentos por mes y por tipo. Un mes sin facturas o sin estado de cuenta es lo que hay que pedirle. También puedes subir documentos por él.</p>
+    </div>
+  </div>
+
+  <div class="pantalla">
+    <figure><img class="captura" src="img/administrador/04-perfil-fiscal-cliente.png" alt="Perfil fiscal de un cliente visto por el despacho" loading="lazy"></figure>
+    <div>
+      <span class="ruta">Perfil fiscal</span>
+      <h3>El perfil fiscal de cada cliente</h3>
+      <p>Elige al cliente: ves su constancia, sus datos y de dónde salió cada uno. Puedes subir su constancia por él, confirmar datos y corregirlos; lo que captures queda como «Del despacho».</p>
+    </div>
+  </div>
+
+  <div class="pantalla">
+    <figure><img class="captura" src="img/administrador/05-organizaciones.png" alt="Lista de organizaciones (clientes)" loading="lazy"></figure>
+    <div>
+      <span class="ruta">Organizaciones</span>
+      <h3>Dar acceso a un cliente</h3>
+      <ol>
+        <li>Crea una organización con el nombre del cliente (persona física, empresa o grupo).</li>
+        <li>Invita a la persona del cliente con el rol <strong>Usuario</strong> y elige su organización y su papel en la misma invitación.</li>
+        <li>Nombra a una persona del cliente Administrador de su organización: desde «Mi organización» gestionará a su propia gente, sin depender de ti.</li>
+      </ol>
+      <p class="nota">Una cuenta de cliente siempre se crea dentro de una organización. Quitar a alguien de la organización le corta el acceso al momento.</p>
+    </div>
+  </div>
+
+  <div class="pantalla">
+    <figure><img class="captura" src="img/administrador/06-invitaciones.png" alt="Invitaciones enviadas y su estado" loading="lazy"></figure>
+    <div>
+      <span class="ruta">Administración → Invitaciones</span>
+      <h3>Invitar a alguien</h3>
+      <ol>
+        <li>Elige el rol (solo aparecen los que están por debajo del tuyo) y escribe su correo.</li>
+        <li>Pulsa «Enviar invitación». Le llega un enlace para crear su cuenta.</li>
+        <li>Sigue el estado: Pendiente, Aceptada, Vencida o Revocada. «Reenviar» manda un enlace nuevo.</li>
+      </ol>
+      <p class="nota">Invitar es mejor que crear la cuenta a mano: no inventas contraseñas y el correo queda verificado.</p>
+    </div>
+  </div>
+
+  <div class="pantalla">
+    <figure><img class="captura" src="img/administrador/07-usuarios.png" alt="Usuarios que el Administrador puede gestionar" loading="lazy"></figure>
+    <div>
+      <span class="ruta">Administración → Usuarios</span>
+      <h3>Gestionar usuarios</h3>
+      <ul>
+        <li>Editas datos, rol y contraseña. Solo ves y tocas a quien está por debajo de ti.</li>
+        <li>Para pausar el acceso sin perder su historial, desmarca «Activo» en vez de eliminar.</li>
+        <li><strong>Sin correo:</strong> «Crear a mano» → «Aún no tiene correo», con una contraseña temporal que le das en persona.</li>
+        <li><strong>Si no puede entrar:</strong> «Editar» → contraseña nueva, o en «Seguridad» → «Quitar verificación en dos pasos».</li>
+      </ul>
+      <p class="alerta"><strong>Confirma que es esa persona</strong> antes de quitarle la verificación en dos pasos: es justo lo que intentaría quien quiere robarle la cuenta. Queda registrado.</p>
+    </div>
+  </div>
+
+  <div class="pantalla">
+    <figure><img class="captura" src="img/administrador/08-actividad.png" alt="Actividad: quién hizo qué, día por día" loading="lazy"></figure>
+    <div>
+      <span class="ruta">Actividad</span>
+      <h3>Ver quién hizo qué</h3>
+      <p>Día por día, lo que hizo cada quien: quién entró, a quién invitó y qué cambió en las organizaciones. Filtra por persona, organización o tipo. Las acciones se guardan 30 días; las invitaciones aceptadas, siempre.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= OWNER ======================= -->
+<section id="owner" class="cap-rol rol-owner">
+  <div class="encab">
+    <span class="chip"><span class="punto"></span>Nivel 2 · la dueña del despacho</span>
+    <h2>5. Owner</h2>
+    <p>Eres la dueña del negocio: por ejemplo, Marta. Puedes hacer todo lo del Administrador y además gestionas a los Administradores, creas roles nuevos y defines la imagen de la consola.</p>
+  </div>
+  <figure>
+    <video src="video/owner.webm" controls muted playsinline preload="metadata" poster="img/owner/01-cartera-y-metricas.png"></video>
+    <figcaption>Recorrido del Owner: la cartera con métricas, usuarios, roles y marca.</figcaption>
+  </figure>
+
+  <div class="pantalla">
+    <figure><img class="captura" src="img/owner/01-cartera-y-metricas.png" alt="Cartera con las métricas del despacho" loading="lazy"></figure>
+    <div>
+      <span class="ruta">Cartera</span>
+      <h3>La cartera, con métricas</h3>
+      <p>La misma cartera que ve el Administrador, y arriba el recuadro «El despacho este mes»: clientes al día, perfiles completos, documentos, facturas y estados de cuenta recibidos, y cuánto se usó el chat. Las flechas cambian de mes.</p>
+    </div>
+  </div>
+
+  <div class="pantalla">
+    <figure><img class="captura" src="img/owner/02-usuarios.png" alt="Usuarios, incluidos los Administradores" loading="lazy"></figure>
+    <div>
+      <span class="ruta">Administración → Usuarios</span>
+      <h3>Tu equipo</h3>
+      <p>Aquí aparecen también los Administradores (el equipo del despacho). Los das de alta, los editas o pausas igual que a los Usuarios. El botón de la llave da permisos a una sola persona, además de los de su rol: úsalo para excepciones.</p>
+    </div>
+  </div>
+
+  <div class="pantalla">
+    <figure><img class="captura" src="img/owner/03-roles.png" alt="Roles que el Owner puede gestionar" loading="lazy"></figure>
+    <div>
+      <span class="ruta">Administración → Roles</span>
+      <h3>Roles y permisos</h3>
+      <ol>
+        <li>Para un puesto nuevo (por ejemplo «Analista» o «Supervisor»), crea un rol y elige su <strong>nivel</strong>: Usuario no gestiona a nadie; Administrador gestiona a los Usuarios.</li>
+        <li>En «Opciones → Permisos» marca qué puede hacer.</li>
+        <li>Asígnalo al invitar o al editar a una persona.</li>
+      </ol>
+      <p class="nota">Solo puedes crear roles de un nivel por debajo del tuyo y dar permisos que tú tienes. El nivel de los roles propios (Owner, Administrador, Usuario) no se cambia.</p>
+    </div>
+  </div>
+
+  <div class="pantalla">
+    <figure><img class="captura" src="img/owner/04-invitaciones.png" alt="Invitaciones con el rol Administrador disponible" loading="lazy"></figure>
+    <div>
+      <span class="ruta">Administración → Invitaciones</span>
+      <h3>Invitar a un Administrador</h3>
+      <p>Funciona igual que para el Administrador, pero tú puedes elegir también el rol <strong>Administrador</strong> para sumar a alguien al equipo del despacho.</p>
+    </div>
+  </div>
+
+  <div class="pantalla">
+    <figure><img class="captura" src="img/owner/05-marca.png" alt="Marca: logo y color principal" loading="lazy"></figure>
+    <div>
+      <span class="ruta">Sistema → Marca</span>
+      <h3>La marca</h3>
+      <p>Subes el logo y eliges el color principal. Se aplica a toda la consola y a la pantalla de entrar.</p>
+    </div>
+  </div>
+
+  <div class="pantalla">
+    <figure><img class="captura" src="img/owner/06-actividad.png" alt="Actividad de todo el equipo" loading="lazy"></figure>
+    <div>
+      <span class="ruta">Actividad</span>
+      <h3>Actividad de todo el equipo</h3>
+      <p>Ves la actividad de los Administradores y de los Usuarios. Es la forma de saber quién dio acceso a quién y cuándo.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= DEVELOPER ======================= -->
+<section id="developer" class="cap-rol rol-dev">
+  <div class="encab">
+    <span class="chip"><span class="punto"></span>Nivel 3 · quien mantiene la consola</span>
+    <h2>6. Developer</h2>
+    <p>Tiene todos los permisos y es <strong>invisible</strong>: su cuenta no aparece en ninguna lista, ni sus auditorías, invitaciones o roles, y las invitaciones que manda no llevan su nombre. Además de todo lo anterior ve el menú <strong>Sistema</strong>: Estado, Métricas, Auditoría, Alertas, Seguridad (IPs bloqueadas), Claves de API, Sesiones y Trabajos en segundo plano.</p>
+  </div>
+  <figure>
+    <video src="video/developer.webm" controls muted playsinline preload="metadata" poster="img/developer/01-estado-del-sistema.png"></video>
+    <figcaption>Recorrido del Developer por el menú Sistema.</figcaption>
+  </figure>
+  <p>Cada pantalla de Sistema está explicada, con capturas, en el <strong>Manual de desarrollador</strong> (<code>docs/manuales/manual-desarrollador.html</code>), junto con cómo levantar, probar y desplegar la consola.</p>
+  <p class="nota">Si un correo no llega, mira <strong>Trabajos</strong>: el envío se reintenta solo y ahí queda el último error del proveedor de correo.</p>
+</section>
+
+<section id="ayuda">
+  <h2>7. Si algo falla</h2>
+  <div class="tbl"><table>
+    <thead><tr><th>Qué pasa</th><th>Qué hacer</th></tr></thead>
+    <tbody>
+      <tr><td>Olvidé mi contraseña</td><td>En la pantalla de entrar, «¿Olvidaste tu contraseña?» y escribe tu correo. Si no tienes correo verificado, pide a quien te dio de alta que te ponga una nueva.</td></tr>
+      <tr><td>No me llega el código de dos pasos</td><td>Usa uno de tus 10 códigos de recuperación. Si no los tienes, pide a tu Administrador (o al despacho) que quite la verificación; te van a confirmar que eres tú.</td></tr>
+      <tr><td>La invitación dice «vencida»</td><td>Vale 7 días. Pide que te la reenvíen: «Reenviar» manda un enlace nuevo.</td></tr>
+      <tr><td>No veo a un cliente o a una persona</td><td>Solo ves a quien está por debajo de tu rol, y como cliente solo ves tu organización. Si debería aparecer, revisa su rol y su organización con alguien de un nivel arriba.</td></tr>
+      <tr><td>Subí un archivo dos veces</td><td>No pasa nada: la consola detecta que es el mismo y no lo duplica.</td></tr>
+      <tr><td>El asistente anotó algo mal</td><td>Díselo en la plática o corrígelo en Perfil fiscal. Nada se da por bueno hasta que lo confirmas.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+</main>
+</div>
