@@ -25,8 +25,6 @@
       <div><dt>Documentos</dt><dd>{{ numero(m.documentosDelMes) }}</dd></div>
       <div><dt>Facturas</dt><dd>{{ numero(m.facturasDelMes) }}</dd></div>
       <div><dt>Estados de cuenta</dt><dd>{{ numero(m.estadosDeCuentaDelMes) }}</dd></div>
-      <div><dt>Conciliados</dt><dd>{{ numero(m.conciliadosDelMes) }}</dd></div>
-      <div><dt>Sin factura</dt><dd>{{ numero(m.movimientosSinFactura) }}</dd></div>
       <div><dt>Chat</dt><dd>{{ numero(m.mensajesDelChat) }} msj · {{ m.personasEnElChat }} pers.</dd></div>
       <div><dt>Tokens del chat</dt><dd>{{ numero(m.tokensDelChat) }}</dd></div>
     </dl>
@@ -63,8 +61,6 @@
         <nav class="ca-acciones" [attr.aria-label]="'Ir a ' + c.nombre">
           <a class="btn btn-outline-secondary" [routerLink]="['/']" [queryParams]="{ cliente: c.id }" aria-label="Asistente"><i class="bi bi-chat-dots" aria-hidden="true"></i></a>
           <a class="btn btn-outline-secondary" [routerLink]="['/documentos']" [queryParams]="{ cliente: c.id }" aria-label="Documentos"><i class="bi bi-folder2-open" aria-hidden="true"></i></a>
-          <a class="btn btn-outline-secondary" [routerLink]="['/estados-de-cuenta']" [queryParams]="{ cliente: c.id }" aria-label="Estados de cuenta"><i class="bi bi-bank" aria-hidden="true"></i></a>
-          <a class="btn btn-outline-secondary" [routerLink]="['/conciliacion']" [queryParams]="{ cliente: c.id, anio: anio, mes: mes }" aria-label="Conciliación"><i class="bi bi-arrow-left-right" aria-hidden="true"></i></a>
           <a class="btn btn-outline-secondary" [routerLink]="['/perfil-fiscal']" [queryParams]="{ cliente: c.id }" aria-label="Perfil fiscal"><i class="bi bi-person-lines-fill" aria-hidden="true"></i></a>
         </nav>
       </li>

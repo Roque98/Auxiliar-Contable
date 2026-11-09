@@ -68,3 +68,10 @@ Datos financieros y fiscales sensibles: cifrado en reposo y tránsito, URLs firm
 - **2026-10-25** — Un cliente = un RFC. La ubicación del FKE aún no se conoce.
 - **2026-10-25** — Los documentos se guardan en el disco del VPS (cifrados por la aplicación) y
   el antivirus va en el VPS.
+- **2026-11-09** — **Esta app es el front y la infraestructura**, no el motor. El motor fiscal
+  (el «FKE» de arriba) es el trabajo ya validado del despacho, en Python, en el repo
+  `Roque98/motores-fiscales`: lector de estados de cuenta que cuadra al centavo, Excel de CFDI,
+  conciliación, motor contable (pólizas, balanza, estados financieros, contabilidad
+  electrónica), impuestos y el RAG de leyes. Lo que se escribió aquí el 25-oct para leer CFDI,
+  estados de cuenta y conciliar se quitó (sin datos en producción); las pantallas volverán
+  llamando a ese motor. Donde la app y el motor difieran, gana el motor.

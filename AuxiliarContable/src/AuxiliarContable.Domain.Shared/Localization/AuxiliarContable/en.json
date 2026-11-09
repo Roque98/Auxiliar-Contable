@@ -533,8 +533,6 @@
     "Menu:Cartera": "Portfolio",
     "Menu:Asistente": "Assistant",
     "Menu:Documentos": "Documents",
-    "Menu:EstadosDeCuenta": "Bank statements",
-    "Menu:Conciliacion": "Reconciliation",
     "AuxiliarContable:OrganizacionObligatoria": "A client user (User role) must join an organization: choose one.",
     "AuxiliarContable:OrganizacionNoExiste": "The chosen organization no longer exists. Reload and choose another.",
     "AuxiliarContable:InvitacionSinOrganizacion": "This invitation's organization no longer exists. Ask for a new invitation.",

@@ -36,11 +36,6 @@ public class ClienteDeCarteraDto
     public int DocumentosDelMes { get; set; }
     public int FacturasDelMes { get; set; }
     public int EstadosDeCuentaDelMes { get; set; }
-    public int EstadosPorRevisar { get; set; }
-    public int PropuestasPorRevisar { get; set; }
-
-    /// <summary>Movimientos del mes sin factura ni justificación (de estados que cuadran).</summary>
-    public int MovimientosSinFactura { get; set; }
 
     public DateTime? UltimoDocumentoUtc { get; set; }
     public SemaforoDeCliente Semaforo { get; set; }
@@ -59,8 +54,6 @@ public class MetricasDelDespachoDto
     public int DocumentosDelMes { get; set; }
     public int FacturasDelMes { get; set; }
     public int EstadosDeCuentaDelMes { get; set; }
-    public int ConciliadosDelMes { get; set; }
-    public int MovimientosSinFactura { get; set; }
     public int MensajesDelChat { get; set; }
     public int PersonasEnElChat { get; set; }
 

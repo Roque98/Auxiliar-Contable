@@ -4,7 +4,6 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { mensajeDeError } from '../invitaciones/invitaciones.service';
 import { ClienteVisibleDto, EstadoDeDocumento, PerfilFiscalService } from '../perfil-fiscal/perfil-fiscal.service';
 import {
-  DireccionDelCfdi,
   DocumentoDeBovedaDto,
   DocumentosService,
   MESES,
@@ -24,8 +23,6 @@ interface Mes {
   mes: number;
   cantidad: number;
   porTipo: { tipo: TipoDeDocumento; cantidad: number }[];
-  emitido: number;
-  recibido: number;
 }
 
 const POR_PAGINA = 20;
@@ -52,7 +49,6 @@ export class DocumentosComponent implements OnInit {
   private readonly router = inject(Router);
 
   readonly Tipo = TipoDeDocumento;
-  readonly Direccion = DireccionDelCfdi;
   readonly Estado = EstadoDeDocumento;
   readonly nombresDeTipo = NOMBRES_DE_TIPO;
   readonly meses = MESES;
@@ -72,7 +68,6 @@ export class DocumentosComponent implements OnInit {
   readonly anio = signal<number | null>(null);
   readonly mes = signal<number | null>(null);
   tipo: TipoDeDocumento | null = null;
-  direccion: DireccionDelCfdi | null = null;
   texto = '';
   tipoAlSubir = TipoDeDocumento.EstadoDeCuenta;
 
@@ -82,11 +77,9 @@ export class DocumentosComponent implements OnInit {
     const anio = this.anio();
     const porMes = new Map<number, Mes>();
     for (const r of this.resumen().filter(x => x.anio === anio)) {
-      const m = porMes.get(r.mes) ?? { anio: r.anio, mes: r.mes, cantidad: 0, porTipo: [], emitido: 0, recibido: 0 };
+      const m = porMes.get(r.mes) ?? { anio: r.anio, mes: r.mes, cantidad: 0, porTipo: [] };
       m.cantidad += r.cantidad;
       m.porTipo.push({ tipo: r.tipo, cantidad: r.cantidad });
-      m.emitido += r.totalEmitido;
-      m.recibido += r.totalRecibido;
       porMes.set(r.mes, m);
     }
     return [...porMes.values()].sort((a, b) => b.mes - a.mes);
@@ -160,7 +153,6 @@ export class DocumentosComponent implements OnInit {
         anio: this.mes() !== null || this.texto.trim() === '' ? this.anio() : null,
         mes: this.mes(),
         tipo: this.tipo,
-        direccion: this.direccion,
         texto: this.texto.trim() || null,
         skipCount: ya.length,
         maxResultCount: POR_PAGINA,
@@ -236,10 +228,6 @@ export class DocumentosComponent implements OnInit {
       return;
     }
     this.ocupado.set(`borrar:${d.id}`);
-  }
-
-  dinero(valor: number, moneda = 'MXN'): string {
-    return valor.toLocaleString('es-MX', { style: 'currency', currency: moneda.length === 3 ? moneda : 'MXN' });
   }
 
   fecha(iso: string): string {

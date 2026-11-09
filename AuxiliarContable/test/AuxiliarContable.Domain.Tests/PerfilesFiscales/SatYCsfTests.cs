@@ -5,7 +5,7 @@ using Xunit;
 
 namespace AuxiliarContable;
 
-/// <summary>Lo que se lee y valida con código, sin IA: formatos del SAT y la parte fija de la CSF.</summary>
+/// <summary>Validación de formatos del SAT para lo que la persona escribe en su perfil. Leer la CSF es del motor.</summary>
 public class SatYCsfTests
 {
     [Theory]
@@ -56,36 +56,5 @@ public class SatYCsfTests
     {
         Sat.Regimenes.Count.ShouldBe(19);
         Sat.Regimenes["626"].ShouldBe("Régimen Simplificado de Confianza");
-    }
-
-    private const string TextoDeCsf = """
-        CÉDULA DE IDENTIFICACIÓN FISCAL CONSTANCIA DE SITUACIÓN FISCAL
-        RFC: GODE561231GR8 idCIF: 12345678901
-        Lugar y Fecha de Emisión CUAUHTEMOC , CIUDAD DE MEXICO A 15 DE OCTUBRE DE 2026
-        Datos de Identificación del Contribuyente: RFC: GODE561231GR8 CURP: GODE561231HDFRRN09
-        Nombre (s): EDUARDO Primer Apellido: GOMEZ Segundo Apellido: DIAZ
-        Datos del domicilio registrado Código Postal:06600 Tipo de Vialidad: CALLE
-        """;
-
-    [Fact]
-    public void De_la_CSF_saca_con_codigo_los_identificadores()
-    {
-        var ids = LectorDeCsf.Leer(TextoDeCsf);
-
-        ids.PareceCsf.ShouldBeTrue();
-        ids.Rfc.ShouldBe("GODE561231GR8");
-        ids.Curp.ShouldBe("GODE561231HDFRRN09");
-        ids.CodigoPostal.ShouldBe("06600");
-        ids.FechaDeEmision.ShouldBe(new DateOnly(2026, 10, 15));
-        ids.TipoDePersona.ShouldBe("fisica");
-    }
-
-    [Fact]
-    public void Un_documento_que_no_es_CSF_no_lo_parece()
-    {
-        var ids = LectorDeCsf.Leer("ESTADO DE CUENTA BANCO EJEMPLO RFC: BEJ010101AB1 SALDO 1,000.00");
-
-        ids.PareceCsf.ShouldBeFalse();
-        ids.TipoDePersona.ShouldBe("moral");
     }
 }

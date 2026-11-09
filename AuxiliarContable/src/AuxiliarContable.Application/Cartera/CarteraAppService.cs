@@ -3,11 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using AuxiliarContable.Autorizacion;
-using AuxiliarContable.Cfdis;
-using AuxiliarContable.Conciliaciones;
 using AuxiliarContable.Conversaciones;
 using AuxiliarContable.Documentos;
-using AuxiliarContable.EstadosDeCuenta;
 using AuxiliarContable.Identity;
 using AuxiliarContable.Organizaciones;
 using AuxiliarContable.PerfilesFiscales;
@@ -20,7 +17,8 @@ namespace AuxiliarContable.Cartera;
 
 /// <summary>
 /// Ver <see cref="ICarteraAppService"/>. Consultas por tabla agrupadas por cliente (no una por
-/// cliente): con decenas de clientes son siete consultas en total.
+/// cliente). El semáforo solo mira lo que esta aplicación sabe: perfil y documentos recibidos.
+/// Lo que sale de leerlos (estados que no cuadran, movimientos sin factura) lo dará el motor.
 /// </summary>
 [Authorize(AuxiliarContablePermissions.Organizaciones.Default)]
 public class CarteraAppService : AuxiliarContableAppService, ICarteraAppService
@@ -28,10 +26,6 @@ public class CarteraAppService : AuxiliarContableAppService, ICarteraAppService
     private readonly IRepository<Organizacion, Guid> _organizaciones;
     private readonly IRepository<PerfilFiscal, Guid> _perfiles;
     private readonly IRepository<Documento, Guid> _documentos;
-    private readonly IRepository<Cfdi, Guid> _cfdis;
-    private readonly IRepository<EstadoDeCuenta, Guid> _estados;
-    private readonly IRepository<MovimientoBancario, Guid> _movimientos;
-    private readonly IRepository<Conciliacion, Guid> _conciliaciones;
     private readonly IRepository<MensajeDeConversacion, Guid> _mensajes;
     private readonly IRepository<Conversacion, Guid> _conversaciones;
     private readonly JerarquiaDeUsuarios _jerarquia;
@@ -41,10 +35,6 @@ public class CarteraAppService : AuxiliarContableAppService, ICarteraAppService
         IRepository<Organizacion, Guid> organizaciones,
         IRepository<PerfilFiscal, Guid> perfiles,
         IRepository<Documento, Guid> documentos,
-        IRepository<Cfdi, Guid> cfdis,
-        IRepository<EstadoDeCuenta, Guid> estados,
-        IRepository<MovimientoBancario, Guid> movimientos,
-        IRepository<Conciliacion, Guid> conciliaciones,
         IRepository<MensajeDeConversacion, Guid> mensajes,
         IRepository<Conversacion, Guid> conversaciones,
         JerarquiaDeUsuarios jerarquia,
@@ -53,10 +43,6 @@ public class CarteraAppService : AuxiliarContableAppService, ICarteraAppService
         _organizaciones = organizaciones;
         _perfiles = perfiles;
         _documentos = documentos;
-        _cfdis = cfdis;
-        _estados = estados;
-        _movimientos = movimientos;
-        _conciliaciones = conciliaciones;
         _mensajes = mensajes;
         _conversaciones = conversaciones;
         _jerarquia = jerarquia;
@@ -80,11 +66,6 @@ public class CarteraAppService : AuxiliarContableAppService, ICarteraAppService
 
         var documentos = await AsyncExecuter.ToListAsync((await _documentos.GetQueryableAsync())
             .Select(d => new { d.OrganizacionId, d.Tipo, Fecha = d.FechaDelDocumento ?? d.CreationTime, d.CreationTime }));
-        var estados = await AsyncExecuter.ToListAsync((await _estados.GetQueryableAsync())
-            .Select(e => new { e.Id, e.OrganizacionId, e.Revision, e.PeriodoFin }));
-        var propuestas = await AsyncExecuter.ToListAsync((await _conciliaciones.GetQueryableAsync())
-            .Where(c => c.Estado == EstadoDeConciliacion.Propuesta).Select(c => c.OrganizacionId));
-        var sinFactura = await MovimientosSinFacturaAsync(inicio, fin);
 
         var total = CamposDelPerfil.Todos.Count;
         var lista = new List<ClienteDeCarteraDto>();
@@ -93,7 +74,6 @@ public class CarteraAppService : AuxiliarContableAppService, ICarteraAppService
             var perfil = perfiles.GetValueOrDefault(c.Id);
             var susDocs = documentos.Where(d => d.OrganizacionId == c.Id).ToList();
             var delMes = susDocs.Where(d => d.Fecha >= inicio && d.Fecha < fin).ToList();
-            var susEstados = estados.Where(e => e.OrganizacionId == c.Id).ToList();
 
             var dto = new ClienteDeCarteraDto
             {
@@ -105,9 +85,6 @@ public class CarteraAppService : AuxiliarContableAppService, ICarteraAppService
                 DocumentosDelMes = delMes.Count,
                 FacturasDelMes = delMes.Count(d => d.Tipo == TipoDeDocumento.Cfdi),
                 EstadosDeCuentaDelMes = delMes.Count(d => d.Tipo == TipoDeDocumento.EstadoDeCuenta),
-                EstadosPorRevisar = susEstados.Count(e => e.Revision == RevisionDelEstadoDeCuenta.RequiereRevision),
-                PropuestasPorRevisar = propuestas.Count(o => o == c.Id),
-                MovimientosSinFactura = sinFactura.GetValueOrDefault(c.Id),
                 UltimoDocumentoUtc = susDocs.Count == 0 ? null : susDocs.Max(d => d.CreationTime),
             };
 
@@ -130,22 +107,7 @@ public class CarteraAppService : AuxiliarContableAppService, ICarteraAppService
                 dto.Pendientes.Add("No hay facturas del mes.");
             }
 
-            if (dto.EstadosPorRevisar > 0)
-            {
-                dto.Pendientes.Add($"{dto.EstadosPorRevisar} estado(s) de cuenta no cuadran.");
-            }
-
-            if (dto.MovimientosSinFactura > 0)
-            {
-                dto.Pendientes.Add($"{dto.MovimientosSinFactura} movimiento(s) sin factura.");
-            }
-
-            if (dto.PropuestasPorRevisar > 0)
-            {
-                dto.Pendientes.Add($"{dto.PropuestasPorRevisar} pareja(s) por confirmar.");
-            }
-
-            dto.Semaforo = dto.Rfc == null || dto.EstadosPorRevisar > 0 || dto.EstadosDeCuentaDelMes == 0
+            dto.Semaforo = dto.Rfc == null || dto.EstadosDeCuentaDelMes == 0
                 ? SemaforoDeCliente.Urgente
                 : dto.Pendientes.Count > 0 ? SemaforoDeCliente.Atencion : SemaforoDeCliente.AlDia;
             lista.Add(dto);
@@ -163,10 +125,6 @@ public class CarteraAppService : AuxiliarContableAppService, ICarteraAppService
 
         var (inicio, fin) = Mes(anio, mes);
         var clientes = await GetClientesAsync(anio, mes);
-        var conciliados = await AsyncExecuter.CountAsync((await _conciliaciones.GetQueryableAsync())
-            .Where(c => c.Estado == EstadoDeConciliacion.Confirmada
-                        && (c.LastModificationTime ?? c.CreationTime) >= inicio
-                        && (c.LastModificationTime ?? c.CreationTime) < fin));
 
         var chat = await AsyncExecuter.ToListAsync(
             from m in await _mensajes.GetQueryableAsync()
@@ -184,29 +142,10 @@ public class CarteraAppService : AuxiliarContableAppService, ICarteraAppService
             DocumentosDelMes = clientes.Sum(c => c.DocumentosDelMes),
             FacturasDelMes = clientes.Sum(c => c.FacturasDelMes),
             EstadosDeCuentaDelMes = clientes.Sum(c => c.EstadosDeCuentaDelMes),
-            ConciliadosDelMes = conciliados,
-            MovimientosSinFactura = clientes.Sum(c => c.MovimientosSinFactura),
             MensajesDelChat = chat.Count(m => m.Rol == RolDelMensaje.Usuario),
             PersonasEnElChat = chat.Select(m => m.UsuarioId).Distinct().Count(),
             TokensDelChat = chat.Sum(m => (long)m.Tokens),
         };
-    }
-
-    /// <summary>Por cliente: movimientos del mes sin unión viva ni justificación, de estados que cuadran.</summary>
-    private async Task<Dictionary<Guid, int>> MovimientosSinFacturaAsync(DateTime inicio, DateTime fin)
-    {
-        var unidos = (await _conciliaciones.GetQueryableAsync())
-            .Where(c => c.Estado != EstadoDeConciliacion.Rechazada).Select(c => c.MovimientoId);
-        var consulta =
-            from m in await _movimientos.GetQueryableAsync()
-            join e in await _estados.GetQueryableAsync() on m.EstadoDeCuentaId equals e.Id
-            where m.Fecha >= inicio && m.Fecha < fin
-                  && e.Revision != RevisionDelEstadoDeCuenta.RequiereRevision
-                  && m.SinFacturaPorque == null
-                  && !unidos.Contains(m.Id)
-            group m by m.OrganizacionId into g
-            select new { OrganizacionId = g.Key, Cantidad = g.Count() };
-        return (await AsyncExecuter.ToListAsync(consulta)).ToDictionary(x => x.OrganizacionId, x => x.Cantidad);
     }
 
     private static (DateTime Inicio, DateTime Fin) Mes(int anio, int mes)

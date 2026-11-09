@@ -39,8 +39,8 @@
 
     @if (!p.csf) {
       <p>
-        Si tienes tu constancia a la mano, súbela y lleno tu perfil por ti. Si no, también puedes
-        capturar los datos tú mismo abajo.
+        Si tienes tu constancia a la mano, súbela para tu expediente. Los datos de tu perfil
+        los capturas abajo o se los platicas al asistente.
       </p>
     } @else {
       <p class="pf-csf-archivo">
@@ -49,7 +49,7 @@
       </p>
       @switch (p.csf.estado) {
         @case (Estado.Recibido) {
-          <p class="pf-estado" role="status"><span class="ig-girando" aria-hidden="true"></span>Leyendo tu constancia…</p>
+          <p class="pf-estado" role="status"><i class="bi bi-folder-check" aria-hidden="true"></i>Guardada en tu expediente.</p>
         }
         @case (Estado.Procesado) {
           <p class="pf-estado pf-estado-ok" role="status">
@@ -73,9 +73,9 @@
 
     @if (p.puedeEditar) {
       <label class="ig-btn pf-subir" [class.ig-btn-principal]="!p.csf" [class.ig-btn-secundario]="!!p.csf"
-             [class.pf-subir-ocupado]="subiendo() || leyendo()">
+             [class.pf-subir-ocupado]="subiendo()">
         <input type="file" accept="application/pdf" class="pf-archivo" (change)="subir($event)"
-               [disabled]="subiendo() || leyendo()" />
+               [disabled]="subiendo()" />
         @if (subiendo()) {
           <span class="ig-girando" aria-hidden="true"></span>Subiendo…
         } @else {

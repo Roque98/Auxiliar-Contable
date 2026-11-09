@@ -286,60 +286,30 @@ cuenta en frases lo que ya se registra, por día y con filtros (persona, organiz
   inferido), `Confirmado` y `DocumentoId`. ⚠️ `Proponer` (extracción) NUNCA pisa lo confirmado:
   devuelve false y queda aviso. `Responder` (persona) confirma. `ConfirmarLoDeLaConstancia`
   confirma de golpe solo lo extraído (no lo inferido).
-- **Lectura de la CSF** (`ProcesadorDeCsf`, trabajo `auxiliar:leer-csf`): texto con PdfPig; el
-  CÓDIGO lee RFC/CURP/CP/fecha de emisión (`LectorDeCsf`, `Sat`) y Haiku lee nombre, domicilio y
-  tablas (regímenes, obligaciones, actividades) desde el TEXTO (el PDF solo si es escaneo). En
-  identificadores manda el código; regímenes se validan contra los 19 de c_RegimenFiscal. Avisos:
-  CSF > 90 días, RFC distinto, dígito verificador, régimen desconocido, porcentajes ≠ 100.
+- **Lectura de la CSF: NO es de esta app.** `SubirCsfAsync` la guarda cifrada y la marca como la
+  última del perfil (`UltimaCsfId`); leerla y proponer sus datos (`Proponer` con origen CSF) lo
+  hará el motor fiscal (repo `motores-fiscales`). `Sat` queda solo para validar formato de RFC/CURP
+  y el catálogo de regímenes en lo que escribe una persona.
 - Quién: `Autorizador` — ver = `Ver`, cambiar = `Subir` (el papel «Solo ve» no cambia); el despacho
   en todos los clientes. Pantalla `/perfil-fiscal?cliente=` (mobile first).
 - Tests: `Domain.Tests/{Documentos,PerfilesFiscales}`, `Application.Tests/PerfilesFiscales`,
-  `Integration.Tests/PerfilesFiscales` (IA falsa `ModeloDeIADePrueba`, PDF generado con PdfPig).
+  `Integration.Tests/PerfilesFiscales` (PDF generado con PdfPig).
 
-### 1.2.10.1 Bóveda y CFDI
+### 1.2.10.1 Bóveda
 
 - `BovedaAppService` (`/documentos?cliente=`): subir uno por llamada (la pantalla manda varios en
-  serie), listar con filtros (año/mes sobre `FechaDelDocumento ?? CreationTime`, tipo, dirección,
-  texto), resumen por mes, `GetArchivoAsync` (descarga descifrada, SOLO por la API autenticada) y
-  borrado lógico. Ver = `Ver`; subir/borrar = `Subir`.
-- **CFDI = código, no IA**: `LectorDeCfdi` (3.3/4.0, sin DTD ni resolver, UUID del timbre
-  obligatorio). Duplicado = mismo SHA-256 O mismo UUID (índice único por cliente entre no
-  borrados). **Emitido/recibido NO se guarda**: se calcula con el RFC del perfil al consultar
-  (`Cfdi.DireccionPara`), porque el RFC puede llegar o corregirse después.
-- Totales del resumen: solo MXN, I suma, E resta, P/N/T no cuentan. Informativos, no fiscales.
+  serie), listar con filtros (año/mes sobre `FechaDelDocumento ?? CreationTime`, tipo, texto en el
+  nombre del archivo), resumen por mes y tipo, `GetArchivoAsync` (descarga descifrada, SOLO por la
+  API autenticada) y borrado lógico. Ver = `Ver`; subir/borrar = `Subir`.
+- **Esta app NO lee los documentos.** Un XML se guarda como `Cfdi` y nada más; estados de cuenta,
+  tickets y CSF igual. Leer CFDI y estados de cuenta, cuadrar, conciliar y todo cálculo fiscal es
+  del motor fiscal (repo `motores-fiscales`, el trabajo validado del despacho). Se quitaron el
+  lector de CFDI, los estados de cuenta, la conciliación y sus tablas (migración
+  `QuitarLecturaDeDocumentos`, 2026-11-09): eran un primer intento sin validar.
 - **Antivirus**: `IEscanerDeArchivos` antes de guardar (`GestorDeDocumentos`). Infectado = se
   rechaza; sin antivirus o caído = se acepta y se apunta en el log. ClamAV por `Antivirus:Host`
   (`deploy/instalar-antivirus.sh`).
-- El chat busca en la bóveda con `buscar_documentos` y `resumen_de_documentos`.
-
-### 1.2.10.2 Estados de cuenta
-
-- Subir a la bóveda con tipo `EstadoDeCuenta` encola `auxiliar:leer-estado-de-cuenta`
-  (`ProcesadorDeEstadoDeCuenta`): texto con PdfPig (hasta 40 páginas) o el PDF/foto si es escaneo;
-  el modelo TRANSCRIBE (esquema `registrar_estado_de_cuenta`, `MaxTokens` 32000) y el CÓDIGO cuadra
-  (`EstadoDeCuenta.Cuadrar`: inicial + abonos − cargos = final, tolerancia 0.01; `SaltosDeSaldo` =
-  renglones cuyo saldo corrido no sigue del anterior → dónde mirar).
-- `Revision`: `PorConfirmar` (cuadra) / `RequiereRevision` (no cuadra o faltan saldos) /
-  `Confirmado` (una persona; si no cuadra, solo con `aunqueNoCuadre`, queda en auditoría).
-  Corregir un renglón o los saldos vuelve a cuadrar y a pedir confirmación.
-- Cuenta: solo últimos 4 dígitos. Renglones sin fecha válida se descartan (log). Montos negativos
-  se reacomodan (cargo negativo = abono) al leer; a mano, se rechazan.
-- `EstadosDeCuentaAppService` (`/estados-de-cuenta?cliente=`): lista, `GetDetalleAsync` (⚠️ no
-  `GetAsync`: chocaba con `GetListAsync`, ver docs/trampas/nucleo-abp.md), corregir, confirmar,
-  volver a leer. Borrar el documento en la bóveda borra su estado de cuenta.
-
-### 1.2.10.3 Conciliación
-
-- `Emparejador` (Domain, función pura, SIN IA): abono ↔ factura EMITIDA, cargo ↔ RECIBIDA; mismo
-  monto ±0.01 MXN, fecha ±5 días; desempata RFC/UUID en concepto o referencia y la fecha más
-  cercana; cada uno se usa una vez (codicioso por puntaje); lo ambiguo baja puntaje y lo dice.
-- `Conciliacion` (Propuesta/Confirmada/Rechazada). Índices ÚNICOS filtrados: un movimiento y una
-  factura en UNA unión viva como máximo (lo garantiza la base). Las rechazadas no se reproponen.
-- `ConciliacionAppService.GetDelMesAsync/ProponerAsync(org, anio, mes)`: solo movimientos de estados
-  que NO están en `RequiereRevision`; facturas tipo I con RFC del cliente (±5 días del mes).
-  Faltantes: depósitos/cargos sin factura, ventas PUE sin depósito, gastos PUE sin cargo (las PPD
-  no: se cobran con complemento). `MovimientoBancario.SinFacturaPorque` = «no lleva factura».
-- El chat lo usa con `conciliacion_del_mes` («¿qué me falta?»). Pantalla `/conciliacion?cliente=&anio=&mes=`.
+- El chat busca en la bóveda con `buscar_documentos` y `resumen_de_documentos` (solo conteos).
 
 ### 1.2.11 Chat (asistente)
 
@@ -368,17 +338,13 @@ cuenta en frases lo que ya se registra, por día y con filtros (persona, organiz
 - **Invitar desde el chat** (`invitar_persona`, en el chat de UN cliente): solo si `quien.Equipo` y
   `AbpIdentity.Users.Create`. Usa `IInvitacionAppService.CreateAsync` con rol `usuario` y la
   organización ACTIVA (el modelo no la elige); papel dueño/miembro/lector. Confirmar antes.
-- **Todo platicando** (chat de un cliente): conciliación (`proponer_parejas`, `confirmar_pareja`,
-  `rechazar_pareja`, `unir_a_mano`, `marcar_sin_factura`) y estados de cuenta (`estados_de_cuenta`,
-  `revisar_estado_de_cuenta`, `confirmar_estado_de_cuenta`, `corregir_saldos`, `corregir_movimiento`)
-  con `puedeEditar`; personas (`personas_del_cliente`, `cambiar_papel`, `quitar_persona`) solo el
-  equipo. `conciliacion_del_mes` ya devuelve ids (las instrucciones prohíben enseñarlos). Las
-  correcciones son lo que la PERSONA lee en su PDF. `corregir_saldos` conserva el saldo que no se
-  dijo (el servicio reemplaza los dos). Un id ajeno o inventado (`EntityNotFoundException`) vuelve
-  al modelo como error: ya no tumba el turno.
+- **Personas** (chat de un cliente, solo el equipo): `personas_del_cliente`, `cambiar_papel`,
+  `quitar_persona`. Un id ajeno o inventado (`EntityNotFoundException`) vuelve al modelo como
+  error: no tumba el turno. Las herramientas del motor fiscal (leer, cuadrar, conciliar) se
+  agregarán cuando el motor esté conectado.
 - **Cartera** (`CarteraAppService`, `/cartera`): permiso `Organizaciones` + `Autorizador.Equipo`
   (en los tests la autorización es «todo permitido»: el atributo no basta). Semáforo por cliente
-  (urgente = sin RFC, sin estado de cuenta del mes o uno que no cuadra) y pendientes en palabras.
+  (urgente = sin RFC o sin estado de cuenta del mes, contando documentos recibidos) y pendientes en palabras.
   Métricas (`GetMetricasAsync`): solo nivel ≥ Owner (incluye tokens del chat del mes).
 - **El chat ES la portada** (`/`, `?cliente=`; `/asistente` redirige ahí y la ruta NO lleva
   authGuard: sin sesión el layout pinta su acceso y no la monta). El equipo entra a «Toda la

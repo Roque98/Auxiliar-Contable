@@ -1,6 +1,4 @@
-using AuxiliarContable.EstadosDeCuenta;
-using AuxiliarContable.Cfdis;
-using AuxiliarContable.Conversaciones;
+﻿using AuxiliarContable.Conversaciones;
 using AuxiliarContable.Documentos;
 using AuxiliarContable.PerfilesFiscales;
 using AuxiliarContable.Organizaciones;
@@ -65,14 +63,6 @@ public class AuxiliarContableDbContext :
     public DbSet<Conversacion> Conversaciones { get; set; }
 
     public DbSet<MensajeDeConversacion> MensajesDeConversaciones { get; set; }
-
-    public DbSet<Cfdi> Cfdis { get; set; }
-
-    public DbSet<EstadoDeCuenta> EstadosDeCuenta { get; set; }
-
-    public DbSet<MovimientoBancario> MovimientosBancarios { get; set; }
-
-    public DbSet<Conciliaciones.Conciliacion> Conciliaciones { get; set; }
 
     // ⚠️ ESTOS DbSet NO SON DECORATIVOS. ABP aplica sus filtros globales (multi-tenancy y
     // soft delete) recorriendo las entidades que YA ESTAN en el modelo en el momento en que
@@ -267,86 +257,6 @@ public class AuxiliarContableDbContext :
             // borrado logico, un documento borrado y vuelto a subir chocaria con su fantasma.
             b.HasIndex(x => new { x.OrganizacionId, x.Sha256 });
             b.HasIndex(x => new { x.OrganizacionId, x.Tipo });
-        });
-
-        // CFDI leidos de su XML — AppCfdis. El archivo es su Documento (cifrado). Montos con 6
-        // decimales, como los admite el anexo 20. UUID unico por cliente ENTRE LOS VIVOS: un CFDI
-        // borrado y vuelto a subir no choca con su fantasma (mismo motivo que en Documentos).
-        builder.Entity<Cfdi>(b =>
-        {
-            b.ToTable(AuxiliarContableConsts.DbTablePrefix + "Cfdis", AuxiliarContableConsts.DbSchema);
-            b.ConfigureByConvention();
-            b.Property(x => x.Uuid).IsRequired().HasMaxLength(CfdiConsts.UuidLength);
-            b.Property(x => x.Version).IsRequired().HasMaxLength(10);
-            b.Property(x => x.TipoDeComprobante).IsRequired().HasMaxLength(1);
-            b.Property(x => x.Serie).HasMaxLength(50);
-            b.Property(x => x.Folio).HasMaxLength(50);
-            b.Property(x => x.EmisorRfc).IsRequired().HasMaxLength(CfdiConsts.MaxRfcLength);
-            b.Property(x => x.ReceptorRfc).IsRequired().HasMaxLength(CfdiConsts.MaxRfcLength);
-            b.Property(x => x.EmisorNombre).HasMaxLength(CfdiConsts.MaxNombreLength);
-            b.Property(x => x.ReceptorNombre).HasMaxLength(CfdiConsts.MaxNombreLength);
-            b.Property(x => x.UsoCfdi).HasMaxLength(10);
-            b.Property(x => x.Moneda).IsRequired().HasMaxLength(10);
-            b.Property(x => x.MetodoDePago).HasMaxLength(10);
-            b.Property(x => x.FormaDePago).HasMaxLength(10);
-            b.Property(x => x.Concepto).HasMaxLength(CfdiConsts.MaxConceptoLength);
-            foreach (var monto in new[] { nameof(Cfdi.SubTotal), nameof(Cfdi.Descuento), nameof(Cfdi.Total),
-                         nameof(Cfdi.TipoDeCambio), nameof(Cfdi.TotalTrasladados), nameof(Cfdi.TotalRetenidos) })
-            {
-                b.Property(monto).HasPrecision(20, 6);
-            }
-
-            b.HasIndex(x => new { x.OrganizacionId, x.Uuid }).IsUnique().HasFilter("\"IsDeleted\" = false");
-            b.HasIndex(x => x.DocumentoId);
-            b.HasIndex(x => new { x.OrganizacionId, x.Fecha });
-        });
-
-        // Estados de cuenta — AppEstadosDeCuenta (uno por documento) y AppMovimientosBancarios
-        // (sus renglones; OrganizacionId repetido para conciliar sin pasar por el estado).
-        builder.Entity<EstadoDeCuenta>(b =>
-        {
-            b.ToTable(AuxiliarContableConsts.DbTablePrefix + "EstadosDeCuenta", AuxiliarContableConsts.DbSchema);
-            b.ConfigureByConvention();
-            b.Property(x => x.Banco).IsRequired().HasMaxLength(EstadoDeCuentaConsts.MaxBancoLength);
-            b.Property(x => x.Cuenta).HasMaxLength(EstadoDeCuentaConsts.MaxCuentaLength);
-            b.Property(x => x.Moneda).IsRequired().HasMaxLength(10);
-            foreach (var monto in new[] { nameof(EstadoDeCuenta.SaldoInicial), nameof(EstadoDeCuenta.SaldoFinal),
-                         nameof(EstadoDeCuenta.TotalAbonos), nameof(EstadoDeCuenta.TotalCargos), nameof(EstadoDeCuenta.Diferencia) })
-            {
-                b.Property(monto).HasPrecision(18, 2);
-            }
-
-            b.Ignore(x => x.Cuadra);
-            b.HasIndex(x => x.DocumentoId);
-            b.HasIndex(x => x.OrganizacionId);
-            b.HasMany(x => x.Movimientos).WithOne().HasForeignKey(x => x.EstadoDeCuentaId).IsRequired();
-            b.Navigation(x => x.Movimientos).AutoInclude();
-        });
-
-        builder.Entity<MovimientoBancario>(b =>
-        {
-            b.ToTable(AuxiliarContableConsts.DbTablePrefix + "MovimientosBancarios", AuxiliarContableConsts.DbSchema);
-            b.ConfigureByConvention();
-            b.Property(x => x.Concepto).IsRequired().HasMaxLength(EstadoDeCuentaConsts.MaxConceptoLength);
-            b.Property(x => x.Referencia).HasMaxLength(EstadoDeCuentaConsts.MaxReferenciaLength);
-            b.Property(x => x.Cargo).HasPrecision(18, 2);
-            b.Property(x => x.Abono).HasPrecision(18, 2);
-            b.Property(x => x.Saldo).HasPrecision(18, 2);
-            b.Property(x => x.SinFacturaPorque).HasMaxLength(EstadoDeCuentaConsts.MaxConceptoLength);
-            b.HasIndex(x => new { x.OrganizacionId, x.Fecha });
-        });
-
-        // Conciliaciones — AppConciliaciones. Las rechazadas se quedan (no volver a proponerlas);
-        // entre las VIVAS (propuesta o confirmada, no borradas) un movimiento y una factura solo
-        // pueden estar en una: lo garantiza la base, no solo el codigo.
-        builder.Entity<AuxiliarContable.Conciliaciones.Conciliacion>(b =>
-        {
-            b.ToTable(AuxiliarContableConsts.DbTablePrefix + "Conciliaciones", AuxiliarContableConsts.DbSchema);
-            b.ConfigureByConvention();
-            b.Property(x => x.Motivo).IsRequired().HasMaxLength(AuxiliarContable.Conciliaciones.ConciliacionConsts.MaxMotivoLength);
-            b.HasIndex(x => x.MovimientoId).IsUnique().HasFilter("\"Estado\" <> 2 AND \"IsDeleted\" = false").HasDatabaseName("IX_AppConciliaciones_MovimientoVivo");
-            b.HasIndex(x => x.CfdiId).IsUnique().HasFilter("\"Estado\" <> 2 AND \"IsDeleted\" = false").HasDatabaseName("IX_AppConciliaciones_CfdiVivo");
-            b.HasIndex(x => x.OrganizacionId);
         });
 
         // Perfil fiscal — AppPerfilesFiscales (uno por organizacion) y AppDatosDePerfiles (un

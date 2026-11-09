@@ -6,29 +6,6 @@ import { TipoDeDocumento } from './tipos';
 
 export { TipoDeDocumento };
 
-/** Igual que `DireccionDelCfdi`. */
-export enum DireccionDelCfdi {
-  Desconocida = 0,
-  Emitido = 1,
-  Recibido = 2,
-}
-
-export interface CfdiResumenDto {
-  uuid: string;
-  tipoDeComprobante: string;
-  direccion: DireccionDelCfdi;
-  serie?: string | null;
-  folio?: string | null;
-  emisorRfc: string;
-  emisorNombre?: string | null;
-  receptorRfc: string;
-  receptorNombre?: string | null;
-  total: number;
-  moneda: string;
-  metodoDePago?: string | null;
-  concepto?: string | null;
-}
-
 export interface DocumentoDeBovedaDto {
   id: string;
   tipo: TipoDeDocumento;
@@ -39,7 +16,6 @@ export interface DocumentoDeBovedaDto {
   motivo?: string | null;
   subidoUtc: string;
   fecha: string;
-  cfdi?: CfdiResumenDto | null;
 }
 
 export interface ResultadoDeSubidaDto {
@@ -53,8 +29,6 @@ export interface ResumenDelMesDto {
   mes: number;
   tipo: TipoDeDocumento;
   cantidad: number;
-  totalEmitido: number;
-  totalRecibido: number;
 }
 
 export interface BuscarEnBovedaDto {
@@ -62,7 +36,6 @@ export interface BuscarEnBovedaDto {
   anio?: number | null;
   mes?: number | null;
   tipo?: TipoDeDocumento | null;
-  direccion?: DireccionDelCfdi | null;
   texto?: string | null;
   skipCount?: number;
   maxResultCount?: number;

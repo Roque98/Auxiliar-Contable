@@ -5,13 +5,11 @@ using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
 using AuxiliarContable.Autorizacion;
-using AuxiliarContable.BackgroundJobs;
 using AuxiliarContable.Documentos;
 using AuxiliarContable.Files;
 using AuxiliarContable.Organizaciones;
 using Microsoft.AspNetCore.Authorization;
 using Volo.Abp;
-using Volo.Abp.BackgroundJobs;
 using Volo.Abp.Content;
 using Volo.Abp.Domain.Repositories;
 
@@ -30,22 +28,19 @@ public class PerfilFiscalAppService : AuxiliarContableAppService, IPerfilFiscalA
     private readonly IRepository<Organizacion, Guid> _organizaciones;
     private readonly GestorDeDocumentos _gestor;
     private readonly Autorizador _autorizador;
-    private readonly IBackgroundJobManager _trabajos;
 
     public PerfilFiscalAppService(
         IRepository<PerfilFiscal, Guid> perfiles,
         IRepository<Documento, Guid> documentos,
         IRepository<Organizacion, Guid> organizaciones,
         GestorDeDocumentos gestor,
-        Autorizador autorizador,
-        IBackgroundJobManager trabajos)
+        Autorizador autorizador)
     {
         _perfiles = perfiles;
         _documentos = documentos;
         _organizaciones = organizaciones;
         _gestor = gestor;
         _autorizador = autorizador;
-        _trabajos = trabajos;
     }
 
     public async Task<List<ClienteVisibleDto>> GetClientesAsync()
@@ -96,9 +91,7 @@ public class PerfilFiscalAppService : AuxiliarContableAppService, IPerfilFiscalA
         perfil.EmpezarLecturaDeCsf(documento.Id);
         await _perfiles.UpdateAsync(perfil, autoSave: true);
 
-        // Se vuelve a leer aunque sea un duplicado: los avisos dependen de la fecha (antigüedad)
-        // y de lo que se haya confirmado desde la vez anterior.
-        await _trabajos.EnqueueAsync(new LeerCsfArgs { DocumentoId = documento.Id });
+        // Se guarda en el expediente; leerla y proponer sus datos al perfil es trabajo del motor fiscal.
         return await DescribirAsync(organizacionId);
     }
 
@@ -135,7 +128,7 @@ public class PerfilFiscalAppService : AuxiliarContableAppService, IPerfilFiscalA
 
     /// <summary>
     /// Valida y deja el valor en su forma canónica. Lo que una persona escribe pasa por aquí;
-    /// lo que extrae la CSF, por <see cref="ProcesadorDeCsf.Combinar"/>.
+    /// lo que extraiga el motor fiscal de la CSF también deberá pasar por aquí.
     /// </summary>
     public static string Normalizar(string clave, string valor)
     {

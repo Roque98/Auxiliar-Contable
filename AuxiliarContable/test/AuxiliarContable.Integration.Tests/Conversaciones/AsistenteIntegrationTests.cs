@@ -200,20 +200,21 @@ public class AsistenteIntegrationTests : ConJerarquiaTestBase
         await ComoAsync(Usuario, () => _perfil.ResponderAsync(_cliente,
             new ResponderDatoDelPerfilDto { Campo = CamposDelPerfil.Rfc, Valor = "GODE561231GR8" }));
         await ComoAsync(Usuario, () => GetRequiredService<Boveda.IBovedaAppService>().SubirAsync(_cliente, Documentos.TipoDeDocumento.Otro,
-            new Volo.Abp.Content.RemoteStreamContent(new System.IO.MemoryStream(System.Text.Encoding.UTF8.GetBytes(Cfdis.LectorDeCfdiTests.Cfdi40())), "f.xml")));
+            new Volo.Abp.Content.RemoteStreamContent(new System.IO.MemoryStream(System.Text.Encoding.UTF8.GetBytes(
+                """<?xml version="1.0"?><cfdi:Comprobante xmlns:cfdi="http://www.sat.gob.mx/cfd/4"/>""")), "venta-pan.xml")));
 
-        _modelo.UsarHerramienta(HerramientasDelAsistente.BuscarDocumentos, new { anio = 2026, mes = 9, direccion = "emitida" });
+        _modelo.UsarHerramienta(HerramientasDelAsistente.BuscarDocumentos, new { tipo = "cfdi", texto = "pan" });
         _modelo.UsarHerramienta(HerramientasDelAsistente.ResumenDeDocumentos, new { });
-        _modelo.Contestar("En septiembre facturaste $1,160.00.");
+        _modelo.Contestar("Tienes una factura de este mes.");
 
-        await ComoAsync(Usuario, () => _asistente.EnviarAsync(_cliente, Mensaje("¿Cuánto facturé en septiembre?")));
+        await ComoAsync(Usuario, () => _asistente.EnviarAsync(_cliente, Mensaje("¿Qué facturas tengo?")));
 
         var busqueda = _modelo.Solicitudes[1].Turnos.Last().Bloques.Single().ShouldBeOfType<BloqueDeResultadoDeHerramienta>();
         busqueda.EsError.ShouldBeFalse();
         busqueda.Contenido.ShouldContain("\"total\":1");
-        busqueda.Contenido.ShouldContain("Pan dulce");
+        busqueda.Contenido.ShouldContain("venta-pan.xml");
         var resumen = _modelo.Solicitudes[2].Turnos.Last().Bloques.Single().ShouldBeOfType<BloqueDeResultadoDeHerramienta>();
-        resumen.Contenido.ShouldContain("\"emitido\":1160");
+        resumen.Contenido.ShouldContain("\"cantidad\":1");
     }
 
     [Fact]
