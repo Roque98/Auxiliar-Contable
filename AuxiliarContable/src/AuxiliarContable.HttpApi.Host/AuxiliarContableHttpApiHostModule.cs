@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Volo.Abp.Emailing;
 using AuxiliarContable.Documentos;
 using AuxiliarContable.IA.Claude;
+using AuxiliarContable.MotorFiscal;
 using AuxiliarContable.Notifications.Brevo;
 using Volo.Abp.BlobStoring;
 using Volo.Abp.BlobStoring.FileSystem;
@@ -241,6 +242,16 @@ public class AuxiliarContableHttpApiHostModule : AbpModule
         context.Services.AddHttpClient(ClaudeModeloDeIA.NombreHttpClient, cliente =>
         {
             cliente.Timeout = TimeSpan.FromSeconds(claude.TimeoutSegundos);
+        });
+
+        // Motor fiscal (motores-fiscales): servicio Python en 127.0.0.1 del mismo servidor. Sin
+        // MotorFiscal:Url queda «sin configurar» y el chat dice que no pudo consultar.
+        Configure<MotorFiscalOptions>(configuration.GetSection(MotorFiscalOptions.Seccion));
+        var motor = configuration.GetSection(MotorFiscalOptions.Seccion).Get<MotorFiscalOptions>() ?? new MotorFiscalOptions();
+        context.Services.AddHttpClient(MotorFiscalHttp.NombreHttpClient, cliente =>
+        {
+            // El máximo de todos: cada operación pone su propio tope (MotorFiscalHttp).
+            cliente.Timeout = TimeSpan.FromSeconds(Math.Max(motor.TimeoutSegundos, motor.TimeoutDeBancosSegundos) + 5);
         });
 
         // Documentos de los clientes: AL DISCO, no a la base (decision del dueño, 2026-10-25),

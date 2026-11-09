@@ -127,6 +127,14 @@ La API key de Anthropic va en `/etc/auxiliar-contable/env` como `Claude__ApiKey`
 Sin `Claude__ApiKey` la aplicación arranca igual; lo que necesite IA lanza «no configurado».
 Ver `CLAUDE.md` §1.2.8. El chat usa `Claude__ModeloDelChat` si se define (si no, el mismo).
 
+### Motor fiscal
+
+El chat consulta leyes (y, más adelante, lee estados de cuenta) en el servicio `motores-fiscales`, que corre
+en el mismo VPS como unidad systemd y escucha solo en `127.0.0.1:5090` (ver el README de ese repositorio).
+La URL viene en `appsettings.json` (`MotorFiscal:Url`); para cambiarla, `MotorFiscal__Url` en el `env`.
+Si el motor está caído la consola sigue funcionando: el asistente dice que no pudo consultar.
+Comprobar: `curl -s http://127.0.0.1:5090/salud`.
+
 ## Antivirus (ClamAV)
 
 Lo que suben los clientes pasa por ClamAV ANTES de guardarse. Una vez, como root:

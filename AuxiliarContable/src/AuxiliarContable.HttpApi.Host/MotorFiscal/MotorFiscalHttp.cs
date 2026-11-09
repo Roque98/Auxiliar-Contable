@@ -1,0 +1,166 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Net.Http;
+using System.Net.Http.Json;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using System.Threading;
+using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using Volo.Abp.DependencyInjection;
+
+namespace AuxiliarContable.MotorFiscal;
+
+/// <summary>Sección <c>MotorFiscal</c>. Sin <see cref="Url"/> el motor queda «sin configurar».</summary>
+public class MotorFiscalOptions
+{
+    public const string Seccion = "MotorFiscal";
+
+    /// <summary>En el VPS el servicio <c>motores-fiscales</c> escucha en 127.0.0.1:5090 (nunca expuesto).</summary>
+    public string? Url { get; set; }
+
+    /// <summary>La búsqueda en leyes tarda menos de un segundo; más que esto es que el motor está atorado.</summary>
+    public int TimeoutSegundos { get; set; } = 20;
+
+    /// <summary>Leer y conciliar un mes (varios PDF, cientos de XML) tarda más: el OCR de un escaneo, decenas de segundos.</summary>
+    public int TimeoutDeBancosSegundos { get; set; } = 180;
+}
+
+/// <summary>
+/// Cliente HTTP del servicio <c>motores-fiscales</c> (FastAPI, ver <c>servicio/app.py</c> en ese repo).
+/// Cualquier fallo (caído, lento, 5xx) se vuelve <see cref="MotorFiscalNoDisponibleException"/>: el
+/// chat lo recibe como error de herramienta y le dice a la persona que no pudo consultar.
+/// </summary>
+[Dependency(ReplaceServices = true)]
+[ExposeServices(typeof(IMotorFiscal))]
+public class MotorFiscalHttp : IMotorFiscal, ITransientDependency
+{
+    public const string NombreHttpClient = "MotorFiscal";
+
+    private readonly IHttpClientFactory _fabrica;
+    private readonly MotorFiscalOptions _opciones;
+    private readonly ILogger<MotorFiscalHttp> _log;
+
+    /// <summary>El servicio habla snake_case (Python); los tipos de la consola, PascalCase.</summary>
+    private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
+        NumberHandling = JsonNumberHandling.AllowReadingFromString,
+    };
+
+    public MotorFiscalHttp(IHttpClientFactory fabrica, IOptions<MotorFiscalOptions> opciones, ILogger<MotorFiscalHttp> log)
+    {
+        _fabrica = fabrica;
+        _opciones = opciones.Value;
+        _log = log;
+    }
+
+    public bool EstaConfigurado => !string.IsNullOrWhiteSpace(_opciones.Url);
+
+    public async Task<IReadOnlyList<ResultadoDeLey>> BuscarEnLeyesAsync(
+        string consulta, string? ley = null, int cuantos = 5, CancellationToken cancellationToken = default)
+    {
+        var ruta = $"rag/buscar?q={Uri.EscapeDataString(consulta)}&k={Math.Clamp(cuantos, 1, 20)}";
+        if (!string.IsNullOrWhiteSpace(ley))
+        {
+            ruta += $"&ley={Uri.EscapeDataString(ley.Trim().ToUpperInvariant())}";
+        }
+
+        using var tope = CancelationConTope(_opciones.TimeoutSegundos, cancellationToken);
+        var respuesta = await EnviarAsync<RespuestaDeBusqueda>(new HttpRequestMessage(HttpMethod.Get, ruta), tope.Token, cancellationToken);
+        return respuesta.Resultados
+            .Select(r => new ResultadoDeLey(r.Clave ?? "", r.Ordenamiento ?? "", r.Articulo, r.Ubicacion,
+                r.UltimaReformaDof, r.NotaVigencia, r.Url, r.Texto ?? ""))
+            .ToList();
+    }
+
+    public async Task<LecturaDeEstados> LeerEstadosDeCuentaAsync(
+        IReadOnlyList<ArchivoParaElMotor> archivos, CancellationToken cancellationToken = default)
+    {
+        using var tope = CancelationConTope(_opciones.TimeoutDeBancosSegundos, cancellationToken);
+        var peticion = new HttpRequestMessage(HttpMethod.Post, "bancos/leer")
+        {
+            Content = JsonContent.Create(new { archivos = archivos.Select(Base64) }, options: Json),
+        };
+        return await EnviarAsync<LecturaDeEstados>(peticion, tope.Token, cancellationToken);
+    }
+
+    public async Task<ResultadoDeConciliacion> ConciliarAsync(
+        string rfcDelCliente, IReadOnlyList<ArchivoParaElMotor> estadosDeCuenta, IReadOnlyList<ArchivoParaElMotor> facturas,
+        CancellationToken cancellationToken = default)
+    {
+        using var tope = CancelationConTope(_opciones.TimeoutDeBancosSegundos, cancellationToken);
+        var peticion = new HttpRequestMessage(HttpMethod.Post, "bancos/conciliar")
+        {
+            Content = JsonContent.Create(new
+            {
+                rfc_cliente = rfcDelCliente,
+                estados = estadosDeCuenta.Select(Base64),
+                cfdis = facturas.Select(Base64),
+            }, options: Json),
+        };
+        return await EnviarAsync<ResultadoDeConciliacion>(peticion, tope.Token, cancellationToken);
+    }
+
+    private static object Base64(ArchivoParaElMotor a) => new { nombre = a.Nombre, contenido_b64 = Convert.ToBase64String(a.Contenido) };
+
+    /// <summary>Cada operación con su tope; el del HttpClient es solo el máximo de todos.</summary>
+    private static CancellationTokenSource CancelationConTope(int segundos, CancellationToken externo)
+    {
+        var cts = CancellationTokenSource.CreateLinkedTokenSource(externo);
+        cts.CancelAfter(TimeSpan.FromSeconds(segundos));
+        return cts;
+    }
+
+    private async Task<T> EnviarAsync<T>(HttpRequestMessage peticion, CancellationToken cancellationToken, CancellationToken externo)
+    {
+        using var _ = peticion;
+        var ruta = peticion.RequestUri?.OriginalString ?? "";
+        if (!EstaConfigurado)
+        {
+            throw new MotorFiscalNoDisponibleException("Falta MotorFiscal:Url.");
+        }
+
+        var cliente = _fabrica.CreateClient(NombreHttpClient);
+        cliente.BaseAddress ??= new Uri(_opciones.Url!.TrimEnd('/') + "/");
+        try
+        {
+            using var respuesta = await cliente.SendAsync(peticion, cancellationToken);
+            if (!respuesta.IsSuccessStatusCode)
+            {
+                var cuerpo = await respuesta.Content.ReadAsStringAsync(cancellationToken);
+                _log.LogWarning("Motor fiscal {Ruta} respondió {Codigo}: {Cuerpo}", ruta.Split('?')[0], (int)respuesta.StatusCode,
+                    cuerpo.Length > 300 ? cuerpo[..300] : cuerpo);
+                throw new MotorFiscalNoDisponibleException($"El motor fiscal respondió {(int)respuesta.StatusCode}.");
+            }
+
+            return await respuesta.Content.ReadFromJsonAsync<T>(Json, cancellationToken)
+                   ?? throw new MotorFiscalNoDisponibleException("El motor fiscal respondió vacío.");
+        }
+        catch (Exception ex) when (ex is HttpRequestException or JsonException or TaskCanceledException && !externo.IsCancellationRequested)
+        {
+            _log.LogWarning(ex, "No se pudo llamar al motor fiscal ({Ruta})", ruta.Split('?')[0]);
+            throw new MotorFiscalNoDisponibleException("El motor fiscal no responde.", ex);
+        }
+    }
+
+    private sealed class RespuestaDeBusqueda
+    {
+        [JsonPropertyName("resultados")]
+        public List<ResultadoCrudo> Resultados { get; set; } = [];
+    }
+
+    private sealed class ResultadoCrudo
+    {
+        [JsonPropertyName("clave")] public string? Clave { get; set; }
+        [JsonPropertyName("ordenamiento")] public string? Ordenamiento { get; set; }
+        [JsonPropertyName("articulo")] public string? Articulo { get; set; }
+        [JsonPropertyName("ubicacion")] public string? Ubicacion { get; set; }
+        [JsonPropertyName("ultima_reforma_dof")] public string? UltimaReformaDof { get; set; }
+        [JsonPropertyName("nota_vigencia")] public string? NotaVigencia { get; set; }
+        [JsonPropertyName("url")] public string? Url { get; set; }
+        [JsonPropertyName("texto")] public string? Texto { get; set; }
+    }
+}

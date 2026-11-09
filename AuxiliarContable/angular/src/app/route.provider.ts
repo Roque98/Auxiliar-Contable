@@ -116,6 +116,16 @@ function configureRoutes() {
       layout: eLayoutType.application,
     },
 
+    // Banco contra facturas, por cliente y mes (motor fiscal). Solo el equipo.
+    {
+      path: '/conciliacion',
+      name: '::Menu:Conciliacion',
+      iconClass: 'bi bi-arrow-left-right',
+      order: 1.8,
+      layout: eLayoutType.application,
+      requiredPolicy: 'AuxiliarContable.Organizaciones',
+    },
+
     // El perfil fiscal: para el cliente, el suyo; para el despacho, el de cada cliente. Sin
     // permiso propio: quién ve y cambia qué lo decide el servidor (Autorizador, 404 a lo ajeno).
     {

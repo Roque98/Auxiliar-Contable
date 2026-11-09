@@ -1,0 +1,142 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using AuxiliarContable.Autorizacion;
+using AuxiliarContable.Documentos;
+using AuxiliarContable.MotorFiscal;
+using AuxiliarContable.Organizaciones;
+using AuxiliarContable.PerfilesFiscales;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.Extensions.Logging;
+using Volo.Abp;
+using Volo.Abp.Domain.Entities;
+using Volo.Abp.Domain.Repositories;
+
+namespace AuxiliarContable.Bancos;
+
+/// <summary>Ver <see cref="IBancosAppService"/>.</summary>
+[Authorize]
+public class BancosAppService : AuxiliarContableAppService, IBancosAppService
+{
+    /// <summary>Los mismos topes que acepta el motor (servicio/app.py).</summary>
+    public const int MaxEstadosDeCuenta = 24;
+
+    public const int MaxFacturas = 5000;
+
+    private readonly IRepository<Documento, Guid> _documentos;
+    private readonly AlmacenDeDocumentos _almacen;
+    private readonly Autorizador _autorizador;
+    private readonly IPerfilFiscalAppService _perfiles;
+    private readonly IMotorFiscal _motor;
+
+    public BancosAppService(
+        IRepository<Documento, Guid> documentos,
+        AlmacenDeDocumentos almacen,
+        Autorizador autorizador,
+        IPerfilFiscalAppService perfiles,
+        IMotorFiscal motor)
+    {
+        _documentos = documentos;
+        _almacen = almacen;
+        _autorizador = autorizador;
+        _perfiles = perfiles;
+        _motor = motor;
+    }
+
+    public async Task<LecturaDeEstados> LeerEstadoDeCuentaAsync(Guid organizacionId, Guid documentoId)
+    {
+        await _autorizador.ExigirAsync(organizacionId, AccionEnOrganizacion.Ver);
+        var documento = await _documentos.FindAsync(documentoId);
+        // De otro cliente = no existe (no se confirma que exista).
+        if (documento == null || documento.OrganizacionId != organizacionId)
+        {
+            throw new EntityNotFoundException(typeof(Documento), documentoId);
+        }
+
+        if (documento.Tipo != TipoDeDocumento.EstadoDeCuenta)
+        {
+            throw new UserFriendlyException("Ese documento no es un estado de cuenta.");
+        }
+
+        var archivo = new ArchivoParaElMotor(documento.NombreOriginal, await _almacen.LeerAsync(documento));
+        return await AlMotorAsync(() => _motor.LeerEstadosDeCuentaAsync([archivo]));
+    }
+
+    public async Task<ConciliacionDelMesDto> ConciliarAsync(Guid organizacionId, int anio, int mes)
+    {
+        await _autorizador.ExigirAsync(organizacionId, AccionEnOrganizacion.Ver);
+        if (mes is < 1 or > 12 || anio is < 2000 or > 2100)
+        {
+            throw new UserFriendlyException("Mes no válido.");
+        }
+
+        // Emitidas y recibidas se distinguen por el RFC del cliente: sin él, la conciliación no sabe de qué lado va cada factura.
+        var perfil = await _perfiles.GetAsync(organizacionId);
+        var rfc = perfil.Campos.FirstOrDefault(c => c.Clave == CamposDelPerfil.Rfc)?.Valor?.Trim().ToUpperInvariant();
+        if (string.IsNullOrWhiteSpace(rfc))
+        {
+            throw new UserFriendlyException("Falta el RFC del cliente en su perfil fiscal: sin él no se sabe qué facturas emitió y cuáles recibió.");
+        }
+
+        var desde = new DateTime(anio, mes, 1);
+        var hasta = desde.AddMonths(1);
+        var delMes = await AsyncExecuter.ToListAsync(
+            from d in await _documentos.GetQueryableAsync()
+            where d.OrganizacionId == organizacionId
+                  && (d.Tipo == TipoDeDocumento.EstadoDeCuenta || d.Tipo == TipoDeDocumento.Cfdi)
+                  && (d.FechaDelDocumento ?? d.CreationTime) >= desde
+                  && (d.FechaDelDocumento ?? d.CreationTime) < hasta
+            select d);
+
+        var estados = delMes.Where(d => d.Tipo == TipoDeDocumento.EstadoDeCuenta).ToList();
+        var facturas = delMes.Where(d => d.Tipo == TipoDeDocumento.Cfdi).ToList();
+        if (estados.Count == 0)
+        {
+            throw new UserFriendlyException($"No hay estados de cuenta de {desde:MM/yyyy} en la bóveda: súbelos en «Documentos».");
+        }
+
+        if (estados.Count > MaxEstadosDeCuenta || facturas.Count > MaxFacturas)
+        {
+            throw new UserFriendlyException($"Son demasiados archivos para un mes (máximo {MaxEstadosDeCuenta} estados de cuenta y {MaxFacturas} facturas).");
+        }
+
+        var resultado = await AlMotorAsync(async () => await _motor.ConciliarAsync(rfc,
+            await ArchivosAsync(estados), await ArchivosAsync(facturas)));
+
+        return new ConciliacionDelMesDto
+        {
+            Anio = anio,
+            Mes = mes,
+            Rfc = rfc,
+            EstadosDeCuenta = estados.Count,
+            Facturas = facturas.Count,
+            Resultado = resultado,
+        };
+    }
+
+    private async Task<List<ArchivoParaElMotor>> ArchivosAsync(IEnumerable<Documento> documentos)
+    {
+        var lista = new List<ArchivoParaElMotor>();
+        foreach (var d in documentos)
+        {
+            lista.Add(new ArchivoParaElMotor(d.NombreOriginal, await _almacen.LeerAsync(d)));
+        }
+
+        return lista;
+    }
+
+    /// <summary>Un motor caído o lento no es un error del usuario: se le dice qué pasa sin detalles técnicos.</summary>
+    private async Task<T> AlMotorAsync<T>(Func<Task<T>> llamada)
+    {
+        try
+        {
+            return await llamada();
+        }
+        catch (MotorFiscalNoDisponibleException ex)
+        {
+            Logger.LogWarning(ex, "El motor fiscal no respondió");
+            throw new UserFriendlyException("El motor fiscal no está disponible en este momento. Intenta de nuevo en unos minutos.");
+        }
+    }
+}

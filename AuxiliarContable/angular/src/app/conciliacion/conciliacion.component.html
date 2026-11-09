@@ -1,0 +1,189 @@
+<header class="cc-cabecera">
+  <h1>Conciliación</h1>
+  <p class="cc-nota">
+    Cruza los estados de cuenta del mes contra las facturas XML que están en Documentos. Lo hace el motor fiscal
+    del despacho; aquí no se guarda nada: si subes algo, vuelve a conciliar.
+  </p>
+
+  <div class="cc-filtros">
+    @if (clientes(); as lista) {
+      <label class="cc-campo cc-campo-cliente">
+        <span>Cliente</span>
+        <select class="ig-control" [ngModel]="clienteId()" (ngModelChange)="elegir($event)" data-testid="cliente">
+          <option [ngValue]="null" disabled>Elige un cliente…</option>
+          @for (c of lista; track c.id) {
+            <option [ngValue]="c.id">{{ c.nombre }}</option>
+          }
+        </select>
+      </label>
+    }
+    <label class="cc-campo">
+      <span>Mes</span>
+      <select class="ig-control" [(ngModel)]="mes">
+        @for (m of meses; track $index) {
+          <option [ngValue]="$index + 1">{{ m }}</option>
+        }
+      </select>
+    </label>
+    <label class="cc-campo">
+      <span>Año</span>
+      <select class="ig-control" [(ngModel)]="anio">
+        @for (a of anios; track a) {
+          <option [ngValue]="a">{{ a }}</option>
+        }
+      </select>
+    </label>
+    <button type="button" class="btn btn-primary cc-conciliar" [disabled]="!clienteId() || ocupado()" (click)="conciliar()">
+      @if (ocupado()) {
+        <span class="ig-girando" aria-hidden="true"></span> Conciliando…
+      } @else {
+        <i class="bi bi-arrow-left-right" aria-hidden="true"></i> Conciliar
+      }
+    </button>
+  </div>
+</header>
+
+@if (error(); as e) {
+  <div class="ig-alerta ig-alerta-error" role="alert">
+    {{ e }}
+    @if (cliente(); as c) {
+      <a [routerLink]="['/documentos']" [queryParams]="{ cliente: c.id }">Ir a Documentos</a>
+    }
+  </div>
+}
+
+@if (datos(); as d) {
+  <section class="cc-resumen" aria-label="Resumen">
+    <div class="cc-cifra"><strong>{{ cuentas().total }}</strong><span>movimientos</span></div>
+    <div class="cc-cifra cc-ok"><strong>{{ cuentas().conFactura }}</strong><span>con factura</span></div>
+    <div class="cc-cifra"><strong>{{ cuentas().traspasos }}</strong><span>traspasos propios</span></div>
+    <div class="cc-cifra cc-falta"><strong>{{ cuentas().sinFactura }}</strong><span>sin factura</span></div>
+    <div class="cc-cifra cc-falta"><strong>{{ d.resultado.facturasSinMovimiento.length }}</strong><span>facturas sin movimiento</span></div>
+  </section>
+  <p class="cc-nota">
+    {{ d.estadosDeCuenta }} estado(s) de cuenta y {{ d.facturas }} factura(s) de {{ meses[d.mes - 1] }} {{ d.anio }} · RFC {{ d.rfc }}
+  </p>
+
+  @for (e of d.resultado.errores; track $index) {
+    <div class="ig-alerta ig-alerta-aviso" role="alert">
+      No se pudo leer <strong>{{ e.archivo }}</strong>. Revísalo o súbelo otra vez (un PDF del banco funciona mejor que una foto).
+    </div>
+  }
+
+  <section aria-labelledby="cc-cuentas">
+    <h2 id="cc-cuentas">Cuentas</h2>
+    <div class="cc-cuentas">
+      @for (c of d.resultado.cuentas; track $index) {
+        <article class="cc-tarjeta">
+          <header class="cc-cuenta">
+            <div>
+              <strong>{{ c.banco || 'Banco' }} {{ terminacion(c.cuenta) }}</strong>
+              <small>{{ c.periodoInicial }} a {{ c.periodoFinal }}</small>
+            </div>
+            @if (c.cuadra) {
+              <span class="cc-chip cc-chip-ok"><i class="bi bi-check-circle-fill" aria-hidden="true"></i> Cuadra con el banco</span>
+            } @else {
+              <span class="cc-chip cc-chip-mal"><i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i> No cuadra o no se pudo comprobar</span>
+            }
+          </header>
+          <div class="cc-tabla-envoltura">
+            <table class="cc-tabla">
+              <thead><tr><th>Concepto</th><th>Banco</th><th>Leído</th><th>Diferencia</th></tr></thead>
+              <tbody>
+                @for (r of c.cuadre; track $index) {
+                  @if (r.ok !== null) {
+                    <tr [class.cc-fila-mal]="r.ok === false">
+                      <td>{{ r.concepto }}</td>
+                      <td class="cc-monto">{{ r.declarado | currency: 'MXN' : 'symbol-narrow' }}</td>
+                      <td class="cc-monto">{{ r.calculado | currency: 'MXN' : 'symbol-narrow' }}</td>
+                      <td class="cc-monto">{{ r.diferencia ? (r.diferencia | currency: 'MXN' : 'symbol-narrow') : '—' }}</td>
+                    </tr>
+                  }
+                }
+              </tbody>
+            </table>
+          </div>
+          @for (h of c.hallazgos; track $index) {
+            <p class="cc-hallazgo">{{ h.mensaje }}@if (h.sugerencia) { <span> · {{ h.sugerencia }}</span> }</p>
+          }
+        </article>
+      }
+    </div>
+  </section>
+
+  <section aria-labelledby="cc-movimientos">
+    <h2 id="cc-movimientos">Movimientos</h2>
+    <div class="cc-pestanas" role="tablist">
+      <button type="button" role="tab" [attr.aria-selected]="filtro() === 'todos'" (click)="filtro.set('todos')">Todos ({{ cuentas().total }})</button>
+      <button type="button" role="tab" [attr.aria-selected]="filtro() === 'sin_factura'" (click)="filtro.set('sin_factura')">Sin factura ({{ cuentas().sinFactura }})</button>
+      <button type="button" role="tab" [attr.aria-selected]="filtro() === 'con_factura'" (click)="filtro.set('con_factura')">Resueltos ({{ cuentas().conFactura + cuentas().traspasos }})</button>
+    </div>
+    <ul class="cc-movimientos">
+      @for (m of movimientos(); track $index) {
+        <li class="cc-movimiento" [attr.data-estado]="estado(m)">
+          <div class="cc-mov-linea">
+            <span class="cc-fecha">{{ m.fecha }}</span>
+            <span class="cc-concepto">{{ m.concepto }}</span>
+            <span class="cc-monto" [class.cc-abono]="m.naturaleza === 'abono'">
+              {{ m.naturaleza === 'abono' ? '+' : '−' }}{{ m.importe | currency: 'MXN' : 'symbol-narrow' }}
+            </span>
+          </div>
+          <div class="cc-mov-linea cc-mov-detalle">
+            <span class="cc-chip" [class]="'cc-chip cc-estado-' + estado(m)">{{ nombreDeEstado[estado(m)] }}</span>
+            @for (f of facturas(m); track $index) {
+              <span>{{ f.tercero }} {{ f.serieFolio }} · {{ f.importe | currency: 'MXN' : 'symbol-narrow' }}</span>
+            }
+            @if (m.conciliacion?.motivo) {
+              <small>{{ m.conciliacion?.motivo }}</small>
+            }
+            @if (m.conciliacion?.probabilidad && estado(m) !== 'sin_factura') {
+              <small>· {{ porcentaje(m.conciliacion?.probabilidad) }}</small>
+            }
+            @if (!m.seguro) {
+              <small class="cc-dudoso">· lectura sin comprobar con el saldo</small>
+            }
+          </div>
+        </li>
+      } @empty {
+        <li class="cc-vacio">Nada en esta vista.</li>
+      }
+    </ul>
+  </section>
+
+  @if (d.resultado.facturasSinMovimiento.length) {
+    <section aria-labelledby="cc-facturas">
+      <h2 id="cc-facturas">Facturas sin movimiento en el banco</h2>
+      <ul class="cc-movimientos">
+        @for (f of d.resultado.facturasSinMovimiento; track $index) {
+          <li class="cc-movimiento">
+            <div class="cc-mov-linea">
+              <span class="cc-fecha">{{ f.fecha }}</span>
+              <span class="cc-concepto">{{ f.tercero }} {{ f.serieFolio }} <small>({{ f.naturaleza === 'Emitidos' ? 'emitida' : 'recibida' }})</small></span>
+              <span class="cc-monto">{{ f.importe | currency: 'MXN' : 'symbol-narrow' }}</span>
+            </div>
+            <div class="cc-mov-linea cc-mov-detalle"><small>{{ f.motivo }}</small></div>
+          </li>
+        }
+      </ul>
+    </section>
+  }
+
+  @if (d.resultado.alertas.length) {
+    <section aria-labelledby="cc-alertas">
+      <h2 id="cc-alertas">Alertas</h2>
+      <ul class="cc-alertas">
+        @for (a of d.resultado.alertas; track $index) {
+          <li>
+            <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
+            @if (a.uuid && facturaPorUuid().get(a.uuid); as f) {
+              <strong>{{ f.tercero }} {{ f.serieFolio }}:</strong>
+            }
+            {{ a.mensaje }}
+          </li>
+        }
+      </ul>
+    </section>
+  }
+} @else if (!ocupado() && !error()) {
+  <p class="cc-vacio">Elige el cliente y el mes, y pulsa «Conciliar».</p>
+}

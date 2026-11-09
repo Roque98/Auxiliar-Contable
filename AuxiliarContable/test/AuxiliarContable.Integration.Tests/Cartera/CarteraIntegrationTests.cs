@@ -93,7 +93,8 @@ public class CarteraIntegrationTests : ConJerarquiaTestBase
         conversacion.NombreDelCliente.ShouldBe(AsistenteAppService.NombreDeLaCartera);
         conversacion.PuedeEditar.ShouldBeFalse();
         _modelo.Solicitudes[0].Herramientas.Select(h => h.Nombre)
-            .ShouldBe([HerramientasDelAsistente.ResumenDeCartera, HerramientasDelAsistente.CrearCliente]);
+            .ShouldBe([HerramientasDelAsistente.ResumenDeCartera, HerramientasDelAsistente.CrearCliente, HerramientasDelAsistente.ConsultarLeyes],
+                "el resumen, el alta y la ley (que no es de ningún cliente)");
         var resumen = _modelo.Solicitudes[1].Turnos.Last().Bloques.Single().ShouldBeOfType<BloqueDeResultadoDeHerramienta>();
         resumen.Contenido.ShouldContain("Taller Pepe");
         var perfil = _modelo.Solicitudes[2].Turnos.Last().Bloques.Single().ShouldBeOfType<BloqueDeResultadoDeHerramienta>();

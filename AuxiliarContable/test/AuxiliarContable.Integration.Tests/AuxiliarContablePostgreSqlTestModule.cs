@@ -78,6 +78,8 @@ public class AuxiliarContablePostgreSqlTestModule : AbpModule
             options.ClaveDeCifrado = System.Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32)));
         context.Services.Replace(ServiceDescriptor.Singleton<AuxiliarContable.IA.IModeloDeIA, ModeloDeIADePrueba>());
         context.Services.Replace(ServiceDescriptor.Singleton<AuxiliarContable.IA.IModeloConversacional, ModeloConversacionalDePrueba>());
+        // El motor fiscal tampoco se llama: cada test programa lo que «encuentra».
+        context.Services.Replace(ServiceDescriptor.Singleton<AuxiliarContable.MotorFiscal.IMotorFiscal, MotorFiscalDePrueba>());
         context.Services.Configure<AbpDbConnectionOptions>(options =>
         {
             options.ConnectionStrings.Default = PostgresTestConsts.MainConnectionString;

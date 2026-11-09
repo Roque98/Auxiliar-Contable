@@ -6,12 +6,14 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Unicode;
 using System.Threading.Tasks;
+using AuxiliarContable.Bancos;
 using AuxiliarContable.Boveda;
 using AuxiliarContable.Cartera;
 using AuxiliarContable.Documentos;
 using AuxiliarContable.IA;
 using AuxiliarContable.Identity;
 using AuxiliarContable.Invitaciones;
+using AuxiliarContable.MotorFiscal;
 using AuxiliarContable.Organizaciones;
 using AuxiliarContable.PerfilesFiscales;
 using Volo.Abp;
@@ -25,9 +27,9 @@ namespace AuxiliarContable.Conversaciones;
 /// pantalla, con los permisos de quien escribe: el modelo no tiene más poder que la persona.
 /// El cliente activo lo pone el código, nunca el modelo (no hay «organizacionId» en ningún esquema).
 ///
-/// <para>Aquí solo hay herramientas de la plataforma (perfil, documentos, clientes y personas).
-/// Leer CFDI y estados de cuenta, conciliar y todo cálculo fiscal es del motor
-/// (<c>motores-fiscales</c>): sus herramientas se agregan cuando el motor esté conectado.</para>
+/// <para>Las de la plataforma (perfil, documentos, clientes y personas) y las del motor fiscal
+/// (<c>motores-fiscales</c>, ver <see cref="IMotorFiscal"/>): leer CFDI y estados de cuenta, conciliar
+/// y todo cálculo fiscal es del motor; la consola solo le pregunta.</para>
 ///
 /// <para>Las validaciones son las de siempre (<see cref="PerfilFiscalAppService.Normalizar"/>):
 /// si el modelo manda algo mal, recibe el error como resultado y se lo pregunta a la persona.</para>
@@ -45,6 +47,23 @@ public class HerramientasDelAsistente : ITransientDependency
     public const string PersonasDelCliente = "personas_del_cliente";
     public const string CambiarPapel = "cambiar_papel";
     public const string QuitarPersona = "quitar_persona";
+    public const string ConsultarLeyes = "consultar_leyes";
+    public const string ConciliarMes = "conciliar_mes";
+
+    /// <summary>De la conciliación, el modelo recibe un resumen y hasta este número de pendientes por lista.</summary>
+    private const int MaxPendientesPorLista = 15;
+
+    /// <summary>Lo que se le pasa al modelo de cada artículo: los largos se recortan (cuestan tokens en cada turno).</summary>
+    private const int MaxCaracteresPorArticulo = 3000;
+
+    /// <summary>Consultar leyes no toca datos de nadie: vale igual en la conversación de un cliente y en la de la cartera.</summary>
+    private static readonly HerramientaDelModelo DeLeyes = new(ConsultarLeyes,
+        "Busca en las leyes fiscales mexicanas vigentes (LISR, LIVA, CFF, LIEPS, LFT, LSS…), sus reglamentos, la Resolución " +
+        "Miscelánea Fiscal y las NIF. Devuelve los artículos más relevantes con su texto, la ley, el artículo y la última reforma. " +
+        "Úsala SIEMPRE que la respuesta dependa de lo que dice la ley (deducciones, obligaciones, plazos, tasas, requisitos) y cita " +
+        "ley y artículo. «ley» acota a unas siglas; omítela si no estás seguro. Pregunta con términos de la ley o con la cita " +
+        "(«artículo 27 LISR», «deducción de automóviles personas morales»).",
+        """{"type":"object","properties":{"pregunta":{"type":"string","minLength":2,"maxLength":300},"ley":{"type":"string","maxLength":20}},"required":["pregunta"]}""");
 
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
     {
@@ -56,14 +75,20 @@ public class HerramientasDelAsistente : ITransientDependency
     private readonly ICarteraAppService _cartera;
     private readonly IOrganizacionAppService _organizaciones;
     private readonly IInvitacionAppService _invitaciones;
+    private readonly IMotorFiscal _motor;
+    private readonly IBancosAppService _bancos;
 
     public HerramientasDelAsistente(
         IPerfilFiscalAppService perfiles,
         IBovedaAppService boveda,
         ICarteraAppService cartera,
         IOrganizacionAppService organizaciones,
-        IInvitacionAppService invitaciones)
+        IInvitacionAppService invitaciones,
+        IMotorFiscal motor,
+        IBancosAppService bancos)
     {
+        _motor = motor;
+        _bancos = bancos;
         _invitaciones = invitaciones;
         _organizaciones = organizaciones;
         _perfiles = perfiles;
@@ -97,6 +122,7 @@ public class HerramientasDelAsistente : ITransientDependency
                   "tipo":{"type":"string","enum":["cfdi","estado_de_cuenta","ticket","constancia","otro"]},
                   "texto":{"type":"string"}}}
                 """),
+            DeLeyes,
         };
 
         if (puedeEditar)
@@ -124,6 +150,12 @@ public class HerramientasDelAsistente : ITransientDependency
         // Quién entra a este cliente: lo administra el despacho (el servicio de Organizaciones lo exige).
         if (esEquipo)
         {
+            lista.Add(new(ConciliarMes,
+                "Concilia los estados de cuenta del cliente activo contra sus facturas (XML) de un mes, con el motor fiscal del " +
+                "despacho: si cada estado de cuenta cuadra con lo que imprime el banco, cuántos movimientos tienen factura, cuáles " +
+                "no (depósitos sin factura emitida, pagos sin factura recibida), facturas sin movimiento y alertas (forma de pago " +
+                "mal, PUE pagada en otro mes). Tarda unos segundos. Úsala para «¿qué falta conciliar de octubre?».",
+                """{"type":"object","properties":{"anio":{"type":"integer","minimum":2000,"maximum":2100},"mes":{"type":"integer","minimum":1,"maximum":12}},"required":["anio","mes"]}"""));
             lista.Add(new(PersonasDelCliente,
                 "Las personas con acceso al cliente activo: nombre, correo y papel (dueño, miembro, lector). Los «userId» no se enseñan.",
                 """{"type":"object","properties":{}}"""));
@@ -156,6 +188,8 @@ public class HerramientasDelAsistente : ITransientDependency
                 $"Invitó a {e.GetString()}",
             CambiarPapel => "Cambió el papel de una persona",
             QuitarPersona => "Quitó el acceso a una persona",
+            ConsultarLeyes => "Consultó la ley",
+            ConciliarMes => "Concilió el banco",
             _ => null,
         };
     }
@@ -172,13 +206,14 @@ public class HerramientasDelAsistente : ITransientDependency
             "confirme el nombre exacto que le propusiste. Después, el cliente aparece en la lista de arriba para elegirlo, llenar su " +
             "perfil e invitarlo. Si ya existe uno con ese nombre, devuelve error.",
             """{"type":"object","properties":{"nombre":{"type":"string","minLength":2,"maxLength":128},"descripcion":{"type":"string","maxLength":256}},"required":["nombre"]}"""),
+        DeLeyes,
     ];
 
     public async Task<BloqueDeResultadoDeHerramienta> EjecutarAsync(Guid organizacionId, BloqueDeUsoDeHerramienta uso)
     {
         // El candado entre las dos clases de conversación: en la de la cartera (Guid.Empty) solo sus
         // herramientas (resumen y alta); en la de un cliente, nunca esas. Lo que pida el modelo no lo salta.
-        if ((organizacionId == Guid.Empty) != (uso.Nombre is ResumenDeCartera or CrearCliente))
+        if (uso.Nombre != ConsultarLeyes && (organizacionId == Guid.Empty) != (uso.Nombre is ResumenDeCartera or CrearCliente))
         {
             return new BloqueDeResultadoDeHerramienta(uso.Id, $"La herramienta «{uso.Nombre}» no está disponible en esta conversación.", EsError: true);
         }
@@ -187,6 +222,8 @@ public class HerramientasDelAsistente : ITransientDependency
         {
             var contenido = uso.Nombre switch
             {
+                ConsultarLeyes => await LeyesAsync(uso.Entrada),
+                ConciliarMes => await ConciliarAsync(organizacionId, uso.Entrada),
                 ResumenDeCartera => await CarteraAsync(uso.Entrada),
                 CrearCliente => await CrearClienteAsync(uso.Entrada),
                 InvitarPersona => await InvitarAsync(organizacionId, uso.Entrada),
@@ -206,6 +243,13 @@ public class HerramientasDelAsistente : ITransientDependency
         catch (UserFriendlyException ex)
         {
             return new BloqueDeResultadoDeHerramienta(uso.Id, ex.Message, EsError: true);
+        }
+        catch (MotorFiscalNoDisponibleException)
+        {
+            // Sin detalles técnicos: el modelo solo tiene que decir que ahora no pudo consultar.
+            return new BloqueDeResultadoDeHerramienta(uso.Id,
+                "La consulta de leyes no está disponible en este momento. Dilo así y no respondas de memoria sobre lo que dice la ley.",
+                EsError: true);
         }
         catch (EntityNotFoundException)
         {
@@ -360,6 +404,75 @@ public class HerramientasDelAsistente : ITransientDependency
         var creada = await _organizaciones.CreateAsync(new GuardarOrganizacionDto { Nombre = nombre, Descripcion = descripcion });
         return JsonSerializer.Serialize(new { creado = true, nombre = creada.Nombre }, Json);
     }
+
+    private async Task<string> LeyesAsync(JsonElement entrada)
+    {
+        var resultados = await _motor.BuscarEnLeyesAsync(Texto(entrada, "pregunta").Trim(), Opcional(entrada, "ley"), cuantos: 5);
+        if (resultados.Count == 0)
+        {
+            return "No se encontró nada con esa búsqueda. Prueba con otras palabras o sin acotar la ley.";
+        }
+
+        return JsonSerializer.Serialize(resultados.Select(r => new
+        {
+            ley = r.Clave,
+            ordenamiento = r.Ordenamiento,
+            articulo = r.Articulo,
+            ubicacion = r.Ubicacion,
+            ultimaReformaDof = r.UltimaReformaDof,
+            vigencia = r.NotaDeVigencia,
+            texto = r.Texto.Length > MaxCaracteresPorArticulo ? r.Texto[..MaxCaracteresPorArticulo] + " […]" : r.Texto,
+        }), Json);
+    }
+
+    private async Task<string> ConciliarAsync(Guid organizacionId, JsonElement entrada)
+    {
+        var anio = Entero(entrada, "anio") ?? throw new UserFriendlyException("Falta «anio».");
+        var mes = Entero(entrada, "mes") ?? throw new UserFriendlyException("Falta «mes».");
+        var c = await _bancos.ConciliarAsync(organizacionId, anio, mes);
+        var r = c.Resultado;
+        var porEstado = r.Movimientos.GroupBy(m => m.Conciliacion?.Estado ?? "pendiente").ToDictionary(g => g.Key, g => g.Count());
+        var porUuid = r.Facturas.Where(f => f.Uuid != null).GroupBy(f => f.Uuid!).ToDictionary(g => g.Key, g => g.First());
+        return JsonSerializer.Serialize(new
+        {
+            periodo = $"{anio}-{mes:00}",
+            archivos = new { estadosDeCuenta = c.EstadosDeCuenta, facturas = c.Facturas },
+            cuentas = r.Cuentas.Select(x => new
+            {
+                banco = x.Banco,
+                // Solo la terminación: el número completo no hace falta para platicar.
+                cuenta = x.Cuenta.Length > 4 ? "…" + x.Cuenta[^4..] : x.Cuenta,
+                periodo = $"{x.PeriodoInicial} a {x.PeriodoFinal}",
+                cuadra = x.Cuadra,
+                diferencias = x.Cuadre.Where(q => q.Ok == false).Select(q => $"{q.Concepto}: banco {q.Declarado}, leído {q.Calculado}"),
+            }),
+            movimientos = new
+            {
+                total = r.Movimientos.Count,
+                conFactura = porEstado.GetValueOrDefault("conciliado") + porEstado.GetValueOrDefault("combinacion"),
+                traspasos = porEstado.GetValueOrDefault("traspaso"),
+                sinFactura = porEstado.GetValueOrDefault("sin_factura"),
+                pendientes = porEstado.GetValueOrDefault("pendiente"),
+            },
+            sinFactura = r.Movimientos
+                .Where(m => m.Conciliacion?.Estado is "sin_factura" or "pendiente")
+                .OrderByDescending(m => m.Importe)
+                .Take(MaxPendientesPorLista)
+                .Select(m => new { fecha = m.Fecha, concepto = Corto(m.Concepto, 80), tipo = m.Naturaleza, importe = m.Importe, motivo = m.Conciliacion?.Motivo }),
+            facturasSinMovimiento = r.FacturasSinMovimiento
+                .OrderByDescending(f => f.Importe)
+                .Take(MaxPendientesPorLista)
+                .Select(f => new { fecha = f.Fecha, tercero = f.Tercero, importe = f.Importe, tipo = f.Naturaleza, motivo = f.Motivo }),
+            alertas = r.Alertas.Take(MaxPendientesPorLista).Select(a => new
+            {
+                factura = a.Uuid != null && porUuid.TryGetValue(a.Uuid, out var f) ? $"{f.Tercero} {f.SerieFolio} ({f.Importe})" : a.Uuid,
+                mensaje = a.Mensaje,
+            }),
+            noSeLeyeron = r.Errores.Select(e => e.Archivo),
+        }, Json);
+    }
+
+    private static string Corto(string texto, int max) => texto.Length > max ? texto[..max] + "…" : texto;
 
     private async Task<string> CarteraAsync(JsonElement entrada)
     {
