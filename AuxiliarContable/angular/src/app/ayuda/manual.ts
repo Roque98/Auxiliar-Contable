@@ -189,7 +189,6 @@ export const SECCIONES: Seccion[] = [
         texto: [
           'En Perfil fiscal elige al cliente: ves su constancia, sus datos y de dónde salió cada uno.',
           'Puedes subir su constancia por él, confirmar datos y corregirlos; lo que captures queda como «Del despacho».',
-          'Los avisos de la constancia (antigua, régimen dudoso, un dato distinto al confirmado) salen arriba: atiéndelos con el cliente.',
         ],
       },
     ],

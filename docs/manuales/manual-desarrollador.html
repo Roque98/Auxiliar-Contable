@@ -1,0 +1,331 @@
+<title>Manual de desarrollador</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Source+Sans+3:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: manual técnico con índice fijo; secciones de arquitectura → entorno → roles en el código → operación. */
+:root{
+  --bg:#F4F6F8; --surface:#FFFFFF; --fg:#151C24; --muted:#56616E; --line:#D6DCE3;
+  --accent:#2E4A7D; --accent-soft:#E3EAF5; --ok:#1D7438; --ok-soft:#E3F2E6;
+  --warn:#B42318; --warn-soft:#FBE7E4; --code-bg:#EDF1F6;
+  --f-display:"Bricolage Grotesque","Segoe UI",system-ui,sans-serif;
+  --f-body:"Source Sans 3","Segoe UI",system-ui,sans-serif;
+  --f-mono:"JetBrains Mono",Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0F141A; --surface:#161D25; --fg:#E3E9F0; --muted:#9AA6B4; --line:#2A3440;
+  --accent:#8FB0E8; --accent-soft:#1C2A40; --ok:#7ACF91; --ok-soft:#18301F;
+  --warn:#F28B80; --warn-soft:#3B1E1B; --code-bg:#1B2430; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0F141A; --surface:#161D25; --fg:#E3E9F0; --muted:#9AA6B4; --line:#2A3440;
+  --accent:#8FB0E8; --accent-soft:#1C2A40; --ok:#7ACF91; --ok-soft:#18301F;
+  --warn:#F28B80; --warn-soft:#3B1E1B; --code-bg:#1B2430; color-scheme:dark}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){html{scroll-behavior:auto}}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:16.5px;line-height:1.6;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 64px}
+a{color:var(--accent)}
+code{font-family:var(--f-mono);font-size:.84em;background:var(--code-bg);padding:.08em .35em;border-radius:4px;overflow-wrap:anywhere}
+pre{background:var(--code-bg);border-radius:8px;padding:12px 14px;overflow-x:auto;font-family:var(--f-mono);font-size:.8rem;line-height:1.55;margin:0}
+pre code{background:none;padding:0}
+h1,h2,h3,h4{font-family:var(--f-display);line-height:1.2;text-wrap:balance;margin:0}
+h1{font-size:clamp(1.9rem,4vw,2.7rem)} h2{font-size:1.6rem;padding-top:6px} h3{font-size:1.15rem;margin-top:6px}
+p{margin:0} ul,ol{margin:0;padding-left:1.25em;display:grid;gap:4px}
+.top{max-width:1180px;margin:0 auto;padding-block:40px 24px;border-bottom:1px solid var(--line);display:grid;gap:10px}
+.eyebrow{font-family:var(--f-mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+.lede{font-size:1.12rem;max-width:70ch}
+.layout{max-width:1180px;margin:0 auto;display:grid;grid-template-columns:220px minmax(0,1fr);gap:44px;padding-top:26px}
+nav.toc{position:sticky;top:calc(env(safe-area-inset-top,0px) + 16px);align-self:start;font-size:.92rem;max-height:calc(100vh - 32px);overflow:auto}
+nav.toc ol{list-style:none;padding:0;gap:2px}
+nav.toc a{display:block;padding:4px 10px;border-radius:6px;color:var(--muted);text-decoration:none}
+nav.toc a:hover{background:var(--accent-soft);color:var(--fg)}
+main{min-width:0;display:grid;gap:52px}
+section{display:grid;gap:16px;scroll-margin-top:16px}
+section>p,section>ul,section>ol{max-width:74ch}
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:.92rem}
+th,td{text-align:left;vertical-align:top;padding:9px 12px;border-bottom:1px solid var(--line)}
+th{font-family:var(--f-mono);font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600;background:var(--code-bg)}
+tr:last-child td{border-bottom:0}
+td.si{color:var(--ok);font-weight:700} td.no{color:var(--muted)}
+.nota{border-left:3px solid var(--accent);background:var(--accent-soft);padding:12px 16px;border-radius:0 8px 8px 0;max-width:78ch}
+.alerta{border:1px solid var(--warn);background:var(--warn-soft);border-radius:10px;padding:12px 16px;max-width:78ch}
+.alerta strong{color:var(--warn)}
+.fig{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px;color:var(--muted)}
+.fig svg{display:block;width:100%;height:auto;min-width:680px}
+figure{margin:0;display:grid;gap:8px} figcaption{font-size:.9rem;color:var(--muted);max-width:78ch}
+.captura{border:1px solid var(--line);border-radius:10px;max-width:100%;height:auto;display:block}
+svg text{font-family:var(--f-body)}
+.bx{fill:var(--surface);stroke:var(--line);stroke-width:1.2}
+.bx-acc{fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.4}
+.t{fill:var(--fg);font-size:14px;font-weight:600} .ts{fill:var(--muted);font-size:11.5px}
+.ln{stroke:var(--muted);stroke-width:1.4;fill:none} .lb{fill:var(--muted);font-size:11px}
+.pasos{counter-reset:p;list-style:none;padding:0;display:grid;gap:12px}
+.pasos>li{counter-increment:p;display:grid;grid-template-columns:34px minmax(0,1fr);gap:12px}
+.pasos>li::before{content:counter(p);font-family:var(--f-display);font-size:1.2rem;color:var(--accent)}
+.pasos>li>div{display:grid;gap:6px;min-width:0}
+@media (max-width:900px){.layout{grid-template-columns:1fr} nav.toc{position:static;max-height:none;border:1px solid var(--line);border-radius:10px;padding:8px;background:var(--surface)}}
+</style>
+
+<header class="top">
+  <div class="eyebrow">Auxiliar Contable · para quien mantiene el sistema</div>
+  <h1>Manual de desarrollador</h1>
+  <p class="lede">Cómo está hecho Auxiliar Contable, cómo levantarlo en una computadora nueva, cómo funcionan los cuatro roles (Developer, Owner, Administrador y Usuario) en el código, y cómo se prueba, se despliega y se conecta con el motor fiscal.</p>
+</header>
+
+<div class="layout">
+<nav class="toc" aria-label="Índice">
+  <ol>
+    <li><a href="#piezas">1. Las piezas</a></li>
+    <li><a href="#entorno">2. Levantarlo en local</a></li>
+    <li><a href="#roles">3. Roles en el código</a></li>
+    <li><a href="#modulos">4. Módulos</a></li>
+    <li><a href="#motor">5. El motor fiscal</a></li>
+    <li><a href="#pruebas">6. Pruebas</a></li>
+    <li><a href="#desplegar">7. Desplegar</a></li>
+    <li><a href="#produccion">8. Producción</a></li>
+    <li><a href="#sistema">9. El menú Sistema</a></li>
+    <li><a href="#manual">10. Regenerar el manual</a></li>
+    <li><a href="#problemas">11. Problemas comunes</a></li>
+  </ol>
+</nav>
+
+<main>
+
+<section id="piezas">
+  <h2>1. Las piezas</h2>
+  <p>Auxiliar Contable es el <strong>front y la infraestructura</strong>: identidad, roles, clientes, documentos, chat y operación. Los cálculos fiscales y contables viven en el <strong>motor</strong> (<code>motores-fiscales</code>, Python), que corre al lado como servicio interno.</p>
+  <figure>
+    <div class="fig">
+    <svg viewBox="0 0 900 250" role="img" aria-label="El navegador habla con el front Angular, que llama a la API .NET; la API guarda en PostgreSQL y en disco cifrado y llama al motor Python en 127.0.0.1:5090.">
+      <defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+      <rect class="bx" x="20" y="90" width="140" height="60" rx="8"/><text class="t" x="34" y="116">Navegador</text><text class="ts" x="34" y="135">cliente o despacho</text>
+      <rect class="bx-acc" x="210" y="90" width="170" height="60" rx="8"/><text class="t" x="224" y="116">Front Angular 22</text><text class="ts" x="224" y="135">LeptonX + diseño ig-</text>
+      <rect class="bx-acc" x="430" y="90" width="190" height="60" rx="8"/><text class="t" x="444" y="116">API .NET 10 (ABP 10.6)</text><text class="ts" x="444" y="135">auth OpenIddict, servicios</text>
+      <rect class="bx" x="680" y="20" width="200" height="56" rx="8"/><text class="t" x="694" y="44">PostgreSQL 16</text><text class="ts" x="694" y="63">datos, auditoría, trabajos</text>
+      <rect class="bx" x="680" y="96" width="200" height="56" rx="8"/><text class="t" x="694" y="120">Disco cifrado</text><text class="ts" x="694" y="139">documentos AES-256-GCM</text>
+      <rect class="bx" x="680" y="172" width="200" height="56" rx="8"/><text class="t" x="694" y="196">motores-fiscales</text><text class="ts" x="694" y="215">Python, 127.0.0.1:5090</text>
+      <line class="ln" x1="160" y1="120" x2="206" y2="120" marker-end="url(#a)"/>
+      <line class="ln" x1="380" y1="120" x2="426" y2="120" marker-end="url(#a)"/><text class="lb" x="384" y="112">HTTPS/JSON</text>
+      <path class="ln" d="M620,108 H650 V48 H676" marker-end="url(#a)"/>
+      <line class="ln" x1="620" y1="124" x2="676" y2="124" marker-end="url(#a)"/>
+      <path class="ln" d="M620,140 H650 V200 H676" marker-end="url(#a)"/><text class="lb" x="590" y="190">HTTP interno</text>
+    </svg>
+    </div>
+    <figcaption>El motor no se expone a internet: solo lo llama la API desde el mismo servidor.</figcaption>
+  </figure>
+  <div class="tbl"><table>
+    <thead><tr><th>Repositorio</th><th>Qué contiene</th></tr></thead>
+    <tbody>
+      <tr><td><code>Roque98/Auxiliar-Contable</code></td><td>Este sistema: <code>AuxiliarContable/</code> (solución ABP, <code>angular/</code>, <code>e2e/</code>), <code>deploy/</code> (scripts y unidades systemd), <code>docs/</code> (visión, plan, trampas, manuales) y <code>CLAUDE.md</code> (guía para agentes; la referencia más completa de convenciones)</td></tr>
+      <tr><td><code>Roque98/motores-fiscales</code></td><td>Motor fiscal: RAG de leyes, librería contable y aduanera, Armador SAT, lector de estados de cuenta y <code>servicio/</code> (API interna)</td></tr>
+      <tr><td><code>Roque98/legado-despacho</code></td><td>Referencia: nómina, COI en Excel, deducibilidad, claves, costos y trámites. No se despliega</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="entorno">
+  <h2>2. Levantarlo en local</h2>
+  <p>Probado en Windows 10 sin permisos de administrador; en Linux o Mac los pasos son los mismos con sus rutas.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Herramienta</th><th>Versión</th><th>Nota</th></tr></thead>
+    <tbody>
+      <tr><td>.NET SDK</td><td><code>10.0.402</code></td><td>Fija, la misma del CI. Se instala por usuario con <code>dotnet-install.ps1 -Version 10.0.402</code></td></tr>
+      <tr><td>Node.js</td><td>24.x</td><td><code>abp install-libs</code> y el Angular CLI lo exigen (con 22 falla <code>select2</code>)</td></tr>
+      <tr><td>Yarn</td><td>1.22 (clásico)</td><td><code>corepack yarn@1.22.22</code>; el proyecto usa <code>yarn.lock</code> v1</td></tr>
+      <tr><td>PostgreSQL</td><td>≥ 14 (CI: 18)</td><td>Rol con <code>CREATEDB</code>: las pruebas de integración crean y borran sus bases</td></tr>
+      <tr><td>ABP CLI</td><td><code>Volo.Abp.Studio.Cli</code></td><td><code>dotnet tool install -g Volo.Abp.Studio.Cli</code></td></tr>
+    </tbody>
+  </table></div>
+  <ol class="pasos">
+    <li><div><strong>Clonar</strong><pre><code>gh repo clone Roque98/Auxiliar-Contable
+cd Auxiliar-Contable/AuxiliarContable</code></pre></div></li>
+    <li><div><strong>Secretos de desarrollo</strong> (nunca en <code>appsettings*.json</code>). Desde <code>src/AuxiliarContable.HttpApi.Host</code>:
+<pre><code>dotnet user-secrets set "ConnectionStrings:Default" "Host=localhost;Port=5432;Database=auxiliar_contable;Username=...;Password=..."
+dotnet user-secrets set "AuthServer:CertificatePassPhrase" "&lt;frase&gt;"
+dotnet user-secrets set "StringEncryption:DefaultPassPhrase" "&lt;frase&gt;"
+dotnet user-secrets set "Documentos:ClaveDeCifrado" "&lt;32 bytes en base64&gt;"
+dotnet user-secrets set "Claude:ApiKey" "&lt;opcional: sin ella el chat dice que no está disponible&gt;"</code></pre>
+      Y en <code>src/AuxiliarContable.DbMigrator</code> solo <code>ConnectionStrings:Default</code>.</div></li>
+    <li><div><strong>Librerías del login</strong> (no están versionadas; sin ellas la API responde «The Libs folder is missing»):<pre><code>abp install-libs</code></pre></div></li>
+    <li><div><strong>Base de datos</strong>: migrar y sembrar (crea al usuario <code>admin</code>). Se corre desde la carpeta del proyecto:<pre><code>cd src/AuxiliarContable.DbMigrator
+DOTNET_ENVIRONMENT=Development dotnet run</code></pre></div></li>
+    <li><div><strong>API</strong> en <code>https://localhost:44338</code> (Swagger en <code>/swagger</code>):<pre><code>dotnet run --project src/AuxiliarContable.HttpApi.Host</code></pre></div></li>
+    <li><div><strong>Front</strong> en <code>http://localhost:4201</code>:<pre><code>cd angular && yarn install --frozen-lockfile && yarn start</code></pre></div></li>
+    <li><div><strong>Entrar</strong> con <code>admin</code> / <code>1q2w3E*</code> (la cuenta Developer de desarrollo). Cambia la contraseña y crea al Owner desde Administración → Usuarios.</div></li>
+  </ol>
+  <figure>
+    <img class="captura" src="img/developer/01-estado-del-sistema.png" alt="Pantalla Estado del sistema que ve el Developer" loading="lazy">
+    <figcaption>Lo primero que conviene revisar como Developer: Sistema → Estado.</figcaption>
+  </figure>
+</section>
+
+<section id="roles">
+  <h2>3. Roles en el código</h2>
+  <p>Hay cuatro niveles. Cada persona tiene el nivel de su rol más alto y <strong>solo alcanza lo que está estrictamente por debajo</strong> (más a sí misma). El Developer lo alcanza todo y nadie lo ve.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Rol</th><th>Nombre técnico</th><th>Nivel</th><th>Quién es</th><th>Permisos con los que nace</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Developer</strong></td><td><code>admin</code> (el de ABP)</td><td>3</td><td>Quien mantiene la consola. Invisible para los demás</td><td>Todos, incluidos los que se agreguen mañana (ABP se los concede en cada migración)</td></tr>
+      <tr><td><strong>Owner</strong></td><td><code>owner</code></td><td>2</td><td>El dueño del despacho</td><td>Usuarios (crear, editar, borrar, roles, permisos), Roles (todo), Organizaciones, Actividad, Marca</td></tr>
+      <tr><td><strong>Administrador</strong></td><td><code>administrador</code></td><td>1</td><td>El equipo del despacho (contadores)</td><td>Usuarios (crear, editar, borrar, asignar rol), Organizaciones, Actividad</td></tr>
+      <tr><td><strong>Usuario</strong></td><td><code>usuario</code></td><td>0</td><td>La persona del cliente</td><td>Ninguno global: lo que ve lo decide su papel en su organización</td></tr>
+    </tbody>
+  </table></div>
+  <div class="tbl"><table>
+    <thead><tr><th>Dónde</th><th>Qué decide</th></tr></thead>
+    <tbody>
+      <tr><td><code>Domain.Shared/Identity/AuxiliarRoles.cs</code></td><td>Nombres y niveles. Única fuente de «quién alcanza a quién»</td></tr>
+      <tr><td><code>Domain/Identity/PermisosInicialesPorRol.cs</code></td><td>Con qué permisos NACE cada rol. Después los cambia el Owner en la pantalla de Roles</td></tr>
+      <tr><td><code>Domain/Identity/PermisosNuevosPorVersion</code></td><td>Permisos que aparecen después: se conceden UNA vez a los roles existentes. Solo se añaden versiones al final</td></tr>
+      <tr><td><code>Application/Identity/AuxiliarIdentityUserAppService.cs</code></td><td>Sustituye al de ABP: jerarquía al listar, editar y asignar; un Usuario se crea dentro de una organización (<code>ExtraProperties["OrganizacionId"]</code>)</td></tr>
+      <tr><td><code>Application/Autorizacion/Autorizador.cs</code></td><td>Único punto de decisión por cliente: <code>Ver</code> o <code>Subir</code>. Lo ajeno responde 404, no 403</td></tr>
+      <tr><td><code>Domain/Organizaciones/MembresiasDeOrganizacion.cs</code></td><td>Papel dentro de un cliente: Administrador (gestiona a su gente), Miembro (sube y ve) o Lector (solo ve)</td></tr>
+      <tr><td><code>angular/src/app/ayuda/manual.ts</code></td><td>La ayuda dentro de la app: cada tema dice qué permiso necesita y solo se enseña a quien lo tiene</td></tr>
+    </tbody>
+  </table></div>
+  <div class="nota"><p>El equipo del despacho (Owner y Administradores) ve a <strong>todos</strong> los clientes sin pertenecer a ninguno. El aislamiento estricto es <strong>entre clientes</strong>: cada servicio y cada herramienta del chat pasa por <code>Autorizador</code>, y hay pruebas de «el usuario A no ve nada de B».</p></div>
+</section>
+
+<section id="modulos">
+  <h2>4. Módulos</h2>
+  <div class="tbl"><table>
+    <thead><tr><th>Módulo</th><th>Pantalla</th><th>Notas</th></tr></thead>
+    <tbody>
+      <tr><td>Conversaciones (chat)</td><td><code>/</code></td><td><code>AsistenteAppService</code> lleva el bucle; <code>HerramientasDelAsistente</code> llama a los mismos servicios que las pantallas. El cliente activo lo pone el código, nunca el modelo</td></tr>
+      <tr><td>Cartera</td><td><code>/cartera</code></td><td>Semáforo por cliente con lo que la app sabe (perfil y documentos recibidos). Métricas solo nivel ≥ Owner</td></tr>
+      <tr><td>Bóveda</td><td><code>/documentos</code></td><td>Guarda cifrado, ordena por mes y tipo. No interpreta el contenido: eso es del motor</td></tr>
+      <tr><td>Perfil fiscal</td><td><code>/perfil-fiscal</code></td><td>Un dato por campo del catálogo, con su origen y si está confirmado</td></tr>
+      <tr><td>Organizaciones</td><td><code>/organizaciones</code>, <code>/mi-organizacion</code></td><td>1 cliente = 1 RFC</td></tr>
+      <tr><td>Identidad</td><td><code>/identity/users</code>, <code>/identity/roles</code>, <code>/invitaciones</code></td><td>Invitación por correo (Brevo) con enlace de un solo uso</td></tr>
+      <tr><td>Operación</td><td><code>/system-status</code>, <code>/metrics</code>, <code>/jobs</code>, <code>/audit</code>, <code>/security</code></td><td>Solo Developer por defecto</td></tr>
+    </tbody>
+  </table></div>
+  <p>Acceso a datos: escritura con EF Core; lectura compleja con <code>SqlQueryRaw</code> y SQL versionado en <code>EntityFrameworkCore/**/Sql/*.sql</code>; fuentes externas de solo lectura con Dapper. Migraciones incrementales en <code>EntityFrameworkCore/Migrations</code> (<code>dotnet ef migrations add &lt;Nombre&gt;</code>).</p>
+</section>
+
+<section id="motor">
+  <h2>5. El motor fiscal</h2>
+  <p>En el VPS corre como el servicio <code>motores-fiscales</code> (usuario <code>motores</code>, <code>/srv/motores-fiscales</code>, unidad systemd endurecida, 1 GB de memoria máxima). Escucha solo en <code>127.0.0.1:5090</code>.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Ruta</th><th>Qué hace</th></tr></thead>
+    <tbody>
+      <tr><td><code>GET /salud</code></td><td>Qué piezas están disponibles (RAG, vectores, librerías)</td></tr>
+      <tr><td><code>GET /rag/buscar?q=&amp;k=&amp;ley=&amp;tipo=</code></td><td>Búsqueda en leyes, reglas del SAT, NIF y normas, con cita. En el servidor: BM25 + citas, sin modelo de embeddings</td></tr>
+      <tr><td><code>GET /rag/articulo?doc_id=&amp;articulo=</code></td><td>Texto completo de un artículo</td></tr>
+    </tbody>
+  </table></div>
+  <p>Para conectarlo a Auxiliar Contable: una interfaz <code>IServicioConocimiento</code> en Domain, su implementación con <code>HttpClient</code> en el Host (base <code>http://127.0.0.1:5090</code>) y una herramienta del chat por ruta. Las reglas del motor mandan sobre cualquier lógica de esta app.</p>
+  <pre><code># actualizar el motor en el VPS (sin acceso de GitHub desde el servidor)
+git -C motores-fiscales bundle create mf.bundle main
+scp mf.bundle root@VPS:/tmp/ &amp;&amp; ssh root@VPS 'sudo -u motores git -C /srv/motores-fiscales fetch /tmp/mf.bundle main:refs/remotes/bundle/main &amp;&amp; sudo -u motores git -C /srv/motores-fiscales reset --hard bundle/main &amp;&amp; systemctl restart motores-fiscales'</code></pre>
+</section>
+
+<section id="pruebas">
+  <h2>6. Pruebas</h2>
+  <pre><code>dotnet build AuxiliarContable.slnx -c Debug          # advertencias = errores
+dotnet test  test/AuxiliarContable.Architecture.Tests  # capas y convenciones
+dotnet test  test/AuxiliarContable.Domain.Tests
+dotnet test  test/AuxiliarContable.Integration.Tests   # PostgreSQL real (AUXILIARCONTABLE_TEST_POSTGRES)
+cd angular &amp;&amp; yarn test:unit                         # vitest (el CI usa esto, no ng test)</code></pre>
+  <p>El CI (<code>.github/workflows/ci.yml</code>) corre build, todas las pruebas contra PostgreSQL 18, pruebas del front y <code>gitleaks</code> en cada push y pull request.</p>
+</section>
+
+<section id="desplegar">
+  <h2>7. Desplegar</h2>
+  <ol class="pasos">
+    <li><div>Rama nueva, cambios, pull request. Esperar el CI en verde.</div></li>
+    <li><div>Fusionar a <code>main</code>.</div></li>
+    <li><div>Lanzar el despliegue (manual): <code>gh workflow run deploy.yml --ref main</code>, o desde Actions → «Deploy a VPS».</div></li>
+    <li><div>El workflow repite el CI, publica API, DbMigrator y Angular, los sube a <code>/srv/auxiliar-contable/staging</code>, migra ANTES de intercambiar versiones y comprueba <code>/health-status</code> y el límite de peticiones.</div></li>
+  </ol>
+  <div class="alerta"><p><strong>Las migraciones corren en cada despliegue.</strong> Una que borra tablas (como <code>QuitarLecturaDeDocumentos</code>) se aplica sin preguntar: revisa antes en producción que estén vacías.</p></div>
+</section>
+
+<section id="produccion">
+  <h2>8. Producción</h2>
+  <div class="tbl"><table>
+    <thead><tr><th>Qué</th><th>Dónde</th></tr></thead>
+    <tbody>
+      <tr><td>Web / API</td><td><code>contable.ziacentro.mx</code> / <code>api-contable.ziacentro.mx</code> (nginx + certificado propio)</td></tr>
+      <tr><td>Servicios</td><td><code>auxiliar-contable</code>, <code>auxiliar-contable-migrator</code>, <code>motores-fiscales</code> (systemd)</td></tr>
+      <tr><td>Secretos</td><td><code>/etc/auxiliar-contable/env</code></td></tr>
+      <tr><td>Documentos</td><td><code>/var/lib/auxiliar-contable/documentos</code> (cifrados)</td></tr>
+      <tr><td>Copias</td><td>pg_dump diario 03:30 + restic a almacenamiento externo; prueba de restauración programada</td></tr>
+      <tr><td>Consultas de solo lectura</td><td><code>ssh consulta_claude@VPS &lt;base&gt; &lt; consulta.sql</code> (rol <code>pg_read_all_data</code>, transacciones de solo lectura, sin comandos con <code>\</code>)</td></tr>
+    </tbody>
+  </table></div>
+  <p>Detalle completo de servidor, nginx, copias y endurecimiento en <code>deploy/README.md</code>.</p>
+</section>
+
+<section id="sistema">
+  <h2>9. El menú Sistema</h2>
+  <p>Solo el Developer lo ve completo. El recorrido en video y luego cada pantalla:</p>
+  <figure>
+    <video class="captura" src="video/developer.webm" controls muted playsinline preload="metadata" poster="img/developer/01-estado-del-sistema.png" style="width:100%;aspect-ratio:1280/760"></video>
+    <figcaption>Recorrido del Developer: Estado, Métricas, Trabajos y Auditoría.</figcaption>
+  </figure>
+  <figure>
+    <img class="captura" src="img/developer/01-estado-del-sistema.png" alt="Estado" loading="lazy">
+    <figcaption><strong>Sistema → Estado.</strong> Un vistazo: la última copia de seguridad y si ya se comprobó que se puede restaurar, cuánto lleva la API en marcha, y los conteos de trabajos abandonados, en cola e IPs bloqueadas. Lo marcado en rojo o ámbar es lo que hay que revisar.</figcaption>
+  </figure>
+  <figure>
+    <img class="captura" src="img/developer/02-metricas.png" alt="Métricas" loading="lazy">
+    <figcaption><strong>Sistema → Métricas.</strong> CPU, memoria, disco y swap del servidor, tamaño y conexiones de la base, peticiones y errores 5xx, en ventanas de 1 hora, 24 horas o 7 días. En local CPU y memoria salen vacías: las muestrea el servidor Linux.</figcaption>
+  </figure>
+  <figure>
+    <img class="captura" src="img/developer/03-trabajos.png" alt="Trabajos en segundo plano" loading="lazy">
+    <figcaption><strong>Sistema → Trabajos.</strong> La cola (correos, limpiezas) por estado: esperando, reintentando, abandonados y completados. Cada trabajo se reintenta solo y guarda su último error, por ejemplo el de Brevo cuando un correo no sale. Los completados se conservan tres días.</figcaption>
+  </figure>
+  <figure>
+    <img class="captura" src="img/developer/04-auditoria.png" alt="Auditoría" loading="lazy">
+    <figcaption><strong>Sistema → Auditoría.</strong> Cada petición a la API: método, URL, estado, milisegundos, IP y usuario. Se filtra por IP o usuario, o solo las que fallaron, y se exporta a CSV. Las del Developer no las ve nadie más.</figcaption>
+  </figure>
+  <figure>
+    <img class="captura" src="img/developer/05-seguridad-ips.png" alt="Seguridad (IPs)" loading="lazy">
+    <figcaption><strong>Sistema → Seguridad.</strong> Bloquear una IP a mano (con motivo y horas), ver y quitar los bloqueos, y el registro de seguridad: quién intentó entrar, desde dónde y si lo consiguió. No deja bloquear tu propia IP.</figcaption>
+  </figure>
+  <figure>
+    <img class="captura" src="img/developer/06-llaves-api.png" alt="Claves de API" loading="lazy">
+    <figcaption><strong>Sistema → Claves de API.</strong> Para llamar a la API desde un script o una tarea programada. Una clave actúa <em>como quien la creó</em> y no pide segundo factor: trátala como contraseña y ponle caducidad en días.</figcaption>
+  </figure>
+  <figure>
+    <img class="captura" src="img/developer/07-alertas.png" alt="Alertas" loading="lazy">
+    <figcaption><strong>Sistema → Alertas.</strong> Avisos por Telegram cuando algo se sale de rango: token del bot (se guarda cifrado), uno o varios chat id y el botón «Enviar prueba» para comprobar el canal.</figcaption>
+  </figure>
+  <figure>
+    <img class="captura" src="img/developer/08-sesiones.png" alt="Sesiones" loading="lazy">
+    <figcaption><strong>Sistema → Sesiones.</strong> Tus sesiones abiertas: dispositivo, IP, cuándo entraste y última actividad. «Cerrar todas menos esta» corta cualquier sesión que no reconozcas.</figcaption>
+  </figure>
+  <p>Lo que ven los demás roles está en el <strong>Manual de usuario</strong> (<code>docs/manuales/manual-usuario.html</code>).</p>
+</section>
+
+<section id="manual">
+  <h2>10. Regenerar el manual de usuario</h2>
+  <p>Las capturas y los videos salen de la consola <strong>local</strong> con datos ficticios, nunca de producción. Con la API y el front corriendo:</p>
+  <pre><code>cd AuxiliarContable/e2e
+npm ci &amp;&amp; npx playwright install chromium
+node manual/sembrar.mjs     # cuentas por rol y tres clientes de ejemplo (idempotente)
+node manual/capturar.mjs    # docs/manuales/img/&lt;rol&gt;/*.png y docs/manuales/video/&lt;rol&gt;.webm</code></pre>
+  <p>Las cuentas de ejemplo están en <code>e2e/manual/comun.mjs</code>: <code>duena</code> (Owner), <code>contador</code> (Administrador) y <code>lupita</code> (Usuario de «Panadería La Espiga»). Los scripts se niegan a correr si la API no es <code>localhost</code>.</p>
+</section>
+
+<section id="problemas">
+  <h2>11. Problemas comunes</h2>
+  <div class="tbl"><table>
+    <thead><tr><th>Síntoma</th><th>Causa y arreglo</th></tr></thead>
+    <tbody>
+      <tr><td>La API responde 500 «The Libs folder is missing»</td><td>Falta <code>abp install-libs</code> (con Node 24)</td></tr>
+      <tr><td><code>select2</code>: «engine node is incompatible»</td><td>Node 22; usar Node 24</td></tr>
+      <tr><td>El front muestra «Http failure response … 0 undefined»</td><td>La API no está corriendo o el certificado de desarrollo no es de confianza: <code>dotnet dev-certs https --trust</code></td></tr>
+      <tr><td>El login deja de responder tras varios intentos</td><td>Límite de peticiones por IP (10/min en rutas de credenciales). Esperar un minuto</td></tr>
+      <tr><td>«Una persona de un cliente (rol Usuario) tiene que entrar en una organización»</td><td>Al crear un Usuario por API, mandar <code>extraProperties.OrganizacionId</code></td></tr>
+      <tr><td>Un archivo con acentos «rotos» tras editarlo en PowerShell 5.1</td><td><code>Get-Content</code> lee UTF-8 sin BOM como ANSI. Usar <code>[IO.File]::ReadAllText(ruta, [Text.Encoding]::UTF8)</code></td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+</main>
+</div>
