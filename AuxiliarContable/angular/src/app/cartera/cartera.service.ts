@@ -18,9 +18,6 @@ export interface ClienteDeCarteraDto {
   documentosDelMes: number;
   facturasDelMes: number;
   estadosDeCuentaDelMes: number;
-  estadosPorRevisar: number;
-  propuestasPorRevisar: number;
-  movimientosSinFactura: number;
   ultimoDocumentoUtc?: string | null;
   semaforo: SemaforoDeCliente;
   pendientes: string[];
@@ -35,8 +32,6 @@ export interface MetricasDelDespachoDto {
   documentosDelMes: number;
   facturasDelMes: number;
   estadosDeCuentaDelMes: number;
-  conciliadosDelMes: number;
-  movimientosSinFactura: number;
   mensajesDelChat: number;
   personasEnElChat: number;
   tokensDelChat: number;

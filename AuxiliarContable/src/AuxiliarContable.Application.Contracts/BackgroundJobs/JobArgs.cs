@@ -64,24 +64,3 @@ public class EnviarInvitacionArgs
 {
     public Guid InvitacionId { get; set; }
 }
-
-/// <summary>
-/// Leer una Constancia de Situación Fiscal recién subida y proponer sus datos al perfil. En
-/// segundo plano porque llama al modelo de IA (segundos y dinero). Solo el id: el contenido
-/// se lee cifrado del almacén, nunca viaja en los argumentos del trabajo.
-/// </summary>
-[BackgroundJobName("auxiliar:leer-csf")]
-public class LeerCsfArgs
-{
-    public Guid DocumentoId { get; set; }
-}
-
-/// <summary>
-/// Leer un estado de cuenta recién subido (modelo) y cuadrarlo (código). Solo el id, como en
-/// <see cref="LeerCsfArgs"/>.
-/// </summary>
-[BackgroundJobName("auxiliar:leer-estado-de-cuenta")]
-public class LeerEstadoDeCuentaArgs
-{
-    public Guid DocumentoId { get; set; }
-}

@@ -574,8 +574,6 @@
     "Menu:Cartera": "Cartera",
     "Menu:Asistente": "Asistente",
     "Menu:Documentos": "Documentos",
-    "Menu:EstadosDeCuenta": "Estados de cuenta",
-    "Menu:Conciliacion": "Conciliación",
     "AuxiliarContable:OrganizacionObligatoria": "Una persona de un cliente (rol Usuario) tiene que entrar en una organización: elige a cuál pertenece.",
     "AuxiliarContable:OrganizacionNoExiste": "La organización elegida ya no existe. Recarga la página y elige otra.",
     "AuxiliarContable:InvitacionSinOrganizacion": "La organización de esta invitación ya no existe. Pide una invitación nueva a quien te invitó.",

@@ -5,7 +5,6 @@ using System.Text;
 using System.Threading.Tasks;
 using AuxiliarContable.Boveda;
 using AuxiliarContable.Cartera;
-using AuxiliarContable.Cfdis;
 using AuxiliarContable.Conversaciones;
 using AuxiliarContable.Documentos;
 using AuxiliarContable.IA;
@@ -49,13 +48,15 @@ public class CarteraIntegrationTests : ConJerarquiaTestBase
         await ComoAsync(Administrador, () => GetRequiredService<IPerfilFiscalAppService>().ResponderAsync(_alDia,
             new ResponderDatoDelPerfilDto { Campo = CamposDelPerfil.Rfc, Valor = "GODE561231GR8" }));
         await ComoAsync(Administrador, () => GetRequiredService<IBovedaAppService>().SubirAsync(_alDia, TipoDeDocumento.Otro,
-            new RemoteStreamContent(new MemoryStream(Encoding.UTF8.GetBytes(LectorDeCfdiTests.Cfdi40())), "f.xml")));
+            new RemoteStreamContent(new MemoryStream(Encoding.UTF8.GetBytes("""<?xml version="1.0"?><cfdi:Comprobante xmlns:cfdi="http://www.sat.gob.mx/cfd/4"/>""")), "f.xml")));
     }
 
     [Fact]
     public async Task El_equipo_ve_toda_la_cartera_con_lo_urgente_primero()
     {
-        var clientes = await ComoAsync(Administrador, () => _cartera.GetClientesAsync(2026, 9));
+        // Sin leer el XML no hay fecha de la factura: cuenta en el mes en que se subió.
+        var hoy = DateTime.Now;
+        var clientes = await ComoAsync(Administrador, () => _cartera.GetClientesAsync(hoy.Year, hoy.Month));
 
         clientes.Select(c => c.Id).ShouldContain(_alDia);
         var pepe = clientes.Single(c => c.Id == _sinNada);
@@ -63,7 +64,7 @@ public class CarteraIntegrationTests : ConJerarquiaTestBase
         pepe.Pendientes.ShouldContain(p => p.Contains("Sin RFC"));
         var lupita = clientes.Single(c => c.Id == _alDia);
         lupita.Rfc.ShouldBe("GODE561231GR8");
-        lupita.FacturasDelMes.ShouldBe(1, "la factura de prueba es de septiembre");
+        lupita.FacturasDelMes.ShouldBe(1);
         lupita.Pendientes.ShouldContain(p => p.Contains("estado de cuenta"));
         clientes.First().Semaforo.ShouldBe(SemaforoDeCliente.Urgente);
     }
@@ -75,7 +76,7 @@ public class CarteraIntegrationTests : ConJerarquiaTestBase
         await Should.ThrowAsync<AbpAuthorizationException>(() => ComoAsync(Administrador, () => _cartera.GetMetricasAsync(2026, 9)));
 
         var owner = await CrearUsuarioAsync("duena", AuxiliarRoles.Owner);
-        var metricas = await ComoAsync(owner, () => _cartera.GetMetricasAsync(2026, 9));
+        var metricas = await ComoAsync(owner, () => _cartera.GetMetricasAsync(DateTime.Now.Year, DateTime.Now.Month));
         metricas.Clientes.ShouldBeGreaterThanOrEqualTo(2);
         metricas.FacturasDelMes.ShouldBeGreaterThanOrEqualTo(1);
     }

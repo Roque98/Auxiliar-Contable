@@ -1,8 +1,6 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { Subscription, timer } from 'rxjs';
 import { mensajeDeError } from '../invitaciones/invitaciones.service';
 import {
   ClienteVisibleDto,
@@ -23,10 +21,6 @@ const GRUPOS: { grupo: GrupoDeCampos; titulo: string }[] = [
   { grupo: GrupoDeCampos.Operacion, titulo: 'Cómo opera' },
 ];
 
-/** Mientras se lee la CSF se pregunta cada tanto; se deja de preguntar a los 3 minutos. */
-const CADA_MS = 3000;
-const MAX_INTENTOS = 60;
-
 /**
  * El perfil fiscal de un cliente: la CSF (opcional) que lo prellena y cada dato con su origen.
  * Mobile first: una columna, acciones a todo el ancho; desde 768 px, dos columnas por dato.
@@ -46,7 +40,6 @@ export class PerfilFiscalComponent implements OnInit {
   private readonly api = inject(PerfilFiscalService);
   private readonly ruta = inject(ActivatedRoute);
   private readonly router = inject(Router);
-  private readonly destroyRef = inject(DestroyRef);
 
   readonly Estado = EstadoDeDocumento;
   readonly TipoDeCampo = TipoDeCampo;
@@ -72,9 +65,6 @@ export class PerfilFiscalComponent implements OnInit {
   readonly deLaConstanciaPorConfirmar = computed(
     () => this.perfil()?.campos.filter(c => !c.confirmado && c.origen === OrigenDelDato.ExtraidoDeCsf).length ?? 0,
   );
-  readonly leyendo = computed(() => this.perfil()?.csf?.estado === EstadoDeDocumento.Recibido);
-
-  private sondeo?: Subscription;
 
   ngOnInit(): void {
     this.api.clientes().subscribe({
@@ -200,35 +190,5 @@ export class PerfilFiscalComponent implements OnInit {
   private mostrar(p: PerfilFiscalDto): void {
     this.cargando.set(false);
     this.perfil.set(p);
-    if (p.csf?.estado === EstadoDeDocumento.Recibido) {
-      this.sondear();
-    }
-  }
-
-  /** Mientras la CSF se lee en segundo plano, se pregunta cada 3 s hasta que termine. */
-  private sondear(): void {
-    this.sondeo?.unsubscribe();
-    let intentos = 0;
-    this.sondeo = timer(CADA_MS, CADA_MS)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(() => {
-        const id = this.clienteId();
-        if (!id || ++intentos > MAX_INTENTOS) {
-          this.sondeo?.unsubscribe();
-          return;
-        }
-        this.api.obtener(id).subscribe({
-          next: p => {
-            if (p.organizacionId !== this.clienteId()) {
-              return;
-            }
-            this.perfil.set(p);
-            if (p.csf?.estado !== EstadoDeDocumento.Recibido) {
-              this.sondeo?.unsubscribe();
-            }
-          },
-          error: () => undefined,
-        });
-      });
   }
 }

@@ -234,7 +234,7 @@ public class AuxiliarContableHttpApiHostModule : AbpModule
         });
         context.Services.Replace(ServiceDescriptor.Transient<IEmailSender, BrevoEmailSender>());
 
-        // Claude (IA): lectura de estados de cuenta y casos dudosos de conciliacion. La API key
+        // Claude (IA): el chat del asistente. La API key
         // llega igual que la de Brevo; sin ella el modelo queda «sin configurar» y no se llama.
         Configure<ClaudeOptions>(configuration.GetSection(ClaudeOptions.Seccion));
         var claude = configuration.GetSection(ClaudeOptions.Seccion).Get<ClaudeOptions>() ?? new ClaudeOptions();
