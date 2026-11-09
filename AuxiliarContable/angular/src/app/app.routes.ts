@@ -61,6 +61,13 @@ export const APP_ROUTES: Routes = [
     data: { requiredPolicy: 'AuxiliarContable.Organizaciones' },
   },
   {
+    // Solo el equipo: banco contra facturas de un cliente y un mes (lo calcula el motor fiscal).
+    path: 'conciliacion',
+    loadComponent: () => import('./conciliacion/conciliacion.component').then(c => c.ConciliacionComponent),
+    canActivate: [authGuard, permissionGuard],
+    data: { requiredPolicy: 'AuxiliarContable.Organizaciones' },
+  },
+  {
     // Sin permiso: el servidor decide qué clientes ve cada quien (Autorizador).
     path: 'perfil-fiscal',
     loadComponent: () => import('./perfil-fiscal/perfil-fiscal.component').then(c => c.PerfilFiscalComponent),
