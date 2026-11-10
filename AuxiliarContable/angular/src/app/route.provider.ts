@@ -141,14 +141,14 @@ function configureRoutes() {
       layout: eLayoutType.application,
     },
 
-    // Banco contra facturas, por cliente y mes (motor fiscal). Solo el equipo.
+    // El cierre del mes: conciliación bancaria (motor fiscal), partidas sin factura y cierre. El
+    // cliente también entra (ve su mes y contesta lo que le preguntan); el servidor decide qué ve.
     {
       path: '/conciliacion',
       name: '::Menu:Conciliacion',
       iconClass: 'bi bi-arrow-left-right',
       order: 1.8,
       layout: eLayoutType.application,
-      requiredPolicy: 'AuxiliarContable.Organizaciones',
     },
 
     // El perfil fiscal: para el cliente, el suyo; para el despacho, el de cada cliente. Sin

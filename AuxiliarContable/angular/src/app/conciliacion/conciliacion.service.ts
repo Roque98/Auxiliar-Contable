@@ -74,10 +74,79 @@ export interface ConciliacionDelMesDto {
   rfc: string;
   estadosDeCuenta: number;
   facturas: number;
+  conciliadaUtc: string;
   resultado: ResultadoDeConciliacion;
 }
 
-/** `BancosAppService` (`/api/app/bancos`). Cada llamada la calcula el motor: no hay nada guardado. */
+/** En qué va el cierre del mes (EtapaDelPeriodo). */
+export enum EtapaDelPeriodo {
+  FaltanDocumentos = 0,
+  PorConciliar = 1,
+  ConPendientes = 2,
+  ListoParaCerrar = 3,
+  Cerrado = 4,
+}
+
+export const NOMBRE_DE_ETAPA: Record<EtapaDelPeriodo, string> = {
+  [EtapaDelPeriodo.FaltanDocumentos]: 'Faltan documentos',
+  [EtapaDelPeriodo.PorConciliar]: 'Por conciliar',
+  [EtapaDelPeriodo.ConPendientes]: 'Con pendientes',
+  [EtapaDelPeriodo.ListoParaCerrar]: 'Listo para cerrar',
+  [EtapaDelPeriodo.Cerrado]: 'Cerrado',
+};
+
+/** Qué decidió el despacho de un movimiento sin factura (ResolucionDePartida). */
+export enum ResolucionDePartida {
+  SinResolver = 0,
+  PreguntarAlCliente = 1,
+  TraspasoPropio = 2,
+  SinFactura = 3,
+  FacturaPorLlegar = 4,
+  Revisado = 5,
+}
+
+export const NOMBRE_DE_RESOLUCION: Record<ResolucionDePartida, string> = {
+  [ResolucionDePartida.SinResolver]: 'Sin resolver',
+  [ResolucionDePartida.PreguntarAlCliente]: 'Preguntarle al cliente',
+  [ResolucionDePartida.TraspasoPropio]: 'Traspaso entre sus cuentas',
+  [ResolucionDePartida.SinFactura]: 'Real, sin factura (préstamo, no deducible…)',
+  [ResolucionDePartida.FacturaPorLlegar]: 'Su factura está por llegar',
+  [ResolucionDePartida.Revisado]: 'No lleva factura (comisión, interés…)',
+};
+
+export interface PartidaDto {
+  id: string;
+  anio: number;
+  mes: number;
+  clave: string;
+  descripcion: string;
+  resolucion: ResolucionDePartida;
+  nota: string | null;
+  respuesta: string | null;
+  respondidaUtc: string | null;
+  /** ¿Detiene el cierre? */
+  pendiente: boolean;
+}
+
+export interface CierreDelMesDto {
+  anio: number;
+  mes: number;
+  etapa: EtapaDelPeriodo;
+  revision: { texto: string; hecho: boolean; bloquea: boolean }[];
+  estadosDeCuenta: number;
+  facturas: number;
+  conciliacion: ConciliacionDelMesDto | null;
+  conciliacionDesactualizada: boolean;
+  partidas: PartidaDto[];
+  cerradoUtc: string | null;
+  /** El despacho: resuelve partidas, cierra y reabre. */
+  puedeCerrar: boolean;
+}
+
+/**
+ * `BancosAppService` (`/api/app/bancos`) y `CierreAppService` (`/api/app/cierre`). Conciliar lo hace
+ * el motor y se guarda (una por mes); el cierre dice en qué va el mes.
+ */
 @Injectable({ providedIn: 'root' })
 export class ConciliacionService {
   private readonly rest = inject(RestService);
@@ -87,6 +156,48 @@ export class ConciliacionService {
   conciliar(organizacionId: string, anio: number, mes: number): Observable<ConciliacionDelMesDto> {
     return this.rest.request<void, ConciliacionDelMesDto>(
       { method: 'POST', url: `${this.base}/conciliar/${organizacionId}`, params: { anio, mes } },
+      this.opciones,
+    );
+  }
+
+  cierre(organizacionId: string, anio: number, mes: number): Observable<CierreDelMesDto> {
+    return this.rest.request<void, CierreDelMesDto>(
+      { method: 'GET', url: '/api/app/cierre', params: { organizacionId, anio, mes } },
+      this.opciones,
+    );
+  }
+
+  preguntas(organizacionId: string): Observable<PartidaDto[]> {
+    return this.rest.request<void, PartidaDto[]>(
+      { method: 'GET', url: `/api/app/cierre/preguntas/${organizacionId}` },
+      this.opciones,
+    );
+  }
+
+  resolver(organizacionId: string, partidaId: string, resolucion: ResolucionDePartida, nota: string | null): Observable<PartidaDto> {
+    return this.rest.request<unknown, PartidaDto>(
+      { method: 'POST', url: '/api/app/cierre/resolver', params: { organizacionId, partidaId }, body: { resolucion, nota } },
+      this.opciones,
+    );
+  }
+
+  responder(organizacionId: string, partidaId: string, respuesta: string): Observable<PartidaDto> {
+    return this.rest.request<unknown, PartidaDto>(
+      { method: 'POST', url: '/api/app/cierre/responder', params: { organizacionId, partidaId }, body: { respuesta } },
+      this.opciones,
+    );
+  }
+
+  cerrar(organizacionId: string, anio: number, mes: number): Observable<CierreDelMesDto> {
+    return this.rest.request<void, CierreDelMesDto>(
+      { method: 'POST', url: `/api/app/cierre/cerrar/${organizacionId}`, params: { anio, mes } },
+      this.opciones,
+    );
+  }
+
+  reabrir(organizacionId: string, anio: number, mes: number): Observable<CierreDelMesDto> {
+    return this.rest.request<void, CierreDelMesDto>(
+      { method: 'POST', url: `/api/app/cierre/reabrir/${organizacionId}`, params: { anio, mes } },
       this.opciones,
     );
   }

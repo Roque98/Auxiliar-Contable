@@ -158,9 +158,97 @@ h2 { font-size: var(--ig-texto-lg); font-weight: var(--ig-peso-semi); margin: va
 
 .cc-vacio { color: var(--ig-texto-secundario); padding: var(--ig-esp-4) 0; }
 
+/* El cierre del mes: etapa, lista de revisión, acciones y partidas sin factura. */
+.cc-cierre {
+  background: var(--ig-blanco);
+  border: var(--ig-borde);
+  border-radius: var(--ig-radio-lg);
+  box-shadow: var(--ig-sombra-sutil);
+  padding: var(--ig-esp-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--ig-esp-3);
+  margin-bottom: var(--ig-esp-4);
+}
+
+.cc-cierre-cabecera {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ig-esp-2);
+
+  h2 { margin: 0; text-transform: capitalize; }
+}
+
+.cc-etapa {
+  font-size: var(--ig-texto-sm);
+  font-weight: var(--ig-peso-semi);
+  padding: var(--ig-esp-1) var(--ig-esp-3);
+  border-radius: 999px;
+  background: var(--ig-gris-fondo);
+  color: var(--ig-texto-secundario);
+
+  &[data-etapa="2"] { color: var(--ig-error-texto); }
+  &[data-etapa="3"], &[data-etapa="4"] { color: var(--ig-exito-texto); }
+}
+
+.cc-revision {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ig-esp-2);
+
+  li { display: flex; gap: var(--ig-esp-2); align-items: baseline; color: var(--ig-texto-secundario); }
+  .cc-hecho i { color: var(--ig-exito-texto); }
+  .cc-bloquea { color: inherit; }
+  .cc-bloquea i { color: var(--ig-error-texto); }
+}
+
+.cc-acciones { display: flex; flex-wrap: wrap; gap: var(--ig-esp-2); }
+
+.cc-accion { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: var(--ig-esp-2); }
+
+.cc-partidas { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--ig-esp-2); }
+
+.cc-partida {
+  background: var(--ig-blanco);
+  border: var(--ig-borde);
+  border-left: 4px solid var(--ig-error-texto);
+  border-radius: var(--ig-radio-md);
+  padding: var(--ig-esp-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--ig-esp-2);
+  min-width: 0;
+
+  &.cc-partida-lista { border-left-color: var(--ig-exito-texto); }
+  p { margin: 0; }
+}
+
+.cc-pregunta { font-weight: var(--ig-peso-semi); }
+
+.cc-respuesta { font-size: var(--ig-texto-sm); }
+
+.cc-resolver {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ig-esp-2);
+
+  .ig-control { min-height: 44px; min-width: 0; }
+}
+
 @media (min-width: 768px) {
+  .cc-resolver { flex-direction: row; align-items: center; }
+  .cc-resolver select { flex: 0 0 18rem; }
+  .cc-resolver input { flex: 1; }
   .cc-filtros { flex-direction: row; align-items: flex-end; }
   .cc-campo-cliente { flex: 1 1 auto; }
   .cc-resumen { grid-template-columns: repeat(5, minmax(0, 1fr)); }
   .cc-cuentas { grid-template-columns: repeat(auto-fill, minmax(22rem, 1fr)); }
 }
+
+.cc-partida .cc-mov-linea { flex-wrap: wrap; }
+.cc-partida .cc-chip { white-space: normal; max-width: 100%; }

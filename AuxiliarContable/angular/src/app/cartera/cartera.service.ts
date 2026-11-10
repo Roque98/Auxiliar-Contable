@@ -1,3 +1,4 @@
+import { EtapaDelPeriodo } from '../conciliacion/conciliacion.service';
 import { inject, Injectable } from '@angular/core';
 import { RestService } from '@abp/ng.core';
 import { Observable } from 'rxjs';
@@ -21,6 +22,9 @@ export interface ClienteDeCarteraDto {
   ultimoDocumentoUtc?: string | null;
   semaforo: SemaforoDeCliente;
   pendientes: string[];
+  /** En qué va el cierre del mes (la misma regla que la pantalla del cierre). */
+  etapa: EtapaDelPeriodo;
+  partidasPendientes: number;
 }
 
 export interface MetricasDelDespachoDto {

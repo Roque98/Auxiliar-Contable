@@ -535,7 +535,7 @@
     "Menu:Inicio": "Home",
     "Menu:Leyes": "Laws",
     "Menu:Documentos": "Documents",
-    "Menu:Conciliacion": "Bank reconciliation",
+    "Menu:Conciliacion": "Month-end close",
     "AuxiliarContable:OrganizacionObligatoria": "A client user (User role) must join an organization: choose one.",
     "AuxiliarContable:OrganizacionNoExiste": "The chosen organization no longer exists. Reload and choose another.",
     "AuxiliarContable:InvitacionSinOrganizacion": "This invitation's organization no longer exists. Ask for a new invitation.",

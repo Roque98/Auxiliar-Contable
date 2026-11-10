@@ -5,6 +5,7 @@ import { mensajeDeError } from '../invitaciones/invitaciones.service';
 import { MESES } from '../documentos/documentos.service';
 import { CARTERA } from '../asistente/asistente.service';
 import { CarteraService, ClienteDeCarteraDto, MetricasDelDespachoDto, SemaforoDeCliente } from './cartera.service';
+import { NOMBRE_DE_ETAPA } from '../conciliacion/conciliacion.service';
 import { chatEncendido } from '../shared/chat';
 
 /**
@@ -89,6 +90,8 @@ export class CarteraComponent implements OnInit {
   alternar(s: SemaforoDeCliente): void {
     this.filtro.set(this.filtro() === s ? null : s);
   }
+
+  readonly nombreDeEtapa = NOMBRE_DE_ETAPA;
 
   etiqueta(s: SemaforoDeCliente): string {
     return s === SemaforoDeCliente.Urgente ? 'Urgente' : s === SemaforoDeCliente.Atencion ? 'Atención' : 'Al día';

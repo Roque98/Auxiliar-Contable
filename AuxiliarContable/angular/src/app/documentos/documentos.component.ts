@@ -103,15 +103,17 @@ export class DocumentosComponent implements OnInit {
   }
 
   /**
-   * Un estado de cuenta llega al mes siguiente del que cubre: se sugiere el mes pasado. Un ticket u
+   * Un estado de cuenta se acomoda solo: el motor lee su periodo (mes 0 = «que lo lea»). Un ticket u
    * otro documento suele ser de este mes. Quien sube lo puede cambiar.
    */
   sugerirMes(): void {
     const hoy = new Date();
-    const atras = this.tipoAlSubir === TipoDeDocumento.EstadoDeCuenta ? 1 : 0;
-    const d = new Date(hoy.getFullYear(), hoy.getMonth() - atras, 1);
-    this.anioAlSubir = d.getFullYear();
-    this.mesAlSubir = d.getMonth() + 1;
+    this.anioAlSubir = hoy.getFullYear();
+    this.mesAlSubir = this.tipoAlSubir === TipoDeDocumento.EstadoDeCuenta ? 0 : hoy.getMonth() + 1;
+  }
+
+  get leerElMes(): boolean {
+    return this.tipoAlSubir === TipoDeDocumento.EstadoDeCuenta && this.mesAlSubir === 0;
   }
 
   ngOnInit(): void {
