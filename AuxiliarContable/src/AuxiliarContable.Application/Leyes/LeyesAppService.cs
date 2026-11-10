@@ -50,7 +50,22 @@ public class LeyesAppService : AuxiliarContableAppService, ILeyesAppService
             UltimaReformaDof = r.UltimaReformaDof,
             NotaDeVigencia = r.NotaDeVigencia,
             Url = r.Url,
-            Texto = r.Texto,
+            Texto = SinEncabezado(r.Texto),
         }).ToList();
+    }
+
+    /// <summary>
+    /// El índice antepone a cada artículo «[LEY … — última reforma …]» y «[Ubicación: …]»: en pantalla eso ya va
+    /// arriba, separado. Se quitan solo esos renglones entre corchetes (y los vacíos) del principio.
+    /// </summary>
+    public static string SinEncabezado(string texto)
+    {
+        var lineas = (texto ?? "").Replace("\r\n", "\n").Split('\n').ToList();
+        while (lineas.Count > 0 && lineas[0].Trim() is var l && (l.Length == 0 || (l.StartsWith('[') && l.EndsWith(']'))))
+        {
+            lineas.RemoveAt(0);
+        }
+
+        return string.Join('\n', lineas);
     }
 }

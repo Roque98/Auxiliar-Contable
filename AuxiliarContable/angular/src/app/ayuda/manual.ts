@@ -124,8 +124,8 @@ export const SECCIONES: Seccion[] = [
         permisos: ['AuxiliarContable.Organizaciones'],
         texto: [
           'Cartera muestra a todos los clientes del mes con un semáforo: urgente (sin RFC o sin estado de cuenta del mes), atención o al día.',
-          'Cada tarjeta dice qué falta y lleva directo a su asistente, documentos o perfil.',
-          'En el asistente, «Toda la cartera» responde preguntas como «¿quién está urgente?» y redacta recordatorios. El Owner ve además las métricas del despacho.',
+          'Cada tarjeta dice qué falta y lleva directo a su conciliación, documentos o perfil.',
+          'El Owner ve además las métricas del despacho. Las flechas cambian de mes.',
         ],
       },
       {

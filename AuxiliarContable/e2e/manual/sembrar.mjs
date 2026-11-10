@@ -73,6 +73,10 @@ for (const cli of CLIENTES) {
   for (const d of cli.documentos ?? []) {
     await subir(`api/app/boveda/subir/${id}?tipo=${d.tipo}`, d.nombre, d.bytes());
   }
+  if (cli.constancia) {
+    // La lee el motor fiscal al subirla: hace falta MotorFiscal:Url (ver docs/manuales).
+    await subir(`api/app/perfil-fiscal/subir-csf/${id}`, cli.constancia.nombre, cli.constancia.bytes());
+  }
 }
 
 await navegador.close();

@@ -16,34 +16,42 @@ const DOCS = resolve(AQUI, '..', '..', '..', 'docs', 'manuales');
 const TAM = { width: 1280, height: 760 };
 const SOLO = process.argv[2]; // opcional: un rol
 
-/** Qué se captura de cada rol. `antes` hace algo en la pantalla antes de la foto. */
+/**
+ * Qué se captura de cada rol. `cliente` elige al cliente en la pantalla; `accion` hace algo antes de la foto
+ * (conciliar, abrir una pestaña). El chat está apagado: la portada es «Inicio».
+ */
 const ESCENAS = {
   usuario: [
-    { ruta: '/', archivo: '01-asistente' },
+    { ruta: '/', archivo: '01-inicio' },
     { ruta: '/documentos', archivo: '02-documentos' },
     { ruta: '/perfil-fiscal', archivo: '03-perfil-fiscal' },
-    { ruta: '/mi-organizacion', archivo: '04-mi-organizacion' },
-    { ruta: '/mi-cuenta', archivo: '05-mi-cuenta' },
-    { ruta: '/seguridad', archivo: '06-seguridad' },
-    { ruta: '/ayuda', archivo: '07-ayuda' },
+    { ruta: '/leyes?q=deducción de automóviles', archivo: '04-consultar-leyes', accion: esperarLeyes },
+    { ruta: '/mi-organizacion', archivo: '05-mi-organizacion' },
+    { ruta: '/mi-cuenta', archivo: '06-mi-cuenta' },
+    { ruta: '/seguridad', archivo: '07-seguridad' },
+    { ruta: '/ayuda', archivo: '08-ayuda' },
   ],
   administrador: [
-    { ruta: '/', archivo: '01-asistente-cartera' },
+    { ruta: '/', archivo: '01-inicio' },
     { ruta: '/cartera', archivo: '02-cartera' },
-    { ruta: '/documentos', archivo: '03-documentos-cliente', cliente: 'Panadería La Espiga' },
-    { ruta: '/perfil-fiscal', archivo: '04-perfil-fiscal-cliente', cliente: 'Panadería La Espiga' },
-    { ruta: '/organizaciones', archivo: '05-organizaciones' },
-    { ruta: '/invitaciones', archivo: '06-invitaciones' },
-    { ruta: '/identity/users', archivo: '07-usuarios' },
-    { ruta: '/actividad', archivo: '08-actividad' },
+    { ruta: '/conciliacion', archivo: '03-conciliacion', accion: conciliar },
+    { ruta: null, archivo: '04-conciliacion-sin-factura', accion: p => pestana(p, 'Sin factura') },
+    { ruta: '/documentos', archivo: '05-documentos-cliente', cliente: 'Panadería La Espiga' },
+    { ruta: '/perfil-fiscal', archivo: '06-perfil-fiscal-cliente', cliente: 'Panadería La Espiga' },
+    { ruta: '/leyes?q=artículo 27&ley=LISR', archivo: '07-consultar-leyes', accion: esperarLeyes },
+    { ruta: '/organizaciones', archivo: '08-organizaciones' },
+    { ruta: '/invitaciones', archivo: '09-invitaciones' },
+    { ruta: '/identity/users', archivo: '10-usuarios' },
+    { ruta: '/actividad', archivo: '11-actividad' },
   ],
   owner: [
-    { ruta: '/cartera', archivo: '01-cartera-y-metricas' },
-    { ruta: '/identity/users', archivo: '02-usuarios' },
-    { ruta: '/identity/roles', archivo: '03-roles' },
-    { ruta: '/invitaciones', archivo: '04-invitaciones' },
-    { ruta: '/branding', archivo: '05-marca' },
-    { ruta: '/actividad', archivo: '06-actividad' },
+    { ruta: '/', archivo: '01-inicio' },
+    { ruta: '/cartera', archivo: '02-cartera-y-metricas' },
+    { ruta: '/identity/users', archivo: '03-usuarios' },
+    { ruta: '/identity/roles', archivo: '04-roles' },
+    { ruta: '/invitaciones', archivo: '05-invitaciones' },
+    { ruta: '/branding', archivo: '06-marca' },
+    { ruta: '/actividad', archivo: '07-actividad' },
   ],
   developer: [
     { ruta: '/system-status', archivo: '01-estado-del-sistema' },
@@ -56,6 +64,28 @@ const ESCENAS = {
     { ruta: '/sessions', archivo: '08-sesiones' },
   ],
 };
+
+/** El mes de los ejemplos (la bóveda agrupa por fecha de subida: ver ejemplos/generar.py). */
+const MES_DE_EJEMPLO = { mes: 'noviembre', anio: '2026' };
+
+async function conciliar(pagina) {
+  await pagina.locator('[data-testid=cliente]').selectOption({ label: 'Panadería La Espiga' });
+  await pagina.locator('label:has-text("Mes") select').selectOption({ label: MES_DE_EJEMPLO.mes });
+  await pagina.locator('label:has-text("Año") select').selectOption({ label: MES_DE_EJEMPLO.anio });
+  await pagina.getByRole('button', { name: 'Conciliar', exact: true }).click();
+  await pagina.locator('.cc-resumen').waitFor({ timeout: 300_000 });
+  await pagina.waitForTimeout(800);
+}
+
+async function pestana(pagina, texto) {
+  await pagina.getByRole('tab', { name: new RegExp(`^${texto}`) }).click();
+  await pagina.waitForTimeout(600);
+}
+
+async function esperarLeyes(pagina) {
+  await pagina.locator('.ly-resultados, .ly-vacio, .ig-alerta').first().waitFor({ timeout: 60_000 });
+  await pagina.waitForTimeout(600);
+}
 
 async function ir(pagina, ruta) {
   await pagina.goto(`${WEB}${ruta}`);
@@ -137,10 +167,14 @@ async function escribirLogin(pagina, c, lento, intento = 1) {
 // --- Recorridos en video (más lentos, con acciones) ----------------------------------------
 const RECORRIDOS = {
   usuario: async p => {
+    await ir(p, '/');
     await p.waitForTimeout(1500);
     await ir(p, '/documentos');
     const entrada = p.locator('input[type=file]').first();
     if (await entrada.count()) {
+      // Un ticket es «Ticket»: con el valor por omisión (Estado de cuenta) la conciliación intentaría leerlo.
+      await p.locator('label:has-text("Si no es factura") select').selectOption({ label: 'Ticket' });
+      await p.waitForTimeout(800);
       await entrada.setInputFiles({
         name: 'ticket-gasolina.pdf', mimeType: 'application/pdf',
         buffer: Buffer.from('%PDF-1.4\n% ticket de ejemplo\n%%EOF\n'),
@@ -148,29 +182,35 @@ const RECORRIDOS = {
       await p.waitForTimeout(2500);
     }
     await ir(p, '/perfil-fiscal');
-    await p.mouse.wheel(0, 500);
-    await p.waitForTimeout(1500);
-    await ir(p, '/mi-organizacion');
-    await ir(p, '/ayuda');
     await p.mouse.wheel(0, 600);
+    await p.waitForTimeout(1500);
+    await ir(p, '/leyes');
+    await p.locator('[data-testid=consulta]').pressSequentially('deducción de automóviles', { delay: 60 });
+    await p.getByRole('button', { name: 'Buscar', exact: true }).click();
+    await esperarLeyes(p);
+    await p.mouse.wheel(0, 500);
     await p.waitForTimeout(1500);
   },
   administrador: async p => {
+    await ir(p, '/');
     await p.waitForTimeout(1500);
     await ir(p, '/cartera');
     await p.waitForTimeout(1500);
-    await ir(p, '/documentos');
-    await elegirCliente(p, 'Panadería La Espiga');
+    await ir(p, '/conciliacion');
+    await conciliar(p);
+    await p.mouse.wheel(0, 600);
+    await p.waitForTimeout(1500);
+    await pestana(p, 'Sin factura');
     await p.waitForTimeout(1500);
     await ir(p, '/perfil-fiscal');
     await elegirCliente(p, 'Panadería La Espiga');
-    await p.mouse.wheel(0, 500);
     await p.waitForTimeout(1500);
-    await ir(p, '/organizaciones');
-    await ir(p, '/invitaciones');
+    await ir(p, '/leyes?q=artículo 27&ley=LISR');
+    await esperarLeyes(p);
     await p.waitForTimeout(1500);
   },
   owner: async p => {
+    await ir(p, '/');
     await p.waitForTimeout(1500);
     await ir(p, '/cartera');
     await p.waitForTimeout(2000);
@@ -220,9 +260,14 @@ for (const [rol, escenas] of Object.entries(ESCENAS)) {
   await aceptarAviso(pagina, rol === 'usuario' ? join(DOCS, 'img', 'comun', '02-aviso-de-privacidad.png') : null);
   await pagina.waitForTimeout(1200);
   for (const e of escenas) {
-    await ir(pagina, e.ruta);
+    if (e.ruta) {
+      await ir(pagina, e.ruta);
+    }
     if (e.cliente) {
       await elegirCliente(pagina, e.cliente);
+    }
+    if (e.accion) {
+      await e.accion(pagina);
     }
     await pagina.screenshot({ path: join(carpeta, `${e.archivo}.png`) });
     console.log(rol, e.archivo);

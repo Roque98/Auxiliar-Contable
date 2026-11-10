@@ -194,10 +194,13 @@ DOTNET_ENVIRONMENT=Development dotnet run</code></pre></div></li>
   <div class="tbl"><table>
     <thead><tr><th>Módulo</th><th>Pantalla</th><th>Notas</th></tr></thead>
     <tbody>
-      <tr><td>Conversaciones (chat)</td><td><code>/</code></td><td><code>AsistenteAppService</code> lleva el bucle; <code>HerramientasDelAsistente</code> llama a los mismos servicios que las pantallas. El cliente activo lo pone el código, nunca el modelo</td></tr>
+      <tr><td>Inicio</td><td><code>/</code></td><td><code>InicioComponent</code>: saludo, cifras del mes y atajos por rol. Con el chat encendido manda a <code>/asistente</code></td></tr>
+      <tr><td>Conversaciones (chat)</td><td><code>/asistente</code></td><td><strong>Apagado en producción</strong> (no hay API de Claude): ajuste <code>AuxiliarContable.Asistente.Habilitado</code>, <code>false</code> en <code>appsettings.json</code> del host; se enciende con <code>Settings__AuxiliarContable.Asistente.Habilitado=true</code> y <code>Claude__ApiKey</code>. Apagado, el menú y los botones no lo ofrecen (<code>shared/chat.ts</code>) y el servicio lo rechaza sin llamar al modelo</td></tr>
+      <tr><td>Consultar leyes</td><td><code>/leyes</code></td><td><code>LeyesAppService</code> → motor <code>/rag/buscar</code>. Sin IA; cualquiera con sesión</td></tr>
+      <tr><td>Conciliación</td><td><code>/conciliacion</code></td><td><code>BancosAppService</code>: los estados de cuenta y XML <em>del mes</em> de la bóveda → motor <code>/bancos/conciliar</code> con el RFC del perfil. No guarda nada. Solo el equipo</td></tr>
       <tr><td>Cartera</td><td><code>/cartera</code></td><td>Semáforo por cliente con lo que la app sabe (perfil y documentos recibidos). Métricas solo nivel ≥ Owner</td></tr>
       <tr><td>Bóveda</td><td><code>/documentos</code></td><td>Guarda cifrado, ordena por mes y tipo. No interpreta el contenido: eso es del motor</td></tr>
-      <tr><td>Perfil fiscal</td><td><code>/perfil-fiscal</code></td><td>Un dato por campo del catálogo, con su origen y si está confirmado</td></tr>
+      <tr><td>Perfil fiscal</td><td><code>/perfil-fiscal</code></td><td>Un dato por campo del catálogo, con su origen y si está confirmado. Al subir la constancia, el motor (<code>/csf/leer</code>) la lee y sus datos se <em>proponen</em> sin confirmar; nunca pisan lo confirmado por una persona (sale como aviso)</td></tr>
       <tr><td>Organizaciones</td><td><code>/organizaciones</code>, <code>/mi-organizacion</code></td><td>1 cliente = 1 RFC</td></tr>
       <tr><td>Identidad</td><td><code>/identity/users</code>, <code>/identity/roles</code>, <code>/invitaciones</code></td><td>Invitación por correo (Brevo) con enlace de un solo uso</td></tr>
       <tr><td>Operación</td><td><code>/system-status</code>, <code>/metrics</code>, <code>/jobs</code>, <code>/audit</code>, <code>/security</code></td><td>Solo Developer por defecto</td></tr>
@@ -208,19 +211,33 @@ DOTNET_ENVIRONMENT=Development dotnet run</code></pre></div></li>
 
 <section id="motor">
   <h2>5. El motor fiscal</h2>
-  <p>En el VPS corre como el servicio <code>motores-fiscales</code> (usuario <code>motores</code>, <code>/srv/motores-fiscales</code>, unidad systemd endurecida, 1 GB de memoria máxima). Escucha solo en <code>127.0.0.1:5090</code>.</p>
+  <p>El repositorio <code>motores-fiscales</code> (el trabajo del contador) corre en el VPS como el servicio <code>motores-fiscales</code>: usuario <code>motores</code> sin shell, <code>/srv/motores-fiscales</code>, unidad systemd endurecida (2 GB máx.). Escucha solo en <code>127.0.0.1:5090</code>; la consola lo llama por <code>IMotorFiscal</code> (Domain) y <code>MotorFiscalHttp</code> (Host), con <code>MotorFiscal:Url</code>. Un motor caído no tumba la consola: cada pantalla dice que no pudo consultar.</p>
   <div class="tbl"><table>
-    <thead><tr><th>Ruta</th><th>Qué hace</th></tr></thead>
+    <thead><tr><th>Ruta</th><th>Qué hace</th><th>Quién la usa</th></tr></thead>
     <tbody>
-      <tr><td><code>GET /salud</code></td><td>Qué piezas están disponibles (RAG, vectores, librerías)</td></tr>
-      <tr><td><code>GET /rag/buscar?q=&amp;k=&amp;ley=&amp;tipo=</code></td><td>Búsqueda en leyes, reglas del SAT, NIF y normas, con cita. En el servidor: BM25 + citas, sin modelo de embeddings</td></tr>
-      <tr><td><code>GET /rag/articulo?doc_id=&amp;articulo=</code></td><td>Texto completo de un artículo</td></tr>
+      <tr><td><code>GET /salud</code></td><td>Qué piezas están disponibles</td><td>Diagnóstico</td></tr>
+      <tr><td><code>GET /rag/buscar</code></td><td>Leyes, reglamentos, RMF y NIF con su cita (BM25 + citas)</td><td>Consultar leyes</td></tr>
+      <tr><td><code>POST /bancos/leer</code></td><td>Estados de cuenta → movimientos y cuadre contra lo impreso</td><td><code>BancosAppService.LeerEstadoDeCuentaAsync</code></td></tr>
+      <tr><td><code>POST /bancos/conciliar</code></td><td>Estados de cuenta + XML → factura de cada movimiento, facturas sin pago, alertas</td><td>Conciliación</td></tr>
+      <tr><td><code>POST /csf/leer</code></td><td>Constancia del SAT → RFC, nombre, CP, regímenes, obligaciones, actividades</td><td>Perfil fiscal (al subir la constancia)</td></tr>
     </tbody>
   </table></div>
-  <p>Para conectarlo a Auxiliar Contable: una interfaz <code>IServicioConocimiento</code> en Domain, su implementación con <code>HttpClient</code> en el Host (base <code>http://127.0.0.1:5090</code>) y una herramienta del chat por ruta. Las reglas del motor mandan sobre cualquier lógica de esta app.</p>
-  <pre><code># actualizar el motor en el VPS (sin acceso de GitHub desde el servidor)
-git -C motores-fiscales bundle create mf.bundle main
-scp mf.bundle root@VPS:/tmp/ &amp;&amp; ssh root@VPS 'sudo -u motores git -C /srv/motores-fiscales fetch /tmp/mf.bundle main:refs/remotes/bundle/main &amp;&amp; sudo -u motores git -C /srv/motores-fiscales reset --hard bundle/main &amp;&amp; systemctl restart motores-fiscales'</code></pre>
+  <h3>Leer archivos con <code>claude -p</code></h3>
+  <p>Lo que el método de siempre no puede comprobar contra los saldos del banco (escaneos, fotos, un original que no cuadra) lo lee <code>claude -p</code> con la <strong>sesión de claude.ai</strong> del usuario <code>motores</code>, nunca con saldo de la API (el lector quita <code>ANTHROPIC_API_KEY</code>). Cada lectura se guarda por la huella del archivo en <code>/srv/motores-fiscales/estado/lecturas_claude</code>: el mismo archivo no se vuelve a mandar. En pantalla, la cuenta dice «Leída con Claude».</p>
+  <ul>
+    <li>Ejecutable: <code>/opt/claude-code/claude</code> (copia fija; no se actualiza sola). El de root (<code>/root/.local/bin/claude</code>) es aparte.</li>
+    <li>Sesión: <code>/srv/motores-fiscales/estado/claude</code> (<code>CLAUDE_CONFIG_DIR</code> de la unidad), propia del motor: no choca con la de root. Si se cierra la sesión de esa cuenta en claude.ai, repetir el <code>/login</code>:</li>
+  </ul>
+  <pre><code>ssh vps
+cd /srv/motores-fiscales &amp;&amp; sudo -u motores env HOME=/srv/motores-fiscales/estado CLAUDE_CONFIG_DIR=/srv/motores-fiscales/estado/claude DISABLE_AUTOUPDATER=1 /opt/claude-code/claude
+# adentro: /login y /exit; luego, como root:
+systemctl restart motores-fiscales</code></pre>
+  <p>Conciliar puede tardar minutos la primera vez: la consola espera hasta 15 min (<code>MotorFiscal:TimeoutDeBancosSegundos</code>) y nginx da 900 s solo a <code>/api/app/bancos/</code> (<code>deploy/nginx.conf</code>; en el VPS se aplicó a mano, porque el despliegue no toca nginx).</p>
+  <pre><code># actualizar el motor en el VPS (el servidor no tiene acceso a GitHub)
+git -C motores-fiscales bundle create mf.bundle &lt;ultimo-en-el-vps&gt;..main
+scp mf.bundle vps:/tmp/ &amp;&amp; ssh vps 'cd /srv/motores-fiscales &amp;&amp; sudo -u motores git fetch /tmp/mf.bundle main:refs/remotes/bundle/main &amp;&amp; sudo -u motores git merge --ff-only bundle/main &amp;&amp; systemctl restart motores-fiscales'
+# pruebas del servicio (datos inventados)
+ssh vps 'cd /srv/motores-fiscales &amp;&amp; sudo -u motores .venv/bin/python servicio/probar_bancos.py &amp;&amp; sudo -u motores .venv/bin/python servicio/probar_csf.py'</code></pre>
 </section>
 
 <section id="pruebas">
@@ -304,12 +321,16 @@ cd angular &amp;&amp; yarn test:unit                         # vitest (el CI usa
 
 <section id="manual">
   <h2>10. Regenerar el manual de usuario</h2>
-  <p>Las capturas y los videos salen de la consola <strong>local</strong> con datos ficticios, nunca de producción. Con la API y el front corriendo:</p>
-  <pre><code>cd AuxiliarContable/e2e
+  <p>Las capturas y los videos salen de la consola <strong>local</strong> con datos ficticios, nunca de producción. «Consultar leyes» necesita el índice del motor, que solo está en el VPS: se usa por un túnel SSH (solo viajan los datos inventados).</p>
+  <pre><code>ssh -N -L 5091:127.0.0.1:5090 vps          # túnel al motor (en otra terminal)
+MotorFiscal__Url=http://127.0.0.1:5091/ dotnet run --project src/AuxiliarContable.HttpApi.Host
+
+cd AuxiliarContable/e2e
 npm ci &amp;&amp; npx playwright install chromium
-node manual/sembrar.mjs     # cuentas por rol y tres clientes de ejemplo (idempotente)
-node manual/capturar.mjs    # docs/manuales/img/&lt;rol&gt;/*.png y docs/manuales/video/&lt;rol&gt;.webm</code></pre>
-  <p>Las cuentas de ejemplo están en <code>e2e/manual/comun.mjs</code>: <code>duena</code> (Owner), <code>contador</code> (Administrador) y <code>lupita</code> (Usuario de «Panadería La Espiga»). Los scripts se niegan a correr si la API no es <code>localhost</code>.</p>
+python manual/ejemplos/generar.py   # estado de cuenta, facturas y constancia inventados (PyMuPDF)
+node manual/sembrar.mjs             # cuentas por rol, tres clientes, documentos y la constancia
+node manual/capturar.mjs            # docs/manuales/img/&lt;rol&gt;/*.png y docs/manuales/video/&lt;rol&gt;.webm</code></pre>
+  <p>Las cuentas de ejemplo están en <code>e2e/manual/comun.mjs</code>: <code>duena</code> (Owner), <code>contador</code> (Administrador) y <code>lupita</code> (Usuario de «Panadería La Espiga»). Para que la constancia salga «De tu constancia», la base local debe estar limpia (que el perfil no tenga ya esos datos confirmados). Los scripts se niegan a correr si la API no es <code>localhost</code>.</p>
 </section>
 
 <section id="problemas">
@@ -322,6 +343,9 @@ node manual/capturar.mjs    # docs/manuales/img/&lt;rol&gt;/*.png y docs/manuale
       <tr><td>El front muestra «Http failure response … 0 undefined»</td><td>La API no está corriendo o el certificado de desarrollo no es de confianza: <code>dotnet dev-certs https --trust</code></td></tr>
       <tr><td>El login deja de responder tras varios intentos</td><td>Límite de peticiones por IP (10/min en rutas de credenciales). Esperar un minuto</td></tr>
       <tr><td>«Una persona de un cliente (rol Usuario) tiene que entrar en una organización»</td><td>Al crear un Usuario por API, mandar <code>extraProperties.OrganizacionId</code></td></tr>
+      <tr><td>Conciliación: «No hay estados de cuenta de MM/AAAA»</td><td>La bóveda agrupa por la <em>fecha de subida</em> (la lectura de fechas de CFDI y estados de cuenta se quitó con el front sin motores). Un estado de cuenta de octubre subido en noviembre cae en noviembre. Pendiente: fechar cada documento al subirlo</td></tr>
+      <tr><td>Una cuenta sale «Leída con Claude» y no cuadra</td><td>Escaneo o foto difícil. Pedir el PDF original del banco</td></tr>
+      <tr><td>Escaneos «no se pudo leer» aunque haya sesión</td><td>La sesión del usuario <code>motores</code> caducó o se cerró: repetir el <code>/login</code> (sección 5)</td></tr>
       <tr><td>Un archivo con acentos «rotos» tras editarlo en PowerShell 5.1</td><td><code>Get-Content</code> lee UTF-8 sin BOM como ANSI. Usar <code>[IO.File]::ReadAllText(ruta, [Text.Encoding]::UTF8)</code></td></tr>
     </tbody>
   </table></div>
