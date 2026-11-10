@@ -73,6 +73,15 @@ export class DocumentosComponent implements OnInit {
   tipo: TipoDeDocumento | null = null;
   texto = '';
   tipoAlSubir = TipoDeDocumento.EstadoDeCuenta;
+  /** A qué mes van (menos las facturas, que van al de su XML). */
+  anioAlSubir = 0;
+  mesAlSubir = 0;
+  readonly aniosParaSubir = [0, 1, 2].map(n => new Date().getFullYear() - n);
+
+  /** El documento al que se le está cambiando el mes, y el mes elegido. */
+  readonly editando = signal<string | null>(null);
+  anioEditado = 0;
+  mesEditado = 0;
 
   readonly cliente = computed(() => this.clientes()?.find(c => c.id === this.clienteId()) ?? null);
   readonly anios = computed(() => [...new Set(this.resumen().map(r => r.anio))].sort((a, b) => b - a));
@@ -88,6 +97,22 @@ export class DocumentosComponent implements OnInit {
     return [...porMes.values()].sort((a, b) => b.mes - a.mes);
   });
   readonly hayMas = computed(() => (this.documentos()?.length ?? 0) < this.total());
+
+  constructor() {
+    this.sugerirMes();
+  }
+
+  /**
+   * Un estado de cuenta llega al mes siguiente del que cubre: se sugiere el mes pasado. Un ticket u
+   * otro documento suele ser de este mes. Quien sube lo puede cambiar.
+   */
+  sugerirMes(): void {
+    const hoy = new Date();
+    const atras = this.tipoAlSubir === TipoDeDocumento.EstadoDeCuenta ? 1 : 0;
+    const d = new Date(hoy.getFullYear(), hoy.getMonth() - atras, 1);
+    this.anioAlSubir = d.getFullYear();
+    this.mesAlSubir = d.getMonth() + 1;
+  }
 
   ngOnInit(): void {
     this.perfiles.clientes().subscribe({
@@ -182,7 +207,7 @@ export class DocumentosComponent implements OnInit {
     this.subidas.set(archivos.map(a => ({ nombre: a.name, estado: 'subiendo' as const })));
     for (let i = 0; i < archivos.length; i++) {
       const resultado = await new Promise<Subida>(resolver =>
-        this.api.subir(id, this.tipoAlSubir, archivos[i]).subscribe({
+        this.api.subir(id, this.tipoAlSubir, archivos[i], this.anioAlSubir, this.mesAlSubir).subscribe({
           next: r => resolver({
             nombre: archivos[i].name,
             estado: r.aviso ? 'aviso' : r.esDuplicado ? 'duplicado' : 'ok',
@@ -231,6 +256,37 @@ export class DocumentosComponent implements OnInit {
       return;
     }
     this.ocupado.set(`borrar:${d.id}`);
+  }
+
+  editar(d: DocumentoDeBovedaDto): void {
+    const f = new Date(d.fecha);
+    this.anioEditado = f.getUTCFullYear();
+    this.mesEditado = f.getUTCMonth() + 1;
+    this.editando.set(d.id);
+  }
+
+  guardarMes(d: DocumentoDeBovedaDto): void {
+    this.ocupado.set(d.id);
+    this.api.cambiarMes(this.clienteId()!, d.id, this.anioEditado, this.mesEditado).subscribe({
+      next: () => {
+        this.ocupado.set(null);
+        this.editando.set(null);
+        this.recargar();
+      },
+      error: e => {
+        this.ocupado.set(null);
+        this.error.set(mensajeDeError(e, 'No se pudo cambiar el mes.'));
+      },
+    });
+  }
+
+  /** De cuándo es: el día de una factura; de lo demás, el mes al que se asignó. */
+  periodo(d: DocumentoDeBovedaDto): string {
+    if (d.tipo === TipoDeDocumento.Cfdi) {
+      return this.fecha(d.fecha);
+    }
+    const f = new Date(d.fecha);
+    return `${MESES[f.getUTCMonth()]} ${f.getUTCFullYear()}`;
   }
 
   fecha(iso: string): string {

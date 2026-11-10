@@ -40,9 +40,16 @@ public class BovedaAppService : AuxiliarContableAppService, IBovedaAppService
         _autorizador = autorizador;
     }
 
-    public async Task<ResultadoDeSubidaDto> SubirAsync(Guid organizacionId, TipoDeDocumento tipo, IRemoteStreamContent archivo)
+    public async Task<ResultadoDeSubidaDto> SubirAsync(Guid organizacionId, TipoDeDocumento tipo, IRemoteStreamContent archivo,
+        int? anio = null, int? mes = null)
     {
         await _autorizador.ExigirAsync(organizacionId, AccionEnOrganizacion.Subir);
+        if ((anio == null) != (mes == null))
+        {
+            throw new UserFriendlyException("Di el mes y el año del documento, o ninguno de los dos.");
+        }
+
+        DateTime? delMes = anio is { } a && mes is { } m ? PrimeroDelMes(a, m) : null;
         if (archivo == null)
         {
             throw new UserFriendlyException("No llegó ningún archivo.");
@@ -70,10 +77,48 @@ public class BovedaAppService : AuxiliarContableAppService, IBovedaAppService
 
         // Un XML es una factura aunque la persona haya elegido otro tipo; lo demás nunca es XML.
         var tipoReal = esXml ? TipoDeDocumento.Cfdi : tipo;
-        var (documento, duplicado) = await _gestor.RecibirAsync(organizacionId, tipoReal, nombre, bytes,
-            mime => tipoReal == TipoDeDocumento.Cfdi ? mime == DetectorDeDocumento.Xml : mime != DetectorDeDocumento.Xml);
 
-        return new ResultadoDeSubidaDto { Documento = Describir(documento), EsDuplicado = duplicado };
+        // Una factura va al mes de su XML, diga lo que diga quien la sube: es lo que vale ante el SAT.
+        var diaDeLaFactura = esXml ? FechaDelCfdi.Leer(bytes) : null;
+        var fecha = diaDeLaFactura is { } dia ? FechaDelCfdi.ComoFecha(dia) : delMes;
+        var (documento, duplicado) = await _gestor.RecibirAsync(organizacionId, tipoReal, nombre, bytes,
+            mime => tipoReal == TipoDeDocumento.Cfdi ? mime == DetectorDeDocumento.Xml : mime != DetectorDeDocumento.Xml,
+            fecha);
+
+        return new ResultadoDeSubidaDto
+        {
+            Documento = Describir(documento),
+            EsDuplicado = duplicado,
+            Aviso = esXml && diaDeLaFactura == null && !duplicado
+                ? "No trae la fecha de una factura (¿es un CFDI?): quedó en el mes que elegiste."
+                : null,
+        };
+    }
+
+    public async Task<DocumentoDeBovedaDto> CambiarMesAsync(Guid organizacionId, Guid documentoId, int anio, int mes)
+    {
+        await _autorizador.ExigirAsync(organizacionId, AccionEnOrganizacion.Subir);
+        var documento = await DocumentoAsync(organizacionId, documentoId);
+        if (documento.Tipo == TipoDeDocumento.Cfdi && FechaDelCfdi.Leer(await _almacen.LeerAsync(documento)) != null)
+        {
+            throw new UserFriendlyException("Una factura va en el mes de la fecha de su XML: ese no se cambia.");
+        }
+
+        documento.FecharEn(PrimeroDelMes(anio, mes));
+        await _documentos.UpdateAsync(documento, autoSave: true);
+        return Describir(documento);
+    }
+
+    /// <summary>El mes de un documento: se guarda como su día 1 (ver <see cref="FechaDelCfdi.ComoFecha"/>).</summary>
+    private DateTime PrimeroDelMes(int anio, int mes)
+    {
+        var hoy = Clock.Now;
+        if (mes is < 1 or > 12 || anio < 2000 || new DateOnly(anio, mes, 1) > new DateOnly(hoy.Year, hoy.Month, 1).AddMonths(1))
+        {
+            throw new UserFriendlyException("Mes no válido.");
+        }
+
+        return FechaDelCfdi.ComoFecha(new DateOnly(anio, mes, 1));
     }
 
     public async Task<PagedResultDto<DocumentoDeBovedaDto>> GetListAsync(BuscarEnBovedaDto input)

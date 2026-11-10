@@ -71,7 +71,12 @@ for (const cli of CLIENTES) {
     await llamar('POST', `api/app/perfil-fiscal/responder/${id}`, { campo, valor }).catch(e => console.log('  perfil:', e.message.slice(0, 160)));
   }
   for (const d of cli.documentos ?? []) {
-    await subir(`api/app/boveda/subir/${id}?tipo=${d.tipo}`, d.nombre, d.bytes());
+    const delMes = d.mes ? `&anio=${d.anio}&mes=${d.mes}` : '';
+    await subir(`api/app/boveda/subir/${id}?tipo=${d.tipo}${delMes}`, d.nombre, d.bytes());
+  }
+  if (cli.constancia) {
+    // La lee el motor fiscal al subirla: hace falta MotorFiscal:Url (ver docs/manuales).
+    await subir(`api/app/perfil-fiscal/subir-csf/${id}`, cli.constancia.nombre, cli.constancia.bytes());
   }
 }
 

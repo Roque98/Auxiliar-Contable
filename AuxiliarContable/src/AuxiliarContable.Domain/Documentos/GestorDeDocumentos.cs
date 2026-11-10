@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Threading.Tasks;
@@ -31,13 +32,15 @@ public class GestorDeDocumentos : DomainService
     /// Guarda el archivo y devuelve su documento. Si ese cliente ya había subido EXACTAMENTE
     /// el mismo archivo, devuelve el que había (<c>EsDuplicado</c>) en vez de guardarlo dos
     /// veces: subir dos veces el mismo estado de cuenta no debe duplicar sus movimientos.
+    /// <paramref name="fecha"/> es a qué fecha corresponde (ver <see cref="Documento.FechaDelDocumento"/>).
     /// </summary>
     public async Task<(Documento Documento, bool EsDuplicado)> RecibirAsync(
         Guid organizacionId,
         TipoDeDocumento tipo,
         string nombreOriginal,
         byte[] contenido,
-        Func<string, bool>? tipoAceptado = null)
+        Func<string, bool>? tipoAceptado = null,
+        DateTime? fecha = null)
     {
         if (contenido.Length == 0)
         {
@@ -60,6 +63,13 @@ public class GestorDeDocumentos : DomainService
         var existente = await _documentos.FirstOrDefaultAsync(d => d.OrganizacionId == organizacionId && d.Sha256 == hash);
         if (existente != null)
         {
+            // Uno que se subió antes de que se fecharan (o sin decir de qué mes era) toma la fecha ahora.
+            if (existente.FechaDelDocumento == null && fecha != null)
+            {
+                existente.FecharEn(fecha.Value);
+                await _documentos.UpdateAsync(existente, autoSave: true);
+            }
+
             return (existente, true);
         }
 
@@ -80,12 +90,48 @@ public class GestorDeDocumentos : DomainService
 
         var documento = new Documento(
             GuidGenerator.Create(), organizacionId, tipo, NombreSeguro(nombreOriginal), mime, contenido.Length, hash);
+        if (fecha != null)
+        {
+            documento.FecharEn(fecha.Value);
+        }
 
         // Primero el contenido y luego la fila: si falla el disco no queda un documento sin
         // archivo. Si falla la base, queda un archivo huérfano cifrado, que no expone nada.
         await _almacen.GuardarAsync(documento, contenido);
         await _documentos.InsertAsync(documento, autoSave: true);
         return (documento, false);
+    }
+
+    /// <summary>
+    /// Fecha las facturas que se subieron antes de que la bóveda leyera la fecha del XML (quedaron en
+    /// el mes en que se subieron). Corre al arrancar; cuando ya no queda ninguna no hace nada.
+    /// </summary>
+    public async Task<int> FecharFacturasSinFechaAsync(int maximo = 500)
+    {
+        var pendientes = await _documentos.GetListAsync(d => d.Tipo == TipoDeDocumento.Cfdi && d.FechaDelDocumento == null);
+        var fechadas = 0;
+        foreach (var documento in pendientes.Take(maximo))
+        {
+            byte[] contenido;
+            try
+            {
+                contenido = await _almacen.LeerAsync(documento);
+            }
+            catch (Exception ex) when (ex is IOException or CryptographicException or AbpException)
+            {
+                Logger.LogWarning(ex, "No se pudo abrir la factura {Documento} para fecharla.", documento.Id);
+                continue;
+            }
+
+            if (FechaDelCfdi.Leer(contenido) is { } dia)
+            {
+                documento.FecharEn(FechaDelCfdi.ComoFecha(dia));
+                await _documentos.UpdateAsync(documento);
+                fechadas++;
+            }
+        }
+
+        return fechadas;
     }
 
     /// <summary>Solo el nombre (sin carpetas) y sin caracteres de control: se enseña, nunca se usa como ruta.</summary>

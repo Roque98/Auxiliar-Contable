@@ -16,8 +16,16 @@ namespace AuxiliarContable.Boveda;
 /// </summary>
 public interface IBovedaAppService : IApplicationService
 {
-    /// <summary>Un archivo por llamada. Se guarda cifrado; no se interpreta su contenido.</summary>
-    Task<ResultadoDeSubidaDto> SubirAsync(Guid organizacionId, TipoDeDocumento tipo, IRemoteStreamContent archivo);
+    /// <summary>
+    /// Un archivo por llamada. Se guarda cifrado; no se interpreta su contenido, salvo la fecha de una
+    /// factura (la de su XML). Lo demás va al mes que diga quien lo sube (<paramref name="anio"/> y
+    /// <paramref name="mes"/>; sin ellos, al mes en que se sube): un estado de cuenta de octubre llega en
+    /// noviembre y se concilia en octubre.
+    /// </summary>
+    Task<ResultadoDeSubidaDto> SubirAsync(Guid organizacionId, TipoDeDocumento tipo, IRemoteStreamContent archivo, int? anio = null, int? mes = null);
+
+    /// <summary>Mueve un documento a otro mes (el que se subió en el mes equivocado). Las facturas no: su mes es el de su XML.</summary>
+    Task<DocumentoDeBovedaDto> CambiarMesAsync(Guid organizacionId, Guid documentoId, int anio, int mes);
 
     Task<PagedResultDto<DocumentoDeBovedaDto>> GetListAsync(BuscarEnBovedaDto input);
 

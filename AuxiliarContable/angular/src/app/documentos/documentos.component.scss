@@ -120,7 +120,10 @@ h2 {
   color: var(--ig-texto-secundario);
 }
 
-.dc-filtros { display: flex; flex-direction: column; gap: var(--ig-esp-2); }
+.dc-filtros, .dc-al-subir { display: flex; flex-direction: column; gap: var(--ig-esp-2); }
+.dc-capital { text-transform: capitalize; }
+.dc-cambiar-mes { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ig-esp-2); margin-top: var(--ig-esp-2); }
+.dc-cambiar-mes .ig-control { width: auto; }
 
 .dc-vacio { margin: 0; color: var(--ig-texto-secundario); }
 
@@ -162,7 +165,7 @@ h2 {
 
 @media (min-width: 768px) {
   .dc-meses { grid-template-columns: repeat(3, 1fr); }
-  .dc-filtros { flex-direction: row; align-items: flex-end; flex-wrap: wrap; }
+  .dc-filtros, .dc-al-subir { flex-direction: row; align-items: flex-end; flex-wrap: wrap; }
   .dc-campo-texto { flex: 1 1 240px; }
   .dc-documento { grid-template-columns: auto 1fr auto; align-items: center; }
   .dc-acciones { grid-column: auto; }

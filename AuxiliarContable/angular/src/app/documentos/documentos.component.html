@@ -35,17 +35,36 @@
     <section class="dc-tarjeta" aria-labelledby="dc-subir">
       <h2 id="dc-subir">Subir documentos</h2>
       <p class="dc-nota">
-        Facturas: sube el <strong>XML</strong>. Estados de cuenta, tickets y otros: PDF o foto.
+        Facturas: sube el <strong>XML</strong>; se acomodan solas en el mes de su fecha. Estados de cuenta,
+        tickets y otros: PDF o foto, en el mes al que corresponden aunque los subas después.
         Puedes elegir varios a la vez.
       </p>
-      <label class="dc-campo">
-        <span>Si no es factura, ¿qué es?</span>
-        <select class="ig-control" [(ngModel)]="tipoAlSubir">
-          @for (t of tiposParaSubir; track t) {
-            <option [ngValue]="t">{{ nombresDeTipo[t] }}</option>
-          }
-        </select>
-      </label>
+      <div class="dc-al-subir">
+        <label class="dc-campo">
+          <span>Si no es factura, ¿qué es?</span>
+          <select class="ig-control" [(ngModel)]="tipoAlSubir" (ngModelChange)="sugerirMes()">
+            @for (t of tiposParaSubir; track t) {
+              <option [ngValue]="t">{{ nombresDeTipo[t] }}</option>
+            }
+          </select>
+        </label>
+        <label class="dc-campo">
+          <span>¿De qué mes es?</span>
+          <select class="ig-control dc-capital" [(ngModel)]="mesAlSubir" data-testid="mes-al-subir">
+            @for (m of meses; track $index) {
+              <option [ngValue]="$index + 1">{{ m }}</option>
+            }
+          </select>
+        </label>
+        <label class="dc-campo">
+          <span>Año</span>
+          <select class="ig-control" [(ngModel)]="anioAlSubir" data-testid="anio-al-subir">
+            @for (a of aniosParaSubir; track a) {
+              <option [ngValue]="a">{{ a }}</option>
+            }
+          </select>
+        </label>
+      </div>
       <label class="btn btn-primary dc-boton-subir">
         <i class="bi bi-cloud-arrow-up" aria-hidden="true"></i> Elegir archivos
         <input type="file" multiple accept=".xml,.pdf,.jpg,.jpeg,.png,.webp,application/xml,text/xml,application/pdf,image/*" (change)="subir($event)" hidden />
@@ -128,15 +147,36 @@
             <i class="bi dc-icono" [class]="'bi dc-icono ' + icono(d)" aria-hidden="true"></i>
             <div class="dc-cuerpo">
               <p class="dc-titulo">{{ d.nombre }}</p>
-              <p class="dc-detalle">{{ nombresDeTipo[d.tipo] }} · {{ fecha(d.fecha) }}</p>
+              <p class="dc-detalle">{{ nombresDeTipo[d.tipo] }} · {{ periodo(d) }}</p>
               @if (d.estado === Estado.ConError) {
                 <p class="dc-detalle dc-error">{{ d.motivo || 'No se pudo leer.' }}</p>
+              }
+              @if (editando() === d.id) {
+                <div class="dc-cambiar-mes">
+                  <select class="ig-control dc-capital" [(ngModel)]="mesEditado" aria-label="Mes">
+                    @for (m of meses; track $index) {
+                      <option [ngValue]="$index + 1">{{ m }}</option>
+                    }
+                  </select>
+                  <select class="ig-control" [(ngModel)]="anioEditado" aria-label="Año">
+                    @for (a of aniosParaSubir; track a) {
+                      <option [ngValue]="a">{{ a }}</option>
+                    }
+                  </select>
+                  <button type="button" class="btn btn-primary" (click)="guardarMes(d)" [disabled]="ocupado() === d.id">Guardar</button>
+                  <button type="button" class="btn btn-link" (click)="editando.set(null)">Cancelar</button>
+                </div>
               }
             </div>
             <div class="dc-acciones">
               <button type="button" class="btn btn-outline-secondary" (click)="descargar(d)" [disabled]="ocupado() === d.id" [attr.aria-label]="'Descargar ' + d.nombre">
                 <i class="bi bi-download" aria-hidden="true"></i>
               </button>
+              @if (c.puedeEditar && d.tipo !== Tipo.Cfdi && d.tipo !== Tipo.ConstanciaDeSituacionFiscal) {
+                <button type="button" class="btn btn-outline-secondary" (click)="editar(d)" [attr.aria-label]="'Cambiar de mes ' + d.nombre" title="Cambiar de mes">
+                  <i class="bi bi-calendar-event" aria-hidden="true"></i>
+                </button>
+              }
               @if (c.puedeEditar) {
                 <button type="button" class="btn" [class.btn-outline-danger]="ocupado() !== 'borrar:' + d.id" [class.btn-danger]="ocupado() === 'borrar:' + d.id"
                   (click)="eliminar(d)" [attr.aria-label]="'Borrar ' + d.nombre">
