@@ -17,7 +17,7 @@
       <p class="ig-ayuda">Todavía no perteneces a ningún cliente. Pide al despacho que te invite.</p>
     }
   }
-  @if (clienteId(); as id) {
+  @if (chat() && clienteId(); as id) {
     <a class="btn btn-outline-primary pf-platicar" [routerLink]="['/']" [queryParams]="{ cliente: id }">
       <i class="bi bi-chat-dots" aria-hidden="true"></i> Llenarlo platicando con el asistente
     </a>
@@ -39,8 +39,9 @@
 
     @if (!p.csf) {
       <p>
-        Si tienes tu constancia a la mano, súbela para tu expediente. Los datos de tu perfil
-        los capturas abajo o se los platicas al asistente.
+        Sube el PDF de tu constancia tal como lo descargas del portal del SAT: se leen de ahí tu RFC,
+        nombre, código postal, regímenes, obligaciones y actividades, y solo tienes que confirmarlos. Lo demás
+        lo capturas abajo{{ chat() ? ' o se los platicas al asistente' : '' }}.
       </p>
     } @else {
       <p class="pf-csf-archivo">
@@ -49,7 +50,7 @@
       </p>
       @switch (p.csf.estado) {
         @case (Estado.Recibido) {
-          <p class="pf-estado" role="status"><i class="bi bi-folder-check" aria-hidden="true"></i>Guardada en tu expediente.</p>
+          <p class="pf-estado" role="status"><i class="bi bi-folder-check" aria-hidden="true"></i>Guardada en tu expediente. Lo que se leyó de ella dice «De tu constancia»: revísalo y confírmalo.</p>
         }
         @case (Estado.Procesado) {
           <p class="pf-estado pf-estado-ok" role="status">

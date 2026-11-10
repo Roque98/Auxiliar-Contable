@@ -26,6 +26,9 @@ public class MotorFiscalDePrueba : IMotorFiscal
 
     public ResultadoDeConciliacion Conciliacion { get; set; } = new();
 
+    /// <summary>Lo que «lee» de una constancia. Por defecto: no es constancia (los datos se capturan a mano).</summary>
+    public ConstanciaLeida Constancia { get; set; } = new();
+
     /// <summary>Qué archivos le llegaron (nombre) y con qué RFC: lo que el test comprueba.</summary>
     public List<string> EstadosRecibidos { get; } = [];
 
@@ -41,6 +44,7 @@ public class MotorFiscalDePrueba : IMotorFiscal
         Consultas.Clear();
         Lectura = new LecturaDeEstados();
         Conciliacion = new ResultadoDeConciliacion();
+        Constancia = new ConstanciaLeida();
         EstadosRecibidos.Clear();
         FacturasRecibidas.Clear();
         RfcRecibido = null;
@@ -83,5 +87,15 @@ public class MotorFiscalDePrueba : IMotorFiscal
         EstadosRecibidos.AddRange(estadosDeCuenta.Select(a => a.Nombre));
         FacturasRecibidas.AddRange(facturas.Select(a => a.Nombre));
         return Task.FromResult(Conciliacion);
+    }
+
+    public Task<ConstanciaLeida> LeerConstanciaAsync(ArchivoParaElMotor constancia, CancellationToken cancellationToken = default)
+    {
+        if (Caido)
+        {
+            throw new MotorFiscalNoDisponibleException("El motor fiscal no responde.");
+        }
+
+        return Task.FromResult(Constancia);
     }
 }

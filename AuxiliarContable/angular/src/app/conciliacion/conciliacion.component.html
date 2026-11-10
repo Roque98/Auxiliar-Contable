@@ -43,6 +43,13 @@
   </div>
 </header>
 
+@if (ocupado()) {
+  <p class="cc-nota" role="status">
+    Si hay estados de cuenta escaneados o en foto, Claude los lee y puede tardar varios minutos la primera vez.
+    No cierres esta pantalla.
+  </p>
+}
+
 @if (error(); as e) {
   <div class="ig-alerta ig-alerta-error" role="alert">
     {{ e }}
@@ -79,6 +86,9 @@
             <div>
               <strong>{{ c.banco || 'Banco' }} {{ terminacion(c.cuenta) }}</strong>
               <small>{{ c.periodoInicial }} a {{ c.periodoFinal }}</small>
+              @if (c.leidaConClaude) {
+                <small class="cc-claude"><i class="bi bi-stars" aria-hidden="true"></i> Leída con Claude (escaneo o foto): revisa el cuadre</small>
+              }
             </div>
             @if (c.cuadra) {
               <span class="cc-chip cc-chip-ok"><i class="bi bi-check-circle-fill" aria-hidden="true"></i> Cuadra con el banco</span>

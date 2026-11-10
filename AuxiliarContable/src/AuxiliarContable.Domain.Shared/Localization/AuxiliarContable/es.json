@@ -573,6 +573,8 @@
     "Menu:PerfilFiscal": "Perfil fiscal",
     "Menu:Cartera": "Cartera",
     "Menu:Asistente": "Asistente",
+    "Menu:Inicio": "Inicio",
+    "Menu:Leyes": "Consultar leyes",
     "Menu:Documentos": "Documentos",
     "Menu:Conciliacion": "Conciliación",
     "AuxiliarContable:OrganizacionObligatoria": "Una persona de un cliente (rol Usuario) tiene que entrar en una organización: elige a cuál pertenece.",

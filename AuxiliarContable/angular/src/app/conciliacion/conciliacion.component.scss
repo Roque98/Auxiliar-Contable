@@ -102,6 +102,8 @@ h2 { font-size: var(--ig-texto-lg); font-weight: var(--ig-peso-semi); margin: va
 .cc-monto { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .cc-abono { color: var(--ig-exito-texto); }
 
+.cc-claude { color: var(--ig-acento-texto) !important; }
+
 .cc-hallazgo { margin: 0; font-size: var(--ig-texto-sm); color: var(--ig-texto-secundario); }
 
 .cc-pestanas {

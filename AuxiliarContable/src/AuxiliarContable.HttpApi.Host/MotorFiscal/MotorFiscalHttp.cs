@@ -24,8 +24,11 @@ public class MotorFiscalOptions
     /// <summary>La búsqueda en leyes tarda menos de un segundo; más que esto es que el motor está atorado.</summary>
     public int TimeoutSegundos { get; set; } = 20;
 
-    /// <summary>Leer y conciliar un mes (varios PDF, cientos de XML) tarda más: el OCR de un escaneo, decenas de segundos.</summary>
-    public int TimeoutDeBancosSegundos { get; set; } = 180;
+    /// <summary>
+    /// Leer y conciliar un mes tarda más: un escaneo lo lee claude -p y eso son minutos la primera vez (después el motor
+    /// lo tiene guardado). nginx da lo mismo solo a /api/app/bancos (deploy/nginx.conf).
+    /// </summary>
+    public int TimeoutDeBancosSegundos { get; set; } = 900;
 }
 
 /// <summary>
@@ -102,6 +105,17 @@ public class MotorFiscalHttp : IMotorFiscal, ITransientDependency
             }, options: Json),
         };
         return await EnviarAsync<ResultadoDeConciliacion>(peticion, tope.Token, cancellationToken);
+    }
+
+    public async Task<ConstanciaLeida> LeerConstanciaAsync(ArchivoParaElMotor constancia, CancellationToken cancellationToken = default)
+    {
+        // Es texto: lo lee el método de siempre en un segundo, sin Claude.
+        using var tope = CancelationConTope(_opciones.TimeoutSegundos, cancellationToken);
+        var peticion = new HttpRequestMessage(HttpMethod.Post, "csf/leer")
+        {
+            Content = JsonContent.Create(new { archivo = Base64(constancia) }, options: Json),
+        };
+        return await EnviarAsync<ConstanciaLeida>(peticion, tope.Token, cancellationToken);
     }
 
     private static object Base64(ArchivoParaElMotor a) => new { nombre = a.Nombre, contenido_b64 = Convert.ToBase64String(a.Contenido) };

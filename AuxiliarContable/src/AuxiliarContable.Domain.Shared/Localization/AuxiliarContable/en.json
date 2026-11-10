@@ -532,6 +532,8 @@
     "Menu:PerfilFiscal": "Tax profile",
     "Menu:Cartera": "Portfolio",
     "Menu:Asistente": "Assistant",
+    "Menu:Inicio": "Home",
+    "Menu:Leyes": "Laws",
     "Menu:Documentos": "Documents",
     "Menu:Conciliacion": "Bank reconciliation",
     "AuxiliarContable:OrganizacionObligatoria": "A client user (User role) must join an organization: choose one.",

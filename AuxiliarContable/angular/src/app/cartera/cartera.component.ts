@@ -5,6 +5,7 @@ import { mensajeDeError } from '../invitaciones/invitaciones.service';
 import { MESES } from '../documentos/documentos.service';
 import { CARTERA } from '../asistente/asistente.service';
 import { CarteraService, ClienteDeCarteraDto, MetricasDelDespachoDto, SemaforoDeCliente } from './cartera.service';
+import { chatEncendido } from '../shared/chat';
 
 /**
  * La cartera del despacho: cada cliente con su semáforo y lo que hay que hacer, para el mes
@@ -29,6 +30,8 @@ export class CarteraComponent implements OnInit {
   readonly meses = MESES;
   readonly cartera = CARTERA;
   readonly clientes = signal<ClienteDeCarteraDto[] | null>(null);
+  /** Sin chat (sin API de Claude) no se ofrece «preguntar al asistente». */
+  readonly chat = chatEncendido();
   readonly metricas = signal<MetricasDelDespachoDto | null>(null);
   readonly error = signal<string | null>(null);
   readonly filtro = signal<SemaforoDeCliente | null>(null);

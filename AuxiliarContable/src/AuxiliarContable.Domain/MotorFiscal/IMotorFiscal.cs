@@ -37,6 +37,9 @@ public interface IMotorFiscal
     Task<ResultadoDeConciliacion> ConciliarAsync(
         string rfcDelCliente, IReadOnlyList<ArchivoParaElMotor> estadosDeCuenta, IReadOnlyList<ArchivoParaElMotor> facturas,
         CancellationToken cancellationToken = default);
+
+    /// <summary>Lee una Constancia de Situación Fiscal (el PDF que se descarga del SAT).</summary>
+    Task<ConstanciaLeida> LeerConstanciaAsync(ArchivoParaElMotor constancia, CancellationToken cancellationToken = default);
 }
 
 /// <summary>Un archivo de la bóveda, ya descifrado, para mandarlo al motor.</summary>
@@ -84,6 +87,11 @@ public class MotorFiscalSinConfigurar : IMotorFiscal, ISingletonDependency
     public Task<ResultadoDeConciliacion> ConciliarAsync(
         string rfcDelCliente, IReadOnlyList<ArchivoParaElMotor> estadosDeCuenta, IReadOnlyList<ArchivoParaElMotor> facturas,
         CancellationToken cancellationToken = default)
+    {
+        throw new MotorFiscalNoDisponibleException("No hay motor fiscal en este proceso.");
+    }
+
+    public Task<ConstanciaLeida> LeerConstanciaAsync(ArchivoParaElMotor constancia, CancellationToken cancellationToken = default)
     {
         throw new MotorFiscalNoDisponibleException("No hay motor fiscal en este proceso.");
     }

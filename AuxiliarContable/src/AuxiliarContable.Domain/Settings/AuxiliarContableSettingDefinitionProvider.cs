@@ -19,6 +19,10 @@ public class AuxiliarContableSettingDefinitionProvider : SettingDefinitionProvid
 
         context.Add(new SettingDefinition(AuxiliarContableSettings.VersionPermisosSembrados, "0"));
 
+        // Visible para el Angular (decide si enseña el chat). Encendido por defecto para el código
+        // y las pruebas; el host lo apaga en appsettings.json mientras no haya API de Claude.
+        context.Add(new SettingDefinition(AuxiliarContableSettings.AsistenteHabilitado, "true", isVisibleToClients: true));
+
         // Avisos de monitoreo. Se editan desde /metrics en la web y se guardan en
         // AbpSettings, no en appsettings: cambiar de bot o de chat no debe exigir un
         // despliegue.

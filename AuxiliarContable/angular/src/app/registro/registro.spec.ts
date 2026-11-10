@@ -55,7 +55,15 @@ describe('manual por rol', () => {
 
   it('las secciones sin temas desaparecen', () => {
     const secciones = manualPara(() => false, 0).map(s => s.titulo);
-    expect(secciones).toEqual(['Lo básico', 'Asistente', 'Documentos', 'Perfil fiscal', 'Organizaciones']);
+    expect(secciones).toEqual(['Lo básico', 'Asistente', 'Documentos', 'Perfil fiscal', 'Leyes', 'Organizaciones']);
     expect(SECCIONES.length).toBeGreaterThan(1);
+  });
+
+  it('sin chat no se explica el chat, y lo demás sigue', () => {
+    const titulos = manualPara(() => false, 0, false).flatMap(s => s.temas.map(t => t.titulo));
+    expect(titulos).not.toContain('Platica con el asistente');
+    expect(titulos).toContain('Consultar leyes');
+    expect(titulos).toContain('Sube tus facturas y estados de cuenta');
+    expect(manualPara(() => false, 0, false).map(s => s.titulo)).not.toContain('Asistente');
   });
 });
