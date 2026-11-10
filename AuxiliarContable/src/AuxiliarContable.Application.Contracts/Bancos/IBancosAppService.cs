@@ -8,8 +8,9 @@ namespace AuxiliarContable.Bancos;
 /// <summary>
 /// Estados de cuenta y conciliación bancaria de un cliente. La consola NO los lee: toma los archivos
 /// de la bóveda (descifrados) y se los manda al motor fiscal (<c>motores-fiscales</c>, el trabajo ya
-/// validado del despacho). El resultado se calcula cada vez y no se guarda: la fuente de verdad son
-/// los archivos. Permiso: ver al cliente (lo ajeno = 404).
+/// validado del despacho). Se guarda la última conciliación de cada mes para el cierre, pero la
+/// fuente de verdad son los archivos: si cambian, se vuelve a conciliar. Permiso: ver al cliente
+/// (lo ajeno = 404).
 /// </summary>
 public interface IBancosAppService : IApplicationService
 {
@@ -32,6 +33,8 @@ public class ConciliacionDelMesDto
     public int EstadosDeCuenta { get; set; }
 
     public int Facturas { get; set; }
+
+    public DateTime ConciliadaUtc { get; set; }
 
     public ResultadoDeConciliacion Resultado { get; set; } = new();
 }

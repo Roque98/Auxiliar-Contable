@@ -20,9 +20,16 @@ public interface IBovedaAppService : IApplicationService
     /// Un archivo por llamada. Se guarda cifrado; no se interpreta su contenido, salvo la fecha de una
     /// factura (la de su XML). Lo demás va al mes que diga quien lo sube (<paramref name="anio"/> y
     /// <paramref name="mes"/>; sin ellos, al mes en que se sube): un estado de cuenta de octubre llega en
-    /// noviembre y se concilia en octubre.
+    /// noviembre y se concilia en octubre. Un estado de cuenta sin mes lo acomoda el motor leyendo su
+    /// periodo, en segundo plano. Nada entra, sale ni se mueve de un periodo cerrado.
     /// </summary>
     Task<ResultadoDeSubidaDto> SubirAsync(Guid organizacionId, TipoDeDocumento tipo, IRemoteStreamContent archivo, int? anio = null, int? mes = null);
+
+    /// <summary>
+    /// Una factura (XML) al cliente que tiene ese RFC en su perfil fiscal. Es la que usa el descargador
+    /// del SAT con una clave de API: él sabe el RFC, no el id del cliente.
+    /// </summary>
+    Task<ResultadoDeSubidaDto> SubirFacturaAsync(string rfc, IRemoteStreamContent archivo);
 
     /// <summary>Mueve un documento a otro mes (el que se subió en el mes equivocado). Las facturas no: su mes es el de su XML.</summary>
     Task<DocumentoDeBovedaDto> CambiarMesAsync(Guid organizacionId, Guid documentoId, int anio, int mes);

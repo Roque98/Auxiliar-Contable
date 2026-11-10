@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using AuxiliarContable.Autorizacion;
+using AuxiliarContable.Contabilidad;
 using AuxiliarContable.Documentos;
 using AuxiliarContable.MotorFiscal;
 using AuxiliarContable.Organizaciones;
@@ -29,19 +30,25 @@ public class BancosAppService : AuxiliarContableAppService, IBancosAppService
     private readonly Autorizador _autorizador;
     private readonly IPerfilFiscalAppService _perfiles;
     private readonly IMotorFiscal _motor;
+    private readonly GestorDePeriodos _periodos;
+    private readonly GestorDeConciliaciones _conciliaciones;
 
     public BancosAppService(
         IRepository<Documento, Guid> documentos,
         AlmacenDeDocumentos almacen,
         Autorizador autorizador,
         IPerfilFiscalAppService perfiles,
-        IMotorFiscal motor)
+        IMotorFiscal motor,
+        GestorDePeriodos periodos,
+        GestorDeConciliaciones conciliaciones)
     {
         _documentos = documentos;
         _almacen = almacen;
         _autorizador = autorizador;
         _perfiles = perfiles;
         _motor = motor;
+        _periodos = periodos;
+        _conciliaciones = conciliaciones;
     }
 
     public async Task<LecturaDeEstados> LeerEstadoDeCuentaAsync(Guid organizacionId, Guid documentoId)
@@ -69,6 +76,13 @@ public class BancosAppService : AuxiliarContableAppService, IBancosAppService
         if (mes is < 1 or > 12 || anio is < 2000 or > 2100)
         {
             throw new UserFriendlyException("Mes no válido.");
+        }
+
+        // Un periodo cerrado se queda con la conciliación con la que se cerró.
+        if (await _periodos.EstaCerradoAsync(organizacionId, anio, mes))
+        {
+            throw new UserFriendlyException(
+                $"El periodo {mes:00}/{anio} ya está cerrado: se queda con la conciliación con la que se cerró. Para volver a conciliarlo hay que reabrirlo.");
         }
 
         // Emitidas y recibidas se distinguen por el RFC del cliente: sin él, la conciliación no sabe de qué lado va cada factura.
@@ -104,16 +118,23 @@ public class BancosAppService : AuxiliarContableAppService, IBancosAppService
         var resultado = await AlMotorAsync(async () => await _motor.ConciliarAsync(rfc,
             await ArchivosAsync(estados), await ArchivosAsync(facturas)));
 
-        return new ConciliacionDelMesDto
-        {
-            Anio = anio,
-            Mes = mes,
-            Rfc = rfc,
-            EstadosDeCuenta = estados.Count,
-            Facturas = facturas.Count,
-            Resultado = resultado,
-        };
+        // Se guarda: es la que cuenta para el cierre del mes mientras no cambien sus archivos.
+        var guardada = await _conciliaciones.RegistrarAsync(organizacionId, anio, mes, rfc, estados.Count, facturas.Count,
+            GestorDePeriodos.HuellaDe(delMes), resultado);
+        return Describir(guardada, resultado);
     }
+
+    /// <summary>Una conciliación guardada, como la devuelve <see cref="ConciliarAsync"/>.</summary>
+    public static ConciliacionDelMesDto Describir(ConciliacionBancaria c, ResultadoDeConciliacion? resultado = null) => new()
+    {
+        Anio = c.Anio,
+        Mes = c.Mes,
+        Rfc = c.Rfc,
+        EstadosDeCuenta = c.EstadosDeCuenta,
+        Facturas = c.Facturas,
+        ConciliadaUtc = c.ConciliadaUtc,
+        Resultado = resultado ?? GestorDeConciliaciones.Leer(c),
+    };
 
     private async Task<List<ArchivoParaElMotor>> ArchivosAsync(IEnumerable<Documento> documentos)
     {

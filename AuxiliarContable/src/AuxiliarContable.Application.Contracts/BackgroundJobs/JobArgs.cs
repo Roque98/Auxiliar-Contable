@@ -64,3 +64,13 @@ public class EnviarInvitacionArgs
 {
     public Guid InvitacionId { get; set; }
 }
+
+/// <summary>
+/// Un estado de cuenta que se subió sin decir de qué mes es: el motor lee su periodo y lo pone en
+/// su mes (ver <c>FechadorDeEstadosDeCuenta</c>).
+/// </summary>
+[BackgroundJobName("auxiliar:fechar-estado-de-cuenta")]
+public class FecharEstadoDeCuentaArgs
+{
+    public Guid DocumentoId { get; set; }
+}
