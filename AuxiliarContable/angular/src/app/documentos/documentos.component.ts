@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { mensajeDeError } from '../invitaciones/invitaciones.service';
 import { ClienteVisibleDto, EstadoDeDocumento, PerfilFiscalService } from '../perfil-fiscal/perfil-fiscal.service';
+import { chatEncendido } from '../shared/chat';
 import {
   DocumentoDeBovedaDto,
   DocumentosService,
@@ -57,6 +58,8 @@ export class DocumentosComponent implements OnInit {
     TipoDeDocumento.ConstanciaDeSituacionFiscal, TipoDeDocumento.Otro];
 
   readonly clientes = signal<ClienteVisibleDto[] | null>(null);
+  /** Sin chat (sin API de Claude) no se ofrece «preguntar al asistente». */
+  readonly chat = chatEncendido();
   readonly clienteId = signal<string | null>(null);
   readonly resumen = signal<ResumenDelMesDto[]>([]);
   readonly documentos = signal<DocumentoDeBovedaDto[] | null>(null);

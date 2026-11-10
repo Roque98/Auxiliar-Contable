@@ -95,6 +95,25 @@ public class ConsultarLeyesIntegrationTests : ConJerarquiaTestBase
     }
 
     [Fact]
+    public async Task La_pantalla_de_leyes_busca_sin_IA_y_un_motor_caido_se_dice()
+    {
+        var leyes = GetRequiredService<AuxiliarContable.Leyes.ILeyesAppService>();
+        _motor.Resultados.Add(Articulo("Las deducciones autorizadas …"));
+
+        var r = await ComoAsync(Usuario, () => leyes.BuscarAsync(new AuxiliarContable.Leyes.BuscarEnLeyesDto { Consulta = "deducciones", Ley = "LISR" }));
+
+        r.Single().Ley.ShouldBe("LISR");
+        r.Single().Articulo.ShouldBe("27");
+        _motor.Consultas.Single().ShouldBe(("deducciones", "LISR"));
+        _modelo.Solicitudes.ShouldBeEmpty("la pantalla no usa el chat");
+
+        _motor.Caido = true;
+        var error = await Should.ThrowAsync<Volo.Abp.UserFriendlyException>(() =>
+            ComoAsync(Usuario, () => leyes.BuscarAsync(new AuxiliarContable.Leyes.BuscarEnLeyesDto { Consulta = "deducciones" })));
+        error.Message.ShouldContain("no está disponible");
+    }
+
+    [Fact]
     public async Task Tambien_se_consulta_desde_la_conversacion_de_toda_la_cartera()
     {
         _motor.Resultados.Add(Articulo("Las personas morales deberán presentar declaración anual …"));

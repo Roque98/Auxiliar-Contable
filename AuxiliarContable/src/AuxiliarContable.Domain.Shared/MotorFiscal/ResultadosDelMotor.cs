@@ -38,6 +38,9 @@ public class CuentaLeida
 
     /// <summary>Cada movimiento quedó comprobado con el saldo impreso.</summary>
     public bool TodosSeguros { get; set; }
+
+    /// <summary>El método de siempre no la pudo comprobar y la leyó Claude (claude -p en el motor).</summary>
+    public bool LeidaConClaude { get; set; }
 }
 
 public class MovimientoLeido
@@ -139,6 +142,30 @@ public class FacturaDelMotor
 
     /// <summary>Solo en las facturas sin movimiento: por qué no apareció en el banco.</summary>
     public string? Motivo { get; set; }
+}
+
+/// <summary>Lo que el motor leyó de una Constancia de Situación Fiscal (el PDF del SAT, con texto).</summary>
+public class ConstanciaLeida
+{
+    /// <summary>false: no es una constancia o no tiene texto (foto, escaneo).</summary>
+    public bool EsConstancia { get; set; }
+
+    public string Rfc { get; set; } = "";
+
+    /// <summary>«fisica» o «moral» (por el largo del RFC).</summary>
+    public string TipoPersona { get; set; } = "";
+
+    public string Nombre { get; set; } = "";
+    public string CodigoPostal { get; set; } = "";
+    public string Entidad { get; set; } = "";
+
+    /// <summary>Los vigentes, «612 · Personas Físicas con Actividades Empresariales y Profesionales».</summary>
+    public List<string> Regimenes { get; set; } = [];
+
+    public List<string> Obligaciones { get; set; } = [];
+
+    /// <summary>Las vigentes, «Panificación tradicional (100 %)».</summary>
+    public List<string> Actividades { get; set; } = [];
 }
 
 public class AlertaDeConciliacion

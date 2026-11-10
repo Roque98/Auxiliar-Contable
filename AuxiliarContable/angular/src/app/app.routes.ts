@@ -3,13 +3,26 @@ import { Routes } from '@angular/router';
 import { environment } from '../environments/environment';
 export const APP_ROUTES: Routes = [
   {
-    // La PORTADA es el chat: clientes y despacho entran platicando (visión de producto). Sin
-    // guardia A PROPÓSITO: sin sesión el layout pinta su portada de acceso y no monta la ruta;
-    // un authGuard aquí mandaría directo al login y anunciaría el acceso oculto (§6.98).
-    // El servidor decide qué clientes ve cada quien (Autorizador).
+    // La PORTADA: con el chat encendido manda a /asistente (clientes y despacho entran platicando);
+    // apagado, cifras del mes y atajos a las pantallas. Sin guardia A PROPÓSITO: sin sesión el
+    // layout pinta su portada de acceso y no monta la ruta; un authGuard aquí mandaría directo al
+    // login y anunciaría el acceso oculto (§6.98).
     path: '',
     pathMatch: 'full',
+    loadComponent: () => import('./inicio/inicio.component').then(c => c.InicioComponent),
+  },
+  {
+    // El chat con IA. Si está apagado en el servidor, la pantalla lo dice y el servicio lo rechaza.
+    // El servidor decide qué clientes ve cada quien (Autorizador).
+    path: 'asistente',
     loadComponent: () => import('./asistente/asistente.component').then(c => c.AsistenteComponent),
+    canActivate: [authGuard],
+  },
+  {
+    // Sin permiso: la ley es pública; solo hace falta sesión.
+    path: 'leyes',
+    loadComponent: () => import('./leyes/leyes.component').then(c => c.LeyesComponent),
+    canActivate: [authGuard],
   },
   // Explorador de BD: solo en Development.
   ...(environment.production
@@ -41,11 +54,6 @@ export const APP_ROUTES: Routes = [
     path: 'mi-organizacion',
     loadComponent: () => import('./mi-organizacion/mi-organizacion.component').then(c => c.MiOrganizacionComponent),
     canActivate: [authGuard],
-  },
-  {
-    // La dirección vieja del chat (enlaces y marcadores): ahora es la portada. Conserva ?cliente=.
-    path: 'asistente',
-    redirectTo: '',
   },
   {
     // Sin permiso: el servidor decide qué clientes ve cada quien (Autorizador).

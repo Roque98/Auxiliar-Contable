@@ -5,12 +5,14 @@ using System.Threading.Tasks;
 using AuxiliarContable.Autorizacion;
 using AuxiliarContable.IA;
 using AuxiliarContable.Organizaciones;
+using AuxiliarContable.Settings;
 using Microsoft.AspNetCore.Authorization;
 using Volo.Abp.Identity;
 using Microsoft.Extensions.Logging;
 using Volo.Abp;
 using Volo.Abp.Domain.Repositories;
 using Volo.Abp.Domain.Entities;
+using Volo.Abp.Settings;
 using Volo.Abp.Users;
 
 namespace AuxiliarContable.Conversaciones;
@@ -82,7 +84,7 @@ public class AsistenteAppService : AuxiliarContableAppService, IAsistenteAppServ
             throw new UserFriendlyException($"El mensaje es muy largo (máximo {ConversacionConsts.MaxTextoDelUsuario} caracteres).");
         }
 
-        if (!_modelo.EstaConfigurado)
+        if (!await ChatEncendidoAsync())
         {
             throw new UserFriendlyException("El asistente no está disponible por ahora.");
         }
@@ -243,6 +245,10 @@ public class AsistenteAppService : AuxiliarContableAppService, IAsistenteAppServ
             ? InstruccionesDelAsistente.ConstruirParaLaCartera(Clock.Now)
             : InstruccionesDelAsistente.Construir(await NombreAsync(organizacionId), Clock.Now, delDespacho, puedeEditar, puedeInvitar);
 
+    /// <summary>Encendido en la configuración (AuxiliarContableSettings.AsistenteHabilitado) y con API key de Claude.</summary>
+    private async Task<bool> ChatEncendidoAsync() =>
+        _modelo.EstaConfigurado && await SettingProvider.IsTrueAsync(AuxiliarContableSettings.AsistenteHabilitado);
+
     private async Task<ConversacionDto> DescribirAsync(Guid organizacionId, Conversacion? conversacion)
     {
         var quien = await _autorizador.QuienMiraAsync();
@@ -250,7 +256,7 @@ public class AsistenteAppService : AuxiliarContableAppService, IAsistenteAppServ
         {
             OrganizacionId = organizacionId,
             NombreDelCliente = await NombreAsync(organizacionId),
-            Disponible = _modelo.EstaConfigurado,
+            Disponible = await ChatEncendidoAsync(),
             PuedeEditar = organizacionId != Guid.Empty && quien.Puede(organizacionId, AccionEnOrganizacion.Subir),
             EsDelDespacho = quien.Equipo,
         };

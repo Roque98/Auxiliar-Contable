@@ -25,6 +25,8 @@ export interface CuentaLeida {
   hallazgos: { movimiento: number | null; nivel: string; mensaje: string; sugerencia: string }[];
   cuadra: boolean;
   todosSeguros: boolean;
+  /** El método de siempre no la pudo comprobar y la leyó Claude. */
+  leidaConClaude: boolean;
 }
 
 export type EstadoDeMovimiento = 'conciliado' | 'combinacion' | 'traspaso' | 'sin_factura' | 'pendiente';

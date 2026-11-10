@@ -10,6 +10,7 @@ using Shouldly;
 using Volo.Abp;
 using Volo.Abp.Domain.Entities;
 using Volo.Abp.Domain.Repositories;
+using Volo.Abp.SettingManagement;
 using Xunit;
 
 namespace AuxiliarContable;
@@ -124,6 +125,24 @@ public class AsistenteIntegrationTests : ConJerarquiaTestBase
         conversacion.Mensajes.Last().Acciones.ShouldBeEmpty();
         var perfil = await ComoAsync(Usuario, () => _perfil.GetAsync(_cliente));
         perfil.Campos.Single(c => c.Clave == CamposDelPerfil.Giro).Valor.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task Con_el_chat_apagado_no_se_llama_al_modelo()
+    {
+        var ajustes = GetRequiredService<ISettingManager>();
+        await WithUnitOfWorkAsync(() => ajustes.SetGlobalAsync(AuxiliarContable.Settings.AuxiliarContableSettings.AsistenteHabilitado, "false"));
+        try
+        {
+            var conversacion = await ComoAsync(Usuario, () => _asistente.GetAsync(_cliente));
+            conversacion.Disponible.ShouldBeFalse();
+            await Should.ThrowAsync<UserFriendlyException>(() => ComoAsync(Usuario, () => _asistente.EnviarAsync(_cliente, Mensaje("hola"))));
+            _modelo.Solicitudes.ShouldBeEmpty();
+        }
+        finally
+        {
+            await WithUnitOfWorkAsync(() => ajustes.SetGlobalAsync(AuxiliarContable.Settings.AuxiliarContableSettings.AsistenteHabilitado, "true"));
+        }
     }
 
     [Fact]

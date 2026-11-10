@@ -2,13 +2,17 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Text.Encodings.Web;
 using System.Text.Json;
+using System.Text.Unicode;
 using System.Threading.Tasks;
 using AuxiliarContable.Autorizacion;
 using AuxiliarContable.Documentos;
 using AuxiliarContable.Files;
+using AuxiliarContable.MotorFiscal;
 using AuxiliarContable.Organizaciones;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.Extensions.Logging;
 using Volo.Abp;
 using Volo.Abp.Content;
 using Volo.Abp.Domain.Repositories;
@@ -28,14 +32,20 @@ public class PerfilFiscalAppService : AuxiliarContableAppService, IPerfilFiscalA
     private readonly IRepository<Organizacion, Guid> _organizaciones;
     private readonly GestorDeDocumentos _gestor;
     private readonly Autorizador _autorizador;
+    private readonly IMotorFiscal _motor;
+
+    /// <summary>Las listas del perfil se guardan como JSON legible (acentos tal cual).</summary>
+    private static readonly JsonSerializerOptions Listas = new() { Encoder = JavaScriptEncoder.Create(UnicodeRanges.All) };
 
     public PerfilFiscalAppService(
         IRepository<PerfilFiscal, Guid> perfiles,
         IRepository<Documento, Guid> documentos,
         IRepository<Organizacion, Guid> organizaciones,
         GestorDeDocumentos gestor,
-        Autorizador autorizador)
+        Autorizador autorizador,
+        IMotorFiscal motor)
     {
+        _motor = motor;
         _perfiles = perfiles;
         _documentos = documentos;
         _organizaciones = organizaciones;
@@ -89,10 +99,66 @@ public class PerfilFiscalAppService : AuxiliarContableAppService, IPerfilFiscalA
 
         var perfil = await PerfilAsync(organizacionId);
         perfil.EmpezarLecturaDeCsf(documento.Id);
+        // La lee el motor fiscal y sus datos se PROPONEN: quedan «de la constancia» y sin confirmar, y nunca
+        // pisan lo que una persona ya confirmó (eso sale como aviso).
+        var avisos = await ProponerLoDeLaConstanciaAsync(perfil, documento.Id, archivo.FileName ?? "constancia.pdf", bytes);
+        perfil.TerminarLecturaDeCsf(documento.Id, avisos);
         await _perfiles.UpdateAsync(perfil, autoSave: true);
-
-        // Se guarda en el expediente; leerla y proponer sus datos al perfil es trabajo del motor fiscal.
         return await DescribirAsync(organizacionId);
+    }
+
+    private async Task<List<string>> ProponerLoDeLaConstanciaAsync(PerfilFiscal perfil, Guid documentoId, string nombre, byte[] bytes)
+    {
+        ConstanciaLeida leida;
+        try
+        {
+            leida = await _motor.LeerConstanciaAsync(new ArchivoParaElMotor(nombre, bytes));
+        }
+        catch (MotorFiscalNoDisponibleException ex)
+        {
+            Logger.LogWarning(ex, "El motor fiscal no leyó una constancia");
+            return ["No se pudo leer la constancia en este momento. Quedó en el expediente: captura los datos abajo o vuelve a subirla más tarde."];
+        }
+
+        if (!leida.EsConstancia)
+        {
+            return ["No parece la Constancia de Situación Fiscal descargada del SAT (una foto o un escaneo no se pueden leer). Quedó en el expediente: captura los datos abajo."];
+        }
+
+        var avisos = new List<string>();
+        void Proponer(string clave, string? valor)
+        {
+            if (string.IsNullOrWhiteSpace(valor))
+            {
+                return;
+            }
+
+            string limpio;
+            try
+            {
+                limpio = Normalizar(clave, valor);
+            }
+            catch (BusinessException)
+            {
+                return; // lo que no pasa las mismas reglas que una captura no se propone
+            }
+
+            if (!perfil.Proponer(clave, limpio, OrigenDelDato.ExtraidoDeCsf, documentoId, Clock.Now))
+            {
+                avisos.Add($"{CamposDelPerfil.Buscar(clave)!.Etiqueta}: la constancia dice «{limpio}», distinto de lo que ya estaba confirmado. Revísalo.");
+            }
+        }
+
+        string? Lista(List<string> valores) => valores.Count == 0 ? null : JsonSerializer.Serialize(valores, Listas);
+
+        Proponer(CamposDelPerfil.TipoDePersona, leida.TipoPersona);
+        Proponer(CamposDelPerfil.Rfc, leida.Rfc);
+        Proponer(CamposDelPerfil.Nombre, leida.Nombre);
+        Proponer(CamposDelPerfil.CodigoPostal, leida.CodigoPostal);
+        Proponer(CamposDelPerfil.Regimenes, Lista(leida.Regimenes));
+        Proponer(CamposDelPerfil.Obligaciones, Lista(leida.Obligaciones));
+        Proponer(CamposDelPerfil.ActividadesEconomicas, Lista(leida.Actividades));
+        return avisos;
     }
 
     public async Task<PerfilFiscalDto> ConfirmarAsync(Guid organizacionId, string campo)
@@ -128,7 +194,7 @@ public class PerfilFiscalAppService : AuxiliarContableAppService, IPerfilFiscalA
 
     /// <summary>
     /// Valida y deja el valor en su forma canónica. Lo que una persona escribe pasa por aquí;
-    /// lo que extraiga el motor fiscal de la CSF también deberá pasar por aquí.
+    /// lo que extrae el motor fiscal de la CSF también.
     /// </summary>
     public static string Normalizar(string clave, string valor)
     {

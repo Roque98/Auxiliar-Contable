@@ -4,6 +4,7 @@ import { RouterLink } from '@angular/router';
 import { ConfigStateService, PermissionService } from '@abp/ng.core';
 import { map } from 'rxjs';
 import { MATRIZ, RESUMEN_POR_NIVEL, manualPara, nivelDeRoles } from './manual';
+import { chatEncendido } from '../shared/chat';
 
 /**
  * El manual, armado con lo que ESTA persona puede hacer: cada tema pide su permiso y solo
@@ -26,13 +27,15 @@ export class AyudaComponent {
     initialValue: {},
   });
 
+  private readonly chat = chatEncendido();
+
   readonly matriz = MATRIZ;
   readonly nivel = computed(() => nivelDeRoles(this.usuario()?.roles));
   readonly resumen = computed(() => RESUMEN_POR_NIVEL[this.nivel()] ?? RESUMEN_POR_NIVEL[0]);
 
   readonly secciones = computed(() => {
     this.concedidos();
-    return manualPara(p => this.permisos.getGrantedPolicy(p), this.nivel());
+    return manualPara(p => this.permisos.getGrantedPolicy(p), this.nivel(), this.chat());
   });
 
   /** La tabla de roles solo le sirve a quien da de alta o reparte permisos. */

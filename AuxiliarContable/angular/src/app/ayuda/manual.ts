@@ -27,6 +27,8 @@ export interface Tema {
   salvoPermisos?: string[];
   /** Nivel mínimo en la jerarquía (3 = Developer). Solo para lo que no depende de un permiso. */
   nivelMinimo?: number;
+  /** Solo si el chat con IA está encendido en el servidor (sin API de Claude se esconde). */
+  chat?: boolean;
 }
 
 export interface Seccion {
@@ -102,7 +104,8 @@ export const SECCIONES: Seccion[] = [
       {
         titulo: 'Platica con el asistente',
         icono: 'bi-chat-dots',
-        ruta: '/',
+        ruta: '/asistente',
+        chat: true,
         salvoPermisos: ['AuxiliarContable.Organizaciones'],
         pasos: [
           'Al entrar te recibe el asistente: escríbele como a tu contador, «tengo una panadería», «¿qué me falta?».',
@@ -128,7 +131,8 @@ export const SECCIONES: Seccion[] = [
       {
         titulo: 'El asistente para el despacho',
         icono: 'bi-chat-dots',
-        ruta: '/',
+        ruta: '/asistente',
+        chat: true,
         permisos: ['AuxiliarContable.Organizaciones'],
         texto: [
           'Al entrar abre «Toda la cartera» con el semáforo del mes. Toca la pastilla de arriba para cambiar a un cliente: queda siempre a la vista con quién estás platicando.',
@@ -192,8 +196,8 @@ export const SECCIONES: Seccion[] = [
         salvoPermisos: ['AuxiliarContable.Organizaciones'],
         pasos: [
           'Descarga tu Constancia de Situación Fiscal (PDF) del portal del SAT. Que sea reciente: de los últimos 3 meses.',
-          'Abre Perfil fiscal y toca «Subir mi constancia»: queda guardada en tu expediente.',
-          'Llena tus datos (RFC, régimen, domicilio) o platícaselos al asistente.',
+          'Abre Perfil fiscal y toca «Subir mi constancia»: se guarda en tu expediente y se leen de ella tu RFC, nombre, código postal, regímenes, obligaciones y actividades.',
+          'Revisa lo que dice «De tu constancia» y confírmalo (o toca «Confirmar todo»). Si algo está mal, corrígelo.',
           'Completa lo que la constancia no dice (a qué te dedicas, si facturas, tus bancos, si tienes trabajadores).',
         ],
         nota: 'Nada se da por bueno hasta que lo confirmas. Cada dato dice de dónde salió: de tu constancia, de ti o del despacho.',
@@ -207,6 +211,23 @@ export const SECCIONES: Seccion[] = [
           'En Perfil fiscal elige al cliente: ves su constancia, sus datos y de dónde salió cada uno.',
           'Puedes subir su constancia por él, confirmar datos y corregirlos; lo que captures queda como «Del despacho».',
         ],
+      },
+    ],
+  },
+  {
+    titulo: 'Leyes',
+    temas: [
+      {
+        titulo: 'Consultar leyes',
+        icono: 'bi-journal-text',
+        ruta: '/leyes',
+        pasos: [
+          'Abre «Consultar leyes» en el menú.',
+          'Escribe la cita («artículo 27 LISR») o lo que buscas con tus palabras («deducción de automóviles»).',
+          'Si sabes de qué ley es, elígela para acotar (LISR, IVA, CFF, Miscelánea, NIF…).',
+          'Cada resultado trae la ley, el artículo y su última reforma; el botón del portapapeles copia la cita.',
+        ],
+        nota: 'Es el texto de la ley tal cual, sin interpretación: lo que hay que hacer en tu caso lo decide tu contador.',
       },
     ],
   },
@@ -392,14 +413,15 @@ export function nivelDeRoles(roles: string[] | undefined | null): number {
 }
 
 /** Las secciones con solo los temas que esta persona puede usar; las vacías desaparecen. */
-export function manualPara(tienePermiso: (p: string) => boolean, nivel: number): Seccion[] {
+export function manualPara(tienePermiso: (p: string) => boolean, nivel: number, chat = true): Seccion[] {
   return SECCIONES.map(s => ({
     ...s,
     temas: s.temas.filter(
       t =>
         (!t.permisos || t.permisos.some(tienePermiso)) &&
         !(t.salvoPermisos ?? []).some(tienePermiso) &&
-        (t.nivelMinimo === undefined || nivel >= t.nivelMinimo),
+        (t.nivelMinimo === undefined || nivel >= t.nivelMinimo) &&
+        (chat || !t.chat),
     ),
   })).filter(s => s.temas.length > 0);
 }

@@ -1,0 +1,34 @@
+<section class="in">
+  <header class="in-cabecera">
+    <h1>{{ saludo }}</h1>
+    @if (cliente(); as c) {
+      <p class="in-nota">Esto es lo de <strong>{{ c.nombre }}</strong> este mes.</p>
+    } @else if (esEquipo) {
+      <p class="in-nota">Así va la cartera del despacho este mes.</p>
+    }
+  </header>
+
+  @if (cifras().length) {
+    <div class="in-cifras">
+      @for (c of cifras(); track c.etiqueta) {
+        <a class="in-cifra" [attr.data-tono]="c.tono" [routerLink]="c.ruta" [queryParams]="c.params ?? null">
+          <i [class]="'bi ' + c.icono" aria-hidden="true"></i>
+          <strong>{{ c.cifra }}</strong>
+          <span>{{ c.etiqueta }}</span>
+        </a>
+      }
+    </div>
+  }
+
+  <nav class="in-atajos" aria-label="Pantallas">
+    @for (a of atajos(); track a.ruta) {
+      <a class="in-atajo" [routerLink]="a.ruta" [queryParams]="a.params ?? null">
+        <i [class]="'bi ' + a.icono" aria-hidden="true"></i>
+        <div>
+          <strong>{{ a.titulo }}</strong>
+          <span>{{ a.texto }}</span>
+        </div>
+      </a>
+    }
+  </nav>
+</section>

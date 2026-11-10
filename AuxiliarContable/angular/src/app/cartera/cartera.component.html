@@ -1,9 +1,15 @@
 <header class="ca-cabecera">
   <div class="ca-titulo">
     <h1>Cartera</h1>
-    <a class="btn btn-outline-primary" [routerLink]="['/']" [queryParams]="{ cliente: cartera }">
-      <i class="bi bi-chat-dots" aria-hidden="true"></i> Preguntar sobre la cartera
-    </a>
+    @if (chat()) {
+      <a class="btn btn-outline-primary" [routerLink]="['/']" [queryParams]="{ cliente: cartera }">
+        <i class="bi bi-chat-dots" aria-hidden="true"></i> Preguntar sobre la cartera
+      </a>
+    } @else {
+      <a class="btn btn-outline-primary" [routerLink]="['/conciliacion']">
+        <i class="bi bi-arrow-left-right" aria-hidden="true"></i> Conciliación
+      </a>
+    }
   </div>
   <div class="ca-mes">
     <button type="button" class="btn btn-outline-secondary" (click)="cambiarMes(-1)" aria-label="Mes anterior"><i class="bi bi-chevron-left" aria-hidden="true"></i></button>
@@ -59,7 +65,11 @@
           </ul>
         }
         <nav class="ca-acciones" [attr.aria-label]="'Ir a ' + c.nombre">
-          <a class="btn btn-outline-secondary" [routerLink]="['/']" [queryParams]="{ cliente: c.id }" aria-label="Asistente"><i class="bi bi-chat-dots" aria-hidden="true"></i></a>
+          @if (chat()) {
+            <a class="btn btn-outline-secondary" [routerLink]="['/']" [queryParams]="{ cliente: c.id }" aria-label="Asistente"><i class="bi bi-chat-dots" aria-hidden="true"></i></a>
+          } @else {
+            <a class="btn btn-outline-secondary" [routerLink]="['/conciliacion']" [queryParams]="{ cliente: c.id }" aria-label="Conciliación"><i class="bi bi-arrow-left-right" aria-hidden="true"></i></a>
+          }
           <a class="btn btn-outline-secondary" [routerLink]="['/documentos']" [queryParams]="{ cliente: c.id }" aria-label="Documentos"><i class="bi bi-folder2-open" aria-hidden="true"></i></a>
           <a class="btn btn-outline-secondary" [routerLink]="['/perfil-fiscal']" [queryParams]="{ cliente: c.id }" aria-label="Perfil fiscal"><i class="bi bi-person-lines-fill" aria-hidden="true"></i></a>
         </nav>

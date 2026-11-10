@@ -100,10 +100,66 @@ public class PerfilFiscalIntegrationTests : ConJerarquiaTestBase
         Encoding.Latin1.GetString(crudo).ShouldNotContain("GODE561231GR8");
         Encoding.Latin1.GetString(crudo).ShouldNotContain("%PDF");
 
-        // Se guarda en el expediente y no se lee: leerla y proponer sus datos es del motor fiscal.
+        // La lee el motor fiscal (aquí, uno falso que dice «no es constancia»): sin datos, y un aviso para capturarlos.
         var perfil = await ComoAsync(Usuario, () => _perfil.GetAsync(_cliente));
         perfil.Csf!.Estado.ShouldBe(EstadoDeDocumento.Recibido);
         perfil.Campos.ShouldAllBe(c => c.Valor == null);
+        perfil.Csf.Avisos.Single().ShouldContain("captura los datos");
+    }
+
+    [Fact]
+    public async Task Lo_que_lee_el_motor_de_la_constancia_queda_propuesto_sin_confirmar()
+    {
+        var motor = (MotorFiscalDePrueba)GetRequiredService<AuxiliarContable.MotorFiscal.IMotorFiscal>();
+        motor.Reiniciar();
+        motor.Constancia = new AuxiliarContable.MotorFiscal.ConstanciaLeida
+        {
+            EsConstancia = true, Rfc = "GODE561231GR8", TipoPersona = "fisica", Nombre = "EDUARDO GÓMEZ EJEMPLO",
+            CodigoPostal = "06600", Regimenes = ["612 · Personas Físicas con Actividades Empresariales y Profesionales"],
+            Obligaciones = ["Pago definitivo mensual de IVA."], Actividades = ["Otros servicios profesionales (100 %)"],
+        };
+
+        var perfil = await ComoAsync(Usuario, () => _perfil.SubirCsfAsync(_cliente, Archivo(PdfConTexto(Csf))));
+
+        var rfc = perfil.Campos.Single(c => c.Clave == CamposDelPerfil.Rfc);
+        rfc.Valor.ShouldBe("GODE561231GR8");
+        rfc.Origen.ShouldBe(OrigenDelDato.ExtraidoDeCsf);
+        rfc.Confirmado.ShouldBeFalse("lo extraído no se da por bueno hasta que alguien lo confirma");
+        perfil.Campos.Single(c => c.Clave == CamposDelPerfil.Regimenes).Valor!.ShouldContain("Personas Físicas");
+        perfil.Campos.Single(c => c.Clave == CamposDelPerfil.CodigoPostal).Valor.ShouldBe("06600");
+        perfil.Csf!.Avisos.ShouldBeEmpty();
+
+        // «Todo lo de la constancia está bien» lo confirma de una vez.
+        var confirmado = await ComoAsync(Usuario, () => _perfil.ConfirmarConstanciaAsync(_cliente));
+        confirmado.Campos.Where(c => c.Origen == OrigenDelDato.ExtraidoDeCsf).ShouldAllBe(c => c.Confirmado);
+    }
+
+    [Fact]
+    public async Task La_constancia_no_pisa_lo_que_una_persona_ya_confirmo()
+    {
+        await ComoAsync(Usuario, () => _perfil.ResponderAsync(_cliente, new ResponderDatoDelPerfilDto { Campo = CamposDelPerfil.Rfc, Valor = "GOEE800101AB1" }));
+        var motor = (MotorFiscalDePrueba)GetRequiredService<AuxiliarContable.MotorFiscal.IMotorFiscal>();
+        motor.Reiniciar();
+        motor.Constancia = new AuxiliarContable.MotorFiscal.ConstanciaLeida { EsConstancia = true, Rfc = "GODE561231GR8" };
+
+        var perfil = await ComoAsync(Usuario, () => _perfil.SubirCsfAsync(_cliente, Archivo(PdfConTexto(Csf))));
+
+        perfil.Campos.Single(c => c.Clave == CamposDelPerfil.Rfc).Valor.ShouldBe("GOEE800101AB1");
+        perfil.Csf!.Avisos.Single().ShouldContain("GODE561231GR8");
+    }
+
+    [Fact]
+    public async Task Con_el_motor_caido_la_constancia_se_guarda_y_lo_dice()
+    {
+        var motor = (MotorFiscalDePrueba)GetRequiredService<AuxiliarContable.MotorFiscal.IMotorFiscal>();
+        motor.Reiniciar();
+        motor.Caido = true;
+
+        var perfil = await ComoAsync(Usuario, () => _perfil.SubirCsfAsync(_cliente, Archivo(PdfConTexto(Csf))));
+
+        perfil.Csf.ShouldNotBeNull();
+        perfil.Csf!.Avisos.Single().ShouldContain("No se pudo leer");
+        motor.Reiniciar();
     }
 
     [Fact]

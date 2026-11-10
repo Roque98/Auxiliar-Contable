@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } 
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { mensajeDeError } from '../invitaciones/invitaciones.service';
+import { chatEncendido } from '../shared/chat';
 import {
   ClienteVisibleDto,
   DatoDelPerfilDto,
@@ -47,6 +48,8 @@ export class PerfilFiscalComponent implements OnInit {
   readonly valorLegible = valorLegible;
 
   readonly clientes = signal<ClienteVisibleDto[] | null>(null);
+  /** Sin chat (sin API de Claude) no se ofrece «preguntar al asistente». */
+  readonly chat = chatEncendido();
   readonly clienteId = signal<string | null>(null);
   readonly perfil = signal<PerfilFiscalDto | null>(null);
   readonly cargando = signal(false);

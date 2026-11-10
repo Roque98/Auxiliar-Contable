@@ -2,6 +2,7 @@ import { ConfigStateService, RoutesService, eLayoutType } from '@abp/ng.core';
 import { inject, provideAppInitializer } from '@angular/core';
 import { environment } from '../environments/environment';
 import { MiOrganizacionService } from './mi-organizacion/mi-organizacion.service';
+import { AJUSTE_DEL_CHAT } from './shared/chat';
 
 /*
  * El menú va agrupado en dos ramas en vez de una lista plana:
@@ -61,6 +62,10 @@ function configureRoutes() {
     routes.patch('AbpIdentity::Users', { iconClass: 'bi bi-people', order: 1 });
     routes.patch('AbpIdentity::Roles', { iconClass: 'bi bi-shield-lock', order: 2 });
     routes.patch('::Menu:Ayuda', { invisible: anonimo });
+    routes.patch('::Menu:Leyes', { invisible: anonimo });
+    // El chat solo si está encendido en el servidor (sin API de Claude se trabaja por pantallas).
+    const chat = String(config.getSetting(AJUSTE_DEL_CHAT)).toLowerCase() === 'true';
+    routes.patch('::Menu:Asistente', { invisible: anonimo || !chat });
     // Oculta: sus pestañas (correo SMTP y zona horaria) no aplican aquí y sus permisos
     // están apagados (AuxiliarContablePermissionDefinitionProvider.PostDefine); la pantalla
     // quedaría vacía. El correo se configura en el servidor (Brevo).
@@ -88,13 +93,33 @@ function configureRoutes() {
   });
 
   routes.add([
-    // El chat ES la portada: la puerta principal («platicar con tu contador»). Primero en el menú.
+    // La portada: con el chat encendido lleva al chat; apagado, cifras del mes y atajos (InicioComponent).
     {
       path: '/',
-      name: '::Menu:Asistente',
-      iconClass: 'bi bi-stars',
+      name: '::Menu:Inicio',
+      iconClass: 'bi bi-house',
       order: 1,
       layout: eLayoutType.application,
+    },
+
+    // El chat con IA. Invisible hasta saber si está encendido (patch de arriba).
+    {
+      path: '/asistente',
+      name: '::Menu:Asistente',
+      iconClass: 'bi bi-stars',
+      order: 1.1,
+      layout: eLayoutType.application,
+      invisible: true,
+    },
+
+    // Leyes, reglamentos, RMF y NIF del motor fiscal, sin IA. Para todos con sesión (patch de arriba).
+    {
+      path: '/leyes',
+      name: '::Menu:Leyes',
+      iconClass: 'bi bi-journal-text',
+      order: 1.85,
+      layout: eLayoutType.application,
+      invisible: true,
     },
 
     // La cartera del despacho: solo el equipo (lleva permiso, ABP la oculta a los clientes).

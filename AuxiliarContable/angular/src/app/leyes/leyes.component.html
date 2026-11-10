@@ -1,0 +1,84 @@
+<header class="ly-cabecera">
+  <h1>Consultar leyes</h1>
+  <p class="ly-nota">
+    Leyes fiscales, reglamentos, la Resolución Miscelánea 2026 y las NIF vigentes. Busca por la cita
+    («artículo 27 LISR») o con tus palabras. Es el texto de la ley tal cual, sin interpretación.
+  </p>
+
+  <form class="ly-buscador" (ngSubmit)="buscar()" role="search">
+    <label class="ly-campo ly-campo-texto">
+      <span>¿Qué buscas?</span>
+      <input class="ig-control" name="consulta" [(ngModel)]="consulta" maxlength="300" autocomplete="off"
+             placeholder="p. ej. deducción de automóviles" data-testid="consulta" />
+    </label>
+    <label class="ly-campo">
+      <span>Ley</span>
+      <select class="ig-control" name="ley" [(ngModel)]="ley">
+        <option [ngValue]="null">Todas</option>
+        @for (l of leyes; track l.clave) {
+          <option [ngValue]="l.clave">{{ l.clave }} · {{ l.nombre }}</option>
+        }
+      </select>
+    </label>
+    <button type="submit" class="btn btn-primary ly-boton" [disabled]="consulta.trim().length < 2 || ocupado()">
+      @if (ocupado()) {
+        <span class="ig-girando" aria-hidden="true"></span> Buscando…
+      } @else {
+        <i class="bi bi-search" aria-hidden="true"></i> Buscar
+      }
+    </button>
+  </form>
+</header>
+
+@if (error(); as e) {
+  <div class="ig-alerta ig-alerta-error" role="alert">{{ e }}</div>
+}
+
+@if (resultados(); as lista) {
+  @if (lista.length) {
+    <ol class="ly-resultados" aria-live="polite">
+      @for (a of lista; track $index; let i = $index) {
+        <li class="ly-articulo">
+          <header class="ly-articulo-cabecera">
+            <div>
+              <strong class="ly-cita">{{ cita(a) }}</strong>
+              <span class="ly-ordenamiento">{{ a.ordenamiento }}</span>
+              @if (a.ubicacion) {
+                <small>{{ a.ubicacion }}</small>
+              }
+            </div>
+            <button type="button" class="btn btn-outline-secondary btn-sm ly-copiar" (click)="copiarCita(a)" title="Copiar la cita">
+              <i class="bi bi-clipboard" aria-hidden="true"></i><span class="visually-hidden">Copiar la cita</span>
+            </button>
+          </header>
+          <p class="ly-texto" [class.ly-texto-abierto]="abiertos().has(i)">{{ a.texto }}</p>
+          <footer class="ly-pie">
+            @if (a.texto.length > 600) {
+              <button type="button" class="btn btn-link ly-mas" (click)="alternar(i)">
+                {{ abiertos().has(i) ? 'Ver menos' : 'Ver el artículo completo' }}
+              </button>
+            }
+            @if (a.ultimaReformaDof) {
+              <small>Última reforma DOF: {{ a.ultimaReformaDof }}</small>
+            }
+            @if (a.notaDeVigencia) {
+              <small class="ly-vigencia">{{ a.notaDeVigencia }}</small>
+            }
+            @if (a.url) {
+              <a [href]="a.url" target="_blank" rel="noopener">Documento oficial <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i></a>
+            }
+          </footer>
+        </li>
+      }
+    </ol>
+  } @else {
+    <p class="ly-vacio">No se encontró nada. Prueba con otras palabras o con «Todas» las leyes.</p>
+  }
+} @else if (!ocupado()) {
+  <section class="ly-ejemplos" aria-label="Ejemplos">
+    <span>Prueba con:</span>
+    @for (e of ejemplos; track e) {
+      <button type="button" class="ly-ejemplo" (click)="usarEjemplo(e)">{{ e }}</button>
+    }
+  </section>
+}
