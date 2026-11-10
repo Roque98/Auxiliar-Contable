@@ -51,19 +51,24 @@
         <label class="dc-campo">
           <span>¿De qué mes es?</span>
           <select class="ig-control dc-capital" [(ngModel)]="mesAlSubir" data-testid="mes-al-subir">
+            @if (tipoAlSubir === Tipo.EstadoDeCuenta) {
+              <option [ngValue]="0">Que lo lea del estado de cuenta</option>
+            }
             @for (m of meses; track $index) {
               <option [ngValue]="$index + 1">{{ m }}</option>
             }
           </select>
         </label>
-        <label class="dc-campo">
-          <span>Año</span>
-          <select class="ig-control" [(ngModel)]="anioAlSubir" data-testid="anio-al-subir">
-            @for (a of aniosParaSubir; track a) {
-              <option [ngValue]="a">{{ a }}</option>
-            }
-          </select>
-        </label>
+        @if (!leerElMes) {
+          <label class="dc-campo">
+            <span>Año</span>
+            <select class="ig-control" [(ngModel)]="anioAlSubir" data-testid="anio-al-subir">
+              @for (a of aniosParaSubir; track a) {
+                <option [ngValue]="a">{{ a }}</option>
+              }
+            </select>
+          </label>
+        }
       </div>
       <label class="btn btn-primary dc-boton-subir">
         <i class="bi bi-cloud-arrow-up" aria-hidden="true"></i> Elegir archivos

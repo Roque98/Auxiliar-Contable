@@ -35,7 +35,7 @@ const ESCENAS = {
     { ruta: '/', archivo: '01-inicio' },
     { ruta: '/cartera', archivo: '02-cartera' },
     { ruta: '/conciliacion', archivo: '03-conciliacion', accion: conciliar },
-    { ruta: null, archivo: '04-conciliacion-sin-factura', accion: p => pestana(p, 'Sin factura') },
+    { ruta: null, archivo: '04-conciliacion-sin-factura', accion: p => partidas(p) },
     { ruta: '/documentos', archivo: '05-documentos-cliente', cliente: 'Panadería La Espiga' },
     { ruta: '/perfil-fiscal', archivo: '06-perfil-fiscal-cliente', cliente: 'Panadería La Espiga' },
     { ruta: '/leyes?q=artículo 27&ley=LISR', archivo: '07-consultar-leyes', accion: esperarLeyes },
@@ -72,13 +72,16 @@ async function conciliar(pagina) {
   await pagina.locator('[data-testid=cliente]').selectOption({ label: 'Panadería La Espiga' });
   await pagina.locator('label:has-text("Mes") select').selectOption({ label: MES_DE_EJEMPLO.mes });
   await pagina.locator('label:has-text("Año") select').selectOption({ label: MES_DE_EJEMPLO.anio });
-  await pagina.getByRole('button', { name: 'Conciliar', exact: true }).click();
-  await pagina.locator('.cc-resumen').waitFor({ timeout: 300_000 });
+  await pagina.getByTestId('cierre').waitFor({ timeout: 30_000 });
+  await pagina.getByTestId('conciliar').click();
+  await pagina.getByTestId('partidas').waitFor({ timeout: 300_000 });
+  await pagina.locator('.cc-resumen').waitFor({ timeout: 30_000 });
   await pagina.waitForTimeout(800);
 }
 
-async function pestana(pagina, texto) {
-  await pagina.getByRole('tab', { name: new RegExp(`^${texto}`) }).click();
+/** Los movimientos sin factura del cierre, para decir qué es cada uno o preguntarle al cliente. */
+async function partidas(pagina) {
+  await pagina.getByTestId('partidas').scrollIntoViewIfNeeded();
   await pagina.waitForTimeout(600);
 }
 
@@ -200,7 +203,7 @@ const RECORRIDOS = {
     await conciliar(p);
     await p.mouse.wheel(0, 600);
     await p.waitForTimeout(1500);
-    await pestana(p, 'Sin factura');
+    await partidas(p);
     await p.waitForTimeout(1500);
     await ir(p, '/perfil-fiscal');
     await elegirCliente(p, 'Panadería La Espiga');

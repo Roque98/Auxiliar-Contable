@@ -1,8 +1,8 @@
 <header class="cc-cabecera">
-  <h1>Conciliación</h1>
+  <h1>Cierre del mes</h1>
   <p class="cc-nota">
-    Cruza los estados de cuenta del mes contra las facturas XML que están en Documentos. Lo hace el motor fiscal
-    del despacho; aquí no se guarda nada: si subes algo, vuelve a conciliar.
+    Cada mes de cada cliente se cierra como en un sistema contable: llegan sus documentos, se concilian los bancos
+    contra las facturas XML, se aclara cada movimiento sin factura y el despacho lo cierra. Cerrado, ya no cambia.
   </p>
 
   <div class="cc-filtros">
@@ -19,7 +19,7 @@
     }
     <label class="cc-campo">
       <span>Mes</span>
-      <select class="ig-control" [(ngModel)]="mes">
+      <select class="ig-control" [(ngModel)]="mes" (ngModelChange)="cargar()" data-testid="mes">
         @for (m of meses; track $index) {
           <option [ngValue]="$index + 1">{{ m }}</option>
         }
@@ -27,17 +27,23 @@
     </label>
     <label class="cc-campo">
       <span>Año</span>
-      <select class="ig-control" [(ngModel)]="anio">
+      <select class="ig-control" [(ngModel)]="anio" (ngModelChange)="cargar()" data-testid="anio">
         @for (a of anios; track a) {
           <option [ngValue]="a">{{ a }}</option>
         }
       </select>
     </label>
-    <button type="button" class="btn btn-primary cc-conciliar" [disabled]="!clienteId() || ocupado()" (click)="conciliar()">
+    <button
+      type="button"
+      class="btn btn-primary cc-conciliar"
+      [disabled]="!clienteId() || ocupado() || cierre()?.etapa === Etapa.Cerrado"
+      (click)="conciliar()"
+      data-testid="conciliar"
+    >
       @if (ocupado()) {
-        <span class="ig-girando" aria-hidden="true"></span> Conciliando…
+        <span class="ig-girando" aria-hidden="true"></span> Trabajando…
       } @else {
-        <i class="bi bi-arrow-left-right" aria-hidden="true"></i> Conciliar
+        <i class="bi bi-arrow-left-right" aria-hidden="true"></i> {{ datos() ? 'Volver a conciliar' : 'Conciliar' }}
       }
     </button>
   </div>
@@ -59,7 +65,138 @@
   </div>
 }
 
+@if (cierre(); as c) {
+  <section class="cc-cierre" aria-labelledby="cc-cierre" data-testid="cierre">
+    <header class="cc-cierre-cabecera">
+      <h2 id="cc-cierre">{{ meses[c.mes - 1] }} {{ c.anio }}</h2>
+      <span class="cc-etapa" [attr.data-etapa]="c.etapa">{{ nombreDeEtapa[c.etapa] }}</span>
+    </header>
+    <ul class="cc-revision">
+      @for (r of c.revision; track $index) {
+        <li [class.cc-hecho]="r.hecho" [class.cc-bloquea]="r.bloquea && !r.hecho">
+          <i [class]="r.hecho ? 'bi bi-check-circle-fill' : r.bloquea ? 'bi bi-x-circle-fill' : 'bi bi-info-circle'" aria-hidden="true"></i>
+          <span>{{ r.texto }}</span>
+        </li>
+      }
+    </ul>
+    @if (c.etapa === Etapa.FaltanDocumentos && cliente(); as cl) {
+      <a class="btn btn-outline-primary cc-accion" [routerLink]="['/documentos']" [queryParams]="{ cliente: cl.id }">
+        <i class="bi bi-upload" aria-hidden="true"></i> Subir documentos
+      </a>
+    }
+    @if (c.puedeCerrar) {
+      <div class="cc-acciones">
+        @if (c.etapa === Etapa.Cerrado) {
+          <button type="button" class="btn btn-outline-secondary cc-accion" [disabled]="ocupado()" (click)="reabrir()" data-testid="reabrir">
+            <i class="bi bi-unlock" aria-hidden="true"></i> Reabrir el mes
+          </button>
+        } @else {
+          <button
+            type="button"
+            class="btn btn-success cc-accion"
+            [disabled]="ocupado() || c.etapa !== Etapa.ListoParaCerrar"
+            (click)="cerrar()"
+            data-testid="cerrar"
+          >
+            <i class="bi bi-lock" aria-hidden="true"></i> Cerrar el mes
+          </button>
+        }
+      </div>
+    }
+    @if (c.cerradoUtc) {
+      <p class="cc-nota">Cerrado el {{ c.cerradoUtc | date: 'd MMM yyyy, HH:mm' }}. Sus documentos ya no se pueden subir, mover ni borrar.</p>
+    }
+  </section>
+
+  @if (c.partidas.length) {
+    <section aria-labelledby="cc-partidas" data-testid="partidas">
+      <h2 id="cc-partidas">Movimientos sin factura</h2>
+      <p class="cc-nota">
+        @if (c.puedeCerrar) {
+          Di qué es cada uno o pregúntale al cliente. Lo que decidas se conserva aunque vuelvas a conciliar.
+        } @else {
+          El despacho revisa estos movimientos. Si te pregunta por alguno, contesta aquí.
+        }
+      </p>
+      <ul class="cc-partidas">
+        @for (p of c.partidas; track p.id) {
+          <li class="cc-partida" [class.cc-partida-lista]="!p.pendiente">
+            <div class="cc-mov-linea">
+              <span class="cc-concepto">{{ p.descripcion }}</span>
+              <span class="cc-chip" [class.cc-chip-ok]="!p.pendiente">{{ nombreDeResolucion[p.resolucion] }}</span>
+            </div>
+            @if (p.resolucion === Resolucion.PreguntarAlCliente && p.nota) {
+              <p class="cc-pregunta"><i class="bi bi-chat-left-text" aria-hidden="true"></i> {{ p.nota }}</p>
+            } @else if (p.nota) {
+              <p class="cc-nota">{{ p.nota }}</p>
+            }
+            @if (p.respuesta) {
+              <p class="cc-respuesta"><strong>Respuesta del cliente:</strong> {{ p.respuesta }}</p>
+            }
+            @if (c.etapa !== Etapa.Cerrado) {
+              @if (c.puedeCerrar) {
+                <div class="cc-resolver">
+                  <select
+                    class="ig-control"
+                    [ngModel]="borrador(p).resolucion"
+                    (ngModelChange)="cambiarBorrador(p, { resolucion: $event })"
+                    [attr.aria-label]="'Qué es: ' + p.descripcion"
+                  >
+                    <option [ngValue]="Resolucion.SinResolver" disabled>¿Qué es?</option>
+                    @for (r of resoluciones; track r) {
+                      <option [ngValue]="r">{{ nombreDeResolucion[r] }}</option>
+                    }
+                  </select>
+                  <input
+                    class="ig-control"
+                    maxlength="500"
+                    [placeholder]="borrador(p).resolucion === Resolucion.PreguntarAlCliente ? '¿Qué le preguntas? (obligatorio)' : 'Nota (opcional)'"
+                    [ngModel]="borrador(p).nota"
+                    (ngModelChange)="cambiarBorrador(p, { nota: $event })"
+                  />
+                  <button
+                    type="button"
+                    class="btn btn-outline-primary cc-accion"
+                    [disabled]="guardando() === p.id || borrador(p).resolucion === Resolucion.SinResolver"
+                    (click)="resolver(p)"
+                  >
+                    Guardar
+                  </button>
+                </div>
+              } @else if (p.resolucion === Resolucion.PreguntarAlCliente) {
+                <div class="cc-resolver">
+                  <input
+                    class="ig-control"
+                    maxlength="1000"
+                    placeholder="¿Qué es este movimiento?"
+                    [ngModel]="respuestas()[p.id] ?? ''"
+                    (ngModelChange)="escribirRespuesta(p, $event)"
+                  />
+                  <button
+                    type="button"
+                    class="btn btn-primary cc-accion"
+                    [disabled]="guardando() === p.id || !(respuestas()[p.id] ?? '').trim()"
+                    (click)="responder(p)"
+                  >
+                    {{ p.respuesta ? 'Corregir respuesta' : 'Responder' }}
+                  </button>
+                </div>
+              }
+            }
+          </li>
+        }
+      </ul>
+    </section>
+  }
+}
+
+@if (cargando()) {
+  <p class="cc-nota" role="status">Cargando el mes…</p>
+}
+
 @if (datos(); as d) {
+  <h2>Conciliación bancaria</h2>
+  <p class="cc-nota">Conciliada el {{ d.conciliadaUtc | date: 'd MMM yyyy, HH:mm' }}.</p>
   <section class="cc-resumen" aria-label="Resumen">
     <div class="cc-cifra"><strong>{{ cuentas().total }}</strong><span>movimientos</span></div>
     <div class="cc-cifra cc-ok"><strong>{{ cuentas().conFactura }}</strong><span>con factura</span></div>
@@ -194,6 +331,6 @@
       </ul>
     </section>
   }
-} @else if (!ocupado() && !error()) {
-  <p class="cc-vacio">Elige el cliente y el mes, y pulsa «Conciliar».</p>
+} @else if (!ocupado() && !cargando() && !error()) {
+  <p class="cc-vacio">{{ clienteId() ? 'Este mes todavía no se concilia: pulsa «Conciliar».' : 'Elige el cliente y el mes.' }}</p>
 }

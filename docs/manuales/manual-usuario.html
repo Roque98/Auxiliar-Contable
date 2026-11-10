@@ -275,7 +275,7 @@ video{width:100%;aspect-ratio:1280/760}
   </div>
   <figure>
     <video src="video/administrador.webm" controls muted playsinline preload="metadata" poster="img/administrador/03-conciliacion.png"></video>
-    <figcaption>Recorrido del Administrador: Inicio, la cartera, la conciliación de un mes, el perfil de un cliente y una consulta de leyes.</figcaption>
+    <figcaption>Recorrido del Administrador: Inicio, la cartera, el cierre de un mes, el perfil de un cliente y una consulta de leyes.</figcaption>
   </figure>
 
   <div class="pantalla">
@@ -292,31 +292,33 @@ video{width:100%;aspect-ratio:1280/760}
     <div>
       <span class="ruta">Cartera</span>
       <h3>La cartera del despacho</h3>
-      <p>Todos los clientes del mes con un semáforo: <strong>urgente</strong> (sin RFC o sin estado de cuenta del mes), <strong>atención</strong> o <strong>al día</strong>. Cada tarjeta dice qué falta y lleva directo a su conciliación, documentos o perfil. Las flechas cambian de mes.</p>
+      <p>Todos los clientes del mes con un semáforo: <strong>urgente</strong> (sin RFC o sin estado de cuenta del mes), <strong>atención</strong> o <strong>al día</strong>. Cada tarjeta dice <strong>en qué va el cierre de su mes</strong> (faltan documentos, por conciliar, con pendientes, listo para cerrar o cerrado), qué falta, y lleva directo a su cierre, documentos o perfil. Las flechas cambian de mes.</p>
     </div>
   </div>
 
   <div class="pantalla">
-    <figure><img class="captura" src="img/administrador/03-conciliacion.png" alt="Conciliación: resumen y cuadre de la cuenta con el banco" loading="lazy"></figure>
+    <figure><img class="captura" src="img/administrador/03-conciliacion.png" alt="Cierre del mes: lista de revisión, conciliación y cuadre con el banco" loading="lazy"></figure>
     <div>
-      <span class="ruta">Conciliación</span>
-      <h3>Banco contra facturas</h3>
+      <span class="ruta">Cierre del mes</span>
+      <h3>Cerrar el mes de un cliente</h3>
+      <p>Como en un sistema contable, cada mes de cada cliente es un <strong>periodo</strong> que se concilia y se cierra. Arriba está la lista de lo que se revisa: estado de cuenta, facturas, bancos conciliados, cuadre con el banco y movimientos sin factura.</p>
       <ol>
-        <li>Revisa que en Documentos estén los estados de cuenta del mes y las facturas XML, emitidas y recibidas, y que el cliente tenga su <strong>RFC</strong> en el perfil.</li>
-        <li>Elige el cliente, el mes y el año, y pulsa <strong>«Conciliar»</strong>.</li>
-        <li>Arriba: cuántos movimientos tienen factura, cuántos son traspasos propios y cuántos no tienen factura, y cuántas facturas no aparecen en el banco.</li>
+        <li>Que estén en Documentos el estado de cuenta del mes (se acomoda solo en su mes) y las facturas XML, emitidas y recibidas, y que el cliente tenga su <strong>RFC</strong> en el perfil.</li>
+        <li>Elige el cliente, el mes y el año, y pulsa <strong>«Conciliar»</strong>. La conciliación <strong>se guarda</strong>.</li>
         <li>Cada cuenta dice si <strong>cuadra con el banco</strong>: saldo inicial, depósitos, retiros y saldo final contra lo que imprime el estado de cuenta.</li>
+        <li>Aclara los <strong>movimientos sin factura</strong> (abajo) y, cuando todo esté resuelto, pulsa <strong>«Cerrar el mes»</strong>.</li>
       </ol>
-      <p class="nota">Lo calcula el motor fiscal del despacho y no se guarda: si subes algo, vuelve a conciliar. Si una cuenta dice <strong>«Leída con Claude»</strong>, era un escaneo o una foto: revisa bien su cuadre. La primera vez un escaneo puede tardar unos minutos; después ya queda leído.</p>
+      <p class="nota">Cerrado, nadie puede subir, mover ni borrar documentos de ese mes ni volver a conciliarlo; si hace falta, <strong>«Reabrir el mes»</strong>. Si llega un documento después de conciliar, el cierre pide volver a conciliar. Si una cuenta dice <strong>«Leída con Claude»</strong>, era un escaneo o una foto: revisa bien su cuadre.</p>
     </div>
   </div>
 
   <div class="pantalla">
-    <figure><img class="captura" src="img/administrador/04-conciliacion-sin-factura.png" alt="Conciliación: movimientos sin factura" loading="lazy"></figure>
+    <figure><img class="captura" src="img/administrador/04-conciliacion-sin-factura.png" alt="Cierre del mes: movimientos sin factura por resolver" loading="lazy"></figure>
     <div>
-      <span class="ruta">Conciliación → Sin factura</span>
+      <span class="ruta">Cierre del mes → Movimientos sin factura</span>
       <h3>Lo que hay que pedir o aclarar</h3>
-      <p>La pestaña <strong>«Sin factura»</strong> deja solo los movimientos que no tienen factura, con el motivo: comisiones del banco (el estado de cuenta es su comprobante), depósitos en efectivo, pagos sin factura identificada. <strong>«Resueltos»</strong> muestra cada movimiento con su factura (cliente o proveedor, folio, importe) y por qué se emparejaron.</p>
+      <p>Cada movimiento sin factura queda como <strong>partida pendiente</strong>. Di qué es: <strong>traspaso entre sus cuentas</strong>, <strong>real sin factura</strong> (préstamo, no deducible…), <strong>su factura está por llegar</strong> o <strong>no lleva factura</strong> (comisiones, intereses), o elige <strong>«Preguntarle al cliente»</strong> y escribe la pregunta: el cliente la contesta desde su pantalla. Lo que decidas se conserva aunque vuelvas a conciliar.</p>
+      <p>En la lista de movimientos, <strong>«Resueltos»</strong> muestra cada uno con su factura (cliente o proveedor, folio, importe) y por qué se emparejaron.</p>
       <p>Más abajo están las <strong>facturas sin movimiento</strong> (emitidas que no se han cobrado o recibidas que no se han pagado, con el motivo) y las <strong>alertas</strong>: forma de pago mal puesta, factura PUE pagada en otro mes…</p>
     </div>
   </div>
@@ -507,6 +509,8 @@ video{width:100%;aspect-ratio:1280/760}
       <tr><td>La invitación dice «vencida»</td><td>Vale 7 días. Pide que te la reenvíen: «Reenviar» manda un enlace nuevo.</td></tr>
       <tr><td>No veo a un cliente o a una persona</td><td>Solo ves a quien está por debajo de tu rol, y como cliente solo ves tu organización. Si debería aparecer, revisa su rol y su organización con alguien de un nivel arriba.</td></tr>
       <tr><td>La constancia no llenó el perfil</td><td>Debe ser el PDF que da el SAT (una foto o un escaneo no se lee). Sale un aviso arriba: captura los datos a mano o súbela otra vez como PDF.</td></tr>
+      <tr><td>«El periodo MM/AAAA ya está cerrado»</td><td>Ese mes ya se cerró. Si de verdad hay que cambiar algo, alguien del despacho lo reabre en «Cierre del mes» → «Reabrir el mes».</td></tr>
+      <tr><td>Un estado de cuenta dice «No se pudo leer de qué periodo es»</td><td>En «Documentos», toca el calendario junto a él y ponle el mes que cubre.</td></tr>
       <tr><td>Conciliación: «Falta el RFC del cliente»</td><td>Sube su constancia (se llena sola) o captura el RFC en Perfil fiscal.</td></tr>
       <tr><td>Conciliación: «No hay estados de cuenta de ese mes»</td><td>El estado de cuenta quedó en otro mes. En «Documentos» búscalo, toca el calendario junto a él y ponle el mes que cubre. Las facturas van solas al mes de la fecha de su XML.</td></tr>
       <tr><td>Una cuenta dice «No cuadra»</td><td>La lectura no coincide con lo que imprime el banco. Pide el PDF original del banco (no foto) y vuelve a conciliar.</td></tr>

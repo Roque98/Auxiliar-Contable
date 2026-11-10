@@ -40,6 +40,12 @@ public class ClienteDeCarteraDto
     public DateTime? UltimoDocumentoUtc { get; set; }
     public SemaforoDeCliente Semaforo { get; set; }
 
+    /// <summary>En qué va el cierre del mes (la misma regla que la pantalla de conciliación).</summary>
+    public AuxiliarContable.Contabilidad.EtapaDelPeriodo Etapa { get; set; }
+
+    /// <summary>Movimientos sin factura que siguen por resolver en ese mes.</summary>
+    public int PartidasPendientes { get; set; }
+
     /// <summary>Lo que hay que hacer, en palabras («Falta el estado de cuenta del mes»).</summary>
     public List<string> Pendientes { get; set; } = [];
 }

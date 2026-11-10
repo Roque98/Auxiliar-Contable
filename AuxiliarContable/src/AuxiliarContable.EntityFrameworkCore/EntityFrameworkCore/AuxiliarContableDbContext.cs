@@ -58,6 +58,12 @@ public class AuxiliarContableDbContext :
 
     public DbSet<PerfilFiscal> PerfilesFiscales { get; set; }
 
+    public DbSet<Contabilidad.PeriodoContable> PeriodosContables { get; set; }
+
+    public DbSet<Contabilidad.ConciliacionBancaria> ConciliacionesBancarias { get; set; }
+
+    public DbSet<Contabilidad.PartidaPendiente> PartidasPendientes { get; set; }
+
     public DbSet<DatoDelPerfil> DatosDePerfiles { get; set; }
 
     public DbSet<Conversacion> Conversaciones { get; set; }
@@ -257,6 +263,40 @@ public class AuxiliarContableDbContext :
             // borrado logico, un documento borrado y vuelto a subir chocaria con su fantasma.
             b.HasIndex(x => new { x.OrganizacionId, x.Sha256 });
             b.HasIndex(x => new { x.OrganizacionId, x.Tipo });
+        });
+
+        // Cierre mensual — un mes de un cliente es un periodo que se concilia y se cierra.
+        // AppPeriodosContables: solo los que alguna vez se cerraron (sin fila = abierto).
+        builder.Entity<Contabilidad.PeriodoContable>(b =>
+        {
+            b.ToTable(AuxiliarContableConsts.DbTablePrefix + "PeriodosContables", AuxiliarContableConsts.DbSchema);
+            b.ConfigureByConvention();
+            b.HasIndex(x => new { x.OrganizacionId, x.Anio, x.Mes }).IsUnique();
+        });
+
+        // AppConciliacionesBancarias: la ultima de cada mes, con el resultado del motor tal cual.
+        // Texto y no jsonb: se guarda y se devuelve entero, nunca se consulta por dentro.
+        builder.Entity<Contabilidad.ConciliacionBancaria>(b =>
+        {
+            b.ToTable(AuxiliarContableConsts.DbTablePrefix + "ConciliacionesBancarias", AuxiliarContableConsts.DbSchema);
+            b.ConfigureByConvention();
+            b.Property(x => x.Rfc).IsRequired().HasMaxLength(13);
+            b.Property(x => x.Huella).IsRequired().HasMaxLength(Contabilidad.ContabilidadConsts.HuellaLength);
+            b.Property(x => x.Resultado).IsRequired();
+            b.HasIndex(x => new { x.OrganizacionId, x.Anio, x.Mes }).IsUnique();
+        });
+
+        // AppPartidasPendientes: lo decidido de cada movimiento sin factura, por su clave, para que
+        // sobreviva a una nueva conciliacion.
+        builder.Entity<Contabilidad.PartidaPendiente>(b =>
+        {
+            b.ToTable(AuxiliarContableConsts.DbTablePrefix + "PartidasPendientes", AuxiliarContableConsts.DbSchema);
+            b.ConfigureByConvention();
+            b.Property(x => x.Clave).IsRequired().HasMaxLength(Contabilidad.ContabilidadConsts.ClaveLength);
+            b.Property(x => x.Descripcion).IsRequired().HasMaxLength(Contabilidad.ContabilidadConsts.MaxDescripcionLength);
+            b.Property(x => x.Nota).HasMaxLength(Contabilidad.ContabilidadConsts.MaxNotaLength);
+            b.Property(x => x.Respuesta).HasMaxLength(Contabilidad.ContabilidadConsts.MaxRespuestaLength);
+            b.HasIndex(x => new { x.OrganizacionId, x.Anio, x.Mes, x.Clave }).IsUnique();
         });
 
         // Perfil fiscal — AppPerfilesFiscales (uno por organizacion) y AppDatosDePerfiles (un

@@ -58,7 +58,7 @@ export class InicioComponent implements OnInit {
     if (this.esEquipo) {
       return [
         { icono: 'bi-grid-3x3-gap', titulo: 'Cartera', texto: 'Todos los clientes del mes con su semáforo.', ruta: '/cartera' },
-        { icono: 'bi-arrow-left-right', titulo: 'Conciliación', texto: 'Banco contra facturas, por cliente y mes.', ruta: '/conciliacion' },
+        { icono: 'bi-arrow-left-right', titulo: 'Cierre del mes', texto: 'Conciliar, aclarar lo que no tiene factura y cerrar.', ruta: '/conciliacion' },
         { icono: 'bi-folder2-open', titulo: 'Documentos', texto: 'Facturas, estados de cuenta y tickets de cada cliente.', ruta: '/documentos' },
         { icono: 'bi-person-lines-fill', titulo: 'Perfil fiscal', texto: 'RFC, régimen y datos de cada cliente.', ruta: '/perfil-fiscal' },
         leyes,
@@ -67,6 +67,7 @@ export class InicioComponent implements OnInit {
     return [
       { icono: 'bi-folder2-open', titulo: 'Documentos', texto: 'Sube tus facturas XML, estados de cuenta y tickets.', ruta: '/documentos', params: deCliente },
       { icono: 'bi-person-lines-fill', titulo: 'Perfil fiscal', texto: 'Sube tu constancia y revisa tus datos.', ruta: '/perfil-fiscal', params: deCliente },
+      { icono: 'bi-arrow-left-right', titulo: 'Cierre del mes', texto: 'Cómo va tu mes y lo que el despacho te pregunta.', ruta: '/conciliacion', params: deCliente },
       { icono: 'bi-building', titulo: 'Mi organización', texto: 'Quién de tu empresa tiene acceso.', ruta: '/mi-organizacion' },
       leyes,
       { icono: 'bi-question-circle', titulo: 'Ayuda', texto: 'Cómo se usa cada pantalla.', ruta: '/ayuda' },

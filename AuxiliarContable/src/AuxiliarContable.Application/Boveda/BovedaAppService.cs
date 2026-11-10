@@ -4,12 +4,16 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using AuxiliarContable.Autorizacion;
+using AuxiliarContable.BackgroundJobs;
+using AuxiliarContable.Contabilidad;
 using AuxiliarContable.Documentos;
 using AuxiliarContable.Files;
 using AuxiliarContable.Organizaciones;
+using AuxiliarContable.PerfilesFiscales;
 using Microsoft.AspNetCore.Authorization;
 using Volo.Abp;
 using Volo.Abp.Application.Dtos;
+using Volo.Abp.BackgroundJobs;
 using Volo.Abp.Content;
 using Volo.Abp.Domain.Entities;
 using Volo.Abp.Domain.Repositories;
@@ -27,17 +31,26 @@ public class BovedaAppService : AuxiliarContableAppService, IBovedaAppService
     private readonly GestorDeDocumentos _gestor;
     private readonly AlmacenDeDocumentos _almacen;
     private readonly Autorizador _autorizador;
+    private readonly GestorDePeriodos _periodos;
+    private readonly IRepository<PerfilFiscal, Guid> _perfiles;
+    private readonly IBackgroundJobManager _trabajos;
 
     public BovedaAppService(
         IRepository<Documento, Guid> documentos,
         GestorDeDocumentos gestor,
         AlmacenDeDocumentos almacen,
-        Autorizador autorizador)
+        Autorizador autorizador,
+        GestorDePeriodos periodos,
+        IRepository<PerfilFiscal, Guid> perfiles,
+        IBackgroundJobManager trabajos)
     {
         _documentos = documentos;
         _gestor = gestor;
         _almacen = almacen;
         _autorizador = autorizador;
+        _periodos = periodos;
+        _perfiles = perfiles;
+        _trabajos = trabajos;
     }
 
     public async Task<ResultadoDeSubidaDto> SubirAsync(Guid organizacionId, TipoDeDocumento tipo, IRemoteStreamContent archivo,
@@ -81,9 +94,17 @@ public class BovedaAppService : AuxiliarContableAppService, IBovedaAppService
         // Una factura va al mes de su XML, diga lo que diga quien la sube: es lo que vale ante el SAT.
         var diaDeLaFactura = esXml ? FechaDelCfdi.Leer(bytes) : null;
         var fecha = diaDeLaFactura is { } dia ? FechaDelCfdi.ComoFecha(dia) : delMes;
+        await _periodos.ExigirAbiertoAsync(organizacionId, fecha ?? Clock.Now);
         var (documento, duplicado) = await _gestor.RecibirAsync(organizacionId, tipoReal, nombre, bytes,
             mime => tipoReal == TipoDeDocumento.Cfdi ? mime == DetectorDeDocumento.Xml : mime != DetectorDeDocumento.Xml,
             fecha);
+
+        // Un estado de cuenta sin mes: lo pone en su mes el motor, leyendo su periodo.
+        var porFechar = !duplicado && documento.Tipo == TipoDeDocumento.EstadoDeCuenta && documento.FechaDelDocumento == null;
+        if (porFechar)
+        {
+            await _trabajos.EnqueueAsync(new FecharEstadoDeCuentaArgs { DocumentoId = documento.Id });
+        }
 
         return new ResultadoDeSubidaDto
         {
@@ -91,8 +112,31 @@ public class BovedaAppService : AuxiliarContableAppService, IBovedaAppService
             EsDuplicado = duplicado,
             Aviso = esXml && diaDeLaFactura == null && !duplicado
                 ? "No trae la fecha de una factura (¿es un CFDI?): quedó en el mes que elegiste."
-                : null,
+                : porFechar
+                    ? "Se está leyendo de qué periodo es: en un momento se acomoda solo en su mes."
+                    : null,
         };
+    }
+
+    public async Task<ResultadoDeSubidaDto> SubirFacturaAsync(string rfc, IRemoteStreamContent archivo)
+    {
+        var limpio = (rfc ?? string.Empty).Trim().ToUpperInvariant();
+        var clientes = await AsyncExecuter.ToListAsync(
+            from p in await _perfiles.GetQueryableAsync()
+            from d in p.Datos
+            where d.Campo == CamposDelPerfil.Rfc && d.Valor.ToUpper() == limpio
+            select p.OrganizacionId);
+        var quien = await _autorizador.QuienMiraAsync();
+        var suyos = clientes.Distinct().Where(o => quien.Puede(o, AccionEnOrganizacion.Subir)).ToList();
+        if (suyos.Count != 1)
+        {
+            // Ajeno e inexistente dicen lo mismo: no se confirma qué RFC tiene el despacho.
+            throw new UserFriendlyException(suyos.Count == 0
+                ? $"No tienes un cliente con el RFC {limpio}: revisa el RFC en su perfil fiscal."
+                : $"Hay más de un cliente con el RFC {limpio}: súbelas desde «Documentos» de cada uno.");
+        }
+
+        return await SubirAsync(suyos[0], TipoDeDocumento.Cfdi, archivo);
     }
 
     public async Task<DocumentoDeBovedaDto> CambiarMesAsync(Guid organizacionId, Guid documentoId, int anio, int mes)
@@ -104,7 +148,16 @@ public class BovedaAppService : AuxiliarContableAppService, IBovedaAppService
             throw new UserFriendlyException("Una factura va en el mes de la fecha de su XML: ese no se cambia.");
         }
 
-        documento.FecharEn(PrimeroDelMes(anio, mes));
+        var nuevo = PrimeroDelMes(anio, mes);
+        await _periodos.ExigirAbiertoAsync(organizacionId, documento.FechaDelDocumento ?? documento.CreationTime);
+        await _periodos.ExigirAbiertoAsync(organizacionId, nuevo);
+        documento.FecharEn(nuevo);
+        // Una persona dijo el mes: si el motor no pudo leer el periodo, ya está resuelto.
+        if (documento.Estado == EstadoDeDocumento.ConError && documento.Tipo == TipoDeDocumento.EstadoDeCuenta)
+        {
+            documento.MarcarProcesado();
+        }
+
         await _documentos.UpdateAsync(documento, autoSave: true);
         return Describir(documento);
     }
@@ -196,6 +249,7 @@ public class BovedaAppService : AuxiliarContableAppService, IBovedaAppService
     {
         await _autorizador.ExigirAsync(organizacionId, AccionEnOrganizacion.Subir);
         var documento = await DocumentoAsync(organizacionId, documentoId);
+        await _periodos.ExigirAbiertoAsync(organizacionId, documento.FechaDelDocumento ?? documento.CreationTime);
         // Borrado lógico (queda en la auditoría y el archivo cifrado sigue en disco).
         await _documentos.DeleteAsync(documento, autoSave: true);
     }

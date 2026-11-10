@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using AuxiliarContable.Autorizacion;
+using AuxiliarContable.Contabilidad;
 using AuxiliarContable.Conversaciones;
 using AuxiliarContable.Documentos;
 using AuxiliarContable.Identity;
@@ -30,6 +31,9 @@ public class CarteraAppService : AuxiliarContableAppService, ICarteraAppService
     private readonly IRepository<Conversacion, Guid> _conversaciones;
     private readonly JerarquiaDeUsuarios _jerarquia;
     private readonly Autorizador _autorizador;
+    private readonly IRepository<PeriodoContable, Guid> _periodos;
+    private readonly IRepository<ConciliacionBancaria, Guid> _conciliaciones;
+    private readonly IRepository<PartidaPendiente, Guid> _partidas;
 
     public CarteraAppService(
         IRepository<Organizacion, Guid> organizaciones,
@@ -38,8 +42,14 @@ public class CarteraAppService : AuxiliarContableAppService, ICarteraAppService
         IRepository<MensajeDeConversacion, Guid> mensajes,
         IRepository<Conversacion, Guid> conversaciones,
         JerarquiaDeUsuarios jerarquia,
-        Autorizador autorizador)
+        Autorizador autorizador,
+        IRepository<PeriodoContable, Guid> periodos,
+        IRepository<ConciliacionBancaria, Guid> conciliaciones,
+        IRepository<PartidaPendiente, Guid> partidas)
     {
+        _periodos = periodos;
+        _conciliaciones = conciliaciones;
+        _partidas = partidas;
         _organizaciones = organizaciones;
         _perfiles = perfiles;
         _documentos = documentos;
@@ -65,7 +75,18 @@ public class CarteraAppService : AuxiliarContableAppService, ICarteraAppService
         var perfiles = (await _perfiles.GetListAsync()).ToDictionary(p => p.OrganizacionId);
 
         var documentos = await AsyncExecuter.ToListAsync((await _documentos.GetQueryableAsync())
-            .Select(d => new { d.OrganizacionId, d.Tipo, Fecha = d.FechaDelDocumento ?? d.CreationTime, d.CreationTime }));
+            .Select(d => new { d.Id, d.Sha256, d.OrganizacionId, d.Tipo, Fecha = d.FechaDelDocumento ?? d.CreationTime, d.CreationTime }));
+
+        var cerrados = (await AsyncExecuter.ToListAsync((await _periodos.GetQueryableAsync())
+            .Where(p => p.Anio == anio && p.Mes == mes && p.Cerrado).Select(p => p.OrganizacionId))).ToHashSet();
+        var conciliadas = (await AsyncExecuter.ToListAsync((await _conciliaciones.GetQueryableAsync())
+            .Where(c => c.Anio == anio && c.Mes == mes).Select(c => new { c.OrganizacionId, c.Huella })))
+            .ToDictionary(c => c.OrganizacionId, c => c.Huella);
+        var pendientes = (await AsyncExecuter.ToListAsync((await _partidas.GetQueryableAsync())
+            .Where(p => p.Anio == anio && p.Mes == mes && (p.Resolucion == ResolucionDePartida.SinResolver
+                || p.Resolucion == ResolucionDePartida.PreguntarAlCliente || p.Resolucion == ResolucionDePartida.FacturaPorLlegar))
+            .Select(p => p.OrganizacionId)))
+            .GroupBy(o => o).ToDictionary(g => g.Key, g => g.Count());
 
         var total = CamposDelPerfil.Todos.Count;
         var lista = new List<ClienteDeCarteraDto>();
@@ -86,7 +107,13 @@ public class CarteraAppService : AuxiliarContableAppService, ICarteraAppService
                 FacturasDelMes = delMes.Count(d => d.Tipo == TipoDeDocumento.Cfdi),
                 EstadosDeCuentaDelMes = delMes.Count(d => d.Tipo == TipoDeDocumento.EstadoDeCuenta),
                 UltimoDocumentoUtc = susDocs.Count == 0 ? null : susDocs.Max(d => d.CreationTime),
+                PartidasPendientes = pendientes.GetValueOrDefault(c.Id),
             };
+
+            var paraConciliar = delMes.Where(d => d.Tipo is TipoDeDocumento.EstadoDeCuenta or TipoDeDocumento.Cfdi)
+                .Select(d => (d.Id, d.Sha256));
+            dto.Etapa = EtapaDelCierre.Calcular(cerrados.Contains(c.Id), dto.EstadosDeCuentaDelMes,
+                GestorDePeriodos.HuellaDe(paraConciliar), conciliadas.GetValueOrDefault(c.Id), dto.PartidasPendientes);
 
             if (dto.Rfc == null)
             {
@@ -105,6 +132,15 @@ public class CarteraAppService : AuxiliarContableAppService, ICarteraAppService
             if (dto.FacturasDelMes == 0)
             {
                 dto.Pendientes.Add("No hay facturas del mes.");
+            }
+
+            if (dto.Etapa == EtapaDelPeriodo.PorConciliar)
+            {
+                dto.Pendientes.Add("Falta conciliar los bancos.");
+            }
+            else if (dto.PartidasPendientes > 0)
+            {
+                dto.Pendientes.Add($"Movimientos sin factura por resolver: {dto.PartidasPendientes}.");
             }
 
             dto.Semaforo = dto.Rfc == null || dto.EstadosDeCuentaDelMes == 0
