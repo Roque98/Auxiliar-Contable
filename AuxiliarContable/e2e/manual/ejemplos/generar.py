@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
-"""Genera los archivos de EJEMPLO del manual (todo inventado; los RFC tienen dígito verificador válido): el estado de cuenta de noviembre de «Panadería La
+"""Genera los archivos de EJEMPLO del manual (todo inventado; los RFC tienen dígito verificador válido): el estado de cuenta de octubre de «Panadería La
 Espiga», sus facturas XML y su Constancia de Situación Fiscal. Imitan el texto de los documentos reales para que el
 motor fiscal los lea igual, pero ningún dato es de un cliente.
 
     python manual/ejemplos/generar.py      (necesita PyMuPDF: pip install pymupdf)
 
-El mes es noviembre de 2026 porque la bóveda agrupa por la fecha de subida (ver docs/manuales).
+Son de octubre de 2026 y se suben en noviembre, como en la vida real: el estado de cuenta va al mes que se
+elige al subirlo y las facturas al de la fecha de su XML.
 """
 import os
 
@@ -19,13 +20,13 @@ PROVEEDOR = ("HCE100101AA8", "HARINERA DEL CENTRO SA DE CV")
 
 # (fecha, naturaleza, importe, descripción, renglones de detalle)
 MOVIMIENTOS = [
-    ("03/11/2026", "abono", 11600.00, "SPEI RECIBIDO", ["DEL CLIENTE CAFETERIA EL PORTAL SA DE CV", "RFC CPO150101AB4"]),
-    ("05/11/2026", "cargo", 4640.00, "SPEI ENVIADO", ["AL PROVEEDOR HARINERA DEL CENTRO SA DE CV", "RFC HCE100101AA8"]),
-    ("06/11/2026", "cargo", 18.00, "COMISION SPEI", []),
-    ("06/11/2026", "cargo", 2.88, "IVA COMISION", []),
-    ("10/11/2026", "abono", 3480.00, "DEPOSITO EN EFECTIVO", []),
-    ("12/11/2026", "abono", 5800.00, "SPEI RECIBIDO", ["DEL CLIENTE HOTEL LOS ARCOS SA DE CV", "RFC HLA120101AB8"]),
-    ("16/11/2026", "cargo", 1250.00, "PAGO DE SERVICIO LUZ", []),
+    ("03/10/2026", "abono", 11600.00, "SPEI RECIBIDO", ["DEL CLIENTE CAFETERIA EL PORTAL SA DE CV", "RFC CPO150101AB4"]),
+    ("05/10/2026", "cargo", 4640.00, "SPEI ENVIADO", ["AL PROVEEDOR HARINERA DEL CENTRO SA DE CV", "RFC HCE100101AA8"]),
+    ("06/10/2026", "cargo", 18.00, "COMISION SPEI", []),
+    ("06/10/2026", "cargo", 2.88, "IVA COMISION", []),
+    ("10/10/2026", "abono", 3480.00, "DEPOSITO EN EFECTIVO", []),
+    ("12/10/2026", "abono", 5800.00, "SPEI RECIBIDO", ["DEL CLIENTE HOTEL LOS ARCOS SA DE CV", "RFC HLA120101AB8"]),
+    ("16/10/2026", "cargo", 1250.00, "PAGO DE SERVICIO LUZ", []),
 ]
 SALDO_INICIAL = 25000.00
 
@@ -37,7 +38,7 @@ def estado_de_cuenta():
     pg = doc.new_page()
     y = 50
     for t in ("BANORTE  Banco Mercantil del Norte", "ESTADO DE CUENTA  CUENTA DE CHEQUES", "GUADALUPE HERRERA EJEMPLO",
-              "R.F.C. %s" % RFC, "PERIODO DEL 01/11/2026 AL 30/11/2026", "No. DE CUENTA 0198765432   CLABE 072180001987654329",
+              "R.F.C. %s" % RFC, "PERIODO DEL 01/10/2026 AL 31/10/2026", "No. DE CUENTA 0198765432   CLABE 072180001987654329",
               "SALDO ANTERIOR %s" % format(SALDO_INICIAL, ",.2f"), "DEPOSITOS %s" % format(abonos, ",.2f"),
               "RETIROS %s" % format(cargos, ",.2f"), "SALDO FINAL %s" % format(SALDO_INICIAL + abonos - cargos, ",.2f")):
         pg.insert_text((40, y), t, fontsize=9)
@@ -59,7 +60,7 @@ def estado_de_cuenta():
         for d in detalle:
             pg.insert_text((110, y), d, fontsize=8)
             y += 12
-    doc.save(os.path.join(AQUI, "banorte-noviembre.pdf"))
+    doc.save(os.path.join(AQUI, "banorte-octubre.pdf"))
 
 
 def cfdi(nombre, folio, emisor, receptor, nombre_emisor, nombre_receptor, fecha, total, uuid):
@@ -82,13 +83,13 @@ def cfdi(nombre, folio, emisor, receptor, nombre_emisor, nombre_receptor, fecha,
 
 def facturas():
     yo = "GUADALUPE HERRERA EJEMPLO"
-    cfdi("factura-A101-cafeteria.xml", "101", RFC, "CPO150101AB4", yo, CLIENTES["CPO150101AB4"], "2026-11-03", 11600.00,
+    cfdi("factura-A101-cafeteria.xml", "101", RFC, "CPO150101AB4", yo, CLIENTES["CPO150101AB4"], "2026-10-03", 11600.00,
          "11111111-0000-4000-8000-000000000101")
-    cfdi("factura-A102-hotel.xml", "102", RFC, "HLA120101AB8", yo, CLIENTES["HLA120101AB8"], "2026-11-11", 5800.00,
+    cfdi("factura-A102-hotel.xml", "102", RFC, "HLA120101AB8", yo, CLIENTES["HLA120101AB8"], "2026-10-11", 5800.00,
          "11111111-0000-4000-8000-000000000102")
-    cfdi("factura-A103-restaurante.xml", "103", RFC, "RSO140101AB7", yo, CLIENTES["RSO140101AB7"], "2026-11-14", 2320.00,
+    cfdi("factura-A103-restaurante.xml", "103", RFC, "RSO140101AB7", yo, CLIENTES["RSO140101AB7"], "2026-10-14", 2320.00,
          "11111111-0000-4000-8000-000000000103")
-    cfdi("compra-harinera.xml", "8841", PROVEEDOR[0], RFC, PROVEEDOR[1], yo, "2026-11-04", 4640.00,
+    cfdi("compra-harinera.xml", "8841", PROVEEDOR[0], RFC, PROVEEDOR[1], yo, "2026-10-04", 4640.00,
          "22222222-0000-4000-8000-000000008841")
 
 

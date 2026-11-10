@@ -154,8 +154,9 @@ export const SECCIONES: Seccion[] = [
         salvoPermisos: ['AuxiliarContable.Organizaciones'],
         pasos: [
           'Abre Documentos y toca «Elegir archivos». Puedes elegir varios a la vez.',
-          'De tus facturas sube el XML.',
-          'Estados de cuenta y tickets: PDF o foto. Antes elige qué son en «Si no es factura, ¿qué es?».',
+          'De tus facturas sube el XML: se acomodan solas en el mes de su fecha.',
+          'Estados de cuenta y tickets: PDF o foto. Antes elige qué son en «Si no es factura, ¿qué es?» y de qué mes son: el estado de cuenta de octubre va en octubre aunque lo subas en noviembre.',
+          '¿Quedó en otro mes? Toca el calendario junto al documento y cámbialo.',
           'Navega por año y mes, o busca por el nombre del archivo.',
         ],
         nota: 'Si subes el mismo archivo dos veces no se duplica. Todo se guarda cifrado.',

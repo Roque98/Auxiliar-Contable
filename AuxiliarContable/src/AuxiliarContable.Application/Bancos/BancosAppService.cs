@@ -93,7 +93,7 @@ public class BancosAppService : AuxiliarContableAppService, IBancosAppService
         var facturas = delMes.Where(d => d.Tipo == TipoDeDocumento.Cfdi).ToList();
         if (estados.Count == 0)
         {
-            throw new UserFriendlyException($"No hay estados de cuenta de {desde:MM/yyyy} en la bóveda: súbelos en «Documentos».");
+            throw new UserFriendlyException($"No hay estados de cuenta de {desde:MM/yyyy} en la bóveda. Súbelos en «Documentos» eligiendo ese mes; si ya los subiste, ahí mismo cámbialos de mes.");
         }
 
         if (estados.Count > MaxEstadosDeCuenta || facturas.Count > MaxFacturas)

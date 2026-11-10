@@ -48,11 +48,19 @@ export class DocumentosService {
   private readonly base = '/api/app/boveda';
   private readonly opciones = { apiName: 'Default', skipHandleError: true };
 
-  subir(organizacionId: string, tipo: TipoDeDocumento, archivo: File): Observable<ResultadoDeSubidaDto> {
+  /** `anio`/`mes`: a qué mes corresponde; sin ellos, al de hoy. Una factura va siempre al de su XML. */
+  subir(organizacionId: string, tipo: TipoDeDocumento, archivo: File, anio?: number, mes?: number): Observable<ResultadoDeSubidaDto> {
     const datos = new FormData();
     datos.append('archivo', archivo, archivo.name);
     return this.rest.request<FormData, ResultadoDeSubidaDto>(
-      { method: 'POST', url: `${this.base}/subir/${organizacionId}`, params: { tipo }, body: datos },
+      { method: 'POST', url: `${this.base}/subir/${organizacionId}`, params: anio && mes ? { tipo, anio, mes } : { tipo }, body: datos },
+      this.opciones,
+    );
+  }
+
+  cambiarMes(organizacionId: string, documentoId: string, anio: number, mes: number): Observable<DocumentoDeBovedaDto> {
+    return this.rest.request<void, DocumentoDeBovedaDto>(
+      { method: 'POST', url: `${this.base}/cambiar-mes`, params: { organizacionId, documentoId, anio, mes } },
       this.opciones,
     );
   }

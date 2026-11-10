@@ -65,8 +65,8 @@ const ESCENAS = {
   ],
 };
 
-/** El mes de los ejemplos (la bóveda agrupa por fecha de subida: ver ejemplos/generar.py). */
-const MES_DE_EJEMPLO = { mes: 'noviembre', anio: '2026' };
+/** El mes de los ejemplos: octubre, aunque se suben en noviembre (ver ejemplos/generar.py). */
+const MES_DE_EJEMPLO = { mes: 'octubre', anio: '2026' };
 
 async function conciliar(pagina) {
   await pagina.locator('[data-testid=cliente]').selectOption({ label: 'Panadería La Espiga' });

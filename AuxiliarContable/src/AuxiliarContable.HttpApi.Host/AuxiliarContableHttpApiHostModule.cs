@@ -596,6 +596,32 @@ public class AuxiliarContableHttpApiHostModule : AbpModule
         // Avisa a cada dueno de que su clave de API va a caducar. Hoy caducan en silencio
         // y el script que las usaba empieza a recibir 401 sin explicacion.
         await context.AddBackgroundWorkerAsync<ApiKeyExpiryWatchWorker>();
+
+        await FecharFacturasSinFechaAsync(context.ServiceProvider);
+    }
+
+    /// <summary>
+    /// Las facturas que se subieron antes de que la bóveda leyera la fecha de su XML quedaron en el mes
+    /// en que se subieron, y la conciliación de su mes no las encontraba. Se fechan una vez; cuando ya no
+    /// queda ninguna, esto es una consulta vacía. Si falla, la aplicación arranca igual.
+    /// </summary>
+    private static async Task FecharFacturasSinFechaAsync(IServiceProvider servicios)
+    {
+        var logger = servicios.GetRequiredService<ILogger<AuxiliarContableHttpApiHostModule>>();
+        try
+        {
+            using var uow = servicios.GetRequiredService<IUnitOfWorkManager>().Begin(requiresNew: true);
+            var fechadas = await servicios.GetRequiredService<GestorDeDocumentos>().FecharFacturasSinFechaAsync();
+            await uow.CompleteAsync();
+            if (fechadas > 0)
+            {
+                logger.LogInformation("Se fecharon {Cantidad} facturas con la fecha de su XML.", fechadas);
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "No se pudieron fechar las facturas viejas; se intentará en el siguiente arranque.");
+        }
     }
 
     private void ConfigureHealthChecks(ServiceConfigurationContext context)

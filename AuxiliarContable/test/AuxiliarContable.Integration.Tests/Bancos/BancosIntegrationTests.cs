@@ -118,6 +118,27 @@ public class BancosIntegrationTests : ConJerarquiaTestBase
     }
 
     [Fact]
+    public async Task Lo_que_llega_al_mes_siguiente_se_concilia_en_su_mes()
+    {
+        // El estado de cuenta del mes pasado y sus facturas se suben hoy.
+        await PonerRfcAsync(_cliente, "GODE561231GR8");
+        var anterior = DateTime.Now.AddMonths(-1);
+        await ComoAsync(Administrador, () => _boveda.SubirAsync(_cliente, TipoDeDocumento.EstadoDeCuenta,
+            new RemoteStreamContent(new MemoryStream(Encoding.UTF8.GetBytes("%PDF-1.4 estado")), "banorte.pdf", "application/pdf"),
+            anterior.Year, anterior.Month));
+        await SubirAsync(_cliente, "factura.xml", TipoDeDocumento.Cfdi,
+            $"""<cfdi:Comprobante xmlns:cfdi="http://www.sat.gob.mx/cfd/4" Version="4.0" Fecha="{anterior:yyyy-MM}-28T10:00:00"/>""");
+        await SubirAsync(_cliente, "de-hoy.xml", TipoDeDocumento.Cfdi,
+            $"""<cfdi:Comprobante xmlns:cfdi="http://www.sat.gob.mx/cfd/4" Version="4.0" Fecha="{DateTime.Now:yyyy-MM}-01T10:00:00"/>""");
+        _motor.Conciliacion = UnResultado();
+
+        await ComoAsync(Administrador, () => _bancos.ConciliarAsync(_cliente, anterior.Year, anterior.Month));
+
+        _motor.EstadosRecibidos.ShouldBe(["banorte.pdf"]);
+        _motor.FacturasRecibidas.ShouldBe(["factura.xml"], "la de este mes no entra");
+    }
+
+    [Fact]
     public async Task Sin_RFC_en_el_perfil_no_se_concilia()
     {
         await SubirAsync(_cliente, "banorte.pdf", TipoDeDocumento.EstadoDeCuenta, "%PDF-1.4 estado");

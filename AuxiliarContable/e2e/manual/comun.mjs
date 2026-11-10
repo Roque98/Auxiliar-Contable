@@ -41,7 +41,8 @@ export const CLIENTES = [
       tiene_trabajadores: 'si',
     },
     documentos: [
-      { nombre: 'banorte-noviembre.pdf', tipo: 3, bytes: EJEMPLO('banorte-noviembre.pdf') },
+      // Llega en noviembre pero es de octubre: se sube diciendo el mes (las facturas toman el de su XML).
+      { nombre: 'banorte-octubre.pdf', tipo: 3, anio: 2026, mes: 10, bytes: EJEMPLO('banorte-octubre.pdf') },
       { nombre: 'factura-A101-cafeteria.xml', tipo: 2, bytes: EJEMPLO('factura-A101-cafeteria.xml') },
       { nombre: 'factura-A102-hotel.xml', tipo: 2, bytes: EJEMPLO('factura-A102-hotel.xml') },
       { nombre: 'factura-A103-restaurante.xml', tipo: 2, bytes: EJEMPLO('factura-A103-restaurante.xml') },

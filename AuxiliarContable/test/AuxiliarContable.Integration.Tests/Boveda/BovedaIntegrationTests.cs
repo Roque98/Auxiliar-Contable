@@ -74,6 +74,83 @@ public class BovedaIntegrationTests : ConJerarquiaTestBase
         deTickets.TotalCount.ShouldBe(0);
     }
 
+    private static string XmlConFecha(string fecha) =>
+        $"""<?xml version="1.0" encoding="UTF-8"?><cfdi:Comprobante xmlns:cfdi="http://www.sat.gob.mx/cfd/4" Version="4.0" Fecha="{fecha}"/>""";
+
+    private async Task<ResumenDelMesDto> UnicoMesAsync() =>
+        (await ComoAsync(Usuario, () => _boveda.GetResumenAsync(_cliente))).ShouldHaveSingleItem();
+
+    [Fact]
+    public async Task Una_factura_va_al_mes_de_su_XML_aunque_se_suba_despues()
+    {
+        // Se elige noviembre, pero la factura dice octubre: manda el XML.
+        var subido = await ComoAsync(Usuario, () => _boveda.SubirAsync(_cliente, TipoDeDocumento.Cfdi,
+            Archivo(XmlConFecha("2025-10-31T18:30:00"), "factura.xml"), 2025, 11));
+
+        subido.Aviso.ShouldBeNull();
+        subido.Documento.Fecha.ShouldBe(new DateTime(2025, 10, 31, 12, 0, 0, DateTimeKind.Utc));
+        var mes = await UnicoMesAsync();
+        (mes.Anio, mes.Mes).ShouldBe((2025, 10));
+        (await ComoAsync(Usuario, () => _boveda.GetListAsync(new BuscarEnBovedaDto { OrganizacionId = _cliente, Anio = 2025, Mes = 10 })))
+            .TotalCount.ShouldBe(1);
+
+        await Should.ThrowAsync<UserFriendlyException>(() =>
+            ComoAsync(Usuario, () => _boveda.CambiarMesAsync(_cliente, subido.Documento.Id, 2025, 9)));
+    }
+
+    [Fact]
+    public async Task Un_estado_de_cuenta_va_al_mes_que_se_elige_y_se_puede_mover()
+    {
+        var subido = await ComoAsync(Usuario, () => _boveda.SubirAsync(_cliente, TipoDeDocumento.EstadoDeCuenta,
+            Archivo("%PDF-1.7 estado de octubre", "banorte-oct.pdf"), 2025, 10));
+
+        var mes = await UnicoMesAsync();
+        (mes.Anio, mes.Mes, mes.Tipo).ShouldBe((2025, 10, TipoDeDocumento.EstadoDeCuenta));
+
+        var movido = await ComoAsync(Usuario, () => _boveda.CambiarMesAsync(_cliente, subido.Documento.Id, 2025, 9));
+
+        movido.Fecha.Month.ShouldBe(9);
+        (await UnicoMesAsync()).Mes.ShouldBe(9);
+        movido.SubidoUtc.ShouldBe(subido.Documento.SubidoUtc, TimeSpan.FromMilliseconds(1), "Postgres guarda microsegundos");
+
+        // Un lector no mueve, y no se acepta un mes inventado ni medio mes.
+        await Should.ThrowAsync<EntityNotFoundException>(() =>
+            ComoAsync(_lector, () => _boveda.CambiarMesAsync(_cliente, subido.Documento.Id, 2025, 8)));
+        await Should.ThrowAsync<UserFriendlyException>(() =>
+            ComoAsync(Usuario, () => _boveda.CambiarMesAsync(_cliente, subido.Documento.Id, 2025, 13)));
+        await Should.ThrowAsync<UserFriendlyException>(() =>
+            ComoAsync(Usuario, () => _boveda.SubirAsync(_cliente, TipoDeDocumento.Ticket, Archivo("%PDF-1.7 t", "t.pdf"), 2025, null)));
+    }
+
+    [Fact]
+    public async Task Una_factura_sin_fecha_avisa_y_queda_en_el_mes_elegido()
+    {
+        var subido = await ComoAsync(Usuario, () => _boveda.SubirAsync(_cliente, TipoDeDocumento.Cfdi, Archivo(Xml, "rara.xml"), 2025, 10));
+
+        subido.Aviso.ShouldNotBeNull();
+        (await UnicoMesAsync()).Mes.ShouldBe(10);
+    }
+
+    [Fact]
+    public async Task Las_facturas_que_se_subieron_sin_fecha_se_fechan_con_su_XML()
+    {
+        // Como quedaron antes de este cambio: sin fecha, en el mes de subida.
+        var otro = await ComoAsync(Usuario, () => _boveda.SubirAsync(_cliente, TipoDeDocumento.Otro, Archivo("%PDF-1.7 x", "x.pdf")));
+        await WithUnitOfWorkAsync(async () =>
+        {
+            var (vieja, _) = await GetRequiredService<GestorDeDocumentos>().RecibirAsync(_cliente, TipoDeDocumento.Cfdi, "vieja.xml",
+                Encoding.UTF8.GetBytes(XmlConFecha("2025-03-15T09:00:00")));
+            vieja.FechaDelDocumento.ShouldBeNull();
+        });
+
+        var fechadas = await WithUnitOfWorkAsync(() => GetRequiredService<GestorDeDocumentos>().FecharFacturasSinFechaAsync());
+
+        fechadas.ShouldBe(1, "solo las facturas; el PDF sin mes se queda donde está");
+        var lista = await ComoAsync(Usuario, () => _boveda.GetListAsync(new BuscarEnBovedaDto { OrganizacionId = _cliente, Anio = 2025, Mes = 3 }));
+        lista.Items.ShouldHaveSingleItem().Nombre.ShouldBe("vieja.xml");
+        otro.Documento.Fecha.ShouldBe(otro.Documento.SubidoUtc);
+    }
+
     [Fact]
     public async Task El_mismo_archivo_dos_veces_no_se_duplica()
     {
