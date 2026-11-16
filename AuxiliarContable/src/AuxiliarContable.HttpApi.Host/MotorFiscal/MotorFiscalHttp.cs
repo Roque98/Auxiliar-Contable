@@ -63,9 +63,9 @@ public class MotorFiscalHttp : IMotorFiscal, ITransientDependency
     public bool EstaConfigurado => !string.IsNullOrWhiteSpace(_opciones.Url);
 
     public async Task<IReadOnlyList<ResultadoDeLey>> BuscarEnLeyesAsync(
-        string consulta, string? ley = null, int cuantos = 5, CancellationToken cancellationToken = default)
+        string consulta, string? ley = null, int cuantos = 5, int desde = 0, CancellationToken cancellationToken = default)
     {
-        var ruta = $"rag/buscar?q={Uri.EscapeDataString(consulta)}&k={Math.Clamp(cuantos, 1, 20)}";
+        var ruta = $"rag/buscar?q={Uri.EscapeDataString(consulta)}&k={Math.Clamp(cuantos, 1, 50)}&desde={Math.Clamp(desde, 0, 450)}";
         if (!string.IsNullOrWhiteSpace(ley))
         {
             ruta += $"&ley={Uri.EscapeDataString(ley.Trim().ToUpperInvariant())}";
@@ -119,9 +119,9 @@ public class MotorFiscalHttp : IMotorFiscal, ITransientDependency
     }
 
     public async Task<IReadOnlyList<SentenciaDelMotor>> BuscarSentenciasAsync(
-        string consulta, string? fuente = null, int cuantos = 5, CancellationToken cancellationToken = default)
+        string consulta, string? fuente = null, int cuantos = 5, int desde = 0, CancellationToken cancellationToken = default)
     {
-        var ruta = $"sentencias/buscar?q={Uri.EscapeDataString(consulta)}&k={Math.Clamp(cuantos, 1, 30)}";
+        var ruta = $"sentencias/buscar?q={Uri.EscapeDataString(consulta)}&k={Math.Clamp(cuantos, 1, 50)}&desde={Math.Clamp(desde, 0, 5000)}";
         if (!string.IsNullOrWhiteSpace(fuente))
         {
             ruta += $"&fuente={Uri.EscapeDataString(fuente.Trim().ToUpperInvariant())}";

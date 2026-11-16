@@ -45,6 +45,10 @@ export class SentenciasComponent implements OnInit {
   readonly errorDeEstado = signal<string | null>(null);
   readonly ocupado = signal(false);
   readonly abiertos = signal<Set<string>>(new Set());
+  readonly hayMas = signal(false);
+  readonly cargandoMas = signal(false);
+  /** Lo que se buscó, para pedir la página siguiente aunque cambie el texto del buscador. */
+  private ultima: { consulta: string; fuente: string | null; pagina: number } | null = null;
 
   consulta = '';
   fuente: string | null = null;
@@ -74,14 +78,37 @@ export class SentenciasComponent implements OnInit {
     this.error.set(null);
     this.abiertos.set(new Set());
     void this.router.navigate([], { queryParams: { q: consulta, fuente: this.fuente || null }, replaceUrl: true });
+    this.ultima = { consulta, fuente: this.fuente || null, pagina: 1 };
     this.api.buscar(consulta, this.fuente || null).subscribe({
       next: r => {
-        this.resultados.set(r);
+        this.resultados.set(r.resultados);
+        this.hayMas.set(r.hayMas);
         this.ocupado.set(false);
       },
       error: e => {
         this.error.set(mensajeDeError(e, 'No se pudo buscar.'));
         this.ocupado.set(false);
+      },
+    });
+  }
+
+  /** «Ver más»: la página siguiente de la misma búsqueda, debajo de lo que ya se ve. */
+  verMas(): void {
+    const u = this.ultima;
+    if (!u || this.cargandoMas()) {
+      return;
+    }
+    this.cargandoMas.set(true);
+    this.api.buscar(u.consulta, u.fuente, u.pagina + 1).subscribe({
+      next: r => {
+        u.pagina += 1;
+        this.resultados.update(a => [...(a ?? []), ...r.resultados]);
+        this.hayMas.set(r.hayMas);
+        this.cargandoMas.set(false);
+      },
+      error: e => {
+        this.error.set(mensajeDeError(e, 'No se pudieron traer más.'));
+        this.cargandoMas.set(false);
       },
     });
   }

@@ -71,6 +71,18 @@
         </li>
       }
     </ol>
+    <div class="ly-paginas">
+      <small>{{ lista.length }} {{ lista.length === 1 ? 'artículo' : 'artículos' }}{{ hayMas() ? '; hay más sobre el tema' : '' }}</small>
+      @if (hayMas()) {
+        <button type="button" class="btn btn-outline-secondary ly-ver-mas" (click)="verMas()" [disabled]="cargandoMas()" data-testid="ver-mas">
+          @if (cargandoMas()) {
+            <span class="ig-girando" aria-hidden="true"></span> Buscando…
+          } @else {
+            Ver más
+          }
+        </button>
+      }
+    </div>
   } @else {
     <p class="ly-vacio">No se encontró nada. Prueba con otras palabras o con «Todas» las leyes.</p>
   }

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -12,8 +13,8 @@ namespace AuxiliarContable.Leyes;
 [Authorize]
 public class LeyesAppService : AuxiliarContableAppService, ILeyesAppService
 {
-    /// <summary>Los más relevantes; más de esto ya no se lee en pantalla.</summary>
-    public const int Resultados = 8;
+    /// <summary>Artículos por página; «Ver más» trae los siguientes.</summary>
+    public const int PorPagina = 10;
 
     private readonly IMotorFiscal _motor;
 
@@ -22,7 +23,7 @@ public class LeyesAppService : AuxiliarContableAppService, ILeyesAppService
         _motor = motor;
     }
 
-    public async Task<List<ArticuloDeLeyDto>> BuscarAsync(BuscarEnLeyesDto input)
+    public async Task<PaginaDeLeyesDto> BuscarAsync(BuscarEnLeyesDto input)
     {
         var consulta = (input.Consulta ?? "").Trim();
         if (consulta.Length < 2)
@@ -33,7 +34,9 @@ public class LeyesAppService : AuxiliarContableAppService, ILeyesAppService
         IReadOnlyList<ResultadoDeLey> resultados;
         try
         {
-            resultados = await _motor.BuscarEnLeyesAsync(consulta, string.IsNullOrWhiteSpace(input.Ley) ? null : input.Ley.Trim(), Resultados);
+            // Uno de más: si llega, hay otra página.
+            resultados = await _motor.BuscarEnLeyesAsync(consulta, string.IsNullOrWhiteSpace(input.Ley) ? null : input.Ley.Trim(),
+                PorPagina + 1, (Math.Max(input.Pagina, 1) - 1) * PorPagina);
         }
         catch (MotorFiscalNoDisponibleException ex)
         {
@@ -41,7 +44,10 @@ public class LeyesAppService : AuxiliarContableAppService, ILeyesAppService
             throw new UserFriendlyException("La consulta de leyes no está disponible en este momento. Intenta de nuevo en unos minutos.");
         }
 
-        return resultados.Select(r => new ArticuloDeLeyDto
+        return new PaginaDeLeyesDto
+        {
+            HayMas = resultados.Count > PorPagina,
+            Resultados = resultados.Take(PorPagina).Select(r => new ArticuloDeLeyDto
         {
             Ley = r.Clave,
             Ordenamiento = r.Ordenamiento,
@@ -51,7 +57,8 @@ public class LeyesAppService : AuxiliarContableAppService, ILeyesAppService
             NotaDeVigencia = r.NotaDeVigencia,
             Url = r.Url,
             Texto = SinEncabezado(r.Texto),
-        }).ToList();
+            }).ToList(),
+        };
     }
 
     /// <summary>

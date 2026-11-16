@@ -108,6 +108,17 @@ h1 { font-size: var(--ig-titulo-2); font-weight: var(--ig-peso-semi); margin: 0;
   a { min-height: 44px; display: inline-flex; align-items: center; gap: var(--ig-esp-1); }
 }
 
+.st-paginas {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ig-esp-2);
+  padding-top: var(--ig-esp-3);
+  color: var(--ig-texto-secundario);
+}
+
+.st-ver-mas { min-height: 44px; display: inline-flex; align-items: center; gap: var(--ig-esp-2); }
 .st-mas { padding: 0; min-height: 44px; }
 .st-aviso, .st-vacio { color: var(--ig-texto-secundario); font-size: var(--ig-texto-sm); padding: var(--ig-esp-3) 0; }
 

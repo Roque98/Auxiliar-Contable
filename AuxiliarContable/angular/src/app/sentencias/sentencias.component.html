@@ -134,6 +134,18 @@
         </li>
       }
     </ol>
+    <div class="st-paginas">
+      <small>{{ lista.length }} tesis{{ hayMas() ? '; hay más sobre el tema' : '' }}</small>
+      @if (hayMas()) {
+        <button type="button" class="btn btn-outline-secondary st-ver-mas" (click)="verMas()" [disabled]="cargandoMas()" data-testid="ver-mas">
+          @if (cargandoMas()) {
+            <span class="ig-girando" aria-hidden="true"></span> Buscando…
+          } @else {
+            Ver más
+          }
+        </button>
+      }
+    </div>
     <p class="st-aviso">
       Lo de «Conclusión», «Qué hacer» y «Cuándo aplica» lo resumió Claude del texto publicado: para sustentar un escrito,
       cita la tesis y revisa su texto completo.

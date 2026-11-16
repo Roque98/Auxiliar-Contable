@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -14,8 +15,8 @@ namespace AuxiliarContable.Sentencias;
 [Authorize]
 public class SentenciasAppService : AuxiliarContableAppService, ISentenciasAppService
 {
-    /// <summary>Más de esto ya no se lee en pantalla.</summary>
-    public const int Resultados = 10;
+    /// <summary>Tesis por página; «Ver más» trae las siguientes.</summary>
+    public const int PorPagina = 10;
 
     private const string NoDisponible = "La librería de sentencias no está disponible en este momento. Intenta de nuevo en unos minutos.";
 
@@ -28,7 +29,7 @@ public class SentenciasAppService : AuxiliarContableAppService, ISentenciasAppSe
         _alcance = alcance;
     }
 
-    public async Task<List<SentenciaDelMotor>> BuscarAsync(BuscarSentenciasDto input)
+    public async Task<PaginaDeSentenciasDto> BuscarAsync(BuscarSentenciasDto input)
     {
         var consulta = (input.Consulta ?? "").Trim();
         if (consulta.Length < 2)
@@ -44,7 +45,10 @@ public class SentenciasAppService : AuxiliarContableAppService, ISentenciasAppSe
 
         try
         {
-            return (await _motor.BuscarSentenciasAsync(consulta, fuente.Length == 0 ? null : fuente, Resultados)).ToList();
+            // Uno de más: si llega, hay otra página.
+            var r = await _motor.BuscarSentenciasAsync(consulta, fuente.Length == 0 ? null : fuente, PorPagina + 1,
+                (Math.Max(input.Pagina, 1) - 1) * PorPagina);
+            return new PaginaDeSentenciasDto { Resultados = r.Take(PorPagina).ToList(), HayMas = r.Count > PorPagina };
         }
         catch (MotorFiscalNoDisponibleException ex)
         {

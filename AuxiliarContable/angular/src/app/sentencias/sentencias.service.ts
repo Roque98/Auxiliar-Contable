@@ -30,6 +30,12 @@ export interface SentenciaDto {
   estudio: EstudioDeSentencia | null;
 }
 
+export interface PaginaDeSentencias {
+  resultados: SentenciaDto[];
+  /** Hay más tesis sobre el tema: «Ver más» pide la página siguiente. */
+  hayMas: boolean;
+}
+
 export interface EstadoDeLaLibreria {
   estado: {
     libreria: {
@@ -57,9 +63,9 @@ export class SentenciasService {
   private readonly rest = inject(RestService);
   private readonly opciones = { apiName: 'Default', skipHandleError: true };
 
-  buscar(consulta: string, fuente: string | null): Observable<SentenciaDto[]> {
-    return this.rest.request<{ consulta: string; fuente: string | null }, SentenciaDto[]>(
-      { method: 'POST', url: '/api/app/sentencias/buscar', body: { consulta, fuente } },
+  buscar(consulta: string, fuente: string | null, pagina = 1): Observable<PaginaDeSentencias> {
+    return this.rest.request<{ consulta: string; fuente: string | null; pagina: number }, PaginaDeSentencias>(
+      { method: 'POST', url: '/api/app/sentencias/buscar', body: { consulta, fuente, pagina } },
       this.opciones,
     );
   }

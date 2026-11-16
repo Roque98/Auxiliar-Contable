@@ -65,7 +65,7 @@ public class MotorFiscalDePrueba : IMotorFiscal
     }
 
     public Task<IReadOnlyList<ResultadoDeLey>> BuscarEnLeyesAsync(
-        string consulta, string? ley = null, int cuantos = 5, CancellationToken cancellationToken = default)
+        string consulta, string? ley = null, int cuantos = 5, int desde = 0, CancellationToken cancellationToken = default)
     {
         Consultas.Add((consulta, ley));
         if (Caido)
@@ -73,7 +73,7 @@ public class MotorFiscalDePrueba : IMotorFiscal
             throw new MotorFiscalNoDisponibleException("El motor fiscal no responde.");
         }
 
-        return Task.FromResult<IReadOnlyList<ResultadoDeLey>>(Resultados.ToArray());
+        return Task.FromResult<IReadOnlyList<ResultadoDeLey>>(Resultados.Skip(desde).Take(cuantos).ToArray());
     }
 
     public Task<LecturaDeEstados> LeerEstadosDeCuentaAsync(
@@ -114,7 +114,7 @@ public class MotorFiscalDePrueba : IMotorFiscal
     }
 
     public Task<IReadOnlyList<SentenciaDelMotor>> BuscarSentenciasAsync(
-        string consulta, string? fuente = null, int cuantos = 5, CancellationToken cancellationToken = default)
+        string consulta, string? fuente = null, int cuantos = 5, int desde = 0, CancellationToken cancellationToken = default)
     {
         ConsultasDeSentencias.Add((consulta, fuente));
         if (Caido)
@@ -122,7 +122,7 @@ public class MotorFiscalDePrueba : IMotorFiscal
             throw new MotorFiscalNoDisponibleException("El motor fiscal no responde.");
         }
 
-        return Task.FromResult<IReadOnlyList<SentenciaDelMotor>>(Sentencias.ToArray());
+        return Task.FromResult<IReadOnlyList<SentenciaDelMotor>>(Sentencias.Skip(desde).Take(cuantos).ToArray());
     }
 
     public Task<EstadoDeSentencias> EstadoDeSentenciasAsync(CancellationToken cancellationToken = default)

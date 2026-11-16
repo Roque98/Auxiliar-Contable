@@ -13,15 +13,21 @@ export interface ArticuloDeLeyDto {
   texto: string;
 }
 
+export interface PaginaDeLeyes {
+  resultados: ArticuloDeLeyDto[];
+  /** Hay más artículos sobre el tema: «Ver más» pide la página siguiente. */
+  hayMas: boolean;
+}
+
 /** `LeyesAppService` (`/api/app/leyes`): el índice de leyes del motor fiscal, sin IA. */
 @Injectable({ providedIn: 'root' })
 export class LeyesService {
   private readonly rest = inject(RestService);
   private readonly opciones = { apiName: 'Default', skipHandleError: true };
 
-  buscar(consulta: string, ley: string | null): Observable<ArticuloDeLeyDto[]> {
-    return this.rest.request<{ consulta: string; ley: string | null }, ArticuloDeLeyDto[]>(
-      { method: 'POST', url: '/api/app/leyes/buscar', body: { consulta, ley } },
+  buscar(consulta: string, ley: string | null, pagina = 1): Observable<PaginaDeLeyes> {
+    return this.rest.request<{ consulta: string; ley: string | null; pagina: number }, PaginaDeLeyes>(
+      { method: 'POST', url: '/api/app/leyes/buscar', body: { consulta, ley, pagina } },
       this.opciones,
     );
   }
