@@ -21,10 +21,11 @@ public interface IMotorFiscal
 
     /// <summary>
     /// Busca en leyes, reglamentos, reglas del SAT y NIF. <paramref name="ley"/> son las siglas
-    /// del ordenamiento (LISR, CFF, LIVA, RMF…) para acotar; null busca en todos.
+    /// del ordenamiento (LISR, CFF, LIVA, RMF…) para acotar; null busca en todos. <paramref name="desde"/> salta
+    /// los primeros (la pantalla pide de página en página). Las siglas que la ley no usa («RESICO») las traduce el motor.
     /// </summary>
     Task<IReadOnlyList<ResultadoDeLey>> BuscarEnLeyesAsync(
-        string consulta, string? ley = null, int cuantos = 5, CancellationToken cancellationToken = default);
+        string consulta, string? ley = null, int cuantos = 5, int desde = 0, CancellationToken cancellationToken = default);
 
     /// <summary>Lee estados de cuenta (PDF o foto) y los cuadra contra lo que imprime el banco.</summary>
     Task<LecturaDeEstados> LeerEstadosDeCuentaAsync(
@@ -46,7 +47,7 @@ public interface IMotorFiscal
     /// <paramref name="fuente"/> (TFJA o SCJN) acota; null busca en las dos.
     /// </summary>
     Task<IReadOnlyList<SentenciaDelMotor>> BuscarSentenciasAsync(
-        string consulta, string? fuente = null, int cuantos = 5, CancellationToken cancellationToken = default);
+        string consulta, string? fuente = null, int cuantos = 5, int desde = 0, CancellationToken cancellationToken = default);
 
     /// <summary>Cuánto hay en la librería de sentencias y cómo va su actualización.</summary>
     Task<EstadoDeSentencias> EstadoDeSentenciasAsync(CancellationToken cancellationToken = default);
@@ -89,7 +90,7 @@ public class MotorFiscalSinConfigurar : IMotorFiscal, ISingletonDependency
     public bool EstaConfigurado => false;
 
     public Task<IReadOnlyList<ResultadoDeLey>> BuscarEnLeyesAsync(
-        string consulta, string? ley = null, int cuantos = 5, CancellationToken cancellationToken = default)
+        string consulta, string? ley = null, int cuantos = 5, int desde = 0, CancellationToken cancellationToken = default)
     {
         throw new MotorFiscalNoDisponibleException("No hay motor fiscal en este proceso.");
     }
@@ -113,7 +114,7 @@ public class MotorFiscalSinConfigurar : IMotorFiscal, ISingletonDependency
     }
 
     public Task<IReadOnlyList<SentenciaDelMotor>> BuscarSentenciasAsync(
-        string consulta, string? fuente = null, int cuantos = 5, CancellationToken cancellationToken = default)
+        string consulta, string? fuente = null, int cuantos = 5, int desde = 0, CancellationToken cancellationToken = default)
     {
         throw new MotorFiscalNoDisponibleException("No hay motor fiscal en este proceso.");
     }

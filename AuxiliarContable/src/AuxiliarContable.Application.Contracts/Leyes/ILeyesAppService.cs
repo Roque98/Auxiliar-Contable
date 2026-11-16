@@ -12,7 +12,8 @@ namespace AuxiliarContable.Leyes;
 /// </summary>
 public interface ILeyesAppService : IApplicationService
 {
-    Task<List<ArticuloDeLeyDto>> BuscarAsync(BuscarEnLeyesDto input);
+    /// <summary>De página en página (<see cref="BuscarEnLeyesDto.Pagina"/>): «Ver más» pide la siguiente.</summary>
+    Task<PaginaDeLeyesDto> BuscarAsync(BuscarEnLeyesDto input);
 }
 
 public class BuscarEnLeyesDto
@@ -25,6 +26,18 @@ public class BuscarEnLeyesDto
     /// <summary>Siglas del ordenamiento (LISR, CFF, RMF…) o null para todos.</summary>
     [StringLength(20)]
     public string? Ley { get; set; }
+
+    /// <summary>1 la primera; cada una trae <c>LeyesAppService.PorPagina</c> artículos.</summary>
+    [Range(1, 40)]
+    public int Pagina { get; set; } = 1;
+}
+
+public class PaginaDeLeyesDto
+{
+    public List<ArticuloDeLeyDto> Resultados { get; set; } = [];
+
+    /// <summary>Hay más artículos sobre el tema: la pantalla ofrece «Ver más».</summary>
+    public bool HayMas { get; set; }
 }
 
 public class ArticuloDeLeyDto

@@ -142,13 +142,31 @@ public class ConsultarSentenciasIntegrationTests : ConJerarquiaTestBase
 
         var r = await ComoAsync(Usuario, () => _sentencias.BuscarAsync(new BuscarSentenciasDto { Consulta = "materialidad", Fuente = "tfja" }));
 
-        r.Single().Clave.ShouldBe("IX-J-2aS-115");
-        r.Single().Estudio!.AFavor.ShouldBe("autoridad");
+        r.Resultados.Single().Clave.ShouldBe("IX-J-2aS-115");
+        r.Resultados.Single().Estudio!.AFavor.ShouldBe("autoridad");
+        r.HayMas.ShouldBeFalse();
         _motor.ConsultasDeSentencias.Single().ShouldBe(("materialidad", "TFJA"));
         _modelo.Solicitudes.ShouldBeEmpty("la pantalla no usa el chat");
 
         await Should.ThrowAsync<UserFriendlyException>(() =>
             ComoAsync(Usuario, () => _sentencias.BuscarAsync(new BuscarSentenciasDto { Consulta = "materialidad", Fuente = "DOF" })));
+    }
+
+    [Fact]
+    public async Task La_pantalla_pagina_de_diez_en_diez_y_dice_si_hay_mas()
+    {
+        for (var i = 1; i <= 12; i++)
+        {
+            _motor.Sentencias.Add(new SentenciaDelMotor { Id = $"tfja:{i}", Fuente = "TFJA", Clave = $"T-{i}", Rubro = "RUBRO", Texto = "texto" });
+        }
+
+        var primera = await ComoAsync(Usuario, () => _sentencias.BuscarAsync(new BuscarSentenciasDto { Consulta = "RESICO" }));
+        var segunda = await ComoAsync(Usuario, () => _sentencias.BuscarAsync(new BuscarSentenciasDto { Consulta = "RESICO", Pagina = 2 }));
+
+        primera.Resultados.Count.ShouldBe(10);
+        primera.HayMas.ShouldBeTrue();
+        segunda.Resultados.Select(t => t.Clave).ShouldBe(["T-11", "T-12"]);
+        segunda.HayMas.ShouldBeFalse();
     }
 
     [Fact]

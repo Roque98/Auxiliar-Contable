@@ -102,8 +102,9 @@ public class ConsultarLeyesIntegrationTests : ConJerarquiaTestBase
 
         var r = await ComoAsync(Usuario, () => leyes.BuscarAsync(new AuxiliarContable.Leyes.BuscarEnLeyesDto { Consulta = "deducciones", Ley = "LISR" }));
 
-        r.Single().Ley.ShouldBe("LISR");
-        r.Single().Articulo.ShouldBe("27");
+        r.Resultados.Single().Ley.ShouldBe("LISR");
+        r.Resultados.Single().Articulo.ShouldBe("27");
+        r.HayMas.ShouldBeFalse();
         _motor.Consultas.Single().ShouldBe(("deducciones", "LISR"));
         _modelo.Solicitudes.ShouldBeEmpty("la pantalla no usa el chat");
 
@@ -111,6 +112,25 @@ public class ConsultarLeyesIntegrationTests : ConJerarquiaTestBase
         var error = await Should.ThrowAsync<Volo.Abp.UserFriendlyException>(() =>
             ComoAsync(Usuario, () => leyes.BuscarAsync(new AuxiliarContable.Leyes.BuscarEnLeyesDto { Consulta = "deducciones" })));
         error.Message.ShouldContain("no está disponible");
+    }
+
+    [Fact]
+    public async Task La_pantalla_pagina_de_diez_en_diez_y_dice_si_hay_mas()
+    {
+        var leyes = GetRequiredService<AuxiliarContable.Leyes.ILeyesAppService>();
+        for (var i = 1; i <= 23; i++)
+        {
+            _motor.Resultados.Add(Articulo($"Artículo número {i}"));
+        }
+
+        var primera = await ComoAsync(Usuario, () => leyes.BuscarAsync(new AuxiliarContable.Leyes.BuscarEnLeyesDto { Consulta = "RESICO" }));
+        var tercera = await ComoAsync(Usuario, () => leyes.BuscarAsync(new AuxiliarContable.Leyes.BuscarEnLeyesDto { Consulta = "RESICO", Pagina = 3 }));
+
+        primera.Resultados.Count.ShouldBe(10);
+        primera.HayMas.ShouldBeTrue();
+        primera.Resultados[0].Texto.ShouldBe("Artículo número 1");
+        tercera.Resultados.Select(a => a.Texto).ShouldBe(["Artículo número 21", "Artículo número 22", "Artículo número 23"]);
+        tercera.HayMas.ShouldBeFalse();
     }
 
     [Fact]

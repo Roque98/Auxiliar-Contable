@@ -13,7 +13,8 @@ namespace AuxiliarContable.Sentencias;
 /// </summary>
 public interface ISentenciasAppService : IApplicationService
 {
-    Task<List<SentenciaDelMotor>> BuscarAsync(BuscarSentenciasDto input);
+    /// <summary>De página en página (<see cref="BuscarSentenciasDto.Pagina"/>): «Ver más» pide la siguiente.</summary>
+    Task<PaginaDeSentenciasDto> BuscarAsync(BuscarSentenciasDto input);
 
     /// <summary>Cuántas hay, cuántas están estudiadas y cómo va la actualización; y si quien pregunta puede actualizar.</summary>
     Task<EstadoDeLaLibreriaDto> GetEstadoAsync();
@@ -32,6 +33,18 @@ public class BuscarSentenciasDto
     /// <summary>TFJA, SCJN o null para las dos.</summary>
     [StringLength(4)]
     public string? Fuente { get; set; }
+
+    /// <summary>1 la primera; cada una trae <c>SentenciasAppService.PorPagina</c> tesis.</summary>
+    [Range(1, 200)]
+    public int Pagina { get; set; } = 1;
+}
+
+public class PaginaDeSentenciasDto
+{
+    public List<SentenciaDelMotor> Resultados { get; set; } = [];
+
+    /// <summary>Hay más tesis sobre el tema: la pantalla ofrece «Ver más».</summary>
+    public bool HayMas { get; set; }
 }
 
 public class EstadoDeLaLibreriaDto
