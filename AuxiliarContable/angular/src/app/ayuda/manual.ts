@@ -182,6 +182,7 @@ export const SECCIONES: Seccion[] = [
           'Faltan documentos: que estén el estado de cuenta (se acomoda solo en su mes) y las facturas XML, emitidas y recibidas.',
           'Pulsa «Conciliar»: cada cuenta dice si cuadra con el banco y cada movimiento qué factura le corresponde. La conciliación se guarda.',
           'En «Movimientos sin factura» di qué es cada uno (traspaso entre sus cuentas, real sin factura, factura por llegar, no lleva factura) o pregúntale al cliente.',
+          'En «Facturas que no cuadran», «Revisar facturas» junta cada factura con sus complementos de pago y notas de crédito y dice qué está mal (p. ej. un complemento que paga la factura PUE en vez de la PPD) para que se corrija con quien la timbró.',
           'Cuando todo está resuelto, «Cerrar el mes». Cerrado, nadie puede subir, mover ni borrar documentos de ese mes; si hace falta, «Reabrir el mes».',
         ],
         nota: 'Si llega un documento después de conciliar, el cierre pide volver a conciliar; lo que ya decidiste de cada movimiento se conserva. El cliente necesita su RFC en el perfil fiscal.',

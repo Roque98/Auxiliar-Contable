@@ -85,13 +85,7 @@ public class BancosAppService : AuxiliarContableAppService, IBancosAppService
                 $"El periodo {mes:00}/{anio} ya está cerrado: se queda con la conciliación con la que se cerró. Para volver a conciliarlo hay que reabrirlo.");
         }
 
-        // Emitidas y recibidas se distinguen por el RFC del cliente: sin él, la conciliación no sabe de qué lado va cada factura.
-        var perfil = await _perfiles.GetAsync(organizacionId);
-        var rfc = perfil.Campos.FirstOrDefault(c => c.Clave == CamposDelPerfil.Rfc)?.Valor?.Trim().ToUpperInvariant();
-        if (string.IsNullOrWhiteSpace(rfc))
-        {
-            throw new UserFriendlyException("Falta el RFC del cliente en su perfil fiscal: sin él no se sabe qué facturas emitió y cuáles recibió.");
-        }
+        var rfc = await RfcDelClienteAsync(organizacionId);
 
         var desde = new DateTime(anio, mes, 1);
         var hasta = desde.AddMonths(1);
@@ -124,6 +118,48 @@ public class BancosAppService : AuxiliarContableAppService, IBancosAppService
         return Describir(guardada, resultado);
     }
 
+    /// <summary>Meses anteriores que se mandan al diagnóstico de facturas: ahí suelen estar las PPD que se pagan en el mes.</summary>
+    public const int MesesDeHistoria = 3;
+
+    public async Task<DiagnosticoDeFacturas> DiagnosticarFacturasAsync(Guid organizacionId, int anio, int mes)
+    {
+        await _autorizador.ExigirAsync(organizacionId, AccionEnOrganizacion.Ver);
+        if (mes is < 1 or > 12 || anio is < 2000 or > 2100)
+        {
+            throw new UserFriendlyException("Mes no válido.");
+        }
+
+        var rfc = await RfcDelClienteAsync(organizacionId);
+        var desde = new DateTime(anio, mes, 1);
+        var hasta = desde.AddMonths(1);
+        var historia = desde.AddMonths(-MesesDeHistoria);
+        var facturas = await AsyncExecuter.ToListAsync(
+            from d in await _documentos.GetQueryableAsync()
+            where d.OrganizacionId == organizacionId
+                  && d.Tipo == TipoDeDocumento.Cfdi
+                  && (d.FechaDelDocumento ?? d.CreationTime) >= historia
+                  && (d.FechaDelDocumento ?? d.CreationTime) < hasta
+            select d);
+
+        // Primero las del mes: el motor solo reporta lo que toca a los primeros «delMes» archivos.
+        var delMes = facturas.Where(d => (d.FechaDelDocumento ?? d.CreationTime) >= desde).ToList();
+        var anteriores = facturas.Where(d => (d.FechaDelDocumento ?? d.CreationTime) < desde)
+            .OrderByDescending(d => d.FechaDelDocumento ?? d.CreationTime).ToList();
+        if (delMes.Count == 0)
+        {
+            throw new UserFriendlyException($"No hay facturas de {desde:MM/yyyy} en la bóveda.");
+        }
+
+        if (delMes.Count > MaxFacturas)
+        {
+            throw new UserFriendlyException($"Son demasiadas facturas para un mes (máximo {MaxFacturas}).");
+        }
+
+        // Lo que no quepa de la historia se queda fuera (las más viejas primero): las del mes siempre van.
+        var archivos = await ArchivosAsync(delMes.Concat(anteriores.Take(MaxFacturas - delMes.Count)));
+        return await AlMotorAsync(() => _motor.DiagnosticarFacturasAsync(rfc, archivos, delMes.Count));
+    }
+
     /// <summary>Una conciliación guardada, como la devuelve <see cref="ConciliarAsync"/>.</summary>
     public static ConciliacionDelMesDto Describir(ConciliacionBancaria c, ResultadoDeConciliacion? resultado = null) => new()
     {
@@ -145,6 +181,19 @@ public class BancosAppService : AuxiliarContableAppService, IBancosAppService
         }
 
         return lista;
+    }
+
+    /// <summary>Emitidas y recibidas se distinguen por el RFC del cliente: sin él no se sabe de qué lado va cada factura.</summary>
+    private async Task<string> RfcDelClienteAsync(Guid organizacionId)
+    {
+        var perfil = await _perfiles.GetAsync(organizacionId);
+        var rfc = perfil.Campos.FirstOrDefault(c => c.Clave == CamposDelPerfil.Rfc)?.Valor?.Trim().ToUpperInvariant();
+        if (string.IsNullOrWhiteSpace(rfc))
+        {
+            throw new UserFriendlyException("Falta el RFC del cliente en su perfil fiscal: sin él no se sabe qué facturas emitió y cuáles recibió.");
+        }
+
+        return rfc;
     }
 
     /// <summary>Un motor caído o lento no es un error del usuario: se le dice qué pasa sin detalles técnicos.</summary>

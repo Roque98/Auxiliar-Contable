@@ -59,6 +59,9 @@ public class MotorFiscalDePrueba : IMotorFiscal
         FacturasRecibidas.Clear();
         RfcRecibido = null;
         Sentencias.Clear();
+        Diagnostico = new DiagnosticoDeFacturas();
+        FacturasDiagnosticadas.Clear();
+        ArchivosDelPeriodo = null;
         ConsultasDeSentencias.Clear();
         EstadoSentencias = new EstadoDeSentencias();
         Actualizaciones = 0;
@@ -111,6 +114,29 @@ public class MotorFiscalDePrueba : IMotorFiscal
         }
 
         return Task.FromResult(Constancia);
+    }
+
+    /// <summary>Lo que «diagnostica» el motor; el test lo arma.</summary>
+    public DiagnosticoDeFacturas Diagnostico { get; set; } = new();
+
+    /// <summary>Qué archivos le llegaron al diagnóstico, en orden, y cuántos eran del periodo.</summary>
+    public List<string> FacturasDiagnosticadas { get; } = [];
+
+    public int? ArchivosDelPeriodo { get; private set; }
+
+    public Task<DiagnosticoDeFacturas> DiagnosticarFacturasAsync(
+        string rfcDelCliente, IReadOnlyList<ArchivoParaElMotor> facturas, int archivosDelPeriodo,
+        CancellationToken cancellationToken = default)
+    {
+        if (Caido)
+        {
+            throw new MotorFiscalNoDisponibleException("El motor fiscal no responde.");
+        }
+
+        RfcRecibido = rfcDelCliente;
+        FacturasDiagnosticadas.AddRange(facturas.Select(f => f.Nombre));
+        ArchivosDelPeriodo = archivosDelPeriodo;
+        return Task.FromResult(Diagnostico);
     }
 
     public Task<IReadOnlyList<SentenciaDelMotor>> BuscarSentenciasAsync(

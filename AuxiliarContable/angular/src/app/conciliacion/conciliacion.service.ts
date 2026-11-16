@@ -147,6 +147,49 @@ export interface CierreDelMesDto {
  * `BancosAppService` (`/api/app/bancos`) y `CierreAppService` (`/api/app/cierre`). Conciliar lo hace
  * el motor y se guarda (una por mes); el cierre dice en qué va el mes.
  */
+/** Un CFDI tal como lo nombra el diagnóstico de facturas. */
+export interface CfdiDelDiagnostico {
+  uuid: string;
+  tipo: string | null;
+  fecha: string | null;
+  serieFolio: string | null;
+  rfcEmisor: string | null;
+  rfcReceptor: string | null;
+  nombreEmisor: string | null;
+  nombreReceptor: string | null;
+  metodo: string | null;
+  total: number | null;
+  falta: boolean;
+}
+
+export interface ApartadoPorRevisar {
+  fecha: string | null;
+  /** Positiva: falta por saldar; negativa: se aplicó de más. */
+  diferencia: number;
+  facturas: CfdiDelDiagnostico[];
+  pagos: CfdiDelDiagnostico[];
+  egresos: CfdiDelDiagnostico[];
+  avisos: string[];
+}
+
+export interface LadoDelDiagnostico {
+  apartadosQueCuadran: number;
+  porRevisar: ApartadoPorRevisar[];
+  sueltos: {
+    facturasPpdSinNada: CfdiDelDiagnostico[];
+    pagosSinDocumento: CfdiDelDiagnostico[];
+    egresosSinRelacion: CfdiDelDiagnostico[];
+  };
+}
+
+/** `BancosAppService.DiagnosticarFacturas`: lo que no cuadra entre facturas, complementos y notas de crédito. */
+export interface DiagnosticoDeFacturas {
+  emitidas: LadoDelDiagnostico;
+  recibidas: LadoDelDiagnostico;
+  errores: { archivo: string; error: string }[];
+  nota: string | null;
+}
+
 @Injectable({ providedIn: 'root' })
 export class ConciliacionService {
   private readonly rest = inject(RestService);
@@ -156,6 +199,13 @@ export class ConciliacionService {
   conciliar(organizacionId: string, anio: number, mes: number): Observable<ConciliacionDelMesDto> {
     return this.rest.request<void, ConciliacionDelMesDto>(
       { method: 'POST', url: `${this.base}/conciliar/${organizacionId}`, params: { anio, mes } },
+      this.opciones,
+    );
+  }
+
+  diagnosticarFacturas(organizacionId: string, anio: number, mes: number): Observable<DiagnosticoDeFacturas> {
+    return this.rest.request<void, DiagnosticoDeFacturas>(
+      { method: 'POST', url: `${this.base}/diagnosticar-facturas/${organizacionId}`, params: { anio, mes } },
       this.opciones,
     );
   }

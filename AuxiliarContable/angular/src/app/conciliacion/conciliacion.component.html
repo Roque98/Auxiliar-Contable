@@ -108,6 +108,79 @@
     }
   </section>
 
+  <section class="cc-diagnostico" aria-labelledby="cc-diagnostico" data-testid="diagnostico">
+    <div class="cc-diagnostico-cabecera">
+      <div>
+        <h2 id="cc-diagnostico">Facturas que no cuadran</h2>
+        <p class="cc-nota">
+          Cada factura del mes contra sus complementos de pago y notas de crédito, con la historia de los 3 meses
+          anteriores. Encuentra, por ejemplo, un complemento que paga la factura PUE cuando debía pagar la PPD.
+        </p>
+      </div>
+      <button type="button" class="btn btn-outline-secondary cc-boton" (click)="diagnosticar()" [disabled]="diagnosticando()" data-testid="diagnosticar">
+        @if (diagnosticando()) {
+          <span class="ig-girando" aria-hidden="true"></span> Revisando…
+        } @else {
+          <i class="bi bi-search" aria-hidden="true"></i> Revisar facturas
+        }
+      </button>
+    </div>
+    @if (errorDeDiagnostico(); as e) {
+      <div class="ig-alerta ig-alerta-error" role="alert">{{ e }}</div>
+    }
+    @if (diagnostico(); as d) {
+      @for (l of lados; track l.clave) {
+        @let lado = d[l.clave];
+        <div class="cc-lado">
+          <h3>{{ l.titulo }}</h3>
+          @if (!lado.porRevisar.length) {
+            <p class="cc-bien"><i class="bi bi-check-circle" aria-hidden="true"></i>
+              Todo cuadra ({{ lado.apartadosQueCuadran }} {{ lado.apartadosQueCuadran === 1 ? 'grupo' : 'grupos' }} de factura y pago).</p>
+          } @else {
+            <p class="cc-nota">{{ lado.porRevisar.length }} por revisar · {{ lado.apartadosQueCuadran }} cuadran. {{ l.quien }}</p>
+            <ol class="cc-apartados">
+              @for (a of lado.porRevisar; track $index) {
+                <li class="cc-apartado">
+                  @for (aviso of a.avisos; track $index) {
+                    <p class="cc-aviso"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i> {{ aviso }}</p>
+                  }
+                  @if (a.diferencia) {
+                    <p class="cc-diferencia">
+                      {{ a.diferencia > 0 ? 'Falta por saldar' : 'Se aplicó de más' }}:
+                      {{ (a.diferencia > 0 ? a.diferencia : -a.diferencia).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' }) }}
+                    </p>
+                  }
+                  <ul class="cc-cfdis">
+                    @for (f of a.facturas; track f.uuid) { <li><span class="ig-etiqueta">Factura</span> {{ etiqueta(f) }}</li> }
+                    @for (p of a.pagos; track p.uuid) { <li><span class="ig-etiqueta">Complemento</span> {{ etiqueta(p) }}</li> }
+                    @for (n of a.egresos; track n.uuid) { <li><span class="ig-etiqueta">Nota de crédito</span> {{ etiqueta(n) }}</li> }
+                  </ul>
+                </li>
+              }
+            </ol>
+          }
+          @if (lado.sueltos.pagosSinDocumento.length || lado.sueltos.egresosSinRelacion.length) {
+            <p class="cc-nota">
+              Sin relacionar: {{ lado.sueltos.pagosSinDocumento.length }} complemento(s) que no dicen qué pagan y
+              {{ lado.sueltos.egresosSinRelacion.length }} nota(s) de crédito sin factura relacionada.
+            </p>
+          }
+          @if (lado.sueltos.facturasPpdSinNada.length) {
+            <p class="cc-nota">
+              {{ lado.sueltos.facturasPpdSinNada.length }} factura(s) PPD del mes sin complemento todavía: si ya se pagaron, falta su complemento.
+            </p>
+          }
+        </div>
+      }
+      @if (d.errores.length) {
+        <p class="cc-nota">No se pudieron leer {{ d.errores.length }} archivo(s): {{ d.errores[0].archivo }}{{ d.errores.length > 1 ? '…' : '' }}</p>
+      }
+      @if (d.nota) {
+        <p class="cc-nota">{{ d.nota }}</p>
+      }
+    }
+  </section>
+
   @if (c.partidas.length) {
     <section aria-labelledby="cc-partidas" data-testid="partidas">
       <h2 id="cc-partidas">Movimientos sin factura</h2>

@@ -224,5 +224,53 @@ public class BancosIntegrationTests : ConJerarquiaTestBase
         _modelo.Solicitudes.Single().Herramientas.Select(h => h.Nombre).ShouldNotContain(HerramientasDelAsistente.ConciliarMes);
     }
 
+    private Task SubirFacturaAsync(Guid cliente, string nombre, DateTime fecha) =>
+        SubirAsync(cliente, nombre, TipoDeDocumento.Cfdi,
+            $"""<cfdi:Comprobante xmlns:cfdi="http://www.sat.gob.mx/cfd/4" Version="4.0" Fecha="{fecha:yyyy-MM-dd}T10:00:00"/>""");
+
+    [Fact]
+    public async Task El_diagnostico_de_facturas_manda_primero_las_del_mes_y_luego_la_historia()
+    {
+        await PonerRfcAsync(_cliente, "GODE561231GR8");
+        var mes = new DateTime(Anio, Mes, 1).AddMonths(-1);
+        await SubirFacturaAsync(_cliente, "del-mes.xml", mes.AddDays(9));
+        await SubirFacturaAsync(_cliente, "hace-un-mes.xml", mes.AddMonths(-1).AddDays(3));
+        await SubirFacturaAsync(_cliente, "hace-tres.xml", mes.AddMonths(-3).AddDays(3));
+        await SubirFacturaAsync(_cliente, "hace-cuatro.xml", mes.AddMonths(-4).AddDays(3));
+        await SubirFacturaAsync(_cliente, "del-siguiente.xml", mes.AddMonths(1).AddDays(3));
+        _motor.Diagnostico = new DiagnosticoDeFacturas
+        {
+            Emitidas = new LadoDelDiagnostico
+            {
+                PorRevisar = [new ApartadoPorRevisar { Avisos = ["El complemento paga la factura PUE; ¿querían relacionar la PPD?"] }],
+            },
+        };
+
+        // El cliente también lo ve: es quien corrige sus facturas emitidas.
+        var r = await ComoAsync(Usuario, () => _bancos.DiagnosticarFacturasAsync(_cliente, mes.Year, mes.Month));
+
+        _motor.FacturasDiagnosticadas.ShouldBe(["del-mes.xml", "hace-un-mes.xml", "hace-tres.xml"],
+            "primero las del mes; la de hace cuatro meses y la del mes siguiente no entran");
+        _motor.ArchivosDelPeriodo.ShouldBe(1);
+        _motor.RfcRecibido.ShouldBe("GODE561231GR8");
+        r.Emitidas.PorRevisar.Single().Avisos.Single().ShouldContain("PUE");
+    }
+
+    [Fact]
+    public async Task Sin_facturas_del_mes_no_hay_diagnostico_y_lo_ajeno_no_existe()
+    {
+        await PonerRfcAsync(_cliente, "GODE561231GR8");
+        var antes = DateTime.Now.AddMonths(-2);
+
+        var error = await Should.ThrowAsync<UserFriendlyException>(() =>
+            ComoAsync(Administrador, () => _bancos.DiagnosticarFacturasAsync(_cliente, antes.Year, antes.Month)));
+        error.Message.ShouldContain("No hay facturas");
+
+        await SubirFacturaAsync(_otroCliente, "ajena.xml", DateTime.Now);
+        await Should.ThrowAsync<EntityNotFoundException>(() =>
+            ComoAsync(Usuario, () => _bancos.DiagnosticarFacturasAsync(_otroCliente, Anio, Mes)));
+        _motor.FacturasDiagnosticadas.ShouldBeEmpty();
+    }
+
     private IAsistenteAppService Asistente() => GetRequiredService<IAsistenteAppService>();
 }

@@ -43,6 +43,14 @@ public interface IMotorFiscal
     Task<ConstanciaLeida> LeerConstanciaAsync(ArchivoParaElMotor constancia, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Facturas con sus complementos de pago y notas de crédito: lo que no cuadra y qué pasó. Los primeros
+    /// <paramref name="archivosDelPeriodo"/> archivos son del mes; los demás (meses anteriores) solo dan la historia.
+    /// </summary>
+    Task<DiagnosticoDeFacturas> DiagnosticarFacturasAsync(
+        string rfcDelCliente, IReadOnlyList<ArchivoParaElMotor> facturas, int archivosDelPeriodo,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Tesis y jurisprudencias del TFJA y de la SCJN sobre una situación o tema, con lo que se concluyó de cada una.
     /// <paramref name="fuente"/> (TFJA o SCJN) acota; null busca en las dos.
     /// </summary>
@@ -109,6 +117,13 @@ public class MotorFiscalSinConfigurar : IMotorFiscal, ISingletonDependency
     }
 
     public Task<ConstanciaLeida> LeerConstanciaAsync(ArchivoParaElMotor constancia, CancellationToken cancellationToken = default)
+    {
+        throw new MotorFiscalNoDisponibleException("No hay motor fiscal en este proceso.");
+    }
+
+    public Task<DiagnosticoDeFacturas> DiagnosticarFacturasAsync(
+        string rfcDelCliente, IReadOnlyList<ArchivoParaElMotor> facturas, int archivosDelPeriodo,
+        CancellationToken cancellationToken = default)
     {
         throw new MotorFiscalNoDisponibleException("No hay motor fiscal en este proceso.");
     }
