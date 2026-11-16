@@ -36,6 +36,16 @@ public class MotorFiscalDePrueba : IMotorFiscal
 
     public string? RfcRecibido { get; private set; }
 
+    /// <summary>Lo que «encuentra» la librería de sentencias y qué se le buscó (situación, fuente).</summary>
+    public List<SentenciaDelMotor> Sentencias { get; } = [];
+
+    public List<(string Consulta, string? Fuente)> ConsultasDeSentencias { get; } = [];
+
+    public EstadoDeSentencias EstadoSentencias { get; set; } = new();
+
+    /// <summary>Cuántas veces se pidió actualizar la librería.</summary>
+    public int Actualizaciones { get; private set; }
+
     public void Reiniciar()
     {
         EstaConfigurado = true;
@@ -48,6 +58,10 @@ public class MotorFiscalDePrueba : IMotorFiscal
         EstadosRecibidos.Clear();
         FacturasRecibidas.Clear();
         RfcRecibido = null;
+        Sentencias.Clear();
+        ConsultasDeSentencias.Clear();
+        EstadoSentencias = new EstadoDeSentencias();
+        Actualizaciones = 0;
     }
 
     public Task<IReadOnlyList<ResultadoDeLey>> BuscarEnLeyesAsync(
@@ -97,5 +111,46 @@ public class MotorFiscalDePrueba : IMotorFiscal
         }
 
         return Task.FromResult(Constancia);
+    }
+
+    public Task<IReadOnlyList<SentenciaDelMotor>> BuscarSentenciasAsync(
+        string consulta, string? fuente = null, int cuantos = 5, CancellationToken cancellationToken = default)
+    {
+        ConsultasDeSentencias.Add((consulta, fuente));
+        if (Caido)
+        {
+            throw new MotorFiscalNoDisponibleException("El motor fiscal no responde.");
+        }
+
+        return Task.FromResult<IReadOnlyList<SentenciaDelMotor>>(Sentencias.ToArray());
+    }
+
+    public Task<EstadoDeSentencias> EstadoDeSentenciasAsync(CancellationToken cancellationToken = default)
+    {
+        if (Caido)
+        {
+            throw new MotorFiscalNoDisponibleException("El motor fiscal no responde.");
+        }
+
+        return Task.FromResult(EstadoSentencias);
+    }
+
+    /// <summary>Como el motor: si ya hay una en curso no arranca otra.</summary>
+    public Task<bool> ActualizarSentenciasAsync(CancellationToken cancellationToken = default)
+    {
+        if (Caido)
+        {
+            throw new MotorFiscalNoDisponibleException("El motor fiscal no responde.");
+        }
+
+        if (EstadoSentencias.Trabajo.Corriendo)
+        {
+            return Task.FromResult(false);
+        }
+
+        Actualizaciones++;
+        EstadoSentencias.Trabajo.Corriendo = true;
+        EstadoSentencias.Trabajo.Fase = "descargando";
+        return Task.FromResult(true);
     }
 }

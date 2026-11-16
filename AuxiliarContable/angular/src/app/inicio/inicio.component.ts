@@ -62,6 +62,7 @@ export class InicioComponent implements OnInit {
         { icono: 'bi-folder2-open', titulo: 'Documentos', texto: 'Facturas, estados de cuenta y tickets de cada cliente.', ruta: '/documentos' },
         { icono: 'bi-person-lines-fill', titulo: 'Perfil fiscal', texto: 'RFC, régimen y datos de cada cliente.', ruta: '/perfil-fiscal' },
         leyes,
+        { icono: 'bi-bank', titulo: 'Sentencias', texto: 'Cómo resuelven el TFJA y la SCJN, y qué hacer.', ruta: '/sentencias' },
       ];
     }
     return [

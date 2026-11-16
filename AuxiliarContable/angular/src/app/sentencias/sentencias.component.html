@@ -1,0 +1,151 @@
+<header class="st-cabecera">
+  <h1>Sentencias</h1>
+  <p class="st-nota">
+    Tesis, precedentes y jurisprudencias fiscales del TFJA y de la SCJN. Cada una dice a qué conclusión llegó el
+    tribunal, a quién favoreció, qué artículos interpreta y qué conviene hacer. Describe la situación con tus palabras.
+  </p>
+
+  @if (libreria(); as l) {
+    <div class="st-libreria" aria-live="polite">
+      <span>
+        <strong>{{ l.estado.libreria.tesis }}</strong> tesis
+        ({{ l.estado.libreria.porFuente['TFJA'] ?? 0 }} TFJA · {{ l.estado.libreria.porFuente['SCJN'] ?? 0 }} SCJN),
+        <strong>{{ l.estado.libreria.estudiadas }}</strong> estudiadas.
+        @if (l.estado.libreria.ultimaPublicacion) {
+          La más reciente es del {{ l.estado.libreria.ultimaPublicacion }}.
+        }
+      </span>
+      @if (l.puedeActualizar) {
+        <button type="button" class="btn btn-outline-secondary st-actualizar" (click)="actualizar()"
+                [disabled]="l.estado.trabajo.corriendo" data-testid="actualizar">
+          @if (l.estado.trabajo.corriendo) {
+            <span class="ig-girando" aria-hidden="true"></span>
+            {{ l.estado.trabajo.fase === 'estudiando' ? 'Estudiando…' : 'Descargando…' }}
+          } @else {
+            <i class="bi bi-arrow-clockwise" aria-hidden="true"></i> Actualizar
+          }
+        </button>
+      }
+    </div>
+    @if (l.puedeActualizar && l.estado.trabajo.corriendo && l.estado.trabajo.bitacora.length) {
+      <p class="st-avance">{{ l.estado.trabajo.bitacora[l.estado.trabajo.bitacora.length - 1] }}</p>
+    }
+    @if (l.puedeActualizar && l.estado.trabajo.error) {
+      <div class="ig-alerta ig-alerta-error" role="alert">La última actualización falló: {{ l.estado.trabajo.error }}</div>
+    }
+  }
+  @if (errorDeEstado(); as e) {
+    <div class="ig-alerta ig-alerta-error" role="alert">{{ e }}</div>
+  }
+
+  <form class="st-buscador" (ngSubmit)="buscar()" role="search">
+    <label class="st-campo st-campo-texto">
+      <span>¿Qué situación?</span>
+      <input class="ig-control" name="consulta" [(ngModel)]="consulta" maxlength="300" autocomplete="off"
+             placeholder="p. ej. facturas de un proveedor que el SAT dice que no existe" data-testid="consulta" />
+    </label>
+    <label class="st-campo">
+      <span>Tribunal</span>
+      <select class="ig-control" name="fuente" [(ngModel)]="fuente">
+        <option [ngValue]="null">Los dos</option>
+        <option ngValue="TFJA">TFJA</option>
+        <option ngValue="SCJN">SCJN y tribunales federales</option>
+      </select>
+    </label>
+    <button type="submit" class="btn btn-primary st-boton" [disabled]="consulta.trim().length < 2 || ocupado()">
+      @if (ocupado()) {
+        <span class="ig-girando" aria-hidden="true"></span> Buscando…
+      } @else {
+        <i class="bi bi-search" aria-hidden="true"></i> Buscar
+      }
+    </button>
+  </form>
+</header>
+
+@if (error(); as e) {
+  <div class="ig-alerta ig-alerta-error" role="alert">{{ e }}</div>
+}
+
+@if (resultados(); as lista) {
+  @if (lista.length) {
+    <ol class="st-resultados" aria-live="polite">
+      @for (t of lista; track t.id) {
+        <li class="st-tesis">
+          <header class="st-tesis-cabecera">
+            <div>
+              <strong class="st-cita">{{ cita(t) }}</strong>
+              <small>{{ t.instancia }}@if (t.fecha) { · {{ t.fecha }} }</small>
+            </div>
+            <button type="button" class="btn btn-outline-secondary btn-sm st-copiar" (click)="copiarCita(t)" title="Copiar la cita">
+              <i class="bi bi-clipboard" aria-hidden="true"></i><span class="visually-hidden">Copiar la cita</span>
+            </button>
+          </header>
+
+          <p class="st-rubro">{{ t.rubro }}</p>
+
+          @if (t.estudio; as s) {
+            <div class="st-estudio">
+              <div class="st-etiquetas">
+                @if (aFavor(t); as f) {
+                  <span [class]="'ig-etiqueta ' + f.clase">{{ f.texto }}</span>
+                }
+                @if (t.tipo === 'jurisprudencia') {
+                  <span class="ig-etiqueta ig-etiqueta-sello">Obligatoria</span>
+                }
+              </div>
+              <p><strong>Conclusión.</strong> {{ s.conclusion }}</p>
+              <p><strong>Qué hacer.</strong> {{ s.reglaPractica }}</p>
+              <p><strong>Cuándo aplica.</strong> {{ s.aplicaCuando }}</p>
+              @if (s.queDocumentar.length) {
+                <div>
+                  <strong>Qué documentar</strong>
+                  <ul>
+                    @for (d of s.queDocumentar; track $index) {
+                      <li>{{ d }}</li>
+                    }
+                  </ul>
+                </div>
+              }
+              @if (s.fundamentos.length) {
+                <p class="st-fundamentos"><strong>Fundamento.</strong> {{ s.fundamentos.join(' · ') }}</p>
+              }
+              @if (s.vigencia && !s.vigencia.startsWith('Sin señales')) {
+                <p class="st-vigencia"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i> {{ s.vigencia }}</p>
+              }
+            </div>
+          } @else {
+            <p class="st-sin-estudio">Aún no se estudia: lee el texto de la tesis.</p>
+          }
+
+          @if (abiertos().has(t.id)) {
+            <p class="st-texto">{{ t.texto }}</p>
+          }
+          <footer class="st-pie">
+            <button type="button" class="btn btn-link st-mas" (click)="alternar(t.id)">
+              {{ abiertos().has(t.id) ? 'Ocultar el texto' : 'Ver el texto de la tesis' }}
+            </button>
+            @if (t.publicacion) {
+              <small>{{ t.publicacion }}</small>
+            }
+            @if (t.url) {
+              <a [href]="t.url" target="_blank" rel="noopener">Sitio oficial <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i></a>
+            }
+          </footer>
+        </li>
+      }
+    </ol>
+    <p class="st-aviso">
+      Lo de «Conclusión», «Qué hacer» y «Cuándo aplica» lo resumió Claude del texto publicado: para sustentar un escrito,
+      cita la tesis y revisa su texto completo.
+    </p>
+  } @else {
+    <p class="st-vacio">No hay tesis sobre eso. Prueba con otras palabras o con los dos tribunales.</p>
+  }
+} @else if (!ocupado()) {
+  <section class="st-ejemplos" aria-label="Ejemplos">
+    <span>Prueba con:</span>
+    @for (e of ejemplos; track e) {
+      <button type="button" class="st-ejemplo" (click)="usarEjemplo(e)">{{ e }}</button>
+    }
+  </section>
+}

@@ -30,6 +30,10 @@ public static class InstruccionesDelAsistente
                 - Para trabajar el detalle de UN cliente, di que lo elijan arriba en la pantalla: aquí solo ves el resumen.
                 - Si preguntan qué dice la ley (deducciones, obligaciones, plazos, tasas), búscalo con consultar_leyes y
                   responde citando ley y artículo (p. ej. «art. 27 fr. III LISR»). Si no aparece, dilo: no respondas de memoria.
+                - Si hablan de una operación o situación concreta (un gasto que quieren deducir, facturas de un proveedor
+                  dudoso, una revisión o carta del SAT, una devolución negada, una multa), busca con consultar_sentencias cómo
+                  la han resuelto el TFJA y la SCJN: di la conclusión, a quién favoreció, qué conviene documentar y la clave
+                  de la tesis (p. ej. «TFJA IX-J-2aS-115, jurisprudencia»). Una jurisprudencia obliga; una tesis aislada orienta.
                 - Lo que no puedes hacer aquí (invitar personas —eso va en el chat del cliente—, borrar clientes, enviar mensajes), dilo y señala la pantalla.
 
                 Reglas:
@@ -89,6 +93,10 @@ public static class InstruccionesDelAsistente
                 - Si pregunta qué dice la ley (si algo es deducible, qué obligaciones tiene, plazos, tasas), búscalo con
                   consultar_leyes y responde con lo que dice el artículo, citándolo al final («Fuente: art. 27 LISR»). Si
                   la búsqueda no lo trae, dilo y sugiere preguntarle al contador: no respondas de memoria.
+                - Si cuenta una operación o situación concreta (un gasto, un proveedor, una carta o revisión del SAT, una
+                  devolución, una multa), busca con consultar_sentencias cómo la han resuelto los tribunales y tómalo en
+                  cuenta: dile en palabras sencillas qué conviene hacer o guardar como evidencia, y menciona la tesis por su
+                  clave. Si el criterio favorece a la autoridad, adviérteselo; la decisión final la toma el contador.
                 - Si en lo que escribe ya viene un dato (p. ej. «tengo una panadería» = giro), guárdalo en ese momento sin volver a preguntarlo.
 
                 Reglas que no se rompen:

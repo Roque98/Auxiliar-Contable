@@ -48,6 +48,7 @@ public class HerramientasDelAsistente : ITransientDependency
     public const string CambiarPapel = "cambiar_papel";
     public const string QuitarPersona = "quitar_persona";
     public const string ConsultarLeyes = "consultar_leyes";
+    public const string ConsultarSentencias = "consultar_sentencias";
     public const string ConciliarMes = "conciliar_mes";
 
     /// <summary>De la conciliación, el modelo recibe un resumen y hasta este número de pendientes por lista.</summary>
@@ -64,6 +65,16 @@ public class HerramientasDelAsistente : ITransientDependency
         "ley y artículo. «ley» acota a unas siglas; omítela si no estás seguro. Pregunta con términos de la ley o con la cita " +
         "(«artículo 27 LISR», «deducción de automóviles personas morales»).",
         """{"type":"object","properties":{"pregunta":{"type":"string","minLength":2,"maxLength":300},"ley":{"type":"string","maxLength":20}},"required":["pregunta"]}""");
+
+    /// <summary>Las sentencias tampoco son de nadie: valen en las dos clases de conversación, como las leyes.</summary>
+    private static readonly HerramientaDelModelo DeSentencias = new(ConsultarSentencias,
+        "Busca en la librería de sentencias del despacho: tesis, precedentes y jurisprudencias fiscales del TFJA y de la SCJN. " +
+        "Cada resultado trae la conclusión del tribunal, a quién favoreció (contribuyente, autoridad, mixto), la regla práctica, " +
+        "cuándo aplica, qué documentar, los artículos que interpreta y la clave de la tesis. Úsala cuando se hable de una operación " +
+        "o situación concreta (deducir un gasto, proveedores, materialidad, CFDI, revisiones del SAT, multas, devoluciones) para " +
+        "tomar en cuenta cómo la han resuelto los tribunales. Describe la situación con palabras («deducción de servicios sin " +
+        "evidencia de que se prestaron»). «fuente» acota a TFJA o SCJN.",
+        """{"type":"object","properties":{"situacion":{"type":"string","minLength":2,"maxLength":300},"fuente":{"type":"string","enum":["TFJA","SCJN"]}},"required":["situacion"]}""");
 
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
     {
@@ -123,6 +134,7 @@ public class HerramientasDelAsistente : ITransientDependency
                   "texto":{"type":"string"}}}
                 """),
             DeLeyes,
+            DeSentencias,
         };
 
         if (puedeEditar)
@@ -189,6 +201,7 @@ public class HerramientasDelAsistente : ITransientDependency
             CambiarPapel => "Cambió el papel de una persona",
             QuitarPersona => "Quitó el acceso a una persona",
             ConsultarLeyes => "Consultó la ley",
+            ConsultarSentencias => "Consultó sentencias",
             ConciliarMes => "Concilió el banco",
             _ => null,
         };
@@ -207,13 +220,14 @@ public class HerramientasDelAsistente : ITransientDependency
             "perfil e invitarlo. Si ya existe uno con ese nombre, devuelve error.",
             """{"type":"object","properties":{"nombre":{"type":"string","minLength":2,"maxLength":128},"descripcion":{"type":"string","maxLength":256}},"required":["nombre"]}"""),
         DeLeyes,
+        DeSentencias,
     ];
 
     public async Task<BloqueDeResultadoDeHerramienta> EjecutarAsync(Guid organizacionId, BloqueDeUsoDeHerramienta uso)
     {
         // El candado entre las dos clases de conversación: en la de la cartera (Guid.Empty) solo sus
         // herramientas (resumen y alta); en la de un cliente, nunca esas. Lo que pida el modelo no lo salta.
-        if (uso.Nombre != ConsultarLeyes && (organizacionId == Guid.Empty) != (uso.Nombre is ResumenDeCartera or CrearCliente))
+        if (uso.Nombre is not (ConsultarLeyes or ConsultarSentencias) && (organizacionId == Guid.Empty) != (uso.Nombre is ResumenDeCartera or CrearCliente))
         {
             return new BloqueDeResultadoDeHerramienta(uso.Id, $"La herramienta «{uso.Nombre}» no está disponible en esta conversación.", EsError: true);
         }
@@ -223,6 +237,7 @@ public class HerramientasDelAsistente : ITransientDependency
             var contenido = uso.Nombre switch
             {
                 ConsultarLeyes => await LeyesAsync(uso.Entrada),
+                ConsultarSentencias => await SentenciasAsync(uso.Entrada),
                 ConciliarMes => await ConciliarAsync(organizacionId, uso.Entrada),
                 ResumenDeCartera => await CarteraAsync(uso.Entrada),
                 CrearCliente => await CrearClienteAsync(uso.Entrada),
@@ -248,7 +263,9 @@ public class HerramientasDelAsistente : ITransientDependency
         {
             // Sin detalles técnicos: el modelo solo tiene que decir que ahora no pudo consultar.
             return new BloqueDeResultadoDeHerramienta(uso.Id,
-                "La consulta de leyes no está disponible en este momento. Dilo así y no respondas de memoria sobre lo que dice la ley.",
+                uso.Nombre == ConsultarSentencias
+                    ? "La librería de sentencias no está disponible en este momento. Dilo así y no cites tesis de memoria."
+                    : "La consulta de leyes no está disponible en este momento. Dilo así y no respondas de memoria sobre lo que dice la ley.",
                 EsError: true);
         }
         catch (EntityNotFoundException)
@@ -422,6 +439,35 @@ public class HerramientasDelAsistente : ITransientDependency
             ultimaReformaDof = r.UltimaReformaDof,
             vigencia = r.NotaDeVigencia,
             texto = r.Texto.Length > MaxCaracteresPorArticulo ? r.Texto[..MaxCaracteresPorArticulo] + " […]" : r.Texto,
+        }), Json);
+    }
+
+    private async Task<string> SentenciasAsync(JsonElement entrada)
+    {
+        var resultados = await _motor.BuscarSentenciasAsync(Texto(entrada, "situacion").Trim(), Opcional(entrada, "fuente"), cuantos: 5);
+        if (resultados.Count == 0)
+        {
+            return "No hay tesis sobre eso en la librería. Prueba con otras palabras; si no aparece, dilo y no cites tesis de memoria.";
+        }
+
+        // Lo estudiado basta para razonar; el texto completo solo si la tesis aún no se estudia (recortado: cuesta tokens).
+        return JsonSerializer.Serialize(resultados.Select(t => new
+        {
+            tesis = $"{t.Fuente} {t.Clave}".Trim(),
+            tipo = t.Tipo,
+            instancia = t.Instancia,
+            fecha = t.Fecha,
+            rubro = t.Rubro,
+            conclusion = t.Estudio?.Conclusion,
+            aFavor = t.Estudio?.AFavor,
+            reglaPractica = t.Estudio?.ReglaPractica,
+            aplicaCuando = t.Estudio?.AplicaCuando,
+            queDocumentar = t.Estudio?.QueDocumentar,
+            fundamentos = t.Estudio?.Fundamentos,
+            vigencia = t.Estudio?.Vigencia,
+            texto = t.Estudio is not null ? null
+                : t.Texto.Length > MaxCaracteresPorArticulo ? t.Texto[..MaxCaracteresPorArticulo] + " […]" : t.Texto,
+            url = t.Url,
         }), Json);
     }
 
