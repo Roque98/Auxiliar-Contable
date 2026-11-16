@@ -118,6 +118,24 @@ public class MotorFiscalHttp : IMotorFiscal, ITransientDependency
         return await EnviarAsync<ConstanciaLeida>(peticion, tope.Token, cancellationToken);
     }
 
+    public async Task<DiagnosticoDeFacturas> DiagnosticarFacturasAsync(
+        string rfcDelCliente, IReadOnlyList<ArchivoParaElMotor> facturas, int archivosDelPeriodo,
+        CancellationToken cancellationToken = default)
+    {
+        // Es lectura de XML, sin Claude, pero pueden ser miles de archivos: el tope de bancos.
+        using var tope = CancelationConTope(_opciones.TimeoutDeBancosSegundos, cancellationToken);
+        var peticion = new HttpRequestMessage(HttpMethod.Post, "cfdi/diagnosticar")
+        {
+            Content = JsonContent.Create(new
+            {
+                rfc_cliente = rfcDelCliente,
+                cfdis = facturas.Select(Base64),
+                archivos_del_periodo = archivosDelPeriodo,
+            }, options: Json),
+        };
+        return await EnviarAsync<DiagnosticoDeFacturas>(peticion, tope.Token, cancellationToken);
+    }
+
     public async Task<IReadOnlyList<SentenciaDelMotor>> BuscarSentenciasAsync(
         string consulta, string? fuente = null, int cuantos = 5, int desde = 0, CancellationToken cancellationToken = default)
     {

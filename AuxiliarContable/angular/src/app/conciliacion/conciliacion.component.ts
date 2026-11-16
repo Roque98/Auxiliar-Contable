@@ -17,8 +17,7 @@ import {
   NOMBRE_DE_ETAPA,
   NOMBRE_DE_RESOLUCION,
   PartidaDto,
-  ResolucionDePartida,
-} from './conciliacion.service';
+  ResolucionDePartida, CfdiDelDiagnostico, DiagnosticoDeFacturas } from './conciliacion.service';
 
 type Filtro = 'todos' | 'sin_factura' | 'con_factura';
 
@@ -70,6 +69,14 @@ export class ConciliacionComponent implements OnInit {
   readonly guardando = signal<string | null>(null);
   readonly error = signal<string | null>(null);
   readonly ocupado = signal(false);
+  /** El diagnóstico de facturas del mes: se pide con el botón, no se guarda. */
+  readonly diagnostico = signal<DiagnosticoDeFacturas | null>(null);
+  readonly diagnosticando = signal(false);
+  readonly errorDeDiagnostico = signal<string | null>(null);
+  readonly lados = [
+    { clave: 'emitidas' as const, titulo: 'Facturas que emitió', quien: 'Las corrige el cliente con quien las timbra.' },
+    { clave: 'recibidas' as const, titulo: 'Facturas que recibió', quien: 'Las corrige el proveedor: hay que pedírselo.' },
+  ];
   readonly filtro = signal<Filtro>('todos');
 
   anio: number;
@@ -140,6 +147,8 @@ export class ConciliacionComponent implements OnInit {
   cargar(): void {
     const id = this.clienteId();
     this.cierre.set(null);
+    this.diagnostico.set(null);
+    this.errorDeDiagnostico.set(null);
     this.error.set(null);
     this.filtro.set('todos');
     if (!id) {
@@ -249,6 +258,39 @@ export class ConciliacionComponent implements OnInit {
         this.ocupado.set(false);
       },
     });
+  }
+
+  /** Facturas del mes contra sus complementos de pago y notas de crédito: qué no cuadra y por qué. */
+  diagnosticar(): void {
+    const id = this.clienteId();
+    if (!id || this.diagnosticando()) {
+      return;
+    }
+    const periodo = `${id}|${this.anio}|${this.mes}`;
+    this.diagnosticando.set(true);
+    this.errorDeDiagnostico.set(null);
+    this.api.diagnosticarFacturas(id, this.anio, this.mes).subscribe({
+      next: d => {
+        // Una respuesta que llega tarde (de otro cliente o mes) no pisa lo que se está viendo.
+        if (periodo === `${this.clienteId()}|${this.anio}|${this.mes}`) {
+          this.diagnostico.set(d);
+        }
+        this.diagnosticando.set(false);
+      },
+      error: e => {
+        this.errorDeDiagnostico.set(mensajeDeError(e, 'No se pudieron revisar las facturas.'));
+        this.diagnosticando.set(false);
+      },
+    });
+  }
+
+  /** «A-15 · 2026-10-03 · PPD · $5,000.00»: lo que identifica un CFDI en pantalla. */
+  etiqueta(c: CfdiDelDiagnostico): string {
+    if (c.falta) {
+      return `${c.uuid.slice(0, 8)} (no está en la bóveda)`;
+    }
+    const total = c.total == null ? '' : ` · ${c.total.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })}`;
+    return [c.serieFolio || c.uuid.slice(0, 8), c.fecha, c.metodo].filter(Boolean).join(' · ') + total;
   }
 
   conciliar(): void {

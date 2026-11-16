@@ -19,6 +19,13 @@ public interface IBancosAppService : IApplicationService
 
     /// <summary>Los estados de cuenta del mes contra las facturas (XML) del mismo mes.</summary>
     Task<ConciliacionDelMesDto> ConciliarAsync(Guid organizacionId, int anio, int mes);
+
+    /// <summary>
+    /// Las facturas del mes con sus complementos de pago y notas de crédito: lo que no cuadra y qué pasó (p. ej. un
+    /// complemento que paga la factura PUE en vez de la PPD). Se mandan también las de los meses anteriores para ver
+    /// la historia de cada PPD, pero solo se reporta lo que toca el mes. No se guarda: se calcula al pedirlo.
+    /// </summary>
+    Task<DiagnosticoDeFacturas> DiagnosticarFacturasAsync(Guid organizacionId, int anio, int mes);
 }
 
 public class ConciliacionDelMesDto

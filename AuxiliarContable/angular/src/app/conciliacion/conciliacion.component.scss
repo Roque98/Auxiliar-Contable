@@ -252,3 +252,36 @@ h2 { font-size: var(--ig-texto-lg); font-weight: var(--ig-peso-semi); margin: va
 
 .cc-partida .cc-mov-linea { flex-wrap: wrap; }
 .cc-partida .cc-chip { white-space: normal; max-width: 100%; }
+
+/* Diagnóstico de facturas: cada grupo (factura + complementos + notas) en una tarjeta con lo que pasó arriba. */
+.cc-diagnostico { display: flex; flex-direction: column; gap: var(--ig-esp-3); margin-top: var(--ig-esp-4); }
+
+.cc-diagnostico-cabecera {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--ig-esp-3);
+
+  > div { min-width: 0; flex: 1 1 20rem; }
+}
+
+.cc-boton { min-height: 44px; display: inline-flex; align-items: center; gap: var(--ig-esp-2); }
+.cc-lado { display: flex; flex-direction: column; gap: var(--ig-esp-2); }
+.cc-lado h3 { font-size: var(--ig-texto-lg); margin: 0; }
+.cc-bien { margin: 0; color: var(--ig-exito-texto); }
+.cc-apartados { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--ig-esp-2); }
+
+.cc-apartado {
+  border: var(--ig-borde);
+  border-radius: var(--ig-radio-lg);
+  padding: var(--ig-esp-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--ig-esp-2);
+  min-width: 0;
+}
+
+.cc-aviso { margin: 0; color: var(--ig-alerta-texto); overflow-wrap: anywhere; }
+.cc-diferencia { margin: 0; font-weight: var(--ig-peso-semi); }
+.cc-cfdis { margin: 0; padding-left: var(--ig-esp-4); font-size: var(--ig-texto-sm); overflow-wrap: anywhere; }
