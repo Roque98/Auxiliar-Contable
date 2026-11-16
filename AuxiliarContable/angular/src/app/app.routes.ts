@@ -24,6 +24,12 @@ export const APP_ROUTES: Routes = [
     loadComponent: () => import('./leyes/leyes.component').then(c => c.LeyesComponent),
     canActivate: [authGuard],
   },
+  {
+    // Sin permiso: las tesis son públicas; el servidor decide quién puede actualizar la librería.
+    path: 'sentencias',
+    loadComponent: () => import('./sentencias/sentencias.component').then(c => c.SentenciasComponent),
+    canActivate: [authGuard],
+  },
   // Explorador de BD: solo en Development.
   ...(environment.production
     ? []

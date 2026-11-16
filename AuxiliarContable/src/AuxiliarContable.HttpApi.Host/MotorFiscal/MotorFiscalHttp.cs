@@ -118,6 +118,41 @@ public class MotorFiscalHttp : IMotorFiscal, ITransientDependency
         return await EnviarAsync<ConstanciaLeida>(peticion, tope.Token, cancellationToken);
     }
 
+    public async Task<IReadOnlyList<SentenciaDelMotor>> BuscarSentenciasAsync(
+        string consulta, string? fuente = null, int cuantos = 5, CancellationToken cancellationToken = default)
+    {
+        var ruta = $"sentencias/buscar?q={Uri.EscapeDataString(consulta)}&k={Math.Clamp(cuantos, 1, 30)}";
+        if (!string.IsNullOrWhiteSpace(fuente))
+        {
+            ruta += $"&fuente={Uri.EscapeDataString(fuente.Trim().ToUpperInvariant())}";
+        }
+
+        using var tope = CancelationConTope(_opciones.TimeoutSegundos, cancellationToken);
+        var respuesta = await EnviarAsync<RespuestaDeSentencias>(new HttpRequestMessage(HttpMethod.Get, ruta), tope.Token, cancellationToken);
+        return respuesta.Resultados;
+    }
+
+    public async Task<EstadoDeSentencias> EstadoDeSentenciasAsync(CancellationToken cancellationToken = default)
+    {
+        using var tope = CancelationConTope(_opciones.TimeoutSegundos, cancellationToken);
+        return await EnviarAsync<EstadoDeSentencias>(new HttpRequestMessage(HttpMethod.Get, "sentencias/estado"), tope.Token, cancellationToken);
+    }
+
+    public async Task<bool> ActualizarSentenciasAsync(CancellationToken cancellationToken = default)
+    {
+        // El motor responde al instante (el trabajo corre en su propio hilo); 409 = ya hay una en curso.
+        using var tope = CancelationConTope(_opciones.TimeoutSegundos, cancellationToken);
+        try
+        {
+            await EnviarAsync<EstadoDeSentencias>(new HttpRequestMessage(HttpMethod.Post, "sentencias/actualizar"), tope.Token, cancellationToken);
+            return true;
+        }
+        catch (MotorFiscalNoDisponibleException ex) when (ex.Data["Codigo"] is 409)
+        {
+            return false;
+        }
+    }
+
     private static object Base64(ArchivoParaElMotor a) => new { nombre = a.Nombre, contenido_b64 = Convert.ToBase64String(a.Contenido) };
 
     /// <summary>Cada operación con su tope; el del HttpClient es solo el máximo de todos.</summary>
@@ -147,7 +182,10 @@ public class MotorFiscalHttp : IMotorFiscal, ITransientDependency
                 var cuerpo = await respuesta.Content.ReadAsStringAsync(cancellationToken);
                 _log.LogWarning("Motor fiscal {Ruta} respondió {Codigo}: {Cuerpo}", ruta.Split('?')[0], (int)respuesta.StatusCode,
                     cuerpo.Length > 300 ? cuerpo[..300] : cuerpo);
-                throw new MotorFiscalNoDisponibleException($"El motor fiscal respondió {(int)respuesta.StatusCode}.");
+                throw new MotorFiscalNoDisponibleException($"El motor fiscal respondió {(int)respuesta.StatusCode}.")
+                {
+                    Data = { ["Codigo"] = (int)respuesta.StatusCode },
+                };
             }
 
             return await respuesta.Content.ReadFromJsonAsync<T>(Json, cancellationToken)
@@ -164,6 +202,12 @@ public class MotorFiscalHttp : IMotorFiscal, ITransientDependency
     {
         [JsonPropertyName("resultados")]
         public List<ResultadoCrudo> Resultados { get; set; } = [];
+    }
+
+    private sealed class RespuestaDeSentencias
+    {
+        [JsonPropertyName("resultados")]
+        public List<SentenciaDelMotor> Resultados { get; set; } = [];
     }
 
     private sealed class ResultadoCrudo

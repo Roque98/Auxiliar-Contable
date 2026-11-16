@@ -63,6 +63,7 @@ function configureRoutes() {
     routes.patch('AbpIdentity::Roles', { iconClass: 'bi bi-shield-lock', order: 2 });
     routes.patch('::Menu:Ayuda', { invisible: anonimo });
     routes.patch('::Menu:Leyes', { invisible: anonimo });
+    routes.patch('::Menu:Sentencias', { invisible: anonimo });
     // El chat solo si está encendido en el servidor (sin API de Claude se trabaja por pantallas).
     const chat = String(config.getSetting(AJUSTE_DEL_CHAT)).toLowerCase() === 'true';
     routes.patch('::Menu:Asistente', { invisible: anonimo || !chat });
@@ -118,6 +119,16 @@ function configureRoutes() {
       name: '::Menu:Leyes',
       iconClass: 'bi bi-journal-text',
       order: 1.85,
+      layout: eLayoutType.application,
+      invisible: true,
+    },
+
+    // Tesis y jurisprudencias fiscales del TFJA y la SCJN, con su conclusión. Para todos con sesión (patch de arriba).
+    {
+      path: '/sentencias',
+      name: '::Menu:Sentencias',
+      iconClass: 'bi bi-bank',
+      order: 1.86,
       layout: eLayoutType.application,
       invisible: true,
     },

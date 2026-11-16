@@ -40,6 +40,22 @@ public interface IMotorFiscal
 
     /// <summary>Lee una Constancia de Situación Fiscal (el PDF que se descarga del SAT).</summary>
     Task<ConstanciaLeida> LeerConstanciaAsync(ArchivoParaElMotor constancia, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Tesis y jurisprudencias del TFJA y de la SCJN sobre una situación o tema, con lo que se concluyó de cada una.
+    /// <paramref name="fuente"/> (TFJA o SCJN) acota; null busca en las dos.
+    /// </summary>
+    Task<IReadOnlyList<SentenciaDelMotor>> BuscarSentenciasAsync(
+        string consulta, string? fuente = null, int cuantos = 5, CancellationToken cancellationToken = default);
+
+    /// <summary>Cuánto hay en la librería de sentencias y cómo va su actualización.</summary>
+    Task<EstadoDeSentencias> EstadoDeSentenciasAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Arranca en el motor la actualización (bajar lo nuevo y estudiarlo); no espera a que termine.
+    /// Devuelve false si ya había una en curso.
+    /// </summary>
+    Task<bool> ActualizarSentenciasAsync(CancellationToken cancellationToken = default);
 }
 
 /// <summary>Un archivo de la bóveda, ya descifrado, para mandarlo al motor.</summary>
@@ -92,6 +108,22 @@ public class MotorFiscalSinConfigurar : IMotorFiscal, ISingletonDependency
     }
 
     public Task<ConstanciaLeida> LeerConstanciaAsync(ArchivoParaElMotor constancia, CancellationToken cancellationToken = default)
+    {
+        throw new MotorFiscalNoDisponibleException("No hay motor fiscal en este proceso.");
+    }
+
+    public Task<IReadOnlyList<SentenciaDelMotor>> BuscarSentenciasAsync(
+        string consulta, string? fuente = null, int cuantos = 5, CancellationToken cancellationToken = default)
+    {
+        throw new MotorFiscalNoDisponibleException("No hay motor fiscal en este proceso.");
+    }
+
+    public Task<EstadoDeSentencias> EstadoDeSentenciasAsync(CancellationToken cancellationToken = default)
+    {
+        throw new MotorFiscalNoDisponibleException("No hay motor fiscal en este proceso.");
+    }
+
+    public Task<bool> ActualizarSentenciasAsync(CancellationToken cancellationToken = default)
     {
         throw new MotorFiscalNoDisponibleException("No hay motor fiscal en este proceso.");
     }

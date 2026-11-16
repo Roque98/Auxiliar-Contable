@@ -534,6 +534,7 @@
     "Menu:Asistente": "Assistant",
     "Menu:Inicio": "Home",
     "Menu:Leyes": "Laws",
+    "Menu:Sentencias": "Court rulings",
     "Menu:Documentos": "Documents",
     "Menu:Conciliacion": "Month-end close",
     "AuxiliarContable:OrganizacionObligatoria": "A client user (User role) must join an organization: choose one.",
