@@ -66,6 +66,7 @@ function configureRoutes() {
     routes.patch('::Menu:Sentencias', { invisible: anonimo });
     routes.patch('::Menu:Credenciales', { invisible: anonimo });
     routes.patch('::Menu:Dinero', { invisible: anonimo });
+    routes.patch('::Menu:ControlInterno', { invisible: anonimo });
     // El chat solo si está encendido en el servidor (sin API de Claude se trabaja por pantallas).
     const chat = String(config.getSetting(AJUSTE_DEL_CHAT)).toLowerCase() === 'true';
     routes.patch('::Menu:Asistente', { invisible: anonimo || !chat });
@@ -121,6 +122,16 @@ function configureRoutes() {
       name: '::Menu:Leyes',
       iconClass: 'bi bi-journal-text',
       order: 1.85,
+      layout: eLayoutType.application,
+      invisible: true,
+    },
+
+    // Control interno: la evidencia de cada salida de dinero (materialidad). Para todos con sesión (patch de arriba).
+    {
+      path: '/control-interno',
+      name: '::Menu:ControlInterno',
+      iconClass: 'bi bi-clipboard-check',
+      order: 1.56,
       layout: eLayoutType.application,
       invisible: true,
     },

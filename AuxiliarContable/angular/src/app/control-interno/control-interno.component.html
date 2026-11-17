@@ -1,0 +1,142 @@
+<header class="ci-cabecera">
+  <h1>Control interno</h1>
+  <p class="ci-nota">
+    La evidencia de cada salida de dinero del mes. Una factura sola no prueba que la compra o el servicio ocurrió: hace
+    falta el contrato, el entregable, una foto o el pedido. Lo que no tiene factura necesita al menos un comprobante o
+    una explicación de qué fue.
+  </p>
+  <div class="ci-filtros">
+    @if (clientes(); as lista) {
+      @if (lista.length > 1) {
+        <label class="ci-campo ci-campo-cliente">
+          <span>Cliente</span>
+          <select class="ig-control" [ngModel]="clienteId()" (ngModelChange)="elegir($event)" data-testid="cliente">
+            <option [ngValue]="null" disabled>Elige un cliente…</option>
+            @for (c of lista; track c.id) {
+              <option [ngValue]="c.id">{{ c.nombre }}</option>
+            }
+          </select>
+        </label>
+      }
+    }
+    <label class="ci-campo">
+      <span>Mes</span>
+      <select class="ig-control" [(ngModel)]="mes" (ngModelChange)="cargar()">
+        @for (m of meses; track $index) {
+          <option [ngValue]="$index + 1">{{ m }}</option>
+        }
+      </select>
+    </label>
+    <label class="ci-campo">
+      <span>Año</span>
+      <select class="ig-control" [(ngModel)]="anio" (ngModelChange)="cargar()">
+        @for (a of anios; track a) {
+          <option [ngValue]="a">{{ a }}</option>
+        }
+      </select>
+    </label>
+  </div>
+</header>
+
+@if (error(); as e) {
+  <div class="ig-alerta ig-alerta-error" role="alert">{{ e }}</div>
+}
+
+@if (datos(); as d) {
+  <section class="ci-resumen" aria-label="Resumen">
+    <div><strong>{{ d.faltaMaterialidad }}</strong><span>gastos con factura sin prueba de que ocurrieron</span></div>
+    <div><strong>{{ d.faltaComprobante }}</strong><span>salidas sin comprobante ni explicación</span></div>
+    <div><strong>{{ d.completas }}</strong><span>con evidencia</span></div>
+  </section>
+
+  @if (!d.hayConciliacion) {
+    <p class="ig-alerta ig-alerta-aviso">
+      Este mes no se ha conciliado: aquí solo salen los registros de «Efectivo y crédito». Concilia en «Cierre del mes»
+      para ver los movimientos del banco.
+    </p>
+  }
+  @if (d.cerrado) {
+    <p class="ig-alerta ig-alerta-aviso">{{ meses[d.mes - 1] }} {{ d.anio }} ya está cerrado: no se puede agregar ni quitar evidencia.</p>
+  }
+
+  <div class="ci-opciones">
+    <label><input type="checkbox" [ngModel]="soloLoQueFalta()" (ngModelChange)="soloLoQueFalta.set($event)" /> Solo lo que falta</label>
+    <label><input type="checkbox" [ngModel]="verTodo()" (ngModelChange)="verTodo.set($event)" /> Ver también entradas y traspasos</label>
+  </div>
+
+  @if (visibles().length) {
+    <ol class="ci-operaciones">
+      @for (o of visibles(); track idDe(o)) {
+        <li class="ci-operacion">
+          <header class="ci-operacion-cabecera">
+            <div>
+              <strong>{{ o.descripcion }}</strong>
+              <small>
+                {{ o.fecha }} · {{ o.origen === 0 ? 'Banco' : 'Efectivo y crédito' }}
+                @if (o.contraparte) { · {{ o.contraparte }} }
+                · {{ o.facturas.length ? o.facturas.length + ' factura(s)' : 'sin factura' }}
+              </small>
+            </div>
+            <div class="ci-importe">
+              <strong>{{ o.esSalida ? '−' : '+' }}{{ o.importe | currency: 'MXN' : 'symbol-narrow' }}</strong>
+              <span [class]="'ig-etiqueta ' + estado[o.estado].clase">{{ estado[o.estado].texto }}</span>
+            </div>
+          </header>
+
+          @if (o.explicacion) {
+            <p class="ci-nota">Explicación en la conciliación: {{ o.explicacion }}</p>
+          }
+          @if (o.evidencias.length) {
+            <ul class="ci-evidencias">
+              @for (e of o.evidencias; track $index) {
+                <li>
+                  <span class="ig-etiqueta">{{ nombreDeTipo(e.tipo) }}</span>
+                  @if (e.nombreDelDocumento) { <span><i class="bi bi-paperclip" aria-hidden="true"></i> {{ e.nombreDelDocumento }}</span> }
+                  @if (e.nota) { <span class="ci-texto">«{{ e.nota }}»</span> }
+                  @if (d.puedeAgregar && e.id) {
+                    <button type="button" class="btn btn-link btn-sm ci-peligro" (click)="quitar(e.id)" [disabled]="ocupado()">Quitar</button>
+                  }
+                </li>
+              }
+            </ul>
+          }
+          @if (o.estado === Estado.FaltaMaterialidad) {
+            <p class="ci-nota">Sube el contrato, el entregable, una foto del trabajo o de la mercancía, o el pedido.</p>
+          }
+
+          @if (d.puedeAgregar && o.estado !== Estado.NoAplica) {
+            <button type="button" class="btn btn-outline-secondary btn-sm ci-boton" (click)="abrir(o)">
+              <i class="bi bi-plus-lg" aria-hidden="true"></i> Agregar evidencia
+            </button>
+            @if (abierta() === idDe(o)) {
+              <form class="ci-forma" (ngSubmit)="agregar(o)">
+                <label class="ci-campo"><span>Qué es</span>
+                  <select class="ig-control" name="tipo" [(ngModel)]="tipo">
+                    @for (t of tipos; track t.tipo) {
+                      <option [ngValue]="t.tipo">{{ t.nombre }}</option>
+                    }
+                  </select>
+                </label>
+                <label class="ci-campo"><span>Archivo (opcional)</span>
+                  <input class="ig-control" type="file" accept=".pdf,.png,.jpg,.jpeg,.xml" (change)="elegirArchivo($event)" /></label>
+                <label class="ci-campo"><span>Explicación (opcional)</span>
+                  <textarea class="ig-control" name="nota" [(ngModel)]="nota" rows="2" maxlength="2000"
+                            placeholder="p. ej. Pago al albañil por reparar el horno; no dio factura"></textarea></label>
+                <div class="ci-botones">
+                  <button type="submit" class="btn btn-primary" [disabled]="ocupado() || (!archivo && !nota.trim())">
+                    @if (ocupado()) { <span class="ig-girando" aria-hidden="true"></span> } Agregar
+                  </button>
+                  <button type="button" class="btn btn-link" (click)="abierta.set(null)">Cancelar</button>
+                </div>
+              </form>
+            }
+          }
+        </li>
+      }
+    </ol>
+  } @else {
+    <p class="ci-nota">{{ soloLoQueFalta() ? 'No falta nada: cada salida de dinero tiene su evidencia.' : 'No hay operaciones este mes.' }}</p>
+  }
+} @else if (!error() && clienteId()) {
+  <p class="ci-nota">Cargando…</p>
+}

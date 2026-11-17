@@ -23,6 +23,7 @@ public class CierreAppService : AuxiliarContableAppService, ICierreAppService
     private readonly IRepository<ConciliacionBancaria, Guid> _conciliaciones;
     private readonly IRepository<PartidaPendiente, Guid> _partidas;
     private readonly IRepository<MovimientoFueraDelBanco, Guid> _fueraDelBanco;
+    private readonly ArmadorDeExpedientes _expedientes;
     private readonly Autorizador _autorizador;
 
     public CierreAppService(
@@ -31,8 +32,10 @@ public class CierreAppService : AuxiliarContableAppService, ICierreAppService
         IRepository<ConciliacionBancaria, Guid> conciliaciones,
         IRepository<PartidaPendiente, Guid> partidas,
         IRepository<MovimientoFueraDelBanco, Guid> fueraDelBanco,
+        ArmadorDeExpedientes expedientes,
         Autorizador autorizador)
     {
+        _expedientes = expedientes;
         _fueraDelBanco = fueraDelBanco;
         _documentos = documentos;
         _periodos = periodos;
@@ -214,6 +217,21 @@ public class CierreAppService : AuxiliarContableAppService, ICierreAppService
                   $"salidas {Pesos(fuera, TipoDeMovimientoFueraDelBanco.SalidaEnEfectivo)}, compras a crédito {Pesos(fuera, TipoDeMovimientoFueraDelBanco.CompraACredito)}.",
             Hecho = fuera.Count > 0,
         });
+
+        // Control interno: tampoco bloquea, pero es lo que sostiene las deducciones si el SAT revisa.
+        var (operaciones, _) = await _expedientes.ArmarAsync(organizacionId, anio, mes);
+        var sinMaterialidad = operaciones.Count(o => o.Estado == EstadoDeEvidencia.FaltaMaterialidad);
+        var sinComprobante = operaciones.Count(o => o.Estado == EstadoDeEvidencia.FaltaComprobante);
+        if (operaciones.Any(o => o.Estado != EstadoDeEvidencia.NoAplica))
+        {
+            revision.Add(new RenglonDelCierreDto
+            {
+                Texto = sinMaterialidad + sinComprobante == 0
+                    ? "Control interno: cada salida de dinero tiene su evidencia."
+                    : $"Control interno: {sinMaterialidad} gasto(s) con factura sin evidencia de que ocurrieron y {sinComprobante} salida(s) sin comprobante (ver «Control interno»).",
+                Hecho = sinMaterialidad + sinComprobante == 0,
+            });
+        }
 
         return new CierreDelMesDto
         {
