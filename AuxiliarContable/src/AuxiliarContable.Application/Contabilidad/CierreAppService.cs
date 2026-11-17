@@ -22,6 +22,7 @@ public class CierreAppService : AuxiliarContableAppService, ICierreAppService
     private readonly IRepository<PeriodoContable, Guid> _periodos;
     private readonly IRepository<ConciliacionBancaria, Guid> _conciliaciones;
     private readonly IRepository<PartidaPendiente, Guid> _partidas;
+    private readonly IRepository<MovimientoFueraDelBanco, Guid> _fueraDelBanco;
     private readonly Autorizador _autorizador;
 
     public CierreAppService(
@@ -29,8 +30,10 @@ public class CierreAppService : AuxiliarContableAppService, ICierreAppService
         IRepository<PeriodoContable, Guid> periodos,
         IRepository<ConciliacionBancaria, Guid> conciliaciones,
         IRepository<PartidaPendiente, Guid> partidas,
+        IRepository<MovimientoFueraDelBanco, Guid> fueraDelBanco,
         Autorizador autorizador)
     {
+        _fueraDelBanco = fueraDelBanco;
         _documentos = documentos;
         _periodos = periodos;
         _conciliaciones = conciliaciones;
@@ -150,6 +153,9 @@ public class CierreAppService : AuxiliarContableAppService, ICierreAppService
         var periodo = await _periodos.FirstOrDefaultAsync(p => p.OrganizacionId == organizacionId && p.Anio == anio && p.Mes == mes);
         var conciliacion = await _conciliaciones.FirstOrDefaultAsync(c => c.OrganizacionId == organizacionId && c.Anio == anio && c.Mes == mes);
         var partidas = await _partidas.GetListAsync(p => p.OrganizacionId == organizacionId && p.Anio == anio && p.Mes == mes);
+        var inicioDelMes = new DateTime(anio, mes, 1);
+        var finDelMes = inicioDelMes.AddMonths(1);
+        var fuera = await _fueraDelBanco.GetListAsync(m => m.OrganizacionId == organizacionId && m.Fecha >= inicioDelMes && m.Fecha < finDelMes);
 
         var estados = delMes.Count(d => d.Tipo == TipoDeDocumento.EstadoDeCuenta);
         var facturas = delMes.Count(d => d.Tipo == TipoDeDocumento.Cfdi);
@@ -198,6 +204,16 @@ public class CierreAppService : AuxiliarContableAppService, ICierreAppService
                 });
             }
         }
+
+        // Efectivo y crédito: no bloquea (hay negocios sin efectivo), pero el mes no está completo sin ello.
+        revision.Add(new RenglonDelCierreDto
+        {
+            Texto = fuera.Count == 0
+                ? "Sin efectivo ni compras o ventas a crédito registradas este mes (si las hubo, van en «Efectivo y crédito»)."
+                : $"Efectivo y crédito del mes: {fuera.Count} registro(s); entradas en efectivo {Pesos(fuera, TipoDeMovimientoFueraDelBanco.EntradaEnEfectivo)}, " +
+                  $"salidas {Pesos(fuera, TipoDeMovimientoFueraDelBanco.SalidaEnEfectivo)}, compras a crédito {Pesos(fuera, TipoDeMovimientoFueraDelBanco.CompraACredito)}.",
+            Hecho = fuera.Count > 0,
+        });
 
         return new CierreDelMesDto
         {
@@ -265,4 +281,7 @@ public class CierreAppService : AuxiliarContableAppService, ICierreAppService
         RespondidaUtc = p.RespondidaUtc,
         Pendiente = p.Pendiente,
     };
+
+    private static string Pesos(IEnumerable<MovimientoFueraDelBanco> lista, TipoDeMovimientoFueraDelBanco tipo) =>
+        lista.Where(m => m.Tipo == tipo).Sum(m => m.Importe).ToString("C2", System.Globalization.CultureInfo.GetCultureInfo("es-MX"));
 }

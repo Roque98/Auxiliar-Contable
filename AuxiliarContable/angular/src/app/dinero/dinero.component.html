@@ -1,0 +1,158 @@
+<header class="dn-cabecera">
+  <h1>Efectivo y crédito</h1>
+  <p class="dn-nota">
+    Lo que no se ve en el estado de cuenta: ventas y gastos en efectivo, el corte de caja del día, y lo que se compró o
+    vendió sin pagar todavía. Así el mes queda completo.
+  </p>
+  <div class="dn-filtros">
+    @if (clientes(); as lista) {
+      @if (lista.length > 1) {
+        <label class="dn-campo dn-campo-cliente">
+          <span>Cliente</span>
+          <select class="ig-control" [ngModel]="clienteId()" (ngModelChange)="elegir($event)" data-testid="cliente">
+            <option [ngValue]="null" disabled>Elige un cliente…</option>
+            @for (c of lista; track c.id) {
+              <option [ngValue]="c.id">{{ c.nombre }}</option>
+            }
+          </select>
+        </label>
+      }
+    }
+    <label class="dn-campo">
+      <span>Mes</span>
+      <select class="ig-control" [(ngModel)]="mes" (ngModelChange)="cargar()">
+        @for (m of meses; track $index) {
+          <option [ngValue]="$index + 1">{{ m }}</option>
+        }
+      </select>
+    </label>
+    <label class="dn-campo">
+      <span>Año</span>
+      <select class="ig-control" [(ngModel)]="anio" (ngModelChange)="cargar()">
+        @for (a of anios; track a) {
+          <option [ngValue]="a">{{ a }}</option>
+        }
+      </select>
+    </label>
+  </div>
+</header>
+
+@if (error(); as e) {
+  <div class="ig-alerta ig-alerta-error" role="alert">{{ e }}</div>
+}
+
+@if (datos(); as d) {
+  <section class="dn-totales" aria-label="Totales del mes">
+    <div><span>Entró en efectivo</span><strong>{{ d.entradasEnEfectivo | currency: 'MXN' : 'symbol-narrow' }}</strong></div>
+    <div><span>Salió en efectivo</span><strong>{{ d.salidasEnEfectivo | currency: 'MXN' : 'symbol-narrow' }}</strong></div>
+    <div><span>Por pagar</span><strong>{{ d.porPagar | currency: 'MXN' : 'symbol-narrow' }}</strong></div>
+    <div><span>Por cobrar</span><strong>{{ d.porCobrar | currency: 'MXN' : 'symbol-narrow' }}</strong></div>
+  </section>
+
+  @if (d.cerrado) {
+    <p class="ig-alerta ig-alerta-aviso">{{ meses[d.mes - 1] }} {{ d.anio }} ya está cerrado: no se puede agregar ni cambiar nada.</p>
+  }
+
+  @if (d.puedeEditar) {
+    <div class="dn-agregar" role="group" aria-label="Agregar">
+      @for (t of tipos; track t.tipo) {
+        <button type="button" class="btn btn-outline-secondary" (click)="nuevo(t.tipo)" [title]="t.ayuda">
+          <i class="bi bi-plus-lg" aria-hidden="true"></i> {{ t.nombre }}
+        </button>
+      }
+    </div>
+  }
+
+  @if (editando()) {
+    <form class="dn-forma" (ngSubmit)="guardar()" data-testid="forma">
+      <h2>{{ editando() === 'nuevo' ? 'Nuevo: ' : 'Cambiar: ' }}{{ nombreDe(forma.tipo) }}</h2>
+      <p class="dn-nota">{{ tipos[forma.tipo].ayuda }}</p>
+      <div class="dn-renglon">
+        <label class="dn-campo"><span>Fecha</span>
+          <input class="ig-control" type="date" name="fecha" [(ngModel)]="forma.fecha" required /></label>
+        <label class="dn-campo"><span>Importe</span>
+          <input class="ig-control" type="number" name="importe" [(ngModel)]="forma.importe" min="0.01" step="0.01" inputmode="decimal" required /></label>
+      </div>
+      <label class="dn-campo"><span>Concepto</span>
+        <input class="ig-control" name="concepto" [(ngModel)]="forma.concepto" maxlength="256"
+               [placeholder]="forma.tipo === Tipo.EntradaEnEfectivo ? 'p. ej. Corte de caja del día' : 'p. ej. Harina, 40 bultos'" required /></label>
+      <label class="dn-campo"><span>{{ forma.tipo === Tipo.VentaACredito ? 'Cliente' : forma.tipo === Tipo.EntradaEnEfectivo ? 'De quién (opcional)' : 'Proveedor o a quién (opcional)' }}</span>
+        <input class="ig-control" name="contraparte" [(ngModel)]="forma.contraparte" maxlength="128" /></label>
+      @if (esCredito(forma.tipo)) {
+        <label class="dn-campo"><span>Vence (opcional)</span>
+          <input class="ig-control" type="date" name="vence" [(ngModel)]="forma.vence" /></label>
+      }
+      <label class="dn-campo"><span>Comprobante: ticket, foto o factura (opcional)</span>
+        <input class="ig-control" type="file" accept=".pdf,.png,.jpg,.jpeg,.xml" (change)="elegirComprobante($event)" /></label>
+      <label class="dn-campo"><span>Nota (opcional)</span>
+        <input class="ig-control" name="nota" [(ngModel)]="forma.nota" maxlength="512" /></label>
+      <div class="dn-botones">
+        <button type="submit" class="btn btn-primary" [disabled]="ocupado() || !(forma.importe > 0) || !forma.concepto.trim() || !forma.fecha">
+          @if (ocupado()) { <span class="ig-girando" aria-hidden="true"></span> } Guardar
+        </button>
+        <button type="button" class="btn btn-link" (click)="editando.set(null)">Cancelar</button>
+      </div>
+    </form>
+  }
+
+  @if (pendientesDeAntes().length) {
+    <section aria-labelledby="dn-antes">
+      <h2 id="dn-antes">A crédito de meses anteriores, sin pagar</h2>
+      <ul class="dn-lista">
+        @for (m of pendientesDeAntes(); track m.id) {
+          <ng-container *ngTemplateOutlet="renglon; context: { $implicit: m }" />
+        }
+      </ul>
+    </section>
+  }
+
+  <section aria-labelledby="dn-mes">
+    <h2 id="dn-mes">{{ meses[d.mes - 1] }} {{ d.anio }}</h2>
+    @if (delMes().length) {
+      <ul class="dn-lista">
+        @for (m of delMes(); track m.id) {
+          <ng-container *ngTemplateOutlet="renglon; context: { $implicit: m }" />
+        }
+      </ul>
+    } @else {
+      <p class="dn-nota">Nada registrado este mes.</p>
+    }
+  </section>
+
+  <ng-template #renglon let-m>
+    <li class="dn-movimiento" [class.dn-vencido]="m.vencido">
+      <div class="dn-movimiento-cabecera">
+        <span class="ig-etiqueta" [class.ig-etiqueta-exito]="m.tipo === Tipo.EntradaEnEfectivo" [class.ig-etiqueta-alerta]="m.pendiente">{{ nombreDe(m.tipo) }}</span>
+        <strong>{{ m.importe | currency: 'MXN' : 'symbol-narrow' }}</strong>
+      </div>
+      <p class="dn-concepto">{{ m.concepto }}@if (m.contraparte) { · {{ m.contraparte }} }</p>
+      <p class="dn-nota">
+        {{ m.fecha | date: 'd MMM yyyy' }}
+        @if (esCredito(m.tipo)) {
+          @if (m.saldado) { · pagado el {{ m.saldado | date: 'd MMM yyyy' }} }
+          @else if (m.vence) { · {{ m.vencido ? 'venció' : 'vence' }} el {{ m.vence | date: 'd MMM yyyy' }} }
+          @else { · sin pagar }
+        }
+        @if (m.nombreDelDocumento) { · <i class="bi bi-paperclip" aria-hidden="true"></i> {{ m.nombreDelDocumento }} }
+      </p>
+      @if (m.nota) {
+        <p class="dn-nota">{{ m.nota }}</p>
+      }
+      @if (datos()?.puedeEditar) {
+        <div class="dn-botones">
+          @if (esCredito(m.tipo)) {
+            <button type="button" class="btn btn-outline-secondary btn-sm" (click)="saldar(m)" [disabled]="ocupado()">
+              {{ m.saldado ? 'Regresar a pendiente' : m.tipo === Tipo.CompraACredito ? 'Ya se pagó' : 'Ya se cobró' }}
+            </button>
+          }
+          @if (!m.deOtroMes) {
+            <button type="button" class="btn btn-link btn-sm" (click)="editar(m)">Cambiar</button>
+            <button type="button" class="btn btn-link btn-sm dn-peligro" (click)="borrar(m)" [disabled]="ocupado()">Borrar</button>
+          }
+        </div>
+      }
+    </li>
+  </ng-template>
+} @else if (!error() && clienteId()) {
+  <p class="dn-nota">Cargando…</p>
+}

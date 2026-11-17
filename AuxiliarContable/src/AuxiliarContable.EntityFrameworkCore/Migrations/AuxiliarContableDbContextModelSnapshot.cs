@@ -150,6 +150,81 @@ namespace AuxiliarContable.Migrations
                     b.ToTable("AppConciliacionesBancarias", (string)null);
                 });
 
+            modelBuilder.Entity("AuxiliarContable.Contabilidad.MovimientoFueraDelBanco", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Concepto")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<string>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("ConcurrencyStamp");
+
+                    b.Property<string>("Contraparte")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<DateTime>("CreationTime")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("CreationTime");
+
+                    b.Property<Guid?>("CreatorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("CreatorId");
+
+                    b.Property<Guid?>("DocumentoId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ExtraProperties")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("ExtraProperties");
+
+                    b.Property<DateTime>("Fecha")
+                        .HasColumnType("date");
+
+                    b.Property<decimal>("Importe")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTime?>("LastModificationTime")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("LastModificationTime");
+
+                    b.Property<Guid?>("LastModifierId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("LastModifierId");
+
+                    b.Property<string>("Nota")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.Property<Guid>("OrganizacionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("Saldado")
+                        .HasColumnType("date");
+
+                    b.Property<int>("Tipo")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("Vence")
+                        .HasColumnType("date");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrganizacionId", "Fecha");
+
+                    b.ToTable("AppMovimientosFueraDelBanco", (string)null);
+                });
+
             modelBuilder.Entity("AuxiliarContable.Contabilidad.PartidaPendiente", b =>
                 {
                     b.Property<Guid>("Id")

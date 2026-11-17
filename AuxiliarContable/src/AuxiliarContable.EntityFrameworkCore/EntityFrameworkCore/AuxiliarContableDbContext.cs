@@ -64,6 +64,8 @@ public class AuxiliarContableDbContext :
 
     public DbSet<Contabilidad.PartidaPendiente> PartidasPendientes { get; set; }
 
+    public DbSet<Contabilidad.MovimientoFueraDelBanco> MovimientosFueraDelBanco { get; set; }
+
     public DbSet<Credenciales.CredencialesDelCliente> CredencialesDeClientes { get; set; }
 
     public DbSet<Credenciales.NipDeUsuario> NipsDeUsuarios { get; set; }
@@ -303,6 +305,21 @@ public class AuxiliarContableDbContext :
             b.Property(x => x.Nota).HasMaxLength(Contabilidad.ContabilidadConsts.MaxNotaLength);
             b.Property(x => x.Respuesta).HasMaxLength(Contabilidad.ContabilidadConsts.MaxRespuestaLength);
             b.HasIndex(x => new { x.OrganizacionId, x.Anio, x.Mes, x.Clave }).IsUnique();
+        });
+
+        // Dinero que no pasa por el banco: efectivo (y cortes de caja) y lo comprado o vendido a credito.
+        builder.Entity<Contabilidad.MovimientoFueraDelBanco>(b =>
+        {
+            b.ToTable(AuxiliarContableConsts.DbTablePrefix + "MovimientosFueraDelBanco", AuxiliarContableConsts.DbSchema);
+            b.ConfigureByConvention();
+            b.Property(x => x.Fecha).HasColumnType("date");
+            b.Property(x => x.Vence).HasColumnType("date");
+            b.Property(x => x.Saldado).HasColumnType("date");
+            b.Property(x => x.Importe).HasPrecision(18, 2);
+            b.Property(x => x.Concepto).IsRequired().HasMaxLength(Contabilidad.DineroFueraDelBancoConsts.MaxConceptoLength);
+            b.Property(x => x.Contraparte).HasMaxLength(Contabilidad.DineroFueraDelBancoConsts.MaxContraparteLength);
+            b.Property(x => x.Nota).HasMaxLength(Contabilidad.DineroFueraDelBancoConsts.MaxNotaLength);
+            b.HasIndex(x => new { x.OrganizacionId, x.Fecha });
         });
 
         // Credenciales del cliente (e.firma y CIEC): lo secreto va cifrado con su propia llave
