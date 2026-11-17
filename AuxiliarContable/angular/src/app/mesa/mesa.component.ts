@@ -70,6 +70,11 @@ export class MesaComponent implements OnInit {
   readonly generando = signal(false);
   readonly polizaAbierta = signal<string | null>(null);
   readonly verBalanza = signal(false);
+  readonly verCierre = signal(false);
+  /** Lo que se captura para el costo de ventas del mes. */
+  inventarioInicial: number | null = null;
+  inventarioFinal: number | null = null;
+  costoVendido: number | null = null;
   /** La revisión por operación, lo que detiene primero. */
   readonly revision = computed(() => {
     const r = this.polizas()?.resultado.revision ?? [];
@@ -148,7 +153,7 @@ export class MesaComponent implements OnInit {
       next: m => this.mesa.set(m),
       error: e => this.error.set(mensajeDeError(e, 'No se pudo cargar la mesa de trabajo.')),
     });
-    this.api.polizas(id, this.anio, this.mes).subscribe({ next: p => this.polizas.set(p), error: () => this.polizas.set(null) });
+    this.api.polizas(id, this.anio, this.mes).subscribe({ next: p => this.ponerPolizas(p), error: () => this.ponerPolizas(null) });
   }
 
   generarPolizas(): void {
@@ -158,9 +163,10 @@ export class MesaComponent implements OnInit {
     }
     this.generando.set(true);
     this.error.set(null);
-    this.api.generarPolizas(id, this.anio, this.mes).subscribe({
+    const cierre = { inventarioInicial: this.inventarioInicial, inventarioFinal: this.inventarioFinal, costoVendido: this.costoVendido };
+    this.api.generarPolizas(id, this.anio, this.mes, cierre).subscribe({
       next: p => {
-        this.polizas.set(p);
+        this.ponerPolizas(p);
         this.generando.set(false);
       },
       error: e => {
@@ -168,6 +174,13 @@ export class MesaComponent implements OnInit {
         this.error.set(mensajeDeError(e, 'No se pudieron generar las pólizas.'));
       },
     });
+  }
+
+  private ponerPolizas(p: PolizasDelMesDto | null): void {
+    this.polizas.set(p);
+    this.inventarioInicial = p?.cierre?.inventarioInicial ?? p?.inventarioInicialSugerido ?? null;
+    this.inventarioFinal = p?.cierre?.inventarioFinal ?? null;
+    this.costoVendido = p?.cierre?.costoVendido ?? null;
   }
 
   /** «Sí, está bien»: se acepta lo que detenía la operación y se vuelve a generar. */

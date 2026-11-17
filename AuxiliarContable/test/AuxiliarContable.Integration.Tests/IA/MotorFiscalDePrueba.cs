@@ -62,6 +62,10 @@ public class MotorFiscalDePrueba : IMotorFiscal
 
     public IReadOnlyList<OperacionParaContabilizar> Contabilizadas { get; private set; } = [];
 
+    public string? PeriodoRecibido { get; private set; }
+
+    public DatosDeCierre? CierreRecibido { get; private set; }
+
     public void Reiniciar()
     {
         Analisis.Clear();
@@ -185,7 +189,7 @@ public class MotorFiscalDePrueba : IMotorFiscal
 
     public Task<ResultadoContable> ContabilizarAsync(
         PerfilParaContabilizar perfil, IReadOnlyList<OperacionParaContabilizar> operaciones, IReadOnlyList<ArchivoParaElMotor> facturas,
-        CancellationToken cancellationToken = default)
+        string periodo, DatosDeCierre? cierre, CancellationToken cancellationToken = default)
     {
         if (Caido)
         {
@@ -193,6 +197,8 @@ public class MotorFiscalDePrueba : IMotorFiscal
         }
 
         Contabilizadas = operaciones;
+        PeriodoRecibido = periodo;
+        CierreRecibido = cierre;
         return Task.FromResult(Contabilidad?.Invoke(perfil, operaciones, facturas) ?? new ResultadoContable());
     }
 

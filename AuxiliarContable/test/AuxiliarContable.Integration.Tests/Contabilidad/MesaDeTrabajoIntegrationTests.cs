@@ -195,10 +195,10 @@ public class MesaDeTrabajoIntegrationTests : ConJerarquiaTestBase
         };
 
         // El cliente no genera pólizas.
-        await Should.ThrowAsync<AbpAuthorizationException>(() => ComoAsync(Usuario, () => _mesa.GenerarPolizasAsync(_cliente, Dia.Year, Dia.Month)));
+        await Should.ThrowAsync<AbpAuthorizationException>(() => ComoAsync(Usuario, () => _mesa.GenerarPolizasAsync(_cliente, Dia.Year, Dia.Month, new DatosDeCierre())));
         (await ComoAsync(Administrador, () => _mesa.GetPolizasAsync(_cliente, Dia.Year, Dia.Month))).ShouldBeNull();
 
-        var r = await ComoAsync(Administrador, () => _mesa.GenerarPolizasAsync(_cliente, Dia.Year, Dia.Month));
+        var r = await ComoAsync(Administrador, () => _mesa.GenerarPolizasAsync(_cliente, Dia.Year, Dia.Month, new DatosDeCierre()));
         r.Detenidas.ShouldBe(1);
         r.Resultado.Polizas.ShouldHaveSingleItem().Movimientos[0].Cuenta.ShouldBe("115.03");
         var mandada = _motor.Contabilizadas.ShouldHaveSingleItem();
@@ -207,9 +207,49 @@ public class MesaDeTrabajoIntegrationTests : ConJerarquiaTestBase
         mandada.Sentido.ShouldBe("salida");
 
         await ComoAsync(Administrador, () => _mesa.AceptarRevisionAsync(_cliente, op.Id, "ajeno_al_giro"));
-        var otra = await ComoAsync(Administrador, () => _mesa.GenerarPolizasAsync(_cliente, Dia.Year, Dia.Month));
+        var otra = await ComoAsync(Administrador, () => _mesa.GenerarPolizasAsync(_cliente, Dia.Year, Dia.Month, new DatosDeCierre()));
         _motor.Contabilizadas[0].Aceptados.ShouldBe(["AJENO_AL_GIRO"]);
         otra.Detenidas.ShouldBe(0);
         (await ComoAsync(Administrador, () => _mesa.GetPolizasAsync(_cliente, Dia.Year, Dia.Month)))!.Resultado.Polizas.Count.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task El_pago_de_una_compra_del_mes_anterior_entra_y_el_inventario_pasa_al_mes_siguiente()
+    {
+        var antes = Dia.AddMonths(-1);
+        await ComoAsync(Administrador, () => GetRequiredService<IPerfilFiscalAppService>().ResponderAsync(_cliente,
+            new ResponderDatoDelPerfilDto { Campo = CamposDelPerfil.TipoDeEmpresa, Valor = "comercial" }));
+        // Una compra a crédito del mes anterior que se paga por el banco en este.
+        await ComoAsync(Usuario, () => _operaciones.CrearAsync(_cliente, new GuardarOperacionDto
+        {
+            Fecha = antes.AddDays(20), Sentido = SentidoDeOperacion.Salida, Importe = 480m, Descripcion = "Clavos",
+            ControlInterno = new GuardarPataDto { Estado = EstadoDePata.NoHay, Motivo = "No tengo comprobante interno" },
+        }));
+        await SubirAsync("banorte.pdf", TipoDeDocumento.EstadoDeCuenta, "%PDF-1.4 estado");
+        _motor.Conciliacion = new ResultadoDeConciliacion
+        {
+            Cuentas = [new CuentaLeida { Banco = "BANORTE", Cuenta = "0123", Cuadra = true }],
+            Movimientos =
+            [
+                new MovimientoLeido { Fecha = Dia.AddDays(3).ToString("dd/MM/yyyy"), Concepto = "PAGO FERRETERIA", Naturaleza = "cargo", Importe = 480m,
+                    Cuenta = "0123", Conciliacion = new ConciliacionDeMovimiento { Estado = "sin_factura" } },
+            ],
+        };
+        await ComoAsync(Administrador, () => GetRequiredService<IBancosAppService>().ConciliarAsync(_cliente, Dia.Year, Dia.Month));
+        (await ComoAsync(Administrador, () => _mesa.AmarrarBancoAsync(_cliente, Dia.Year, Dia.Month))).PorRegla.ShouldBe(1);
+
+        // El mes anterior se cierra con inventario final de 4,500.
+        await ComoAsync(Administrador, () => _mesa.GenerarPolizasAsync(_cliente, antes.Year, antes.Month,
+            new DatosDeCierre { InventarioInicial = 5000m, InventarioFinal = 4500m }));
+        _motor.PeriodoRecibido.ShouldBe($"{antes:yyyy-MM}");
+        _motor.CierreRecibido!.InventarioFinal.ShouldBe(4500m);
+
+        var r = await ComoAsync(Administrador, () => _mesa.GenerarPolizasAsync(_cliente, Dia.Year, Dia.Month, new DatosDeCierre()));
+        var clavos = _motor.Contabilizadas.ShouldHaveSingleItem();
+        clavos.Descripcion.ShouldBe("Clavos");
+        clavos.Fecha.ShouldBe(antes.AddDays(20).ToString("yyyy-MM-dd"));
+        clavos.Transaccion.Importe.ShouldBe(480m);
+        clavos.Transaccion.Fecha.ShouldBe(Dia.AddDays(3).ToString("yyyy-MM-dd"));
+        r.InventarioInicialSugerido.ShouldBe(4500m);
     }
 }

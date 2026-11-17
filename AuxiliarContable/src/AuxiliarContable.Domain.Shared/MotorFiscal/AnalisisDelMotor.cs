@@ -194,3 +194,16 @@ public class CuentaDeBalanza
     public decimal Debe { get; set; }
     public decimal Haber { get; set; }
 }
+
+/// <summary>Lo que el cierre del mes necesita para el costo de ventas (motor: inventario_inicial, inventario_final, costo_vendido).</summary>
+public class DatosDeCierre
+{
+    /// <summary>Inventario al iniciar el mes (el final del mes anterior).</summary>
+    public decimal? InventarioInicial { get; set; }
+
+    /// <summary>Inventario analítico: el que quedó al terminar el mes (conteo físico valuado).</summary>
+    public decimal? InventarioFinal { get; set; }
+
+    /// <summary>Inventario perpetuo: el costo de lo vendido según el almacén.</summary>
+    public decimal? CostoVendido { get; set; }
+}
