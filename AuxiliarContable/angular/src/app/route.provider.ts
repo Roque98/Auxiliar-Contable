@@ -67,6 +67,7 @@ function configureRoutes() {
     routes.patch('::Menu:Credenciales', { invisible: anonimo });
     routes.patch('::Menu:Dinero', { invisible: anonimo });
     routes.patch('::Menu:ControlInterno', { invisible: anonimo });
+    routes.patch('::Menu:Facturar', { invisible: anonimo });
     // El chat solo si está encendido en el servidor (sin API de Claude se trabaja por pantallas).
     const chat = String(config.getSetting(AJUSTE_DEL_CHAT)).toLowerCase() === 'true';
     routes.patch('::Menu:Asistente', { invisible: anonimo || !chat });
@@ -122,6 +123,16 @@ function configureRoutes() {
       name: '::Menu:Leyes',
       iconClass: 'bi bi-journal-text',
       order: 1.85,
+      layout: eLayoutType.application,
+      invisible: true,
+    },
+
+    // Pedir factura: el cliente pide y el despacho timbra (o rechaza). Para todos con sesión (patch de arriba).
+    {
+      path: '/facturar',
+      name: '::Menu:Facturar',
+      iconClass: 'bi bi-receipt',
+      order: 1.57,
       layout: eLayoutType.application,
       invisible: true,
     },

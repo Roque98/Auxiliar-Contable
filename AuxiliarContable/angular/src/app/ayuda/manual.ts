@@ -256,6 +256,19 @@ export const SECCIONES: Seccion[] = [
         nota: 'Lo que no pasa por el banco también es ingreso, gasto o deuda: sin esto el mes queda incompleto. Un mes cerrado ya no se puede cambiar.',
       },
       {
+        titulo: 'Pedir factura',
+        icono: 'bi-receipt',
+        ruta: '/facturar',
+        pasos: [
+          'Abre «Pedir factura» y pulsa «Pedir una factura».',
+          'A quién: elige uno de antes o sube su Constancia de Situación Fiscal para llenar RFC, nombre, código postal y régimen exactos.',
+          'Uso del CFDI y método de pago (PUE si ya te pagaron, PPD si te pagan después: lleva complemento de pago).',
+          'Los conceptos con su clave del SAT, cantidad, unidad, precio e IVA. Recomendación: precio más IVA; si tu precio ya trae el IVA, marca la casilla.',
+          'El despacho la timbra y en la solicitud aparecen el XML y el PDF (también en Documentos); si no se puede, te dice por qué.',
+        ],
+        nota: 'Por ahora el despacho timbra en su sistema; la emisión automática se conecta cuando se acuerde el plan de facturación.',
+      },
+      {
         titulo: 'Control interno',
         icono: 'bi-clipboard-check',
         ruta: '/control-interno',

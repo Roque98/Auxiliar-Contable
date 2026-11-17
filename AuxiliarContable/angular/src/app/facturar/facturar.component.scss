@@ -1,0 +1,96 @@
+/* Mobile first: el formulario se apila; desde tablet los campos de un renglón van lado a lado. */
+:host { display: flex; flex-direction: column; gap: var(--ig-esp-4); max-width: 920px; }
+
+h1 { font-size: var(--ig-titulo-2); font-weight: var(--ig-peso-semi); margin: 0; }
+h2 { font-size: var(--ig-texto-lg); font-weight: var(--ig-peso-semi); margin: 0; display: flex; align-items: center; gap: var(--ig-esp-2); }
+
+.fc-cabecera { display: flex; flex-direction: column; gap: var(--ig-esp-2); }
+.fc-nota { margin: 0; font-size: var(--ig-texto-sm); color: var(--ig-texto-secundario); overflow-wrap: anywhere; }
+.fc-respuesta { margin: 0; font-size: var(--ig-texto-sm); overflow-wrap: anywhere; }
+.fc-sugerencia {
+  margin: 0;
+  font-size: var(--ig-texto-sm);
+  padding: var(--ig-esp-2) var(--ig-esp-3);
+  border: var(--ig-borde);
+  border-radius: var(--ig-radio);
+}
+
+.fc-tarjeta {
+  background: var(--ig-blanco);
+  border: var(--ig-borde);
+  border-radius: var(--ig-radio-lg);
+  box-shadow: var(--ig-sombra-sutil);
+  padding: var(--ig-esp-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--ig-esp-2);
+  min-width: 0;
+}
+
+.fc-forma { display: flex; flex-direction: column; gap: var(--ig-esp-3); }
+.fc-renglon { display: flex; flex-wrap: wrap; gap: var(--ig-esp-3); }
+
+.fc-campo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ig-esp-1);
+  min-width: 0;
+  flex: 1 1 9rem;
+  span { font-size: var(--ig-texto-sm); font-weight: var(--ig-peso-semi); }
+  .ig-control { min-height: 44px; }
+}
+
+.fc-ancho { flex-basis: 18rem; }
+.fc-campo-cliente { max-width: 24rem; }
+.fc-casilla { display: inline-flex; align-items: center; gap: var(--ig-esp-2); min-height: 44px; font-size: var(--ig-texto-sm); }
+
+.fc-concepto {
+  border: var(--ig-borde);
+  border-radius: var(--ig-radio);
+  padding: var(--ig-esp-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--ig-esp-2);
+  min-width: 0;
+  legend { font-size: var(--ig-texto-sm); font-weight: var(--ig-peso-semi); padding: 0 var(--ig-esp-1); width: auto; float: none; margin: 0; }
+}
+
+.fc-totales {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--ig-esp-1);
+  div { display: flex; gap: var(--ig-esp-3); }
+  dt { color: var(--ig-texto-secundario); }
+  dd { margin: 0; min-width: 8rem; text-align: right; }
+}
+
+.fc-boton, .fc-botones .btn { min-height: 44px; display: inline-flex; align-items: center; gap: var(--ig-esp-1); }
+.fc-boton { align-self: flex-start; }
+.fc-botones { display: flex; flex-wrap: wrap; gap: var(--ig-esp-2); }
+.fc-izquierda { align-self: flex-start; }
+.fc-peligro { color: var(--ig-error-texto); }
+
+.fc-lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--ig-esp-3); }
+.fc-solicitud-cabecera {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--ig-esp-2);
+  > div { display: flex; flex-direction: column; min-width: 0; overflow-wrap: anywhere; }
+  small { color: var(--ig-texto-secundario); }
+}
+.fc-derecha { align-items: flex-end; gap: var(--ig-esp-1); }
+
+.fc-cola {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ig-esp-1);
+  font-size: var(--ig-texto-sm);
+  li { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ig-esp-2); }
+  .btn { min-height: 44px; padding-left: 0; }
+}

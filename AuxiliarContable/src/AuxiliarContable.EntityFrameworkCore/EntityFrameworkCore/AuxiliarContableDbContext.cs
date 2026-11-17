@@ -68,6 +68,8 @@ public class AuxiliarContableDbContext :
 
     public DbSet<Contabilidad.EvidenciaDeOperacion> EvidenciasDeOperaciones { get; set; }
 
+    public DbSet<Facturacion.SolicitudDeFactura> SolicitudesDeFactura { get; set; }
+
     public DbSet<Credenciales.CredencialesDelCliente> CredencialesDeClientes { get; set; }
 
     public DbSet<Credenciales.NipDeUsuario> NipsDeUsuarios { get; set; }
@@ -332,6 +334,28 @@ public class AuxiliarContableDbContext :
             b.Property(x => x.Clave).HasMaxLength(Contabilidad.ContabilidadConsts.ClaveLength);
             b.Property(x => x.Nota).HasMaxLength(Contabilidad.ControlInternoConsts.MaxNotaLength);
             b.HasIndex(x => new { x.OrganizacionId, x.Anio, x.Mes });
+        });
+
+        // Solicitudes de factura: lo que el cliente pide que se le timbre; conceptos en JSON (texto).
+        builder.Entity<Facturacion.SolicitudDeFactura>(b =>
+        {
+            b.ToTable(AuxiliarContableConsts.DbTablePrefix + "SolicitudesDeFactura", AuxiliarContableConsts.DbSchema);
+            b.ConfigureByConvention();
+            b.Property(x => x.ReceptorRfc).IsRequired().HasMaxLength(Facturacion.FacturacionConsts.RfcLength);
+            b.Property(x => x.ReceptorNombre).IsRequired().HasMaxLength(Facturacion.FacturacionConsts.MaxNombreLength);
+            b.Property(x => x.ReceptorCodigoPostal).IsRequired().HasMaxLength(Facturacion.FacturacionConsts.CodigoPostalLength);
+            b.Property(x => x.ReceptorRegimen).IsRequired().HasMaxLength(Facturacion.FacturacionConsts.ClaveCortaLength);
+            b.Property(x => x.UsoCfdi).IsRequired().HasMaxLength(Facturacion.FacturacionConsts.ClaveCortaLength);
+            b.Property(x => x.FormaDePago).IsRequired().HasMaxLength(Facturacion.FacturacionConsts.ClaveCortaLength);
+            b.Property(x => x.MetodoDePago).IsRequired().HasMaxLength(Facturacion.FacturacionConsts.ClaveCortaLength);
+            b.Property(x => x.Conceptos).IsRequired();
+            b.Property(x => x.Subtotal).HasPrecision(18, 2);
+            b.Property(x => x.Iva).HasPrecision(18, 2);
+            b.Property(x => x.Total).HasPrecision(18, 2);
+            b.Property(x => x.NotaDelCliente).HasMaxLength(Facturacion.FacturacionConsts.MaxNotaLength);
+            b.Property(x => x.Respuesta).HasMaxLength(Facturacion.FacturacionConsts.MaxNotaLength);
+            b.HasIndex(x => new { x.OrganizacionId, x.Estado });
+            b.HasIndex(x => x.Estado);
         });
 
         // Credenciales del cliente (e.firma y CIEC): lo secreto va cifrado con su propia llave
