@@ -98,6 +98,8 @@ echo "==> Subiendo $(basename "$volcado")"
 # Y los DOCUMENTOS de los clientes: viven en disco, no en la base (CLAUDE.md §1.2.10), así
 # que el volcado no los lleva. Van ya cifrados por la aplicación; restic los vuelve a cifrar.
 # ⚠️ Sin Documentos__ClaveDeCifrado (guardada también fuera del servidor) no se pueden leer.
+# ⚠️ Las credenciales de los clientes (e.firma, CIEC) sí van en el volcado, cifradas con
+#    Credenciales__ClaveDeCifrado: sin esa clave (también fuera del servidor) no se pueden leer.
 DOCUMENTOS=/var/lib/auxiliar-contable/documentos
 rutas=("$volcado")
 if [ -r "$roles" ]; then

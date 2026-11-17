@@ -64,6 +64,7 @@ function configureRoutes() {
     routes.patch('::Menu:Ayuda', { invisible: anonimo });
     routes.patch('::Menu:Leyes', { invisible: anonimo });
     routes.patch('::Menu:Sentencias', { invisible: anonimo });
+    routes.patch('::Menu:Credenciales', { invisible: anonimo });
     // El chat solo si está encendido en el servidor (sin API de Claude se trabaja por pantallas).
     const chat = String(config.getSetting(AJUSTE_DEL_CHAT)).toLowerCase() === 'true';
     routes.patch('::Menu:Asistente', { invisible: anonimo || !chat });
@@ -119,6 +120,16 @@ function configureRoutes() {
       name: '::Menu:Leyes',
       iconClass: 'bi bi-journal-text',
       order: 1.85,
+      layout: eLayoutType.application,
+      invisible: true,
+    },
+
+    // e.firma y CIEC de cada cliente, cifradas; ver contraseñas pide NIP. Para todos con sesión (patch de arriba).
+    {
+      path: '/credenciales',
+      name: '::Menu:Credenciales',
+      iconClass: 'bi bi-shield-lock',
+      order: 1.7,
       layout: eLayoutType.application,
       invisible: true,
     },

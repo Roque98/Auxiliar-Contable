@@ -259,6 +259,7 @@ public class AuxiliarContableHttpApiHostModule : AbpModule
         // siguen en la base. En produccion la carpeta va en /var/lib/auxiliar-contable, la unica
         // escribible con ProtectSystem=strict, y entra en la copia remota (backup-remoto.sh).
         Configure<DocumentosOptions>(configuration.GetSection(DocumentosOptions.Seccion));
+        Configure<AuxiliarContable.Credenciales.CredencialesOptions>(configuration.GetSection(AuxiliarContable.Credenciales.CredencialesOptions.Seccion));
         var carpetaDeDocumentos = configuration[$"{DocumentosOptions.Seccion}:Carpeta"];
         if (string.IsNullOrWhiteSpace(carpetaDeDocumentos))
         {

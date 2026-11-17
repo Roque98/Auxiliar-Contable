@@ -99,6 +99,10 @@ Claude__ApiKey=CAMBIAME
 Documentos__ClaveDeCifrado=CAMBIAME
 Documentos__Carpeta=/var/lib/auxiliar-contable/documentos
 
+# Credenciales de los clientes (e.firma y CIEC): en la base, cifradas con OTRA clave (AES-256), para que
+# quien tenga la de documentos no lea contraseñas. `openssl rand -base64 32`; guardarla TAMBIEN fuera del servidor.
+Credenciales__ClaveDeCifrado=CAMBIAME
+
 # Antivirus (ClamAV en este VPS): lo deja instalar-antivirus.sh. Vacio = sin escanear.
 # Antivirus__Host=127.0.0.1
 ENVEOF

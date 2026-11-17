@@ -25,6 +25,12 @@ export const APP_ROUTES: Routes = [
     canActivate: [authGuard],
   },
   {
+    // El servidor decide qué clientes ve cada quien y quién ve contraseñas (Autorizador).
+    path: 'credenciales',
+    loadComponent: () => import('./credenciales/credenciales.component').then(c => c.CredencialesComponent),
+    canActivate: [authGuard],
+  },
+  {
     // Sin permiso: las tesis son públicas; el servidor decide quién puede actualizar la librería.
     path: 'sentencias',
     loadComponent: () => import('./sentencias/sentencias.component').then(c => c.SentenciasComponent),
