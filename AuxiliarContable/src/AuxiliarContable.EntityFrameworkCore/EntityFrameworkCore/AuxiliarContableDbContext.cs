@@ -347,6 +347,7 @@ public class AuxiliarContableDbContext :
             b.ToTable(AuxiliarContableConsts.DbTablePrefix + "PolizasDeMeses", AuxiliarContableConsts.DbSchema);
             b.ConfigureByConvention();
             b.Property(x => x.Resultado).IsRequired().HasColumnType("text");
+            b.Property(x => x.DatosDeCierre).HasColumnType("text");
             b.HasIndex(x => new { x.OrganizacionId, x.Anio, x.Mes }).IsUnique();
         });
 

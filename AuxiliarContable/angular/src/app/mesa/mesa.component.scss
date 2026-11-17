@@ -189,3 +189,12 @@ h2 {
 .ms-num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .ms-tabla .ms-num { text-align: right; }
 .ms-total td { font-weight: var(--ig-peso-semi); }
+
+.ms-cierre {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--ig-esp-2);
+
+  .ms-nota { flex: 1 1 100%; }
+}

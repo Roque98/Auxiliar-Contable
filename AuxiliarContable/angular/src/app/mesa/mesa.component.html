@@ -103,6 +103,26 @@
       Primero se revisa que la información no traiga errores; lo que «detiene» no se contabiliza hasta que lo corrijas o lo aceptes.
       Las cuentas dependen del <a routerLink="/perfil-fiscal" [queryParams]="{ cliente: clienteId() }">tipo de empresa y sistema de costos</a> del cliente.
     </p>
+    <button type="button" class="btn btn-link ms-rev-op" (click)="verCierre.set(!verCierre())" [attr.aria-expanded]="verCierre()">
+      {{ verCierre() ? 'Ocultar' : 'Capturar' }} el inventario para el costo de ventas
+    </button>
+    @if (verCierre()) {
+      <div class="ms-cierre">
+        <label class="ms-campo">
+          <span>Inventario inicial</span>
+          <input class="ig-control" type="number" min="0" step="0.01" [(ngModel)]="inventarioInicial" />
+        </label>
+        <label class="ms-campo">
+          <span>Inventario final (analítico)</span>
+          <input class="ig-control" type="number" min="0" step="0.01" [(ngModel)]="inventarioFinal" />
+        </label>
+        <label class="ms-campo">
+          <span>Costo de lo vendido (perpetuo)</span>
+          <input class="ig-control" type="number" min="0" step="0.01" [(ngModel)]="costoVendido" />
+        </label>
+        <p class="ms-nota">Analítico: costo = inventario inicial + compras − inventario final (el inicial viene del cierre del mes anterior). Perpetuo: el costo de lo vendido del reporte del almacén. Se aplica al volver a generar.</p>
+      </div>
+    }
     @if (polizas(); as p) {
       <p class="ms-resultado">
         {{ p.resultado.polizas.length }} pólizas · {{ p.detenidas }} operaciones detenidas · generado el {{ p.generadoUtc | date: 'd MMM, HH:mm' }}

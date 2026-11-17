@@ -373,11 +373,20 @@ public class MesaDeTrabajoAppService : AuxiliarContableAppService, IMesaDeTrabaj
         await ExigirEquipoAsync(organizacionId, AccionEnOrganizacion.Ver);
         Mes(anio, mes);
         var p = await _polizas.FirstOrDefaultAsync(x => x.OrganizacionId == organizacionId && x.Anio == anio && x.Mes == mes);
-        return p == null ? null : Describir(p);
+        return p == null ? null : Describir(p, await InventarioAnteriorAsync(organizacionId, anio, mes));
     }
 
-    public async Task<PolizasDelMesDto> GenerarPolizasAsync(Guid organizacionId, int anio, int mes)
+    /// <summary>El inventario final que se capturó el mes anterior.</summary>
+    private async Task<decimal?> InventarioAnteriorAsync(Guid organizacionId, int anio, int mes)
     {
+        var antes = new DateTime(anio, mes, 1).AddMonths(-1);
+        var p = await _polizas.FirstOrDefaultAsync(x => x.OrganizacionId == organizacionId && x.Anio == antes.Year && x.Mes == antes.Month);
+        return p?.DatosDeCierre == null ? null : JsonSerializer.Deserialize<DatosDeCierre>(p.DatosDeCierre)?.InventarioFinal;
+    }
+
+    public async Task<PolizasDelMesDto> GenerarPolizasAsync(Guid organizacionId, int anio, int mes, DatosDeCierre cierreCapturado)
+    {
+        var cierre = cierreCapturado is { InventarioInicial: null, InventarioFinal: null, CostoVendido: null } ? null : cierreCapturado;
         await ExigirEquipoAsync(organizacionId, AccionEnOrganizacion.Subir);
         var (desde, hasta) = Mes(anio, mes);
         await _periodos.ExigirAbiertoAsync(organizacionId, desde);
@@ -404,6 +413,15 @@ public class MesaDeTrabajoAppService : AuxiliarContableAppService, IMesaDeTrabaj
                 delBanco[claves[i]] = movs[i];
             }
         }
+
+        // Facturas de meses anteriores que se pagan (o cobran) en este: entran solo por su pago.
+        var clavesDelMes = delBanco.Keys.ToList();
+        var saldadosEnElMes = (await _movimientos.GetListAsync(m => m.OrganizacionId == organizacionId && m.Saldado >= desde && m.Saldado < hasta))
+            .Select(m => m.Id).ToList();
+        var pagadasAhora = await _operaciones.GetListAsync(o => o.OrganizacionId == organizacionId && o.Fecha < desde
+            && ((o.ClaveDeMovimiento != null && clavesDelMes.Contains(o.ClaveDeMovimiento))
+                || (o.MovimientoFueraDelBancoId != null && saldadosEnElMes.Contains(o.MovimientoFueraDelBancoId.Value))));
+        ops.AddRange(pagadasAhora);
 
         var movIds = ops.Select(o => o.MovimientoFueraDelBancoId).OfType<Guid>().ToList();
         var fueraDelBanco = movIds.Count == 0 ? [] : (await _movimientos.GetListAsync(m => movIds.Contains(m.Id))).ToDictionary(m => m.Id);
@@ -439,7 +457,8 @@ public class MesaDeTrabajoAppService : AuxiliarContableAppService, IMesaDeTrabaj
                     },
                     Referencia = o.Referencia,
                     Importe = banco?.Importe,
-                    Fecha = banco != null ? Fecha(banco.Fecha)?.ToString("yyyy-MM-dd") : fuera?.Fecha.ToString("yyyy-MM-dd"),
+                    Fecha = banco != null ? Fecha(banco.Fecha)?.ToString("yyyy-MM-dd")
+                        : fuera?.Saldado is { } saldado ? saldado.ToString("yyyy-MM-dd") : fuera?.Fecha.ToString("yyyy-MM-dd"),
                     Saldado = fuera?.EsACredito == true ? fuera.Saldado != null : null,
                     Analisis = Analisis(o.TransaccionDocumentoId),
                 },
@@ -465,7 +484,7 @@ public class MesaDeTrabajoAppService : AuxiliarContableAppService, IMesaDeTrabaj
                 SistemaCostos = Campo(CamposDelPerfil.SistemaDeCostos),
                 SistemaInventarios = Campo(CamposDelPerfil.SistemaDeInventarios),
                 Giro = giro,
-            }, paraMotor, facturas);
+            }, paraMotor, facturas, $"{anio:0000}-{mes:00}", cierre);
         }
         catch (MotorFiscalNoDisponibleException ex)
         {
@@ -476,7 +495,7 @@ public class MesaDeTrabajoAppService : AuxiliarContableAppService, IMesaDeTrabaj
         var guardadas = await _polizas.FirstOrDefaultAsync(x => x.OrganizacionId == organizacionId && x.Anio == anio && x.Mes == mes);
         var nueva = guardadas == null;
         guardadas ??= new PolizasDelMes(GuidGenerator.Create(), organizacionId, anio, mes);
-        guardadas.Guardar(JsonSerializer.Serialize(resultado), DateTime.UtcNow);
+        guardadas.Guardar(JsonSerializer.Serialize(resultado), DateTime.UtcNow, cierre == null ? null : JsonSerializer.Serialize(cierre));
         if (nueva)
         {
             await _polizas.InsertAsync(guardadas, autoSave: true);
@@ -486,7 +505,7 @@ public class MesaDeTrabajoAppService : AuxiliarContableAppService, IMesaDeTrabaj
             await _polizas.UpdateAsync(guardadas, autoSave: true);
         }
 
-        return Describir(guardadas);
+        return Describir(guardadas, await InventarioAnteriorAsync(organizacionId, anio, mes));
     }
 
     public async Task AceptarRevisionAsync(Guid organizacionId, Guid operacionId, string codigo)
@@ -499,7 +518,7 @@ public class MesaDeTrabajoAppService : AuxiliarContableAppService, IMesaDeTrabaj
         await _operaciones.UpdateAsync(o, autoSave: true);
     }
 
-    private static PolizasDelMesDto Describir(PolizasDelMes p)
+    private static PolizasDelMesDto Describir(PolizasDelMes p, decimal? inventarioAnterior)
     {
         var r = JsonSerializer.Deserialize<ResultadoContable>(p.Resultado) ?? new ResultadoContable();
         return new PolizasDelMesDto
@@ -509,6 +528,8 @@ public class MesaDeTrabajoAppService : AuxiliarContableAppService, IMesaDeTrabaj
             GeneradoUtc = p.GeneradoUtc,
             Resultado = r,
             Detenidas = r.Revision.Where(x => x.Nivel == "detiene").Select(x => x.Operacion ?? "").Distinct().Count(),
+            Cierre = p.DatosDeCierre == null ? null : JsonSerializer.Deserialize<DatosDeCierre>(p.DatosDeCierre),
+            InventarioInicialSugerido = inventarioAnterior,
         };
     }
 

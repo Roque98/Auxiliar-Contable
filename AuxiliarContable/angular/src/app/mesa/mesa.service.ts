@@ -63,11 +63,19 @@ export interface RenglonDeRevisionDto {
   mensaje: string;
 }
 
+export interface DatosDeCierreDto {
+  inventarioInicial: number | null;
+  inventarioFinal: number | null;
+  costoVendido: number | null;
+}
+
 export interface PolizasDelMesDto {
   anio: number;
   mes: number;
   generadoUtc: string;
   detenidas: number;
+  cierre: DatosDeCierreDto | null;
+  inventarioInicialSugerido: number | null;
   resultado: {
     polizas: PolizaContableDto[];
     revision: RenglonDeRevisionDto[];
@@ -98,9 +106,9 @@ export class MesaService {
       { method: 'GET', url: `${this.base}/polizas/${organizacionId}`, params: { anio, mes } }, this.opciones);
   }
 
-  generarPolizas(organizacionId: string, anio: number, mes: number): Observable<PolizasDelMesDto> {
-    return this.rest.request<void, PolizasDelMesDto>(
-      { method: 'POST', url: `${this.base}/generar-polizas/${organizacionId}`, params: { anio, mes } }, this.opciones);
+  generarPolizas(organizacionId: string, anio: number, mes: number, cierre: DatosDeCierreDto): Observable<PolizasDelMesDto> {
+    return this.rest.request<DatosDeCierreDto, PolizasDelMesDto>(
+      { method: 'POST', url: `${this.base}/generar-polizas/${organizacionId}`, params: { anio, mes }, body: cierre }, this.opciones);
   }
 
   aceptarRevision(organizacionId: string, operacionId: string, codigo: string): Observable<void> {

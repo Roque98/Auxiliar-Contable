@@ -16,6 +16,9 @@ public class PolizasDelMes : AuditedAggregateRoot<Guid>
     public string Resultado { get; protected set; } = "{}";
     public DateTime GeneradoUtc { get; protected set; }
 
+    /// <summary>Lo que se capturó para el cierre (JSON de <c>DatosDeCierre</c>): el inventario final sirve de inicial al mes siguiente.</summary>
+    public string? DatosDeCierre { get; protected set; }
+
     protected PolizasDelMes()
     {
     }
@@ -27,8 +30,9 @@ public class PolizasDelMes : AuditedAggregateRoot<Guid>
         Mes = mes;
     }
 
-    public void Guardar(string resultado, DateTime utc)
+    public void Guardar(string resultado, DateTime utc, string? datosDeCierre)
     {
+        DatosDeCierre = string.IsNullOrWhiteSpace(datosDeCierre) ? null : datosDeCierre;
         if (utc.Kind != DateTimeKind.Utc)
         {
             throw new AbpException("GeneradoUtc debe ser UTC (columna timestamptz).");

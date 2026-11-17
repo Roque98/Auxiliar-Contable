@@ -35,7 +35,7 @@ public interface IMesaDeTrabajoAppService : IApplicationService
     /// Revisa las operaciones del mes y genera sus pólizas según el tipo de empresa y el sistema de costos del cliente
     /// (motor /contabilidad/polizas). Lo que «detiene» no se contabiliza hasta corregirlo o aceptarlo.
     /// </summary>
-    Task<PolizasDelMesDto> GenerarPolizasAsync(Guid organizacionId, int anio, int mes);
+    Task<PolizasDelMesDto> GenerarPolizasAsync(Guid organizacionId, int anio, int mes, MotorFiscal.DatosDeCierre cierre);
 
     /// <summary>El despacho acepta lo que detenía una operación (p. ej. «sí es del negocio»); vuelve a generar después.</summary>
     Task AceptarRevisionAsync(Guid organizacionId, Guid operacionId, string codigo);
@@ -50,6 +50,12 @@ public class PolizasDelMesDto
 
     /// <summary>Operaciones detenidas por la revisión (no se contabilizaron).</summary>
     public int Detenidas { get; set; }
+
+    /// <summary>Lo que se capturó para el cierre de este mes.</summary>
+    public MotorFiscal.DatosDeCierre? Cierre { get; set; }
+
+    /// <summary>El inventario final del mes anterior: el inicial que se propone.</summary>
+    public decimal? InventarioInicialSugerido { get; set; }
 }
 
 public static class MesaDeTrabajoConsts
