@@ -129,3 +129,63 @@ h2 {
   background: transparent;
   border: 2px solid var(--ig-texto-secundario);
 }
+
+/* Pólizas: revisión primero, luego las pólizas y la balanza (tablas con desplazamiento propio en el teléfono). */
+.ms-cabecera-fila {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--ig-esp-2);
+}
+
+.ms-subtitulo { font-size: var(--ig-texto-base); font-weight: var(--ig-peso-semi); margin: 0; }
+
+.ms-revision,
+.ms-pendientes {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ig-esp-2);
+}
+
+.ms-pendientes li { font-size: var(--ig-texto-sm); }
+
+.ms-rev {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ig-esp-2);
+  padding: var(--ig-esp-2) var(--ig-esp-3);
+  border-radius: var(--ig-radio);
+  font-size: var(--ig-texto-sm);
+}
+
+.ms-rev-detiene { background: var(--ig-error-suave); color: var(--ig-error-texto); }
+.ms-rev-aviso { background: var(--ig-alerta-suave); color: var(--ig-alerta-texto); }
+.ms-rev-aceptado { background: var(--ig-exito-suave); color: var(--ig-exito-texto); }
+.ms-rev-nivel { font-weight: var(--ig-peso-semi); }
+.ms-rev-texto { flex: 1 1 16rem; min-width: 0; overflow-wrap: anywhere; }
+.ms-rev-op { padding: 0; font-size: inherit; vertical-align: baseline; }
+
+.ms-tabla-caja { overflow-x: auto; }
+
+.ms-tabla {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--ig-texto-sm);
+
+  th,
+  td {
+    padding: var(--ig-esp-1) var(--ig-esp-2);
+    border-bottom: var(--ig-borde);
+    text-align: left;
+    vertical-align: top;
+  }
+}
+
+.ms-num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ms-tabla .ms-num { text-align: right; }
+.ms-total td { font-weight: var(--ig-peso-semi); }

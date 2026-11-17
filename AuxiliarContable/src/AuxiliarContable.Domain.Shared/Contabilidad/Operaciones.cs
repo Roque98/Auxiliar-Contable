@@ -50,4 +50,5 @@ public static class OperacionConsts
     public const int MaxReferenciaLength = 100;
     public const int MaxMotivoLength = 500;
     public const int UuidLength = 36;
+    public const int MaxAceptadosLength = 500;
 }

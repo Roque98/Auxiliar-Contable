@@ -86,3 +86,111 @@ public class ParDeAmarre
 
     public string Porque { get; set; } = "";
 }
+
+/// <summary>Una operación como se le manda al motor para contabilizarla (motor /contabilidad/polizas).</summary>
+public class OperacionParaContabilizar
+{
+    public string Id { get; set; } = "";
+    public string Fecha { get; set; } = "";
+
+    /// <summary>entrada, salida.</summary>
+    public string Sentido { get; set; } = "";
+
+    public decimal? Importe { get; set; }
+    public string Descripcion { get; set; } = "";
+    public string? Contraparte { get; set; }
+    public PataParaContabilizar Factura { get; set; } = new();
+    public PataParaContabilizar Transaccion { get; set; } = new();
+    public PataParaContabilizar Control { get; set; } = new();
+
+    /// <summary>Lo de la revisión que el despacho ya aceptó (códigos).</summary>
+    public List<string> Aceptados { get; set; } = [];
+}
+
+public class PataParaContabilizar
+{
+    /// <summary>ligada, no_hay, pendiente.</summary>
+    public string Estado { get; set; } = "pendiente";
+
+    public string? Uuid { get; set; }
+
+    /// <summary>Solo transacción: banco, efectivo, credito.</summary>
+    public string? Forma { get; set; }
+
+    public string? Referencia { get; set; }
+
+    /// <summary>Solo transacción: el importe y la fecha del movimiento del banco, si lo es.</summary>
+    public decimal? Importe { get; set; }
+
+    public string? Fecha { get; set; }
+
+    /// <summary>Solo a crédito: ya se pagó.</summary>
+    public bool? Saldado { get; set; }
+
+    public AnalisisDeDocumento? Analisis { get; set; }
+}
+
+public class PerfilParaContabilizar
+{
+    public string Rfc { get; set; } = "";
+    public string? TipoEmpresa { get; set; }
+    public string? SistemaCostos { get; set; }
+    public string? SistemaInventarios { get; set; }
+    public string? Giro { get; set; }
+}
+
+/// <summary>Lo que devuelve el motor al contabilizar el mes.</summary>
+public class ResultadoContable
+{
+    public string Version { get; set; } = "";
+    public List<PolizaContable> Polizas { get; set; } = [];
+    public List<RenglonDeRevision> Revision { get; set; } = [];
+    public List<CuentaDeBalanza> Balanza { get; set; } = [];
+    public List<string> PendientesDeCierre { get; set; } = [];
+    public List<ErrorDeArchivo> Errores { get; set; } = [];
+}
+
+public class PolizaContable
+{
+    public string Operacion { get; set; } = "";
+
+    /// <summary>Ingresos, Egresos, Diario.</summary>
+    public string Tipo { get; set; } = "";
+
+    public int Numero { get; set; }
+    public string Fecha { get; set; } = "";
+    public string Concepto { get; set; } = "";
+    public string? Uuid { get; set; }
+    public string? Categoria { get; set; }
+    public List<MovimientoContable> Movimientos { get; set; } = [];
+}
+
+public class MovimientoContable
+{
+    public string Cuenta { get; set; } = "";
+    public string Nombre { get; set; } = "";
+    public decimal Debe { get; set; }
+    public decimal Haber { get; set; }
+    public string Texto { get; set; } = "";
+}
+
+public class RenglonDeRevision
+{
+    /// <summary>Null = del mes completo (p. ej. falta el tipo de empresa).</summary>
+    public string? Operacion { get; set; }
+
+    public string Codigo { get; set; } = "";
+
+    /// <summary>detiene, aviso, aceptado.</summary>
+    public string Nivel { get; set; } = "";
+
+    public string Mensaje { get; set; } = "";
+}
+
+public class CuentaDeBalanza
+{
+    public string Cuenta { get; set; } = "";
+    public string Nombre { get; set; } = "";
+    public decimal Debe { get; set; }
+    public decimal Haber { get; set; }
+}

@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using Volo.Abp;
 using Volo.Abp.Domain.Entities.Auditing;
 
@@ -52,6 +54,9 @@ public class Operacion : AuditedAggregateRoot<Guid>
     public EstadoDePata ControlEstado { get; protected set; }
     public Guid? ControlDocumentoId { get; protected set; }
     public string? ControlMotivo { get; protected set; }
+
+    /// <summary>Lo de la revisión contable que el despacho ya aceptó (códigos separados por coma).</summary>
+    public string? Aceptados { get; protected set; }
 
     protected Operacion()
     {
@@ -230,6 +235,19 @@ public class Operacion : AuditedAggregateRoot<Guid>
 
         Importe ??= otra.Importe;
         Contraparte ??= otra.Contraparte;
+    }
+
+    public IReadOnlyList<string> CodigosAceptados =>
+        string.IsNullOrWhiteSpace(Aceptados) ? [] : Aceptados.Split(',', StringSplitOptions.RemoveEmptyEntries);
+
+    /// <summary>El despacho acepta un aviso que detiene la póliza (p. ej. «sí es del negocio»).</summary>
+    public void Aceptar(string codigo)
+    {
+        var c = Check.NotNullOrWhiteSpace(codigo, nameof(codigo), 40).Trim().ToUpperInvariant();
+        if (!CodigosAceptados.Contains(c))
+        {
+            Aceptados = Check.Length(string.Join(',', CodigosAceptados.Append(c)), nameof(Aceptados), OperacionConsts.MaxAceptadosLength);
+        }
     }
 
     /// <summary>Cuántas patas están amarradas (verde).</summary>

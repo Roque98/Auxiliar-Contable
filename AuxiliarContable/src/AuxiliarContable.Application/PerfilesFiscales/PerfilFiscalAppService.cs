@@ -230,6 +230,11 @@ public class PerfilFiscalAppService : AuxiliarContableAppService, IPerfilFiscalA
             case TipoDeCampo.SiNo:
                 v = v.ToLowerInvariant().Replace("í", "i");
                 return v is "si" or "no" ? v : throw Invalido(campo, "es «si» o «no»");
+            case TipoDeCampo.Opcion:
+                v = v.ToLowerInvariant();
+                return campo.Opciones?.Any(o => o.Valor == v) == true
+                    ? v
+                    : throw Invalido(campo, "es uno de: " + string.Join(", ", campo.Opciones?.Select(o => o.Valor) ?? []));
             case TipoDeCampo.Lista:
                 try
                 {
@@ -272,6 +277,7 @@ public class PerfilFiscalAppService : AuxiliarContableAppService, IPerfilFiscalA
                     Grupo = c.Grupo,
                     Tipo = c.Tipo,
                     VieneEnLaCsf = c.VieneEnLaCsf,
+                    Opciones = c.Opciones?.Select(o => new OpcionDelCampoDto { Valor = o.Valor, Etiqueta = o.Etiqueta }).ToList(),
                     Valor = dato?.Valor,
                     Origen = dato?.Origen,
                     Confirmado = dato?.Confirmado ?? false,

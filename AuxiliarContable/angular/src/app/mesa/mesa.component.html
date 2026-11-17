@@ -92,6 +92,106 @@
     </section>
   }
 
+  <section class="ms-tarjeta" aria-labelledby="ms-polizas" data-testid="polizas">
+    <div class="ms-cabecera-fila">
+      <h2 id="ms-polizas"><i class="bi bi-journal-text" aria-hidden="true"></i> Pólizas</h2>
+      <button type="button" class="btn btn-primary ms-boton" (click)="generarPolizas()" [disabled]="generando() || !m.operaciones.puedeEditar">
+        @if (generando()) { <span class="ig-girando" aria-hidden="true"></span> Revisando… } @else { {{ polizas() ? 'Volver a generar' : 'Revisar y generar pólizas' }} }
+      </button>
+    </div>
+    <p class="ms-nota">
+      Primero se revisa que la información no traiga errores; lo que «detiene» no se contabiliza hasta que lo corrijas o lo aceptes.
+      Las cuentas dependen del <a routerLink="/perfil-fiscal" [queryParams]="{ cliente: clienteId() }">tipo de empresa y sistema de costos</a> del cliente.
+    </p>
+    @if (polizas(); as p) {
+      <p class="ms-resultado">
+        {{ p.resultado.polizas.length }} pólizas · {{ p.detenidas }} operaciones detenidas · generado el {{ p.generadoUtc | date: 'd MMM, HH:mm' }}
+      </p>
+
+      @if (revision().length) {
+        <h3 class="ms-subtitulo">Revisión</h3>
+        <ul class="ms-revision">
+          @for (r of revision(); track $index) {
+            <li [class]="'ms-rev ms-rev-' + r.nivel">
+              <span class="ms-rev-nivel">{{ r.nivel === 'detiene' ? 'Detiene' : r.nivel === 'aviso' ? 'Aviso' : 'Aceptado' }}</span>
+              <span class="ms-rev-texto">
+                <button type="button" class="btn btn-link ms-rev-op" (click)="abrirOperacion(r.operacion)">{{ nombreDe(r.operacion) }}</button>
+                {{ r.mensaje }}
+              </span>
+              @if (r.nivel === 'detiene' && r.operacion && m.operaciones.puedeEditar) {
+                <button type="button" class="btn btn-outline-secondary ms-boton" (click)="aceptarRevision(r)">Está bien, contabilízala</button>
+              }
+            </li>
+          }
+        </ul>
+      }
+
+      @if (p.resultado.pendientesDeCierre.length) {
+        <h3 class="ms-subtitulo">Pendiente para el cierre</h3>
+        <ul class="ms-pendientes">
+          @for (x of p.resultado.pendientesDeCierre; track $index) { <li>{{ x }}</li> }
+        </ul>
+      }
+
+      @if (p.resultado.polizas.length) {
+        <h3 class="ms-subtitulo">Pólizas del mes</h3>
+        <ul class="ms-lista">
+          @for (pz of p.resultado.polizas; track pz.operacion) {
+            <li>
+              <button type="button" class="ms-fila" (click)="polizaAbierta.set(polizaAbierta() === pz.operacion ? null : pz.operacion)" [attr.aria-expanded]="polizaAbierta() === pz.operacion">
+                <span class="ms-fecha">{{ pz.tipo[0] }}-{{ pz.numero }}</span>
+                <span class="ms-fecha">{{ pz.fecha.substring(8, 10) }}/{{ pz.fecha.substring(5, 7) }}</span>
+                <span class="ms-desc"><strong>{{ pz.concepto }}</strong><small>{{ pz.tipo }}@if (pz.categoria) { · {{ categorias[pz.categoria] ?? pz.categoria }} }</small></span>
+              </button>
+              @if (polizaAbierta() === pz.operacion) {
+                <div class="ms-tabla-caja">
+                  <table class="ms-tabla">
+                    <thead><tr><th>Cuenta</th><th>Concepto</th><th class="ms-num">Debe</th><th class="ms-num">Haber</th></tr></thead>
+                    <tbody>
+                      @for (mv of pz.movimientos; track $index) {
+                        <tr>
+                          <td><strong>{{ mv.cuenta }}</strong> {{ mv.nombre }}</td>
+                          <td>{{ mv.texto }}</td>
+                          <td class="ms-num">{{ mv.debe ? (mv.debe | currency: 'MXN' : 'symbol-narrow') : '' }}</td>
+                          <td class="ms-num">{{ mv.haber ? (mv.haber | currency: 'MXN' : 'symbol-narrow') : '' }}</td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              }
+            </li>
+          }
+        </ul>
+        <button type="button" class="btn btn-link ms-rev-op" (click)="verBalanza.set(!verBalanza())">{{ verBalanza() ? 'Ocultar' : 'Ver' }} la balanza del mes</button>
+        @if (verBalanza()) {
+          <div class="ms-tabla-caja">
+            <table class="ms-tabla">
+              <thead><tr><th>Cuenta</th><th class="ms-num">Cargos</th><th class="ms-num">Abonos</th></tr></thead>
+              <tbody>
+                @for (b of p.resultado.balanza; track b.cuenta) {
+                  <tr>
+                    <td><strong>{{ b.cuenta }}</strong> {{ b.nombre }}</td>
+                    <td class="ms-num">{{ b.debe | currency: 'MXN' : 'symbol-narrow' }}</td>
+                    <td class="ms-num">{{ b.haber | currency: 'MXN' : 'symbol-narrow' }}</td>
+                  </tr>
+                }
+                <tr class="ms-total">
+                  <td>Sumas</td>
+                  <td class="ms-num">{{ totales().debe | currency: 'MXN' : 'symbol-narrow' }}</td>
+                  <td class="ms-num">{{ totales().haber | currency: 'MXN' : 'symbol-narrow' }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        }
+      }
+      @for (e of p.resultado.errores; track $index) {
+        <p class="ms-aviso">«{{ e.archivo }}»: {{ e.error }}</p>
+      }
+    }
+  </section>
+
   <section class="ms-tarjeta" aria-labelledby="ms-operaciones">
     <h2 id="ms-operaciones">Operaciones de {{ meses[mes - 1] }} {{ anio }}</h2>
     <div class="ms-filtros" role="tablist">

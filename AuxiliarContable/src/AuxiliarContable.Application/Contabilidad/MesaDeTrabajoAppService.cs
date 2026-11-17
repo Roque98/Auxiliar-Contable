@@ -28,6 +28,8 @@ public class MesaDeTrabajoAppService : AuxiliarContableAppService, IMesaDeTrabaj
     private readonly IRepository<Operacion, Guid> _operaciones;
     private readonly IRepository<Documento, Guid> _documentos;
     private readonly IRepository<ConciliacionBancaria, Guid> _conciliaciones;
+    private readonly IRepository<MovimientoFueraDelBanco, Guid> _movimientos;
+    private readonly IRepository<PolizasDelMes, Guid> _polizas;
     private readonly AlmacenDeDocumentos _almacen;
     private readonly IPerfilFiscalAppService _perfiles;
     private readonly IMotorFiscal _motor;
@@ -39,6 +41,8 @@ public class MesaDeTrabajoAppService : AuxiliarContableAppService, IMesaDeTrabaj
         IRepository<Operacion, Guid> operaciones,
         IRepository<Documento, Guid> documentos,
         IRepository<ConciliacionBancaria, Guid> conciliaciones,
+        IRepository<MovimientoFueraDelBanco, Guid> movimientos,
+        IRepository<PolizasDelMes, Guid> polizas,
         AlmacenDeDocumentos almacen,
         IPerfilFiscalAppService perfiles,
         IMotorFiscal motor,
@@ -49,6 +53,8 @@ public class MesaDeTrabajoAppService : AuxiliarContableAppService, IMesaDeTrabaj
         _operaciones = operaciones;
         _documentos = documentos;
         _conciliaciones = conciliaciones;
+        _movimientos = movimientos;
+        _polizas = polizas;
         _almacen = almacen;
         _perfiles = perfiles;
         _motor = motor;
@@ -360,6 +366,150 @@ public class MesaDeTrabajoAppService : AuxiliarContableAppService, IMesaDeTrabaj
         }
 
         return r;
+    }
+
+    public async Task<PolizasDelMesDto?> GetPolizasAsync(Guid organizacionId, int anio, int mes)
+    {
+        await ExigirEquipoAsync(organizacionId, AccionEnOrganizacion.Ver);
+        Mes(anio, mes);
+        var p = await _polizas.FirstOrDefaultAsync(x => x.OrganizacionId == organizacionId && x.Anio == anio && x.Mes == mes);
+        return p == null ? null : Describir(p);
+    }
+
+    public async Task<PolizasDelMesDto> GenerarPolizasAsync(Guid organizacionId, int anio, int mes)
+    {
+        await ExigirEquipoAsync(organizacionId, AccionEnOrganizacion.Subir);
+        var (desde, hasta) = Mes(anio, mes);
+        await _periodos.ExigirAbiertoAsync(organizacionId, desde);
+        await _operacionesApp.GetListAsync(organizacionId, anio, mes);   // agrega lo del mes que aún no es operación
+
+        var ops = await _operaciones.GetListAsync(o => o.OrganizacionId == organizacionId && o.Fecha >= desde && o.Fecha < hasta);
+        var perfilDto = await _perfiles.GetAsync(organizacionId);
+        string? Campo(string clave) => perfilDto.Campos.FirstOrDefault(c => c.Clave == clave)?.Valor?.Trim();
+        var (rfc, giro) = await RfcYGiroAsync(organizacionId);
+        if (rfc == null)
+        {
+            throw new UserFriendlyException("Falta el RFC del cliente en su perfil fiscal: sin él no se sabe qué facturas emitió y cuáles recibió.");
+        }
+
+        // Los movimientos del banco (importe y fecha reales del pago) y el efectivo y crédito (si ya se saldó).
+        var conciliacion = await _conciliaciones.FirstOrDefaultAsync(c => c.OrganizacionId == organizacionId && c.Anio == anio && c.Mes == mes);
+        var delBanco = new Dictionary<string, MovimientoLeido>();
+        if (conciliacion != null)
+        {
+            var movs = GestorDeConciliaciones.Leer(conciliacion).Movimientos;
+            var claves = ClaveDeMovimiento.De(movs);
+            for (var i = 0; i < movs.Count; i++)
+            {
+                delBanco[claves[i]] = movs[i];
+            }
+        }
+
+        var movIds = ops.Select(o => o.MovimientoFueraDelBancoId).OfType<Guid>().ToList();
+        var fueraDelBanco = movIds.Count == 0 ? [] : (await _movimientos.GetListAsync(m => movIds.Contains(m.Id))).ToDictionary(m => m.Id);
+        var docIds = ops.SelectMany(o => new[] { o.FacturaDocumentoId, o.TransaccionDocumentoId, o.ControlDocumentoId }).OfType<Guid>().Distinct().ToList();
+        var docs = docIds.Count == 0 ? [] : (await _documentos.GetListAsync(d => docIds.Contains(d.Id))).ToDictionary(d => d.Id);
+
+        AnalisisDeDocumento? Analisis(Guid? id) =>
+            id is { } x && docs.TryGetValue(x, out var d) && d.Analisis != null ? JsonSerializer.Deserialize<AnalisisDeDocumento>(d.Analisis) : null;
+        static string Estado(EstadoDePata e) => e switch { EstadoDePata.Ligada => "ligada", EstadoDePata.NoHay => "no_hay", _ => "pendiente" };
+
+        var paraMotor = ops.Select(o =>
+        {
+            var banco = o.ClaveDeMovimiento != null && delBanco.TryGetValue(o.ClaveDeMovimiento, out var m) ? m : null;
+            var fuera = o.MovimientoFueraDelBancoId is { } mid && fueraDelBanco.TryGetValue(mid, out var fm) ? fm : null;
+            return new OperacionParaContabilizar
+            {
+                Id = o.Id.ToString(),
+                Fecha = o.Fecha.ToString("yyyy-MM-dd"),
+                Sentido = o.Sentido == SentidoDeOperacion.Entrada ? "entrada" : "salida",
+                Importe = o.Importe,
+                Descripcion = o.Descripcion,
+                Contraparte = o.Contraparte,
+                Factura = new PataParaContabilizar { Estado = Estado(o.FacturaEstado), Uuid = o.Uuid },
+                Transaccion = new PataParaContabilizar
+                {
+                    Estado = Estado(o.TransaccionEstado),
+                    Forma = o.TransaccionForma switch
+                    {
+                        FormaDeTransaccion.Efectivo => "efectivo",
+                        FormaDeTransaccion.Credito => "credito",
+                        FormaDeTransaccion.Banco => "banco",
+                        _ => null,
+                    },
+                    Referencia = o.Referencia,
+                    Importe = banco?.Importe,
+                    Fecha = banco != null ? Fecha(banco.Fecha)?.ToString("yyyy-MM-dd") : fuera?.Fecha.ToString("yyyy-MM-dd"),
+                    Saldado = fuera?.EsACredito == true ? fuera.Saldado != null : null,
+                    Analisis = Analisis(o.TransaccionDocumentoId),
+                },
+                Control = new PataParaContabilizar { Estado = Estado(o.ControlEstado), Analisis = Analisis(o.ControlDocumentoId) },
+                Aceptados = o.CodigosAceptados.ToList(),
+            };
+        }).ToList();
+
+        var facturas = new List<ArchivoParaElMotor>();
+        foreach (var d in ops.Select(o => o.FacturaDocumentoId).OfType<Guid>().Distinct().Select(id => docs.GetValueOrDefault(id)).OfType<Documento>()
+                     .Where(d => d.Tipo == TipoDeDocumento.Cfdi))
+        {
+            facturas.Add(new ArchivoParaElMotor(d.NombreOriginal, await _almacen.LeerAsync(d)));
+        }
+
+        ResultadoContable resultado;
+        try
+        {
+            resultado = await _motor.ContabilizarAsync(new PerfilParaContabilizar
+            {
+                Rfc = rfc,
+                TipoEmpresa = Campo(CamposDelPerfil.TipoDeEmpresa),
+                SistemaCostos = Campo(CamposDelPerfil.SistemaDeCostos),
+                SistemaInventarios = Campo(CamposDelPerfil.SistemaDeInventarios),
+                Giro = giro,
+            }, paraMotor, facturas);
+        }
+        catch (MotorFiscalNoDisponibleException ex)
+        {
+            Logger.LogWarning(ex, "El motor no pudo contabilizar");
+            throw new UserFriendlyException("El motor contable no está disponible en este momento. Intenta de nuevo en unos minutos.");
+        }
+
+        var guardadas = await _polizas.FirstOrDefaultAsync(x => x.OrganizacionId == organizacionId && x.Anio == anio && x.Mes == mes);
+        var nueva = guardadas == null;
+        guardadas ??= new PolizasDelMes(GuidGenerator.Create(), organizacionId, anio, mes);
+        guardadas.Guardar(JsonSerializer.Serialize(resultado), DateTime.UtcNow);
+        if (nueva)
+        {
+            await _polizas.InsertAsync(guardadas, autoSave: true);
+        }
+        else
+        {
+            await _polizas.UpdateAsync(guardadas, autoSave: true);
+        }
+
+        return Describir(guardadas);
+    }
+
+    public async Task AceptarRevisionAsync(Guid organizacionId, Guid operacionId, string codigo)
+    {
+        await ExigirEquipoAsync(organizacionId, AccionEnOrganizacion.Subir);
+        var o = await _operaciones.FirstOrDefaultAsync(x => x.Id == operacionId && x.OrganizacionId == organizacionId)
+                ?? throw new Volo.Abp.Domain.Entities.EntityNotFoundException(typeof(Operacion), operacionId);
+        await _periodos.ExigirAbiertoAsync(organizacionId, o.Fecha);
+        o.Aceptar(codigo);
+        await _operaciones.UpdateAsync(o, autoSave: true);
+    }
+
+    private static PolizasDelMesDto Describir(PolizasDelMes p)
+    {
+        var r = JsonSerializer.Deserialize<ResultadoContable>(p.Resultado) ?? new ResultadoContable();
+        return new PolizasDelMesDto
+        {
+            Anio = p.Anio,
+            Mes = p.Mes,
+            GeneradoUtc = p.GeneradoUtc,
+            Resultado = r,
+            Detenidas = r.Revision.Where(x => x.Nivel == "detiene").Select(x => x.Operacion ?? "").Distinct().Count(),
+        };
     }
 
     /// <summary>Junta la operación del movimiento en la otra (la que queda es la de la factura o el ticket).</summary>

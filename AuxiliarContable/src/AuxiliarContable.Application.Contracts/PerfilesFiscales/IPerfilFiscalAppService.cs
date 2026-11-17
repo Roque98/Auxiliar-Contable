@@ -65,6 +65,12 @@ public class PerfilFiscalDto
     public CsfDelPerfilDto? Csf { get; set; }
 }
 
+public class OpcionDelCampoDto
+{
+    public string Valor { get; set; } = string.Empty;
+    public string Etiqueta { get; set; } = string.Empty;
+}
+
 public class DatoDelPerfilDto
 {
     public string Clave { get; set; } = string.Empty;
@@ -72,6 +78,9 @@ public class DatoDelPerfilDto
     public GrupoDeCampos Grupo { get; set; }
     public TipoDeCampo Tipo { get; set; }
     public bool VieneEnLaCsf { get; set; }
+
+    /// <summary>Solo los campos de opción: los valores posibles.</summary>
+    public List<OpcionDelCampoDto>? Opciones { get; set; }
 
     public string? Valor { get; set; }
     public OrigenDelDato? Origen { get; set; }

@@ -27,6 +27,9 @@ public enum TipoDeCampo
 
     /// <summary>Lista JSON de objetos (regímenes, obligaciones, actividades) o de textos (bancos).</summary>
     Lista = 3,
+
+    /// <summary>Uno de los valores de <see cref="CampoDelPerfil.Opciones"/>.</summary>
+    Opcion = 4,
 }
 
 public enum GrupoDeCampos
@@ -36,7 +39,11 @@ public enum GrupoDeCampos
     Operacion = 2,
 }
 
-public sealed record CampoDelPerfil(string Clave, string Etiqueta, TipoDeCampo Tipo, GrupoDeCampos Grupo, bool VieneEnLaCsf);
+public sealed record CampoDelPerfil(string Clave, string Etiqueta, TipoDeCampo Tipo, GrupoDeCampos Grupo, bool VieneEnLaCsf,
+    IReadOnlyList<OpcionDelCampo>? Opciones = null);
+
+/// <summary>Un valor posible de un campo de opción: lo que se guarda y cómo se lee.</summary>
+public sealed record OpcionDelCampo(string Valor, string Etiqueta);
 
 /// <summary>
 /// El catálogo de lo que se guarda del cliente. Las claves son ESTABLES (van en la base y en
@@ -62,6 +69,15 @@ public static class CamposDelPerfil
     public const string TieneTrabajadores = "tiene_trabajadores";
     public const string ManejoDeGastos = "manejo_de_gastos";
 
+    /// <summary>Decide a qué cuentas van las compras (inventario, materia prima, costo del servicio o gasto).</summary>
+    public const string TipoDeEmpresa = "tipo_empresa";
+
+    /// <summary>Cómo acumula el costo un fabricante o constructora (producción en proceso por orden, por proceso…).</summary>
+    public const string SistemaDeCostos = "sistema_costos";
+
+    /// <summary>Perpetuo: el costo se registra en cada venta. Analítico: por compras e inventario final.</summary>
+    public const string SistemaDeInventarios = "sistema_inventarios";
+
     public const int MaxValorLength = 8000;
 
     public static readonly IReadOnlyList<CampoDelPerfil> Todos =
@@ -83,6 +99,26 @@ public static class CamposDelPerfil
         new(Bancos, "Bancos que usa", TipoDeCampo.Lista, GrupoDeCampos.Operacion, false),
         new(TieneTrabajadores, "Tiene trabajadores", TipoDeCampo.SiNo, GrupoDeCampos.Operacion, false),
         new(ManejoDeGastos, "Cómo maneja sus gastos", TipoDeCampo.Texto, GrupoDeCampos.Operacion, false),
+        new(TipoDeEmpresa, "Tipo de empresa", TipoDeCampo.Opcion, GrupoDeCampos.Operacion, false,
+        [
+            new("comercial", "Comercial: compra y vende sin transformar"),
+            new("servicios", "Servicios"),
+            new("fabricante", "Fabricante: transforma materia prima"),
+            new("constructora", "Constructora"),
+            new("agropecuaria", "Agropecuaria"),
+        ]),
+        new(SistemaDeCostos, "Sistema de costos", TipoDeCampo.Opcion, GrupoDeCampos.Operacion, false,
+        [
+            new("ninguno", "No lleva costeo"),
+            new("ordenes", "Por órdenes de producción (u obra)"),
+            new("procesos", "Por procesos"),
+            new("estandar", "Estándar"),
+        ]),
+        new(SistemaDeInventarios, "Sistema de inventarios", TipoDeCampo.Opcion, GrupoDeCampos.Operacion, false,
+        [
+            new("perpetuo", "Perpetuo: registra el costo en cada venta"),
+            new("analitico", "Analítico: por compras e inventario final"),
+        ]),
     ];
 
     public static CampoDelPerfil? Buscar(string clave) => Todos.FirstOrDefault(c => c.Clave == clave);

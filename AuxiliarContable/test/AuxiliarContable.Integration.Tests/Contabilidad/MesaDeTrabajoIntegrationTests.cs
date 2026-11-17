@@ -170,4 +170,46 @@ public class MesaDeTrabajoIntegrationTests : ConJerarquiaTestBase
         otra.OperacionesNuevas.ShouldBe(0);
         (await ComoAsync(Administrador, () => _mesa.GetAsync(_cliente, Dia.Year, Dia.Month))).Operaciones.Operaciones.Count.ShouldBe(4);
     }
+
+    [Fact]
+    public async Task Las_polizas_se_generan_con_el_perfil_y_lo_aceptado_se_manda()
+    {
+        var perfil = GetRequiredService<IPerfilFiscalAppService>();
+        // Un campo de opción solo acepta sus valores.
+        await Should.ThrowAsync<Volo.Abp.BusinessException>(() => ComoAsync(Administrador, () => perfil.ResponderAsync(_cliente,
+            new ResponderDatoDelPerfilDto { Campo = CamposDelPerfil.TipoDeEmpresa, Valor = "tienda" })));
+        await ComoAsync(Administrador, () => perfil.ResponderAsync(_cliente, new ResponderDatoDelPerfilDto { Campo = CamposDelPerfil.TipoDeEmpresa, Valor = "Constructora" }));
+        await ComoAsync(Administrador, () => perfil.ResponderAsync(_cliente, new ResponderDatoDelPerfilDto { Campo = CamposDelPerfil.SistemaDeCostos, Valor = "ordenes" }));
+        (await ComoAsync(Administrador, () => perfil.GetAsync(_cliente))).Campos.Single(c => c.Clave == CamposDelPerfil.TipoDeEmpresa).Opciones!.Count.ShouldBe(5);
+
+        await SubirAsync("mortero.xml", TipoDeDocumento.Cfdi, Xml(Uuid, 1160m));
+        var op = (await ComoAsync(Administrador, () => _operaciones.GetListAsync(_cliente, Dia.Year, Dia.Month))).Operaciones.Single();
+        _motor.Contabilidad = (p, ops, xmls) => new ResultadoContable
+        {
+            Polizas = p.TipoEmpresa == "constructora" && xmls.Count == 1
+                ? [new PolizaContable { Operacion = ops[0].Id, Tipo = "Diario", Numero = 1, Movimientos = [new MovimientoContable { Cuenta = "115.03", Debe = 1000 }] }]
+                : [],
+            Revision = ops[0].Aceptados.Contains("AJENO_AL_GIRO")
+                ? []
+                : [new RenglonDeRevision { Operacion = ops[0].Id, Codigo = "AJENO_AL_GIRO", Nivel = "detiene", Mensaje = "No parece del giro" }],
+        };
+
+        // El cliente no genera pólizas.
+        await Should.ThrowAsync<AbpAuthorizationException>(() => ComoAsync(Usuario, () => _mesa.GenerarPolizasAsync(_cliente, Dia.Year, Dia.Month)));
+        (await ComoAsync(Administrador, () => _mesa.GetPolizasAsync(_cliente, Dia.Year, Dia.Month))).ShouldBeNull();
+
+        var r = await ComoAsync(Administrador, () => _mesa.GenerarPolizasAsync(_cliente, Dia.Year, Dia.Month));
+        r.Detenidas.ShouldBe(1);
+        r.Resultado.Polizas.ShouldHaveSingleItem().Movimientos[0].Cuenta.ShouldBe("115.03");
+        var mandada = _motor.Contabilizadas.ShouldHaveSingleItem();
+        mandada.Id.ShouldBe(op.Id.ToString());
+        mandada.Factura.Uuid.ShouldBe(Uuid);
+        mandada.Sentido.ShouldBe("salida");
+
+        await ComoAsync(Administrador, () => _mesa.AceptarRevisionAsync(_cliente, op.Id, "ajeno_al_giro"));
+        var otra = await ComoAsync(Administrador, () => _mesa.GenerarPolizasAsync(_cliente, Dia.Year, Dia.Month));
+        _motor.Contabilizadas[0].Aceptados.ShouldBe(["AJENO_AL_GIRO"]);
+        otra.Detenidas.ShouldBe(0);
+        (await ComoAsync(Administrador, () => _mesa.GetPolizasAsync(_cliente, Dia.Year, Dia.Month)))!.Resultado.Polizas.Count.ShouldBe(1);
+    }
 }
