@@ -21,6 +21,8 @@ import {
   UNIDADES,
   USOS_CFDI,
 } from './facturar.service';
+import { OperacionDto, OperacionesService } from '../mi-informacion/operaciones.service';
+import { PatasComponent } from '../mi-informacion/patas.component';
 
 const ESTADOS: Record<EstadoDeSolicitud, { texto: string; clase: string }> = {
   [EstadoDeSolicitud.Pendiente]: { texto: 'Pendiente', clase: 'ig-etiqueta-alerta' },
@@ -41,7 +43,7 @@ function redondea(n: number): number {
 @Component({
   selector: 'app-facturar',
   standalone: true,
-  imports: [FormsModule, CurrencyPipe, DatePipe],
+  imports: [FormsModule, CurrencyPipe, DatePipe, PatasComponent],
   templateUrl: './facturar.component.html',
   styleUrls: ['./facturar.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -52,6 +54,9 @@ export class FacturarComponent implements OnInit {
   private readonly perfiles = inject(PerfilFiscalService);
   private readonly ruta = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly operaciones = inject(OperacionesService);
+  /** La solicitud recién enviada, como operación: se pregunta cómo se cobra y su control interno. */
+  readonly porAmarrar = signal<OperacionDto | null>(null);
   /** El despacho (ve a todos los clientes): solo él ve la cola y atiende. */
   private readonly esEquipo = inject(PermissionService).getGrantedPolicy('AuxiliarContable.Organizaciones');
 
@@ -221,8 +226,9 @@ export class FacturarComponent implements OnInit {
       nota: this.nota.trim() || null,
     };
     this.api.crear(id, s).subscribe({
-      next: () => {
+      next: creada => {
         this.ocupado.set(false);
+        this.operaciones.deSolicitud(id, creada.id).subscribe({ next: o => this.porAmarrar.set(o), error: () => undefined });
         this.pidiendo.set(false);
         this.aviso.set('Solicitud enviada: el despacho la timbrará y aquí verás el XML y el PDF.');
         this.cargar();

@@ -4,6 +4,8 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { mensajeDeError } from '../invitaciones/invitaciones.service';
 import { ClienteVisibleDto, EstadoDeDocumento, PerfilFiscalService } from '../perfil-fiscal/perfil-fiscal.service';
 import { chatEncendido } from '../shared/chat';
+import { OperacionDto, OperacionesService } from '../mi-informacion/operaciones.service';
+import { PatasComponent } from '../mi-informacion/patas.component';
 import {
   DocumentoDeBovedaDto,
   DocumentosService,
@@ -40,7 +42,7 @@ const POR_PAGINA = 20;
 @Component({
   selector: 'app-documentos',
   standalone: true,
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule, RouterLink, PatasComponent],
   templateUrl: './documentos.component.html',
   styleUrls: ['./documentos.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -49,6 +51,12 @@ export class DocumentosComponent implements OnInit {
   private readonly api = inject(DocumentosService);
   private readonly perfiles = inject(PerfilFiscalService);
   private readonly ruta = inject(ActivatedRoute);
+  private readonly operaciones = inject(OperacionesService);
+
+  /** Dentro de «Mi información», la pestaña: solo esa zona de subida (y sus documentos). Sin ella, todas. */
+  readonly zona = (this.ruta.snapshot.data['zona'] ?? null) as 'facturas' | 'dinero' | 'control' | null;
+  /** Lo recién subido, con su operación: se pregunta por las otras dos patas (se puede dejar para después). */
+  readonly porAmarrar = signal<OperacionDto[]>([]);
   private readonly router = inject(Router);
 
   readonly Tipo = TipoDeDocumento;
@@ -56,8 +64,8 @@ export class DocumentosComponent implements OnInit {
   readonly nombresDeTipo = NOMBRES_DE_TIPO;
   readonly meses = MESES;
   readonly categorias = CATEGORIAS;
-  readonly tiposParaFiltrar = [TipoDeDocumento.Cfdi, TipoDeDocumento.EstadoDeCuenta, TipoDeDocumento.Ticket,
-    TipoDeDocumento.ConstanciaDeSituacionFiscal, TipoDeDocumento.Otro];
+  readonly tiposParaFiltrar = [TipoDeDocumento.Cfdi, TipoDeDocumento.EstadoDeCuenta, TipoDeDocumento.ComprobanteDePago,
+    TipoDeDocumento.ControlInterno, TipoDeDocumento.Ticket, TipoDeDocumento.ConstanciaDeSituacionFiscal, TipoDeDocumento.Otro];
 
   readonly clientes = signal<ClienteVisibleDto[] | null>(null);
   /** Sin chat (sin API de Claude) no se ofrece «preguntar al asistente». */
@@ -72,7 +80,11 @@ export class DocumentosComponent implements OnInit {
 
   readonly anio = signal<number | null>(null);
   readonly mes = signal<number | null>(null);
-  tipo: TipoDeDocumento | null = null;
+  tipo: TipoDeDocumento | null =
+    this.zona === 'facturas' ? TipoDeDocumento.Cfdi
+    : this.zona === 'dinero' ? TipoDeDocumento.EstadoDeCuenta
+    : this.zona === 'control' ? TipoDeDocumento.ControlInterno
+    : null;
   texto = '';
   /** Estados de cuenta y dinero: qué es (estado de cuenta o comprobante de transferencia/pago). */
   tipoDeDinero = TipoDeDocumento.EstadoDeCuenta;
@@ -265,20 +277,46 @@ export class DocumentosComponent implements OnInit {
     }
     this.error.set(null);
     this.subidas.set(archivos.map(a => ({ nombre: a.name, estado: 'subiendo' as const })));
+    this.porAmarrar.set([]);
     for (let i = 0; i < archivos.length; i++) {
       const resultado = await new Promise<Subida>(resolver =>
         this.api.subir(id, ...this.destino(zona, archivos[i])).subscribe({
-          next: r => resolver({
-            nombre: archivos[i].name,
-            estado: r.aviso ? 'aviso' : r.esDuplicado ? 'duplicado' : 'ok',
-            mensaje: r.aviso ?? (r.esDuplicado ? 'Ya estaba en la bóveda.' : undefined),
-          }),
+          next: r => {
+            this.abrirOperacion(id, r.documento.id, r.documento.tipo);
+            resolver({
+              nombre: archivos[i].name,
+              estado: r.aviso ? 'aviso' : r.esDuplicado ? 'duplicado' : 'ok',
+              mensaje: r.aviso ?? (r.esDuplicado ? 'Ya estaba en la bóveda.' : undefined),
+            });
+          },
           error: e => resolver({ nombre: archivos[i].name, estado: 'error', mensaje: mensajeDeError(e, 'No se pudo subir.') }),
         }),
       );
       this.subidas.update(s => s.map((x, j) => (j === i ? resultado : x)));
     }
     this.recargar();
+  }
+
+  /**
+   * La factura (XML), el comprobante de pago o el control interno recién subido abren (o encuentran) su operación,
+   * para preguntar enseguida por las otras dos patas. Un estado de cuenta no: sus movimientos se amarran en «Todo».
+   */
+  private abrirOperacion(organizacionId: string, documentoId: string, tipo: TipoDeDocumento): void {
+    if (![TipoDeDocumento.Cfdi, TipoDeDocumento.ComprobanteDePago, TipoDeDocumento.ControlInterno].includes(tipo) || this.porAmarrar().length >= 10) {
+      return;
+    }
+    this.operaciones.deDocumento(organizacionId, documentoId).subscribe({
+      next: o => this.porAmarrar.update(l => (l.some(x => x.id === o.id) ? l : [...l, o])),
+      // Si no se pudo, el documento ya está subido: se amarra después en «Todo».
+      error: () => undefined,
+    });
+  }
+
+  /** Lo que cambió al amarrar: se reemplaza (o se quita si se borró o se juntó con otra). */
+  amarrada(antes: OperacionDto, despues: OperacionDto | null): void {
+    this.porAmarrar.update(l => l
+      .map(x => (x.id === antes.id ? despues : x))
+      .filter((x, i, todos): x is OperacionDto => !!x && todos.findIndex(y => y?.id === x.id) === i));
   }
 
   /** Tipo y mes con que se sube un archivo según la zona. */
@@ -292,7 +330,7 @@ export class DocumentosComponent implements OnInit {
     if (zona === 'dinero') {
       return [this.tipoDeDinero, archivo, this.anioAlSubir, this.mesAlSubir];
     }
-    return [TipoDeDocumento.Otro, archivo, this.anioDeControl, this.mesDeControl];
+    return [TipoDeDocumento.ControlInterno, archivo, this.anioDeControl, this.mesDeControl];
   }
 
   descargar(d: DocumentoDeBovedaDto): void {
@@ -374,7 +412,10 @@ export class DocumentosComponent implements OnInit {
       case TipoDeDocumento.EstadoDeCuenta:
         return 'bi-bank';
       case TipoDeDocumento.Ticket:
+      case TipoDeDocumento.ControlInterno:
         return 'bi-ticket-perforated';
+      case TipoDeDocumento.ComprobanteDePago:
+        return 'bi-arrow-left-right';
       case TipoDeDocumento.ConstanciaDeSituacionFiscal:
         return 'bi-person-lines-fill';
       default:

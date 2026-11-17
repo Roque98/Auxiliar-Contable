@@ -7,4 +7,6 @@ export enum TipoDeDocumento {
   Cfdi = 2,
   EstadoDeCuenta = 3,
   Ticket = 4,
+  ComprobanteDePago = 5,
+  ControlInterno = 6,
 }

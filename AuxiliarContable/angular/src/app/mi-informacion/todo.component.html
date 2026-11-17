@@ -1,0 +1,114 @@
+<div class="td-barra">
+  @if (clientes(); as lista) {
+    @if (lista.length > 1) {
+      <label class="td-campo">
+        <span>Cliente</span>
+        <select class="ig-control" [ngModel]="clienteId()" (ngModelChange)="elegir($event)">
+          <option [ngValue]="null" disabled>Elige un cliente…</option>
+          @for (c of lista; track c.id) {
+            <option [ngValue]="c.id">{{ c.nombre }}</option>
+          }
+        </select>
+      </label>
+    } @else if (!lista.length) {
+      <p class="ig-ayuda">Todavía no perteneces a ningún cliente. Pide al despacho que te invite.</p>
+    }
+  }
+  @if (clienteId()) {
+    <label class="td-campo">
+      <span>Mes</span>
+      <select class="ig-control td-capital" [(ngModel)]="mes" (ngModelChange)="cargar()">
+        @for (m of meses; track $index) {
+          <option [ngValue]="$index + 1">{{ m }}</option>
+        }
+      </select>
+    </label>
+    <label class="td-campo">
+      <span>Año</span>
+      <select class="ig-control" [(ngModel)]="anio" (ngModelChange)="cargar()">
+        @for (a of anios; track a) {
+          <option [ngValue]="a">{{ a }}</option>
+        }
+      </select>
+    </label>
+  }
+</div>
+
+@if (error(); as e) {
+  <div class="ig-alerta ig-alerta-error" role="alert">{{ e }}</div>
+}
+
+@if (datos(); as d) {
+  <section class="td-tarjeta" aria-labelledby="td-titulo">
+    <div class="td-cabecera">
+      <h2 id="td-titulo">Operaciones de {{ meses[d.mes - 1] }} {{ d.anio }}</h2>
+      @if (d.puedeEditar) {
+        <button type="button" class="btn btn-outline-primary td-boton" (click)="creando.set(!creando())">
+          <i class="bi bi-plus-lg" aria-hidden="true"></i> Nueva operación
+        </button>
+      }
+    </div>
+    <p class="td-nota">
+      <span class="td-circulo td-ligada" aria-hidden="true"></span> amarrada
+      <span class="td-circulo td-nohay" aria-hidden="true"></span> no hay
+      <span class="td-circulo td-pendiente" aria-hidden="true"></span> pendiente
+      — en orden: factura · transacción · control interno. Las más completas van primero.
+      @if (d.cerrado) { <strong>El mes está cerrado: solo se puede ver.</strong> }
+    </p>
+
+    @if (creando()) {
+      <form class="td-nueva" (ngSubmit)="crear()">
+        <label class="td-campo td-ancho"><span>Qué fue</span><input class="ig-control" name="desc" [(ngModel)]="nuevaDescripcion" required maxlength="256" /></label>
+        <label class="td-campo"><span>Importe</span><input class="ig-control" name="imp" type="number" min="0.01" step="0.01" [(ngModel)]="nuevoImporte" /></label>
+        <label class="td-campo"><span>Fecha</span><input class="ig-control" name="fecha" type="date" [(ngModel)]="nuevaFecha" required /></label>
+        <label class="td-campo">
+          <span>Es</span>
+          <select class="ig-control" name="sentido" [(ngModel)]="nuevoSentido">
+            <option [ngValue]="Sentido.Salida">Compra o gasto</option>
+            <option [ngValue]="Sentido.Entrada">Venta o cobro</option>
+          </select>
+        </label>
+        <button type="submit" class="btn btn-primary td-boton" [disabled]="!nuevaDescripcion.trim()">Crear</button>
+      </form>
+    }
+
+    <div class="td-filtros" role="tablist">
+      <button type="button" role="tab" class="td-chip" [class.td-chip-activo]="filtro() === 'todas'" [attr.aria-selected]="filtro() === 'todas'" (click)="filtro.set('todas')">Todas ({{ cuentas().todas }})</button>
+      <button type="button" role="tab" class="td-chip" [class.td-chip-activo]="filtro() === 'faltan'" [attr.aria-selected]="filtro() === 'faltan'" (click)="filtro.set('faltan')">Les falta algo ({{ cuentas().faltan }})</button>
+      <button type="button" role="tab" class="td-chip" [class.td-chip-activo]="filtro() === 'completas'" [attr.aria-selected]="filtro() === 'completas'" (click)="filtro.set('completas')">Completas ({{ cuentas().completas }})</button>
+    </div>
+
+    <ul class="td-lista">
+      @for (o of visibles(); track o.id) {
+        <li>
+          <button type="button" class="td-fila" (click)="abrir(o)" [attr.aria-expanded]="abierta() === o.id">
+            <span class="td-circulos" [attr.aria-label]="o.ligadas + ' de 3 amarradas'">
+              <span [class]="circulo(o.factura.estado)"></span>
+              <span [class]="circulo(o.transaccion.estado)"></span>
+              <span [class]="circulo(o.controlInterno.estado)"></span>
+            </span>
+            <span class="td-fecha">{{ o.fecha | date: 'dd/MM' : 'UTC' }}</span>
+            <span class="td-desc">
+              <strong>{{ o.contraparte || o.descripcion }}</strong>
+              <small>{{ resumen(o) }}</small>
+            </span>
+            <span class="td-importe" [class.td-entrada]="o.sentido === Sentido.Entrada">
+              @if (o.importe !== null) { {{ o.sentido === Sentido.Entrada ? '+' : '' }}{{ o.importe | currency: 'MXN' : 'symbol-narrow' }} }
+            </span>
+          </button>
+          @if (abierta() === o.id) {
+            <div class="td-detalle">
+              <app-patas [organizacionId]="clienteId()!" [operacion]="o" [otras]="d.operaciones" [puedeEditar]="d.puedeEditar" (cambio)="cambio($event)" />
+            </div>
+          }
+        </li>
+      } @empty {
+        <li class="td-vacio">
+          @if (cuentas().todas) { Nada con este filtro. } @else { No hay operaciones en el mes: sube facturas, comprobantes o control interno en las otras pestañas, o crea una. }
+        </li>
+      }
+    </ul>
+  </section>
+} @else if (cargando()) {
+  <p class="td-nota"><span class="ig-girando" aria-hidden="true"></span> Cargando…</p>
+}

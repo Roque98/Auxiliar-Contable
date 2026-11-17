@@ -1,0 +1,68 @@
+/* Mobile first: patas apiladas, acciones que se acomodan; botones de 44 px. */
+:host { display: block; }
+
+.pt { display: flex; flex-direction: column; gap: var(--ig-esp-3); }
+
+.pt-datos,
+.pt-acciones,
+.pt-juntar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--ig-esp-2);
+}
+
+.pt-campo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ig-esp-1);
+  min-width: 0;
+
+  span { font-size: var(--ig-texto-sm); font-weight: var(--ig-peso-semi); }
+  .ig-control { min-height: 44px; }
+}
+
+.pt-ancho { flex: 1 1 14rem; }
+.pt-uuid { flex: 1 1 16rem; min-width: 0; min-height: 44px; }
+.pt-forma { flex: 0 1 14rem; min-height: 44px; }
+.pt-boton { min-height: 44px; display: inline-flex; align-items: center; gap: var(--ig-esp-1); }
+
+.pt-pata {
+  border-top: var(--ig-borde);
+  padding-top: var(--ig-esp-2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--ig-esp-2);
+
+  h4 {
+    margin: 0;
+    font-size: var(--ig-texto-base);
+    font-weight: var(--ig-peso-semi);
+    display: flex;
+    align-items: center;
+    gap: var(--ig-esp-2);
+    small { color: var(--ig-texto-secundario); font-weight: var(--ig-peso-normal); }
+  }
+}
+
+.pt-dato { margin: 0; font-size: var(--ig-texto-sm); overflow-wrap: anywhere; }
+.pt-deshacer,
+.pt-borrar { align-self: flex-start; padding: 0; min-height: 44px; font-size: var(--ig-texto-sm); }
+.pt-borrar { color: var(--ig-error); }
+
+/* Los tres círculos: verde amarrada, ámbar «no hay», gris pendiente (con borde para que se vea sin color). */
+.pt-circulo {
+  display: inline-block;
+  width: 0.9rem;
+  height: 0.9rem;
+  border-radius: 50%;
+  flex: none;
+}
+
+.pt-ligada { background: var(--ig-exito); }
+.pt-nohay { background: var(--ig-alerta); }
+
+.pt-pendiente {
+  background: transparent;
+  border: 2px solid var(--ig-texto-secundario);
+}

@@ -149,16 +149,18 @@ export const SECCIONES: Seccion[] = [
     titulo: 'Documentos',
     temas: [
       {
-        titulo: 'Sube tus facturas y estados de cuenta',
+        titulo: 'Mi información: facturas, dinero y control interno',
         icono: 'bi-folder2-open',
-        ruta: '/documentos',
+        ruta: '/mi-informacion/facturas',
         salvoPermisos: ['AuxiliarContable.Organizaciones'],
         pasos: [
-          'Abre Documentos: hay tres lugares para subir, cada uno con su botón. Puedes elegir varios archivos a la vez.',
-          '«Facturas»: el XML de tus facturas (y su PDF si lo tienes). Se acomodan solas en el mes de su fecha.',
-          '«Estados de cuenta y dinero»: elige si es estado de cuenta o comprobante de transferencia y de qué mes es; el estado de cuenta puede leer su mes solo.',
-          '«Control interno»: contratos, entregables, fotos o pedidos que prueban tus compras; luego los ligas al gasto en «Control interno».',
-          'Elige un mes y pulsa «Ver clasificadas»: tus facturas emitidas y recibidas por tipo, las PPD por definir, las inversiones y qué es cada compra para tu giro.',
+          'Abre «Mi información». Tiene cuatro pestañas: Facturas, Dinero, Control interno y Todo.',
+          '«Facturas»: sube el XML de tus facturas (y su PDF si lo tienes), o cambia a «Pedir factura» para que el despacho te la timbre.',
+          '«Dinero»: estados de cuenta y comprobantes de transferencias; o cambia a «Efectivo y crédito» para lo que no pasa por el banco.',
+          '«Control interno»: tickets, notas de venta o compra y comprobantes internos.',
+          'Al subir algo te preguntamos por las otras dos partes de esa operación: el UUID de su factura, la referencia o folio de la transferencia (o si fue en efectivo o a crédito) y su ticket o nota. Si no lo tienes, dilo («no se facturó», «no tengo la referencia»); si no lo sabes ahorita, déjalo para después.',
+          '«Todo»: cada operación del mes con tres círculos (factura · transacción · control interno). Verde es amarrada, ámbar es «no hay» y gris es pendiente. Las más completas van primero; toca una para completarla o juntarla con otra.',
+          'En «Facturas», elige un mes y pulsa «Ver clasificadas»: tus facturas emitidas y recibidas por tipo, las PPD por definir, las inversiones y qué es cada compra para tu giro.',
           '¿Quedó en otro mes? Toca el calendario junto al documento y cámbialo.',
           'Navega por año y mes, o busca por el nombre del archivo.',
         ],
@@ -167,7 +169,7 @@ export const SECCIONES: Seccion[] = [
       {
         titulo: 'La bóveda de cada cliente',
         icono: 'bi-folder2-open',
-        ruta: '/documentos',
+        ruta: '/mi-informacion/facturas',
         permisos: ['AuxiliarContable.Organizaciones'],
         texto: [
           'Elige al cliente: ves sus documentos por mes y por tipo, y sube cada cosa en su zona (facturas, estados de cuenta y dinero, control interno).',
@@ -249,7 +251,7 @@ export const SECCIONES: Seccion[] = [
       {
         titulo: 'Efectivo y crédito',
         icono: 'bi-cash-coin',
-        ruta: '/dinero',
+        ruta: '/mi-informacion/dinero/efectivo',
         pasos: [
           'Abre «Efectivo y crédito» y elige el mes: arriba ves cuánto entró y salió en efectivo, lo que falta por pagar y por cobrar.',
           'Agrega una entrada en efectivo (una venta o el corte de caja del día), una salida en efectivo (un gasto), una compra a crédito o una venta a crédito.',
@@ -261,7 +263,7 @@ export const SECCIONES: Seccion[] = [
       {
         titulo: 'Pedir factura',
         icono: 'bi-receipt',
-        ruta: '/facturar',
+        ruta: '/mi-informacion/facturas/pedir',
         pasos: [
           'Abre «Pedir factura» y pulsa «Pedir una factura».',
           'A quién: elige uno de antes o sube su Constancia de Situación Fiscal para llenar RFC, nombre, código postal y régimen exactos.',
@@ -274,7 +276,7 @@ export const SECCIONES: Seccion[] = [
       {
         titulo: 'Control interno',
         icono: 'bi-clipboard-check',
-        ruta: '/control-interno',
+        ruta: '/mi-informacion/control/expedientes',
         pasos: [
           'Abre «Control interno» y elige el mes: salen las salidas de dinero del banco (de la conciliación del mes) y las de «Efectivo y crédito».',
           '«Falta probar que ocurrió»: el gasto tiene factura, pero hace falta el contrato, el entregable, una foto o el pedido.',

@@ -1,5 +1,7 @@
 <header class="dc-cabecera">
-  <h1>Documentos</h1>
+  @if (!zona) {
+    <h1>Documentos</h1>
+  }
   @if (clientes(); as lista) {
     @if (lista.length > 1) {
       <label class="dc-campo">
@@ -33,9 +35,10 @@
 @if (cliente(); as c) {
   @if (c.puedeEditar) {
     <section class="dc-tarjeta" aria-labelledby="dc-subir">
-      <h2 id="dc-subir">Subir documentos</h2>
-      <p class="dc-nota">Cada cosa en su lugar. Puedes elegir varios archivos a la vez.</p>
+      <h2 id="dc-subir">Subir {{ zona === 'facturas' ? 'facturas' : zona === 'dinero' ? 'estados de cuenta y comprobantes' : zona === 'control' ? 'control interno' : 'documentos' }}</h2>
+      <p class="dc-nota">Puedes elegir varios archivos a la vez. Al subirlos te preguntamos por lo demás de cada operación (o lo dejas para después).</p>
       <div class="dc-zonas">
+        @if (!zona || zona === 'facturas') {
         <div class="dc-zona" data-testid="zona-facturas">
           <h3><i class="bi bi-file-earmark-code" aria-hidden="true"></i> Facturas</h3>
           <p class="dc-nota">El <strong>XML</strong> de tus facturas emitidas y recibidas (y su PDF si lo tienes). Se acomodan solas en el mes de su fecha.</p>
@@ -45,6 +48,8 @@
           </label>
         </div>
 
+        }
+        @if (!zona || zona === 'dinero') {
         <div class="dc-zona" data-testid="zona-dinero">
           <h3><i class="bi bi-bank" aria-hidden="true"></i> Estados de cuenta y dinero</h3>
           <p class="dc-nota">Estados de cuenta y comprobantes de transferencias o pagos: PDF, captura o foto.</p>
@@ -52,7 +57,7 @@
             <span>¿Qué es?</span>
             <select class="ig-control" [(ngModel)]="tipoDeDinero" (ngModelChange)="sugerirMes()">
               <option [ngValue]="Tipo.EstadoDeCuenta">Estado de cuenta</option>
-              <option [ngValue]="Tipo.Ticket">Comprobante de transferencia o pago</option>
+              <option [ngValue]="Tipo.ComprobanteDePago">Comprobante de transferencia o pago</option>
             </select>
           </label>
           <div class="dc-al-subir">
@@ -82,12 +87,14 @@
             <i class="bi bi-cloud-arrow-up" aria-hidden="true"></i> Subir
             <input type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/*" (change)="subir($event, 'dinero')" hidden />
           </label>
-          <p class="dc-nota">¿Efectivo, corte de caja o algo a crédito? Va en <a routerLink="/dinero" [queryParams]="{ cliente: c.id }">Efectivo y crédito</a>.</p>
+          <p class="dc-nota">¿Efectivo, corte de caja o algo a crédito? Va en <a routerLink="/mi-informacion/dinero/efectivo" [queryParams]="{ cliente: c.id }">Efectivo y crédito</a>.</p>
         </div>
 
+        }
+        @if (!zona || zona === 'control') {
         <div class="dc-zona" data-testid="zona-control">
           <h3><i class="bi bi-clipboard-check" aria-hidden="true"></i> Control interno</h3>
-          <p class="dc-nota">Lo que prueba que una compra o servicio ocurrió: contratos, entregables, fotos, pedidos, cotizaciones.</p>
+          <p class="dc-nota">Ticket, nota de venta o de compra, o cualquier comprobante interno de la operación; también contratos, entregables y fotos.</p>
           <div class="dc-al-subir">
             <label class="dc-campo">
               <span>¿De qué mes es?</span>
@@ -110,8 +117,9 @@
             <i class="bi bi-cloud-arrow-up" aria-hidden="true"></i> Subir
             <input type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/*" (change)="subir($event, 'control')" hidden />
           </label>
-          <p class="dc-nota">Para ligarlos al gasto que respaldan, ve a <a routerLink="/control-interno" [queryParams]="{ cliente: c.id }">Control interno</a>.</p>
+          <p class="dc-nota">Contratos, entregables y fotos que prueban un gasto van en <a routerLink="/mi-informacion/control/expedientes" [queryParams]="{ cliente: c.id }">Expediente de cada gasto</a>.</p>
         </div>
+        }
       </div>
 
       @if (subidas().length) {
@@ -132,6 +140,18 @@
             </li>
           }
         </ul>
+      }
+      @if (porAmarrar().length) {
+        <div class="dc-amarrar" data-testid="por-amarrar">
+          <h3>Amarra lo que subiste</h3>
+          <p class="dc-nota">Para cada una dinos su factura, cómo se pagó y su ticket o nota. Lo que no tengas, dilo; lo que no sepas ahorita, déjalo: queda en gris en «Todo».</p>
+          @for (o of porAmarrar(); track o.id) {
+            <div class="dc-operacion">
+              <app-patas [organizacionId]="c.id" [operacion]="o" (cambio)="amarrada(o, $event)" />
+            </div>
+          }
+          <a class="dc-nota" routerLink="/mi-informacion/todo" [queryParams]="{ cliente: c.id }">Ver todas las operaciones del mes</a>
+        </div>
       }
     </section>
   }
@@ -159,7 +179,7 @@
     </section>
   }
 
-  @if (mes(); as m) {
+  @if ((!zona || zona === 'facturas') && mes(); as m) {
     <section class="dc-tarjeta" aria-labelledby="dc-facturas" data-testid="mis-facturas">
       <div class="dc-facturas-cabecera">
         <h2 id="dc-facturas">Mis facturas de {{ meses[m - 1] }} {{ anio() }}</h2>

@@ -1,0 +1,46 @@
+/* Pestañas que se desplazan de lado en el teléfono (sin romper la página) y sub-pestañas como chips. */
+:host { display: block; }
+
+h1 { font-size: var(--ig-titulo-2); font-weight: var(--ig-peso-semi); margin: 0; }
+
+.mi-cabecera { display: flex; flex-direction: column; gap: var(--ig-esp-1); margin-bottom: var(--ig-esp-3); }
+.mi-nota { margin: 0; color: var(--ig-texto-secundario); font-size: var(--ig-texto-sm); }
+
+.mi-pestanas {
+  display: flex;
+  gap: var(--ig-esp-1);
+  overflow-x: auto;
+  border-bottom: var(--ig-borde);
+  margin-bottom: var(--ig-esp-3);
+}
+
+.mi-pestana {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ig-esp-1);
+  padding: 0 var(--ig-esp-3);
+  white-space: nowrap;
+  color: var(--ig-texto-secundario);
+  text-decoration: none;
+  border-bottom: 3px solid transparent;
+  font-weight: var(--ig-peso-semi);
+}
+
+.mi-activa { color: var(--ig-acento-texto); border-bottom-color: var(--ig-acento); }
+
+.mi-formas { display: flex; flex-wrap: wrap; gap: var(--ig-esp-2); margin-bottom: var(--ig-esp-4); }
+
+.mi-forma {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 var(--ig-esp-3);
+  border: var(--ig-borde);
+  border-radius: 999px;
+  color: inherit;
+  text-decoration: none;
+  font-size: var(--ig-texto-sm);
+}
+
+.mi-forma-activa { background: var(--ig-acento-suave); color: var(--ig-acento-texto); font-weight: var(--ig-peso-semi); }

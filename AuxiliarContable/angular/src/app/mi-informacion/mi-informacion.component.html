@@ -1,0 +1,22 @@
+<header class="mi-cabecera">
+  <h1>Mi información</h1>
+  <p class="mi-nota">Todo lo que le das al despacho. Cada compra o venta se amarra con su factura, su transacción y su control interno.</p>
+</header>
+
+<nav class="mi-pestanas" aria-label="Mi información">
+  @for (p of pestanas; track p.ruta) {
+    <a class="mi-pestana" [routerLink]="p.ruta" routerLinkActive="mi-activa" queryParamsHandling="preserve" #rla="routerLinkActive" [attr.aria-current]="rla.isActive ? 'page' : null">
+      <i [class]="'bi ' + p.icono" aria-hidden="true"></i> {{ p.nombre }}
+    </a>
+  }
+</nav>
+
+@if (formas().length) {
+  <nav class="mi-formas" aria-label="Forma de darla">
+    @for (f of formas(); track f.ruta) {
+      <a class="mi-forma" [routerLink]="f.ruta" routerLinkActive="mi-forma-activa" [routerLinkActiveOptions]="{ exact: true }" queryParamsHandling="preserve">{{ f.nombre }}</a>
+    }
+  </nav>
+}
+
+<router-outlet />

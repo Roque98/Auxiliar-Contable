@@ -26,6 +26,12 @@ public enum TipoDeDocumento
     Cfdi = 2,
     EstadoDeCuenta = 3,
     Ticket = 4,
+
+    /// <summary>Comprobante de una transacción suelta: transferencia, SPEI, voucher, recibo de pago.</summary>
+    ComprobanteDePago = 5,
+
+    /// <summary>Control interno: nota de venta o de compra, vale, comprobante interno de la operación.</summary>
+    ControlInterno = 6,
 }
 
 /// <summary>En qué punto del proceso está.</summary>
