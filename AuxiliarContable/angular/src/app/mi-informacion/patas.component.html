@@ -60,13 +60,16 @@
                 A crédito@if (op.transaccion.vence) { · vence {{ op.transaccion.vence | date: 'd MMM y' }} }
                 @if (op.transaccion.saldado) { · pagado {{ op.transaccion.saldado | date: 'd MMM y' }} } @else { · por pagar }
               }
-              @default { Transferencia o tarjeta }
+              @default { {{ op.transaccion.delBanco ? 'Movimiento del estado de cuenta' : 'Transferencia o tarjeta' }} }
             }
             @if (op.transaccion.referencia) { · ref. {{ op.transaccion.referencia }} }
             @if (op.transaccion.nombreDelDocumento) { · {{ op.transaccion.nombreDelDocumento }} }
           </p>
         }
         @case (Estado.NoHay) { <p class="pt-dato">{{ op.transaccion.motivo }}</p> }
+      }
+      @if (op.transaccion.analisis; as an) {
+        <p class="pt-claude"><i class="bi bi-stars" aria-hidden="true"></i> {{ an.queEs }}</p>
       }
       @if (puedeEditar() && op.transaccion.estado !== Estado.Ligada) {
         <div class="pt-acciones">
@@ -105,6 +108,14 @@
       @switch (op.controlInterno.estado) {
         @case (Estado.Ligada) { <p class="pt-dato">{{ op.controlInterno.nombreDelDocumento }}</p> }
         @case (Estado.NoHay) { <p class="pt-dato">{{ op.controlInterno.motivo }}</p> }
+      }
+      @if (op.controlInterno.analisis; as an) {
+        <div class="pt-claude">
+          <p><i class="bi bi-stars" aria-hidden="true"></i> <strong>{{ an.queEs }}</strong>
+            · {{ categorias[an.relacionConGiro] ?? an.relacionConGiro }} <small>(confianza {{ an.confianza }})</small></p>
+          <p>{{ an.explicacion }}</p>
+          @if (an.quePrueba) { <p><small>Qué prueba: {{ an.quePrueba }}</small></p> }
+        </div>
       }
       @if (puedeEditar() && op.controlInterno.estado !== Estado.Ligada) {
         <div class="pt-acciones">

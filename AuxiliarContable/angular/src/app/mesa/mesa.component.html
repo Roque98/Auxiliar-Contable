@@ -1,0 +1,137 @@
+<header class="ms-cabecera">
+  <h1>Mesa de trabajo</h1>
+  <p class="ms-nota">El mes de cada cliente, completo o no: lo que subió, lo que Claude leyó y lo que falta amarrar.</p>
+  <div class="ms-barra">
+    @if (clientes(); as lista) {
+      <label class="ms-campo">
+        <span>Cliente</span>
+        <select class="ig-control" [ngModel]="clienteId()" (ngModelChange)="elegir($event)">
+          <option [ngValue]="null" disabled>Elige un cliente…</option>
+          @for (c of lista; track c.id) {
+            <option [ngValue]="c.id">{{ c.nombre }}</option>
+          }
+        </select>
+      </label>
+    }
+    @if (clienteId()) {
+      <label class="ms-campo">
+        <span>Mes</span>
+        <select class="ig-control ms-capital" [(ngModel)]="mes" (ngModelChange)="cambiarMes()">
+          @for (m of meses; track $index) {
+            <option [ngValue]="$index + 1">{{ m }}</option>
+          }
+        </select>
+      </label>
+      <label class="ms-campo">
+        <span>Año</span>
+        <select class="ig-control" [(ngModel)]="anio" (ngModelChange)="cambiarMes()">
+          @for (a of anios; track a) {
+            <option [ngValue]="a">{{ a }}</option>
+          }
+        </select>
+      </label>
+    }
+  </div>
+</header>
+
+@if (error(); as e) {
+  <div class="ig-alerta ig-alerta-error" role="alert">{{ e }}</div>
+}
+
+@if (mesa(); as m) {
+  <div class="ms-tareas">
+    <section class="ms-tarjeta" aria-labelledby="ms-analizar">
+      <h2 id="ms-analizar"><i class="bi bi-stars" aria-hidden="true"></i> Lo que subió el cliente</h2>
+      <p class="ms-cifra"><strong>{{ m.porAnalizar }}</strong> por leer · {{ m.analizados }} ya leídos</p>
+      <p class="ms-nota">Claude lee tickets, notas, comprobantes y fotos: fecha, importe, folio, referencia, UUID y qué es para el giro. Con eso completa y amarra la operación.</p>
+      <button type="button" class="btn btn-primary ms-boton" (click)="analizar()" [disabled]="!!analizando() || !m.porAnalizar || !m.operaciones.puedeEditar">
+        @if (analizando(); as a) { <span class="ig-girando" aria-hidden="true"></span> {{ a }} } @else { Analizar con Claude }
+      </button>
+      @for (a of avisosDeAnalisis(); track $index) {
+        <p class="ms-aviso">{{ a }}</p>
+      }
+    </section>
+
+    <section class="ms-tarjeta" aria-labelledby="ms-banco">
+      <h2 id="ms-banco"><i class="bi bi-bank" aria-hidden="true"></i> Banco</h2>
+      @if (m.conciliadaUtc) {
+        <p class="ms-cifra"><strong>{{ m.movimientosComoOperacion }}</strong> de {{ m.movimientosDelBanco }} movimientos ya son operación</p>
+        <p class="ms-nota">Conciliado el {{ m.conciliadaUtc | date: 'd MMM, HH:mm' }}. Amarra cada movimiento: primero por UUID, luego por importe y fecha; lo que quede, con Claude.</p>
+        <button type="button" class="btn btn-primary ms-boton" (click)="amarrar()" [disabled]="amarrando() || !m.operaciones.puedeEditar">
+          @if (amarrando()) { <span class="ig-girando" aria-hidden="true"></span> Amarrando… } @else { Amarrar el banco }
+        </button>
+      } @else {
+        <p class="ms-nota">El mes no se ha conciliado. Concílialo en <a routerLink="/conciliacion" [queryParams]="{ cliente: clienteId() }">Cierre del mes</a> y regresa a amarrarlo.</p>
+      }
+      @if (amarre(); as r) {
+        <p class="ms-resultado">
+          {{ r.operacionesNuevas }} movimientos nuevos · {{ r.porUuid }} por UUID · {{ r.porRegla }} por importe y fecha · {{ r.porClaude }} con Claude
+        </p>
+        @for (a of r.avisos; track $index) {
+          <p class="ms-aviso">{{ a }}</p>
+        }
+      }
+    </section>
+  </div>
+
+  @if (amarre()?.sugerencias?.length) {
+    <section class="ms-tarjeta" aria-labelledby="ms-sugerencias">
+      <h2 id="ms-sugerencias">Claude sugiere, con duda</h2>
+      <ul class="ms-sugerencias">
+        @for (s of amarre()!.sugerencias; track s.movimientoId) {
+          <li>
+            <p><strong>{{ s.movimiento }}</strong> → {{ s.operacion }} <small>(confianza {{ s.confianza }})</small></p>
+            <p class="ms-nota">{{ s.porque }}</p>
+            <div class="ms-acciones">
+              <button type="button" class="btn btn-outline-primary ms-boton" (click)="aceptar(s)">Sí, júntalas</button>
+              <button type="button" class="btn btn-outline-secondary ms-boton" (click)="quitar(s)">No</button>
+            </div>
+          </li>
+        }
+      </ul>
+    </section>
+  }
+
+  <section class="ms-tarjeta" aria-labelledby="ms-operaciones">
+    <h2 id="ms-operaciones">Operaciones de {{ meses[mes - 1] }} {{ anio }}</h2>
+    <div class="ms-filtros" role="tablist">
+      <button type="button" role="tab" class="ms-chip" [class.ms-chip-activo]="filtro() === 'todas'" (click)="filtro.set('todas')">Todas ({{ cuentas().todas }})</button>
+      <button type="button" role="tab" class="ms-chip" [class.ms-chip-activo]="filtro() === 'sin-factura'" (click)="filtro.set('sin-factura')">Sin factura ({{ cuentas().sinFactura }})</button>
+      <button type="button" role="tab" class="ms-chip" [class.ms-chip-activo]="filtro() === 'sin-transaccion'" (click)="filtro.set('sin-transaccion')">Sin transacción ({{ cuentas().sinTransaccion }})</button>
+      <button type="button" role="tab" class="ms-chip" [class.ms-chip-activo]="filtro() === 'sin-control'" (click)="filtro.set('sin-control')">Sin control interno ({{ cuentas().sinControl }})</button>
+      <button type="button" role="tab" class="ms-chip" [class.ms-chip-activo]="filtro() === 'completas'" (click)="filtro.set('completas')">Completas ({{ cuentas().completas }})</button>
+    </div>
+    <ul class="ms-lista">
+      @for (o of visibles(); track o.id) {
+        <li>
+          <button type="button" class="ms-fila" (click)="abrir(o)" [attr.aria-expanded]="abierta() === o.id">
+            <span class="ms-circulos" [attr.aria-label]="o.ligadas + ' de 3 amarradas'">
+              <span [class]="circulo(o.factura.estado)"></span>
+              <span [class]="circulo(o.transaccion.estado)"></span>
+              <span [class]="circulo(o.controlInterno.estado)"></span>
+            </span>
+            <span class="ms-fecha">{{ o.fecha | date: 'dd/MM' : 'UTC' }}</span>
+            <span class="ms-desc">
+              <strong>{{ o.contraparte || o.descripcion }}</strong>
+              <small>
+                {{ o.descripcion }}
+                @if (o.transaccion.delBanco) { · <i class="bi bi-bank" aria-hidden="true"></i> banco }
+                @if (categoria(o); as c) { · <i class="bi bi-stars" aria-hidden="true"></i> {{ c }} }
+              </small>
+            </span>
+            <span class="ms-importe" [class.ms-entrada]="o.sentido === Sentido.Entrada">
+              @if (o.importe !== null) { {{ o.sentido === Sentido.Entrada ? '+' : '' }}{{ o.importe | currency: 'MXN' : 'symbol-narrow' }} }
+            </span>
+          </button>
+          @if (abierta() === o.id) {
+            <div class="ms-detalle">
+              <app-patas [organizacionId]="clienteId()!" [operacion]="o" [otras]="operaciones()" [puedeEditar]="m.operaciones.puedeEditar" (cambio)="cambio($event)" />
+            </div>
+          }
+        </li>
+      } @empty {
+        <li class="ms-nota">Nada con este filtro.</li>
+      }
+    </ul>
+  </section>
+}

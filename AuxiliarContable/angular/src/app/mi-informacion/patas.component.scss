@@ -66,3 +66,16 @@
   background: transparent;
   border: 2px solid var(--ig-texto-secundario);
 }
+
+/* Lo que leyó Claude: aparte, para que se distinga de lo que dijo el cliente. */
+.pt-claude {
+  margin: 0;
+  padding: var(--ig-esp-2) var(--ig-esp-3);
+  border-radius: var(--ig-radio);
+  background: var(--ig-acento-suave);
+  font-size: var(--ig-texto-sm);
+  overflow-wrap: anywhere;
+
+  p { margin: 0; }
+  small { color: var(--ig-texto-secundario); }
+}

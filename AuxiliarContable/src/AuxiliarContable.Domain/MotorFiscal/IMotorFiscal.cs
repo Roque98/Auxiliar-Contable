@@ -59,6 +59,18 @@ public interface IMotorFiscal
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Un ticket, nota, comprobante o foto (OCR incluido) leído por Claude: sus datos y qué representa para el giro.
+    /// <see cref="MotorFiscalNoDisponibleException"/> si el motor o claude -p no están disponibles.
+    /// </summary>
+    Task<AnalisisDeDocumento> AnalizarDocumentoAsync(
+        ArchivoParaElMotor archivo, string? rfcDelCliente, string? giro, CancellationToken cancellationToken = default);
+
+    /// <summary>Movimientos del banco sin amarrar + operaciones sin pago -> parejas propuestas por Claude, con su porqué.</summary>
+    Task<SugerenciasDeAmarre> SugerirAmarresAsync(
+        IReadOnlyList<MovimientoParaAmarrar> movimientos, IReadOnlyList<CandidataParaAmarrar> candidatas, string? giro,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Tesis y jurisprudencias del TFJA y de la SCJN sobre una situación o tema, con lo que se concluyó de cada una.
     /// <paramref name="fuente"/> (TFJA o SCJN) acota; null busca en las dos.
     /// </summary>
@@ -142,6 +154,15 @@ public class MotorFiscalSinConfigurar : IMotorFiscal, ISingletonDependency
     {
         throw new MotorFiscalNoDisponibleException("No hay motor fiscal en este proceso.");
     }
+
+    public Task<AnalisisDeDocumento> AnalizarDocumentoAsync(
+        ArchivoParaElMotor archivo, string? rfcDelCliente, string? giro, CancellationToken cancellationToken = default) =>
+        throw new MotorFiscalNoDisponibleException("No hay motor fiscal en este proceso.");
+
+    public Task<SugerenciasDeAmarre> SugerirAmarresAsync(
+        IReadOnlyList<MovimientoParaAmarrar> movimientos, IReadOnlyList<CandidataParaAmarrar> candidatas, string? giro,
+        CancellationToken cancellationToken = default) =>
+        throw new MotorFiscalNoDisponibleException("No hay motor fiscal en este proceso.");
 
     public Task<IReadOnlyList<SentenciaDelMotor>> BuscarSentenciasAsync(
         string consulta, string? fuente = null, int cuantos = 5, int desde = 0, CancellationToken cancellationToken = default)

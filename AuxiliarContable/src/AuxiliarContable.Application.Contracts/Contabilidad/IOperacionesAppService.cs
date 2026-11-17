@@ -90,6 +90,43 @@ public class PataDto
 
     /// <summary>Solo factura pedida en «Pedir factura».</summary>
     public Guid? SolicitudDeFacturaId { get; set; }
+
+    /// <summary>Solo transacción: es un movimiento del estado de cuenta conciliado.</summary>
+    public bool DelBanco { get; set; }
+
+    /// <summary>Lo que Claude leyó del documento de esta pata, si ya se analizó.</summary>
+    public AnalisisCortoDto? Analisis { get; set; }
+}
+
+/// <summary>Lo que Claude entendió de un ticket, nota o comprobante: qué es y qué representa para el giro.</summary>
+public class AnalisisCortoDto
+{
+    public bool Legible { get; set; }
+    public string QueEs { get; set; } = "";
+
+    /// <summary>mercancia, insumo_directo, gasto_indirecto, gasto_operacion, inversion, deduccion_personal, ajeno, venta, no_aplica.</summary>
+    public string RelacionConGiro { get; set; } = "";
+
+    public string Explicacion { get; set; } = "";
+    public string QuePrueba { get; set; } = "";
+    public string Confianza { get; set; } = "";
+
+    public static AnalisisCortoDto? De(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+        {
+            return null;
+        }
+
+        var a = System.Text.Json.JsonSerializer.Deserialize<MotorFiscal.AnalisisDeDocumento>(json);
+        return a == null
+            ? null
+            : new AnalisisCortoDto
+            {
+                Legible = a.Legible, QueEs = a.QueEs, RelacionConGiro = a.RelacionConGiro, Explicacion = a.Explicacion,
+                QuePrueba = a.QuePrueba, Confianza = a.Confianza,
+            };
+    }
 }
 
 public class GuardarOperacionDto

@@ -371,6 +371,7 @@ public class OperacionesAppService : AuxiliarContableAppService, IOperacionesApp
         PataDeOperacion.Factura => (a.Uuid != null && a.Uuid == b.Uuid) || (a.FacturaDocumentoId != null && a.FacturaDocumentoId == b.FacturaDocumentoId),
         PataDeOperacion.Transaccion => (a.Referencia != null && string.Equals(a.Referencia, b.Referencia, StringComparison.OrdinalIgnoreCase))
                                        || (a.MovimientoFueraDelBancoId != null && a.MovimientoFueraDelBancoId == b.MovimientoFueraDelBancoId)
+                                       || (a.ClaveDeMovimiento != null && a.ClaveDeMovimiento == b.ClaveDeMovimiento)
                                        || (a.TransaccionDocumentoId != null && a.TransaccionDocumentoId == b.TransaccionDocumentoId),
         _ => a.ControlDocumentoId != null && a.ControlDocumentoId == b.ControlDocumentoId,
     };
@@ -484,9 +485,11 @@ public class OperacionesAppService : AuxiliarContableAppService, IOperacionesApp
     {
         var docIds = lista.SelectMany(o => new[] { o.FacturaDocumentoId, o.TransaccionDocumentoId, o.ControlDocumentoId })
             .OfType<Guid>().Distinct().ToList();
-        var nombres = docIds.Count == 0
-            ? new Dictionary<Guid, string>()
-            : (await _documentos.GetListAsync(d => docIds.Contains(d.Id))).ToDictionary(d => d.Id, d => d.NombreOriginal);
+        var docs = docIds.Count == 0
+            ? new Dictionary<Guid, Documento>()
+            : (await _documentos.GetListAsync(d => docIds.Contains(d.Id))).ToDictionary(d => d.Id);
+        var nombres = docs.ToDictionary(d => d.Key, d => d.Value.NombreOriginal);
+        AnalisisCortoDto? Analisis(Guid? id) => id is { } x && docs.TryGetValue(x, out var d) ? AnalisisCortoDto.De(d.Analisis) : null;
         var movIds = lista.Select(o => o.MovimientoFueraDelBancoId).OfType<Guid>().ToList();
         var movimientos = movIds.Count == 0
             ? new Dictionary<Guid, MovimientoFueraDelBanco>()
@@ -514,11 +517,13 @@ public class OperacionesAppService : AuxiliarContableAppService, IOperacionesApp
                 {
                     Estado = o.TransaccionEstado, Referencia = o.Referencia, DocumentoId = o.TransaccionDocumentoId,
                     NombreDelDocumento = Nombre(o.TransaccionDocumentoId), Motivo = o.TransaccionMotivo, Forma = o.TransaccionForma,
+                    Analisis = Analisis(o.TransaccionDocumentoId), DelBanco = o.ClaveDeMovimiento != null,
                     MovimientoFueraDelBancoId = o.MovimientoFueraDelBancoId, Vence = m?.Vence, Saldado = m?.Saldado,
                 },
                 ControlInterno = new PataDto
                 {
                     Estado = o.ControlEstado, DocumentoId = o.ControlDocumentoId, NombreDelDocumento = Nombre(o.ControlDocumentoId), Motivo = o.ControlMotivo,
+                    Analisis = Analisis(o.ControlDocumentoId),
                 },
                 Ligadas = o.Ligadas,
                 Respondidas = o.Respondidas,

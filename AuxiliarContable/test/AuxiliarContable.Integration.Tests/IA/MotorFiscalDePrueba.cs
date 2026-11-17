@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -46,8 +47,22 @@ public class MotorFiscalDePrueba : IMotorFiscal
     /// <summary>Cuántas veces se pidió actualizar la librería.</summary>
     public int Actualizaciones { get; private set; }
 
+    /// <summary>Lo que «Claude» contesta por nombre de archivo (sin entrada = un análisis vacío de confianza baja).</summary>
+    public Dictionary<string, AnalisisDeDocumento> Analisis { get; } = [];
+
+    public List<string> Analizados { get; } = [];
+
+    /// <summary>Lo que «Claude» propone al amarrar; recibe movimientos y candidatas.</summary>
+    public Func<IReadOnlyList<MovimientoParaAmarrar>, IReadOnlyList<CandidataParaAmarrar>, SugerenciasDeAmarre>? Amarres { get; set; }
+
+    public int PeticionesDeAmarre { get; private set; }
+
     public void Reiniciar()
     {
+        Analisis.Clear();
+        Analizados.Clear();
+        Amarres = null;
+        PeticionesDeAmarre = 0;
         EstaConfigurado = true;
         Caido = false;
         Resultados.Clear();
@@ -145,6 +160,34 @@ public class MotorFiscalDePrueba : IMotorFiscal
     public FacturasClasificadas Clasificadas { get; set; } = new();
 
     public string? GiroRecibido { get; private set; }
+
+    public Task<AnalisisDeDocumento> AnalizarDocumentoAsync(
+        ArchivoParaElMotor archivo, string? rfcDelCliente, string? giro, CancellationToken cancellationToken = default)
+    {
+        if (Caido)
+        {
+            throw new MotorFiscalNoDisponibleException("El motor fiscal no responde.");
+        }
+
+        Analizados.Add(archivo.Nombre);
+        GiroRecibido = giro;
+        return Task.FromResult(Analisis.TryGetValue(archivo.Nombre, out var a)
+            ? a
+            : new AnalisisDeDocumento { Legible = false, Tipo = "otro", Confianza = "baja", RelacionConGiro = "no_aplica" });
+    }
+
+    public Task<SugerenciasDeAmarre> SugerirAmarresAsync(
+        IReadOnlyList<MovimientoParaAmarrar> movimientos, IReadOnlyList<CandidataParaAmarrar> candidatas, string? giro,
+        CancellationToken cancellationToken = default)
+    {
+        if (Caido)
+        {
+            throw new MotorFiscalNoDisponibleException("El motor fiscal no responde.");
+        }
+
+        PeticionesDeAmarre++;
+        return Task.FromResult(Amarres?.Invoke(movimientos, candidatas) ?? new SugerenciasDeAmarre());
+    }
 
     public Task<FacturasClasificadas> ClasificarFacturasAsync(
         string rfcDelCliente, IReadOnlyList<ArchivoParaElMotor> facturas, string? giro, int archivosDelPeriodo,

@@ -273,6 +273,7 @@ public class AuxiliarContableDbContext :
             b.Property(x => x.TipoMime).IsRequired().HasMaxLength(DocumentoConsts.MaxTipoMimeLength);
             b.Property(x => x.Sha256).IsRequired().HasMaxLength(DocumentoConsts.HashLength);
             b.Property(x => x.Motivo).HasMaxLength(500);
+            b.Property(x => x.Analisis).HasColumnType("text");
             // Duplicados: el mismo archivo para el mismo cliente. NO unico a proposito: con el
             // borrado logico, un documento borrado y vuelto a subir chocaria con su fantasma.
             b.HasIndex(x => new { x.OrganizacionId, x.Sha256 });
@@ -348,6 +349,7 @@ public class AuxiliarContableDbContext :
             b.Property(x => x.Contraparte).HasMaxLength(Contabilidad.OperacionConsts.MaxContraparteLength);
             b.Property(x => x.Uuid).HasMaxLength(Contabilidad.OperacionConsts.UuidLength);
             b.Property(x => x.Referencia).HasMaxLength(Contabilidad.OperacionConsts.MaxReferenciaLength);
+            b.Property(x => x.ClaveDeMovimiento).HasMaxLength(Contabilidad.ContabilidadConsts.ClaveLength);
             b.Property(x => x.FacturaMotivo).HasMaxLength(Contabilidad.OperacionConsts.MaxMotivoLength);
             b.Property(x => x.TransaccionMotivo).HasMaxLength(Contabilidad.OperacionConsts.MaxMotivoLength);
             b.Property(x => x.ControlMotivo).HasMaxLength(Contabilidad.OperacionConsts.MaxMotivoLength);
@@ -355,6 +357,7 @@ public class AuxiliarContableDbContext :
             b.Ignore(x => x.Respondidas);
             b.HasIndex(x => new { x.OrganizacionId, x.Fecha });
             b.HasIndex(x => new { x.OrganizacionId, x.Uuid });
+            b.HasIndex(x => new { x.OrganizacionId, x.ClaveDeMovimiento });
         });
 
         // Solicitudes de factura: lo que el cliente pide que se le timbre; conceptos en JSON (texto).

@@ -56,6 +56,13 @@ export const APP_ROUTES: Routes = [
       { path: 'todo', loadComponent: () => import('./mi-informacion/todo.component').then(c => c.TodoComponent) },
     ],
   },
+  {
+    // La mesa de trabajo del despacho: el servidor la niega a quien no es del equipo (Autorizador).
+    path: 'mesa',
+    loadComponent: () => import('./mesa/mesa.component').then(c => c.MesaComponent),
+    canActivate: [authGuard, permissionGuard],
+    data: { requiredPolicy: 'AuxiliarContable.Organizaciones' },
+  },
   // Las pantallas de antes viven ahora en «Mi información» (las ligas viejas siguen sirviendo; ?cliente= se conserva).
   { path: 'documentos', redirectTo: 'mi-informacion/facturas' },
   { path: 'facturar', redirectTo: 'mi-informacion/facturas/pedir' },

@@ -40,6 +40,11 @@ public class Documento : FullAuditedAggregateRoot<Guid>
     /// </summary>
     public DateTime? FechaDelDocumento { get; protected set; }
 
+    /// <summary>Lo que Claude leyó del documento (JSON de <c>AnalisisDeDocumento</c>): null = aún no se analiza.</summary>
+    public string? Analisis { get; protected set; }
+
+    public DateTime? AnalizadoUtc { get; protected set; }
+
     protected Documento()
     {
     }
@@ -63,6 +68,12 @@ public class Documento : FullAuditedAggregateRoot<Guid>
     }
 
     public void FecharEn(DateTime fecha) => FechaDelDocumento = fecha;
+
+    public void GuardarAnalisis(string json, DateTime utc)
+    {
+        Analisis = Check.NotNullOrWhiteSpace(json, nameof(json));
+        AnalizadoUtc = utc;
+    }
 
     public void MarcarProcesado()
     {

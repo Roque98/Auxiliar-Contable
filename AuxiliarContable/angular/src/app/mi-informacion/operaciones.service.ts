@@ -33,7 +33,33 @@ export interface PataDto {
   vence: string | null;
   saldado: string | null;
   solicitudDeFacturaId: string | null;
+  /** Solo transacción: es un movimiento del estado de cuenta conciliado. */
+  delBanco?: boolean;
+  /** Lo que Claude leyó del documento de esta pata. */
+  analisis?: AnalisisCortoDto | null;
 }
+
+export interface AnalisisCortoDto {
+  legible: boolean;
+  queEs: string;
+  relacionConGiro: string;
+  explicacion: string;
+  quePrueba: string;
+  confianza: string;
+}
+
+/** Cómo se dice cada categoría que da Claude (igual que «Mis facturas»). */
+export const NOMBRES_DE_CATEGORIA: Record<string, string> = {
+  mercancia: 'Mercancía para revender',
+  insumo_directo: 'Materia prima o insumo',
+  gasto_indirecto: 'Gasto indirecto',
+  gasto_operacion: 'Gasto de operación',
+  inversion: 'Inversión (activo fijo)',
+  deduccion_personal: 'Deducción personal',
+  ajeno: 'Ajeno al giro',
+  venta: 'Venta',
+  no_aplica: 'No es una operación',
+};
 
 export interface OperacionDto {
   id: string;

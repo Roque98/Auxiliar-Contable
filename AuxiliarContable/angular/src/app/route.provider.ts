@@ -154,6 +154,16 @@ function configureRoutes() {
       requiredPolicy: 'AuxiliarContable.Organizaciones',
     },
 
+    // La mesa de trabajo del despacho: solo el equipo (lleva permiso, ABP la oculta a los clientes).
+    {
+      path: '/mesa',
+      name: '::Menu:Mesa',
+      iconClass: 'bi bi-stars',
+      order: 1.45,
+      layout: eLayoutType.application,
+      requiredPolicy: 'AuxiliarContable.Organizaciones',
+    },
+
     // Mi información: facturas, dinero, control interno y todo (cada operación con sus tres patas). Mismo criterio.
     {
       path: '/mi-informacion',

@@ -154,6 +154,35 @@ public class MotorFiscalHttp : IMotorFiscal, ITransientDependency
         return await EnviarAsync<FacturasClasificadas>(peticion, tope.Token, cancellationToken);
     }
 
+    public async Task<AnalisisDeDocumento> AnalizarDocumentoAsync(
+        ArchivoParaElMotor archivo, string? rfcDelCliente, string? giro, CancellationToken cancellationToken = default)
+    {
+        using var tope = CancelationConTope(_opciones.TimeoutDeBancosSegundos, cancellationToken);
+        var peticion = new HttpRequestMessage(HttpMethod.Post, "documentos/analizar")
+        {
+            Content = JsonContent.Create(new
+            {
+                nombre = archivo.Nombre,
+                contenido = Convert.ToBase64String(archivo.Contenido),
+                rfc_cliente = rfcDelCliente,
+                giro,
+            }, options: Json),
+        };
+        return await EnviarAsync<AnalisisDeDocumento>(peticion, tope.Token, cancellationToken);
+    }
+
+    public async Task<SugerenciasDeAmarre> SugerirAmarresAsync(
+        IReadOnlyList<MovimientoParaAmarrar> movimientos, IReadOnlyList<CandidataParaAmarrar> candidatas, string? giro,
+        CancellationToken cancellationToken = default)
+    {
+        using var tope = CancelationConTope(_opciones.TimeoutDeBancosSegundos, cancellationToken);
+        var peticion = new HttpRequestMessage(HttpMethod.Post, "conciliacion/sugerir")
+        {
+            Content = JsonContent.Create(new { movimientos, candidatas, giro }, options: Json),
+        };
+        return await EnviarAsync<SugerenciasDeAmarre>(peticion, tope.Token, cancellationToken);
+    }
+
     public async Task<IReadOnlyList<SentenciaDelMotor>> BuscarSentenciasAsync(
         string consulta, string? fuente = null, int cuantos = 5, int desde = 0, CancellationToken cancellationToken = default)
     {

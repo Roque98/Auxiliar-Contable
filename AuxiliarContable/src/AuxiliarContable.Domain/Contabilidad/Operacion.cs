@@ -44,6 +44,9 @@ public class Operacion : AuditedAggregateRoot<Guid>
     /// <summary>Si fue en efectivo o a crédito: su registro en «Efectivo y crédito».</summary>
     public Guid? MovimientoFueraDelBancoId { get; protected set; }
 
+    /// <summary>Si la transacción es un movimiento del estado de cuenta conciliado: su clave (<c>ClaveDeMovimiento</c>).</summary>
+    public string? ClaveDeMovimiento { get; protected set; }
+
     public string? TransaccionMotivo { get; protected set; }
 
     public EstadoDePata ControlEstado { get; protected set; }
@@ -106,6 +109,19 @@ public class Operacion : AuditedAggregateRoot<Guid>
         Referencia = limpia;
         TransaccionDocumentoId = documentoId;
         MovimientoFueraDelBancoId = forma == FormaDeTransaccion.Banco ? null : movimientoId;
+        ClaveDeMovimiento = forma == FormaDeTransaccion.Banco ? ClaveDeMovimiento : null;
+        TransaccionMotivo = null;
+    }
+
+    /// <summary>La transacción es un movimiento del estado de cuenta (su clave sobrevive a otra conciliación).</summary>
+    public void LigarMovimientoDelBanco(string clave, string? referencia)
+    {
+        TransaccionEstado = EstadoDePata.Ligada;
+        TransaccionForma = FormaDeTransaccion.Banco;
+        ClaveDeMovimiento = Check.NotNullOrWhiteSpace(clave, nameof(clave), ContabilidadConsts.ClaveLength);
+        Referencia = Recortar(referencia, OperacionConsts.MaxReferenciaLength);
+        TransaccionDocumentoId = null;
+        MovimientoFueraDelBancoId = null;
         TransaccionMotivo = null;
     }
 
@@ -156,6 +172,7 @@ public class Operacion : AuditedAggregateRoot<Guid>
                 Referencia = null;
                 TransaccionDocumentoId = null;
                 MovimientoFueraDelBancoId = null;
+                ClaveDeMovimiento = null;
                 TransaccionMotivo = null;
                 break;
             default:
@@ -200,6 +217,7 @@ public class Operacion : AuditedAggregateRoot<Guid>
             Referencia = otra.Referencia;
             TransaccionDocumentoId = otra.TransaccionDocumentoId;
             MovimientoFueraDelBancoId = otra.MovimientoFueraDelBancoId;
+            ClaveDeMovimiento = otra.ClaveDeMovimiento;
             TransaccionMotivo = otra.TransaccionMotivo;
         }
 
