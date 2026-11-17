@@ -57,12 +57,19 @@ public class MotorFiscalDePrueba : IMotorFiscal
 
     public int PeticionesDeAmarre { get; private set; }
 
+    /// <summary>Lo que el motor «contabiliza»; recibe lo que se le mandó.</summary>
+    public Func<PerfilParaContabilizar, IReadOnlyList<OperacionParaContabilizar>, IReadOnlyList<ArchivoParaElMotor>, ResultadoContable>? Contabilidad { get; set; }
+
+    public IReadOnlyList<OperacionParaContabilizar> Contabilizadas { get; private set; } = [];
+
     public void Reiniciar()
     {
         Analisis.Clear();
         Analizados.Clear();
         Amarres = null;
         PeticionesDeAmarre = 0;
+        Contabilidad = null;
+        Contabilizadas = [];
         EstaConfigurado = true;
         Caido = false;
         Resultados.Clear();
@@ -174,6 +181,19 @@ public class MotorFiscalDePrueba : IMotorFiscal
         return Task.FromResult(Analisis.TryGetValue(archivo.Nombre, out var a)
             ? a
             : new AnalisisDeDocumento { Legible = false, Tipo = "otro", Confianza = "baja", RelacionConGiro = "no_aplica" });
+    }
+
+    public Task<ResultadoContable> ContabilizarAsync(
+        PerfilParaContabilizar perfil, IReadOnlyList<OperacionParaContabilizar> operaciones, IReadOnlyList<ArchivoParaElMotor> facturas,
+        CancellationToken cancellationToken = default)
+    {
+        if (Caido)
+        {
+            throw new MotorFiscalNoDisponibleException("El motor fiscal no responde.");
+        }
+
+        Contabilizadas = operaciones;
+        return Task.FromResult(Contabilidad?.Invoke(perfil, operaciones, facturas) ?? new ResultadoContable());
     }
 
     public Task<SugerenciasDeAmarre> SugerirAmarresAsync(

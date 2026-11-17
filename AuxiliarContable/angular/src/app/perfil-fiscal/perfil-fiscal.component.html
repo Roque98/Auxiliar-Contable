@@ -117,6 +117,14 @@
                         <option value="no">No</option>
                       </select>
                     }
+                    @case (TipoDeCampo.Opcion) {
+                      <select class="ig-control" [attr.aria-label]="d.etiqueta" [(ngModel)]="valorEditado">
+                        <option value="" disabled>Elige…</option>
+                        @for (o of d.opciones ?? []; track o.valor) {
+                          <option [value]="o.valor">{{ o.etiqueta }}</option>
+                        }
+                      </select>
+                    }
                     @case (TipoDeCampo.Lista) {
                       <textarea class="ig-control" rows="3" [attr.aria-label]="d.etiqueta + ' (uno por renglón)'"
                                 [(ngModel)]="valorEditado"></textarea>

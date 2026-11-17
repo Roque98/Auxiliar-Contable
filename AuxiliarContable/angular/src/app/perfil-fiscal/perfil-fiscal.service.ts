@@ -16,6 +16,7 @@ export enum TipoDeCampo {
   Fecha = 1,
   SiNo = 2,
   Lista = 3,
+  Opcion = 4,
 }
 
 /** Igual que `GrupoDeCampos`. */
@@ -43,6 +44,8 @@ export interface DatoDelPerfilDto {
   etiqueta: string;
   grupo: GrupoDeCampos;
   tipo: TipoDeCampo;
+  /** Solo los campos de opción. */
+  opciones?: { valor: string; etiqueta: string }[] | null;
   vieneEnLaCsf: boolean;
   valor?: string | null;
   origen?: OrigenDelDato | null;
@@ -140,6 +143,8 @@ export function valorLegible(dato: DatoDelPerfilDto): string[] {
     }
     case TipoDeCampo.SiNo:
       return [v === 'si' ? 'Sí' : 'No'];
+    case TipoDeCampo.Opcion:
+      return [dato.opciones?.find(o => o.valor === v)?.etiqueta ?? v];
     case TipoDeCampo.Lista:
       try {
         const lista = JSON.parse(v) as unknown[];

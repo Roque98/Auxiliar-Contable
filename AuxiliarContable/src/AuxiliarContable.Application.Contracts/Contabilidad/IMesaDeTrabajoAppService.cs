@@ -27,6 +27,29 @@ public interface IMesaDeTrabajoAppService : IApplicationService
     /// seguro se amarra; lo dudoso vuelve como sugerencia).
     /// </summary>
     Task<ResultadoDeAmarreDto> AmarrarBancoAsync(Guid organizacionId, int anio, int mes);
+
+    /// <summary>Lo último que se contabilizó del mes (null = aún no).</summary>
+    Task<PolizasDelMesDto?> GetPolizasAsync(Guid organizacionId, int anio, int mes);
+
+    /// <summary>
+    /// Revisa las operaciones del mes y genera sus pólizas según el tipo de empresa y el sistema de costos del cliente
+    /// (motor /contabilidad/polizas). Lo que «detiene» no se contabiliza hasta corregirlo o aceptarlo.
+    /// </summary>
+    Task<PolizasDelMesDto> GenerarPolizasAsync(Guid organizacionId, int anio, int mes);
+
+    /// <summary>El despacho acepta lo que detenía una operación (p. ej. «sí es del negocio»); vuelve a generar después.</summary>
+    Task AceptarRevisionAsync(Guid organizacionId, Guid operacionId, string codigo);
+}
+
+public class PolizasDelMesDto
+{
+    public int Anio { get; set; }
+    public int Mes { get; set; }
+    public DateTime GeneradoUtc { get; set; }
+    public MotorFiscal.ResultadoContable Resultado { get; set; } = new();
+
+    /// <summary>Operaciones detenidas por la revisión (no se contabilizaron).</summary>
+    public int Detenidas { get; set; }
 }
 
 public static class MesaDeTrabajoConsts

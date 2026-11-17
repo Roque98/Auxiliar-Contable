@@ -72,6 +72,8 @@ public class AuxiliarContableDbContext :
 
     public DbSet<Contabilidad.Operacion> Operaciones { get; set; }
 
+    public DbSet<Contabilidad.PolizasDelMes> PolizasDeMeses { get; set; }
+
     public DbSet<Credenciales.CredencialesDelCliente> CredencialesDeClientes { get; set; }
 
     public DbSet<Credenciales.NipDeUsuario> NipsDeUsuarios { get; set; }
@@ -339,6 +341,15 @@ public class AuxiliarContableDbContext :
             b.HasIndex(x => new { x.OrganizacionId, x.Anio, x.Mes });
         });
 
+        // Pólizas del mes: lo último que se contabilizó (JSON del motor).
+        builder.Entity<Contabilidad.PolizasDelMes>(b =>
+        {
+            b.ToTable(AuxiliarContableConsts.DbTablePrefix + "PolizasDeMeses", AuxiliarContableConsts.DbSchema);
+            b.ConfigureByConvention();
+            b.Property(x => x.Resultado).IsRequired().HasColumnType("text");
+            b.HasIndex(x => new { x.OrganizacionId, x.Anio, x.Mes }).IsUnique();
+        });
+
         // Operaciones: factura · transacción · control interno de cada compra, gasto o venta.
         builder.Entity<Contabilidad.Operacion>(b =>
         {
@@ -350,6 +361,8 @@ public class AuxiliarContableDbContext :
             b.Property(x => x.Uuid).HasMaxLength(Contabilidad.OperacionConsts.UuidLength);
             b.Property(x => x.Referencia).HasMaxLength(Contabilidad.OperacionConsts.MaxReferenciaLength);
             b.Property(x => x.ClaveDeMovimiento).HasMaxLength(Contabilidad.ContabilidadConsts.ClaveLength);
+            b.Property(x => x.Aceptados).HasMaxLength(Contabilidad.OperacionConsts.MaxAceptadosLength);
+            b.Ignore(x => x.CodigosAceptados);
             b.Property(x => x.FacturaMotivo).HasMaxLength(Contabilidad.OperacionConsts.MaxMotivoLength);
             b.Property(x => x.TransaccionMotivo).HasMaxLength(Contabilidad.OperacionConsts.MaxMotivoLength);
             b.Property(x => x.ControlMotivo).HasMaxLength(Contabilidad.OperacionConsts.MaxMotivoLength);

@@ -13,7 +13,14 @@ import {
 } from '../mi-informacion/operaciones.service';
 import { PatasComponent } from '../mi-informacion/patas.component';
 import { ClienteVisibleDto, PerfilFiscalService } from '../perfil-fiscal/perfil-fiscal.service';
-import { MesaDelMesDto, MesaService, ResultadoDeAmarreDto, SugerenciaDeAmarreDto } from './mesa.service';
+import {
+  MesaDelMesDto,
+  MesaService,
+  PolizasDelMesDto,
+  RenglonDeRevisionDto,
+  ResultadoDeAmarreDto,
+  SugerenciaDeAmarreDto,
+} from './mesa.service';
 
 type Filtro = 'todas' | 'sin-factura' | 'sin-transaccion' | 'sin-control' | 'completas';
 
@@ -57,6 +64,22 @@ export class MesaComponent implements OnInit {
   readonly abierta = signal<string | null>(null);
 
   readonly operaciones = computed(() => this.mesa()?.operaciones.operaciones ?? []);
+
+  // Pólizas del mes
+  readonly polizas = signal<PolizasDelMesDto | null>(null);
+  readonly generando = signal(false);
+  readonly polizaAbierta = signal<string | null>(null);
+  readonly verBalanza = signal(false);
+  /** La revisión por operación, lo que detiene primero. */
+  readonly revision = computed(() => {
+    const r = this.polizas()?.resultado.revision ?? [];
+    const orden = { detiene: 0, aviso: 1, aceptado: 2 } as const;
+    return [...r].sort((a, b) => orden[a.nivel] - orden[b.nivel]);
+  });
+  readonly totales = computed(() => {
+    const b = this.polizas()?.resultado.balanza ?? [];
+    return { debe: b.reduce((s, x) => s + x.debe, 0), haber: b.reduce((s, x) => s + x.haber, 0) };
+  });
 
   readonly cuentas = computed(() => {
     const l = this.operaciones();
@@ -103,6 +126,7 @@ export class MesaComponent implements OnInit {
     this.clienteId.set(id);
     this.mesa.set(null);
     this.amarre.set(null);
+    this.polizas.set(null);
     this.avisosDeAnalisis.set([]);
     this.router.navigate([], { queryParams: { cliente: id }, replaceUrl: true });
     this.cargar();
@@ -124,6 +148,55 @@ export class MesaComponent implements OnInit {
       next: m => this.mesa.set(m),
       error: e => this.error.set(mensajeDeError(e, 'No se pudo cargar la mesa de trabajo.')),
     });
+    this.api.polizas(id, this.anio, this.mes).subscribe({ next: p => this.polizas.set(p), error: () => this.polizas.set(null) });
+  }
+
+  generarPolizas(): void {
+    const id = this.clienteId();
+    if (!id || this.generando()) {
+      return;
+    }
+    this.generando.set(true);
+    this.error.set(null);
+    this.api.generarPolizas(id, this.anio, this.mes).subscribe({
+      next: p => {
+        this.polizas.set(p);
+        this.generando.set(false);
+      },
+      error: e => {
+        this.generando.set(false);
+        this.error.set(mensajeDeError(e, 'No se pudieron generar las pólizas.'));
+      },
+    });
+  }
+
+  /** «Sí, está bien»: se acepta lo que detenía la operación y se vuelve a generar. */
+  aceptarRevision(r: RenglonDeRevisionDto): void {
+    const id = this.clienteId();
+    if (!id || !r.operacion) {
+      return;
+    }
+    this.api.aceptarRevision(id, r.operacion, r.codigo).subscribe({
+      next: () => this.generarPolizas(),
+      error: e => this.error.set(mensajeDeError(e, 'No se pudo aceptar.')),
+    });
+  }
+
+  /** Cómo se llama la operación de un renglón de la revisión o de una póliza. */
+  nombreDe(operacionId: string | null): string {
+    if (!operacionId) {
+      return 'Todo el mes';
+    }
+    const o = this.operaciones().find(x => x.id === operacionId);
+    return o ? `${o.fecha.substring(8, 10)}/${o.fecha.substring(5, 7)} · ${o.contraparte || o.descripcion}` : 'Operación';
+  }
+
+  abrirOperacion(operacionId: string | null): void {
+    if (operacionId) {
+      this.filtro.set('todas');
+      this.abierta.set(operacionId);
+      document.getElementById('ms-operaciones')?.scrollIntoView({ behavior: 'smooth' });
+    }
   }
 
   /** De tres en tres, hasta que no quede nada por leer (o Claude no esté disponible). */

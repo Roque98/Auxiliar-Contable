@@ -37,6 +37,46 @@ export interface ResultadoDeAmarreDto {
   avisos: string[];
 }
 
+export interface MovimientoContableDto {
+  cuenta: string;
+  nombre: string;
+  debe: number;
+  haber: number;
+  texto: string;
+}
+
+export interface PolizaContableDto {
+  operacion: string;
+  tipo: string;
+  numero: number;
+  fecha: string;
+  concepto: string;
+  uuid: string | null;
+  categoria: string | null;
+  movimientos: MovimientoContableDto[];
+}
+
+export interface RenglonDeRevisionDto {
+  operacion: string | null;
+  codigo: string;
+  nivel: 'detiene' | 'aviso' | 'aceptado';
+  mensaje: string;
+}
+
+export interface PolizasDelMesDto {
+  anio: number;
+  mes: number;
+  generadoUtc: string;
+  detenidas: number;
+  resultado: {
+    polizas: PolizaContableDto[];
+    revision: RenglonDeRevisionDto[];
+    balanza: { cuenta: string; nombre: string; debe: number; haber: number }[];
+    pendientesDeCierre: string[];
+    errores: { archivo: string; error: string }[];
+  };
+}
+
 /** `MesaDeTrabajoAppService` (`/api/app/mesa-de-trabajo`): el mes de un cliente para el despacho. */
 @Injectable({ providedIn: 'root' })
 export class MesaService {
@@ -51,6 +91,21 @@ export class MesaService {
   analizar(organizacionId: string, anio: number, mes: number): Observable<ResultadoDeAnalisisDto> {
     return this.rest.request<void, ResultadoDeAnalisisDto>(
       { method: 'POST', url: `${this.base}/analizar/${organizacionId}`, params: { anio, mes } }, this.opciones);
+  }
+
+  polizas(organizacionId: string, anio: number, mes: number): Observable<PolizasDelMesDto | null> {
+    return this.rest.request<void, PolizasDelMesDto | null>(
+      { method: 'GET', url: `${this.base}/polizas/${organizacionId}`, params: { anio, mes } }, this.opciones);
+  }
+
+  generarPolizas(organizacionId: string, anio: number, mes: number): Observable<PolizasDelMesDto> {
+    return this.rest.request<void, PolizasDelMesDto>(
+      { method: 'POST', url: `${this.base}/generar-polizas/${organizacionId}`, params: { anio, mes } }, this.opciones);
+  }
+
+  aceptarRevision(organizacionId: string, operacionId: string, codigo: string): Observable<void> {
+    return this.rest.request<void, void>(
+      { method: 'POST', url: `${this.base}/aceptar-revision`, params: { organizacionId, operacionId, codigo } }, this.opciones);
   }
 
   amarrarBanco(organizacionId: string, anio: number, mes: number): Observable<ResultadoDeAmarreDto> {
