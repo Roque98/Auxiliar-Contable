@@ -64,6 +64,12 @@ public class AuxiliarContableDbContext :
 
     public DbSet<Contabilidad.PartidaPendiente> PartidasPendientes { get; set; }
 
+    public DbSet<Credenciales.CredencialesDelCliente> CredencialesDeClientes { get; set; }
+
+    public DbSet<Credenciales.NipDeUsuario> NipsDeUsuarios { get; set; }
+
+    public DbSet<Credenciales.UsoDeCredencial> UsosDeCredenciales { get; set; }
+
     public DbSet<DatoDelPerfil> DatosDePerfiles { get; set; }
 
     public DbSet<Conversacion> Conversaciones { get; set; }
@@ -297,6 +303,34 @@ public class AuxiliarContableDbContext :
             b.Property(x => x.Nota).HasMaxLength(Contabilidad.ContabilidadConsts.MaxNotaLength);
             b.Property(x => x.Respuesta).HasMaxLength(Contabilidad.ContabilidadConsts.MaxRespuestaLength);
             b.HasIndex(x => new { x.OrganizacionId, x.Anio, x.Mes, x.Clave }).IsUnique();
+        });
+
+        // Credenciales del cliente (e.firma y CIEC): lo secreto va cifrado con su propia llave
+        // (CifradorDeCredenciales); RFC, numero de certificado y vigencia en claro para avisar sin descifrar.
+        builder.Entity<Credenciales.CredencialesDelCliente>(b =>
+        {
+            b.ToTable(AuxiliarContableConsts.DbTablePrefix + "CredencialesDeClientes", AuxiliarContableConsts.DbSchema);
+            b.ConfigureByConvention();
+            b.Property(x => x.EfirmaRfc).HasMaxLength(Credenciales.CredencialesConsts.RfcLength);
+            b.Property(x => x.CiecRfc).HasMaxLength(Credenciales.CredencialesConsts.RfcLength);
+            b.Property(x => x.NumeroDeCertificado).HasMaxLength(Credenciales.CredencialesConsts.NumeroDeCertificadoLength);
+            b.HasIndex(x => x.OrganizacionId).IsUnique();
+        });
+
+        // El NIP de cada persona: solo su huella PBKDF2 y los intentos fallidos.
+        builder.Entity<Credenciales.NipDeUsuario>(b =>
+        {
+            b.ToTable(AuxiliarContableConsts.DbTablePrefix + "NipsDeUsuarios", AuxiliarContableConsts.DbSchema);
+            b.ConfigureByConvention();
+            b.HasIndex(x => x.UsuarioId).IsUnique();
+        });
+
+        // Bitacora de credenciales: quien vio, descargo, cambio o borro que y cuando (nunca el dato).
+        builder.Entity<Credenciales.UsoDeCredencial>(b =>
+        {
+            b.ToTable(AuxiliarContableConsts.DbTablePrefix + "UsosDeCredenciales", AuxiliarContableConsts.DbSchema);
+            b.ConfigureByConvention();
+            b.HasIndex(x => new { x.OrganizacionId, x.CreationTime });
         });
 
         // Perfil fiscal — AppPerfilesFiscales (uno por organizacion) y AppDatosDePerfiles (un

@@ -366,6 +366,149 @@ namespace AuxiliarContable.Migrations
                     b.ToTable("AppMensajesDeConversaciones", (string)null);
                 });
 
+            modelBuilder.Entity("AuxiliarContable.Credenciales.CredencialesDelCliente", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<byte[]>("CerCifrado")
+                        .HasColumnType("bytea");
+
+                    b.Property<DateTime?>("CiecActualizadaUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<byte[]>("CiecCifrada")
+                        .HasColumnType("bytea");
+
+                    b.Property<string>("CiecRfc")
+                        .HasMaxLength(13)
+                        .HasColumnType("character varying(13)");
+
+                    b.Property<string>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("ConcurrencyStamp");
+
+                    b.Property<Guid?>("ConsentimientoPor")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("ConsentimientoUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<byte[]>("ContrasenaDeEfirmaCifrada")
+                        .HasColumnType("bytea");
+
+                    b.Property<DateTime>("CreationTime")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("CreationTime");
+
+                    b.Property<Guid?>("CreatorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("CreatorId");
+
+                    b.Property<DateTime?>("EfirmaActualizadaUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("EfirmaRfc")
+                        .HasMaxLength(13)
+                        .HasColumnType("character varying(13)");
+
+                    b.Property<string>("ExtraProperties")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("ExtraProperties");
+
+                    b.Property<byte[]>("KeyCifrado")
+                        .HasColumnType("bytea");
+
+                    b.Property<DateTime?>("LastModificationTime")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("LastModificationTime");
+
+                    b.Property<Guid?>("LastModifierId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("LastModifierId");
+
+                    b.Property<string>("NumeroDeCertificado")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<Guid>("OrganizacionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("VigenteDesdeUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("VigenteHastaUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrganizacionId")
+                        .IsUnique();
+
+                    b.ToTable("AppCredencialesDeClientes", (string)null);
+                });
+
+            modelBuilder.Entity("AuxiliarContable.Credenciales.NipDeUsuario", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("BloqueadoHastaUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<byte[]>("Huella")
+                        .HasColumnType("bytea");
+
+                    b.Property<int>("IntentosFallidos")
+                        .HasColumnType("integer");
+
+                    b.Property<byte[]>("Sal")
+                        .HasColumnType("bytea");
+
+                    b.Property<Guid>("UsuarioId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UsuarioId")
+                        .IsUnique();
+
+                    b.ToTable("AppNipsDeUsuarios", (string)null);
+                });
+
+            modelBuilder.Entity("AuxiliarContable.Credenciales.UsoDeCredencial", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Accion")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreationTime")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("CreationTime");
+
+                    b.Property<Guid?>("CreatorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("CreatorId");
+
+                    b.Property<Guid>("OrganizacionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Tipo")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrganizacionId", "CreationTime");
+
+                    b.ToTable("AppUsosDeCredenciales", (string)null);
+                });
+
             modelBuilder.Entity("AuxiliarContable.Documentos.Documento", b =>
                 {
                     b.Property<Guid>("Id")

@@ -244,6 +244,19 @@ export const SECCIONES: Seccion[] = [
         nota: 'Es el texto de la ley tal cual, sin interpretación: lo que hay que hacer en tu caso lo decide tu contador.',
       },
       {
+        titulo: 'Mis credenciales',
+        icono: 'bi-shield-lock',
+        ruta: '/credenciales',
+        pasos: [
+          'Abre «Mis credenciales»: ves la e.firma (RFC, número de certificado y hasta cuándo es vigente) y la contraseña del portal (CIEC).',
+          'La primera vez pon tu NIP de 4 dígitos (te pide la contraseña de tu cuenta). Es tuyo y abre las credenciales de los clientes que puedes ver.',
+          '«Ver contraseña» o «Bajar .key» te piden el NIP (o la contraseña de tu cuenta); la contraseña se oculta sola al minuto.',
+          'Para agregarlas o cambiarlas: el .cer, el .key y su contraseña. Se comprueba que la contraseña abra la llave y que la llave sea de ese certificado.',
+          'En «Quién las ha usado» queda cada vez que alguien vio, bajó o cambió algo.',
+        ],
+        nota: 'Ver contraseñas y bajar archivos lo hacen el administrador de la organización y el despacho. Cinco intentos fallidos bloquean 15 minutos.',
+      },
+      {
         titulo: 'Sentencias',
         icono: 'bi-bank',
         ruta: '/sentencias',

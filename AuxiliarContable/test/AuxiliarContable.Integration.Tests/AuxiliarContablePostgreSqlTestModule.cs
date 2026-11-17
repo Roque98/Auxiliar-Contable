@@ -74,6 +74,8 @@ public class AuxiliarContablePostgreSqlTestModule : AbpModule
         context.Services.Replace(ServiceDescriptor.Transient<AuxiliarContable.Organizaciones.AlcanceDeOrganizaciones, AlcanceSegunRol>());
         // Documentos: una clave de prueba (nueva en cada ejecución) y la IA falsa, que cada
         // test programa. Nunca se llama a Anthropic desde los tests.
+        Configure<AuxiliarContable.Credenciales.CredencialesOptions>(options =>
+            options.ClaveDeCifrado = System.Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32)));
         Configure<AuxiliarContable.Documentos.DocumentosOptions>(options =>
             options.ClaveDeCifrado = System.Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32)));
         context.Services.Replace(ServiceDescriptor.Singleton<AuxiliarContable.IA.IModeloDeIA, ModeloDeIADePrueba>());

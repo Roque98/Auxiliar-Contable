@@ -1,0 +1,222 @@
+<header class="cr-cabecera">
+  <h1>Mis credenciales</h1>
+  <p class="cr-nota">
+    La e.firma y la contraseña del portal del SAT (CIEC) que el cliente entrega al despacho. Se guardan cifradas.
+    Para ver una contraseña o bajar el archivo .key se pide tu NIP de 4 dígitos.
+  </p>
+
+  @if (clientes(); as lista) {
+    @if (lista.length > 1) {
+      <label class="cr-campo">
+        <span>Cliente</span>
+        <select class="ig-control" [ngModel]="clienteId()" (ngModelChange)="elegir($event)" data-testid="cliente">
+          <option [ngValue]="null" disabled>Elige un cliente…</option>
+          @for (c of lista; track c.id) {
+            <option [ngValue]="c.id">{{ c.nombre }}</option>
+          }
+        </select>
+      </label>
+    }
+  }
+</header>
+
+@if (error(); as e) {
+  <div class="ig-alerta ig-alerta-error" role="alert">{{ e }}</div>
+}
+@if (aviso(); as a) {
+  <div class="ig-alerta ig-alerta-exito" role="status">{{ a }}</div>
+}
+
+@if (pendiente()) {
+  <section class="cr-tarjeta cr-desbloqueo" aria-labelledby="cr-desbloqueo">
+    <h2 id="cr-desbloqueo">{{ usarContrasena ? 'Escribe la contraseña de tu cuenta' : 'Escribe tu NIP' }}</h2>
+    <form (ngSubmit)="desbloquear()" class="cr-formulario">
+      @if (usarContrasena) {
+        <input class="ig-control" type="password" name="contrasenaDeCuenta" [(ngModel)]="contrasenaDeCuenta"
+               autocomplete="current-password" aria-label="Contraseña de tu cuenta" />
+      } @else {
+        <input class="ig-control cr-nip" type="password" name="nip" [(ngModel)]="nip" inputmode="numeric" pattern="[0-9]{4}"
+               maxlength="4" autocomplete="off" aria-label="NIP de 4 dígitos" data-testid="nip" />
+      }
+      <div class="cr-botones">
+        <button type="submit" class="btn btn-primary" [disabled]="ocupado() || (usarContrasena ? !contrasenaDeCuenta : nip.length !== 4)">
+          Continuar
+        </button>
+        <button type="button" class="btn btn-link" (click)="usarContrasena = !usarContrasena">
+          {{ usarContrasena ? 'Usar mi NIP' : 'Usar la contraseña de mi cuenta' }}
+        </button>
+        <button type="button" class="btn btn-link" (click)="cancelarDesbloqueo()">Cancelar</button>
+      </div>
+    </form>
+  </section>
+}
+
+@if (datos(); as d) {
+  <!-- e.firma -->
+  <section class="cr-tarjeta" aria-labelledby="cr-efirma">
+    <header class="cr-tarjeta-cabecera">
+      <h2 id="cr-efirma"><i class="bi bi-file-earmark-lock" aria-hidden="true"></i> e.firma</h2>
+      @if (d.efirma; as e) {
+        <span [class]="'ig-etiqueta ' + (e.diasParaVencer < 0 ? 'ig-etiqueta-error' : e.porVencer ? 'ig-etiqueta-alerta' : 'ig-etiqueta-exito')">
+          {{ e.diasParaVencer < 0 ? 'Vencida' : e.porVencer ? 'Vence en ' + e.diasParaVencer + ' días' : 'Vigente' }}
+        </span>
+      }
+    </header>
+    @if (d.efirma; as e) {
+      <dl class="cr-datos">
+        <div><dt>RFC</dt><dd>{{ e.rfc ?? '—' }}</dd></div>
+        <div><dt>Número de certificado</dt><dd class="cr-mono">{{ e.numeroDeCertificado ?? '—' }}</dd></div>
+        <div><dt>Vigente</dt><dd>del {{ e.vigenteDesdeUtc | date: 'd MMM yyyy' }} al <strong>{{ e.vigenteHastaUtc | date: 'd MMM yyyy' }}</strong></dd></div>
+      </dl>
+      @if (d.puedeAdministrar) {
+        @if (reveladas()[Tipo.Efirma]; as r) {
+          <p class="cr-revelada">
+            <span class="cr-mono">{{ r }}</span>
+            <button type="button" class="btn btn-outline-secondary btn-sm" (click)="copiar(r)">Copiar</button>
+            <small>Se oculta en un minuto.</small>
+          </p>
+        }
+        <div class="cr-botones">
+          <button type="button" class="btn btn-outline-secondary" (click)="verContrasena(Tipo.Efirma)" data-testid="ver-efirma">
+            <i class="bi" [class.bi-eye]="!reveladas()[Tipo.Efirma]" [class.bi-eye-slash]="reveladas()[Tipo.Efirma]" aria-hidden="true"></i>
+            {{ reveladas()[Tipo.Efirma] ? 'Ocultar contraseña' : 'Ver contraseña' }}
+          </button>
+          <button type="button" class="btn btn-outline-secondary" (click)="descargarCer()"><i class="bi bi-download" aria-hidden="true"></i> Bajar .cer</button>
+          <button type="button" class="btn btn-outline-secondary" (click)="descargarKey()"><i class="bi bi-download" aria-hidden="true"></i> Bajar .key</button>
+        </div>
+      } @else {
+        <p class="cr-nota">Ver la contraseña o bajar los archivos lo hace el administrador de tu organización o el despacho.</p>
+      }
+    } @else {
+      <p class="cr-nota">Sin e.firma guardada.</p>
+    }
+    @if (d.puedeAdministrar) {
+      <div class="cr-botones">
+        <button type="button" class="btn btn-link" (click)="abrir('efirma')">{{ d.efirma ? 'Cambiar la e.firma' : 'Agregar la e.firma' }}</button>
+        @if (d.efirma) {
+          <button type="button" class="btn btn-link cr-peligro" (click)="borrar(Tipo.Efirma)">Borrar</button>
+        }
+      </div>
+      @if (editando() === 'efirma') {
+        <form class="cr-formulario" (ngSubmit)="guardarEfirma()">
+          <label class="cr-campo"><span>Certificado (.cer)</span>
+            <input class="ig-control" type="file" accept=".cer" (change)="elegirArchivo($event, 'cer')" /></label>
+          <label class="cr-campo"><span>Llave privada (.key)</span>
+            <input class="ig-control" type="file" accept=".key" (change)="elegirArchivo($event, 'key')" /></label>
+          <label class="cr-campo"><span>Contraseña de la llave</span>
+            <input class="ig-control" type="password" name="contrasenaEfirma" [(ngModel)]="contrasenaEfirma" autocomplete="off" /></label>
+          @if (!d.consentimientoUtc) {
+            <label class="cr-consentimiento">
+              <input type="checkbox" name="consentimiento" [(ngModel)]="consentimiento" />
+              El cliente autorizó por escrito (contrato o carta) que el despacho resguarde y use sus credenciales para su contabilidad y trámites.
+            </label>
+          }
+          <button type="submit" class="btn btn-primary" [disabled]="ocupado() || !cer || !key || !contrasenaEfirma || (!d.consentimientoUtc && !consentimiento)">
+            Comprobar y guardar
+          </button>
+        </form>
+      }
+    }
+  </section>
+
+  <!-- CIEC -->
+  <section class="cr-tarjeta" aria-labelledby="cr-ciec">
+    <header class="cr-tarjeta-cabecera">
+      <h2 id="cr-ciec"><i class="bi bi-key" aria-hidden="true"></i> Contraseña del portal del SAT (CIEC)</h2>
+    </header>
+    @if (d.ciec; as c) {
+      <dl class="cr-datos">
+        <div><dt>RFC</dt><dd>{{ c.rfc }}</dd></div>
+        <div><dt>Actualizada</dt><dd>{{ c.actualizadaUtc | date: 'd MMM yyyy' }}</dd></div>
+      </dl>
+      @if (d.puedeAdministrar) {
+        @if (reveladas()[Tipo.Ciec]; as r) {
+          <p class="cr-revelada">
+            <span class="cr-mono">{{ r }}</span>
+            <button type="button" class="btn btn-outline-secondary btn-sm" (click)="copiar(r)">Copiar</button>
+            <small>Se oculta en un minuto.</small>
+          </p>
+        }
+        <div class="cr-botones">
+          <button type="button" class="btn btn-outline-secondary" (click)="verContrasena(Tipo.Ciec)">
+            <i class="bi" [class.bi-eye]="!reveladas()[Tipo.Ciec]" [class.bi-eye-slash]="reveladas()[Tipo.Ciec]" aria-hidden="true"></i>
+            {{ reveladas()[Tipo.Ciec] ? 'Ocultar contraseña' : 'Ver contraseña' }}
+          </button>
+        </div>
+      }
+    } @else {
+      <p class="cr-nota">Sin CIEC guardada.</p>
+    }
+    @if (d.puedeAdministrar) {
+      <div class="cr-botones">
+        <button type="button" class="btn btn-link" (click)="abrir('ciec')">{{ d.ciec ? 'Cambiar la CIEC' : 'Agregar la CIEC' }}</button>
+        @if (d.ciec) {
+          <button type="button" class="btn btn-link cr-peligro" (click)="borrar(Tipo.Ciec)">Borrar</button>
+        }
+      </div>
+      @if (editando() === 'ciec') {
+        <form class="cr-formulario" (ngSubmit)="guardarCiec()">
+          <label class="cr-campo"><span>RFC</span>
+            <input class="ig-control" name="rfcCiec" [(ngModel)]="rfcCiec" maxlength="13" autocomplete="off" /></label>
+          <label class="cr-campo"><span>Contraseña</span>
+            <input class="ig-control" type="password" name="contrasenaCiec" [(ngModel)]="contrasenaCiec" autocomplete="off" /></label>
+          @if (!d.consentimientoUtc) {
+            <label class="cr-consentimiento">
+              <input type="checkbox" name="consentimiento" [(ngModel)]="consentimiento" />
+              El cliente autorizó por escrito (contrato o carta) que el despacho resguarde y use sus credenciales para su contabilidad y trámites.
+            </label>
+          }
+          <button type="submit" class="btn btn-primary" [disabled]="ocupado() || !rfcCiec || !contrasenaCiec || (!d.consentimientoUtc && !consentimiento)">
+            Guardar
+          </button>
+        </form>
+      }
+    }
+  </section>
+
+  <!-- NIP -->
+  @if (d.puedeAdministrar) {
+    <section class="cr-tarjeta" aria-labelledby="cr-nip">
+      <header class="cr-tarjeta-cabecera">
+        <h2 id="cr-nip"><i class="bi bi-shield-lock" aria-hidden="true"></i> Tu NIP</h2>
+        <span [class]="'ig-etiqueta ' + (d.tieneNip ? 'ig-etiqueta-exito' : 'ig-etiqueta-alerta')">{{ d.tieneNip ? 'Configurado' : 'Sin NIP' }}</span>
+      </header>
+      <p class="cr-nota">
+        Es tuyo, no del cliente: abre las credenciales de todos los clientes que puedes ver. Cinco intentos fallidos
+        bloquean 15 minutos.
+      </p>
+      <button type="button" class="btn btn-link" (click)="abrir('nip')">{{ d.tieneNip ? 'Cambiar mi NIP' : 'Poner mi NIP' }}</button>
+      @if (editando() === 'nip') {
+        <form class="cr-formulario" (ngSubmit)="ponerNip()">
+          <label class="cr-campo"><span>NIP nuevo (4 dígitos)</span>
+            <input class="ig-control cr-nip" type="password" name="nuevoNip" [(ngModel)]="nuevoNip" inputmode="numeric" maxlength="4" autocomplete="off" /></label>
+          <label class="cr-campo"><span>Contraseña de tu cuenta</span>
+            <input class="ig-control" type="password" name="contrasenaParaNip" [(ngModel)]="contrasenaParaNip" autocomplete="current-password" /></label>
+          <button type="submit" class="btn btn-primary" [disabled]="ocupado() || nuevoNip.length !== 4 || !contrasenaParaNip">Guardar NIP</button>
+        </form>
+      }
+    </section>
+  }
+
+  <!-- Bitácora -->
+  @if (bitacora(); as b) {
+    <section class="cr-tarjeta" aria-labelledby="cr-bitacora">
+      <h2 id="cr-bitacora"><i class="bi bi-clock-history" aria-hidden="true"></i> Quién las ha usado</h2>
+      @if (b.length) {
+        <ul class="cr-bitacora">
+          @for (u of b; track $index) {
+            <li>
+              <span>{{ u.cuando | date: 'd MMM yyyy, HH:mm' }}</span>
+              <span>{{ u.quien }}</span>
+              <span>{{ nombreDeAccion[u.accion] }} {{ u.tipo === Tipo.Efirma ? 'e.firma' : 'CIEC' }}</span>
+            </li>
+          }
+        </ul>
+      } @else {
+        <p class="cr-nota">Nadie las ha usado todavía.</p>
+      }
+    </section>
+  }
+} @else if (!error() && clienteId()) {
+  <p class="cr-nota">Cargando…</p>
+}
