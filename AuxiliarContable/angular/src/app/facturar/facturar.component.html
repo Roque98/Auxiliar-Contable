@@ -25,6 +25,13 @@
 @if (aviso(); as a) {
   <div class="ig-alerta ig-alerta-exito" role="status">{{ a }}</div>
 }
+@if (porAmarrar(); as o) {
+  <section class="fc-amarrar" aria-labelledby="fc-amarrar" data-testid="por-amarrar">
+    <h2 id="fc-amarrar">¿Cómo te la pagan y tienes nota?</h2>
+    <p class="fc-nota">Dinos la referencia de la transferencia (o si es en efectivo o a crédito) y sube la nota de venta si la hay. Lo que no sepas ahorita, déjalo para después.</p>
+    <app-patas [organizacionId]="clienteId()!" [operacion]="o" (cambio)="porAmarrar.set($event)" />
+  </section>
+}
 
 @if (cola(); as c) {
   @if (c.length) {

@@ -286,6 +286,117 @@ namespace AuxiliarContable.Migrations
                     b.ToTable("AppMovimientosFueraDelBanco", (string)null);
                 });
 
+            modelBuilder.Entity("AuxiliarContable.Contabilidad.Operacion", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("ConcurrencyStamp");
+
+                    b.Property<string>("Contraparte")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<Guid?>("ControlDocumentoId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("ControlEstado")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ControlMotivo")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTime>("CreationTime")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("CreationTime");
+
+                    b.Property<Guid?>("CreatorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("CreatorId");
+
+                    b.Property<string>("Descripcion")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<string>("ExtraProperties")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("ExtraProperties");
+
+                    b.Property<Guid?>("FacturaDocumentoId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("FacturaEstado")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("FacturaMotivo")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTime>("Fecha")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal?>("Importe")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTime?>("LastModificationTime")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("LastModificationTime");
+
+                    b.Property<Guid?>("LastModifierId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("LastModifierId");
+
+                    b.Property<Guid?>("MovimientoFueraDelBancoId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("OrganizacionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Referencia")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<int>("Sentido")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid?>("SolicitudDeFacturaId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("TransaccionDocumentoId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("TransaccionEstado")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("TransaccionForma")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("TransaccionMotivo")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("Uuid")
+                        .HasMaxLength(36)
+                        .HasColumnType("character varying(36)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrganizacionId", "Fecha");
+
+                    b.HasIndex("OrganizacionId", "Uuid");
+
+                    b.ToTable("AppOperaciones", (string)null);
+                });
+
             modelBuilder.Entity("AuxiliarContable.Contabilidad.PartidaPendiente", b =>
                 {
                     b.Property<Guid>("Id")

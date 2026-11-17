@@ -59,14 +59,14 @@ export class InicioComponent implements OnInit {
       return [
         { icono: 'bi-grid-3x3-gap', titulo: 'Cartera', texto: 'Todos los clientes del mes con su semáforo.', ruta: '/cartera' },
         { icono: 'bi-arrow-left-right', titulo: 'Cierre del mes', texto: 'Conciliar, aclarar lo que no tiene factura y cerrar.', ruta: '/conciliacion' },
-        { icono: 'bi-folder2-open', titulo: 'Documentos', texto: 'Facturas, estados de cuenta y tickets de cada cliente.', ruta: '/documentos' },
+        { icono: 'bi-folder2-open', titulo: 'Mi información', texto: 'Facturas, dinero y control interno de cada cliente, amarrados por operación.', ruta: '/mi-informacion' },
         { icono: 'bi-person-lines-fill', titulo: 'Perfil fiscal', texto: 'RFC, régimen y datos de cada cliente.', ruta: '/perfil-fiscal' },
         leyes,
         { icono: 'bi-bank', titulo: 'Sentencias', texto: 'Cómo resuelven el TFJA y la SCJN, y qué hacer.', ruta: '/sentencias' },
       ];
     }
     return [
-      { icono: 'bi-folder2-open', titulo: 'Documentos', texto: 'Sube tus facturas XML, estados de cuenta y tickets.', ruta: '/documentos', params: deCliente },
+      { icono: 'bi-folder2-open', titulo: 'Mi información', texto: 'Sube tus facturas, estados de cuenta y tickets, y amárralos por operación.', ruta: '/mi-informacion', params: deCliente },
       { icono: 'bi-person-lines-fill', titulo: 'Perfil fiscal', texto: 'Sube tu constancia y revisa tus datos.', ruta: '/perfil-fiscal', params: deCliente },
       { icono: 'bi-arrow-left-right', titulo: 'Cierre del mes', texto: 'Cómo va tu mes y lo que el despacho te pregunta.', ruta: '/conciliacion', params: deCliente },
       { icono: 'bi-building', titulo: 'Mi organización', texto: 'Quién de tu empresa tiene acceso.', ruta: '/mi-organizacion' },
@@ -147,7 +147,7 @@ export class InicioComponent implements OnInit {
       next: r => {
         const delMes = r.filter(x => x.anio === ahora.getFullYear() && x.mes === ahora.getMonth() + 1).reduce((s, x) => s + x.cantidad, 0);
         documentos = { icono: 'bi-folder2-open', cifra: `${delMes}`, etiqueta: `documentos de ${MESES[ahora.getMonth()]}`,
-          tono: delMes ? 'bien' : 'atencion', ruta: '/documentos', params };
+          tono: delMes ? 'bien' : 'atencion', ruta: '/mi-informacion', params };
         publicar();
       },
       error: () => undefined,

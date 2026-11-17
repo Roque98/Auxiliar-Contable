@@ -25,23 +25,42 @@ export const APP_ROUTES: Routes = [
     canActivate: [authGuard],
   },
   {
-    // El servidor decide qué clientes ve cada quien, quién pide y quién atiende (Autorizador).
-    path: 'facturar',
-    loadComponent: () => import('./facturar/facturar.component').then(c => c.FacturarComponent),
+    // Mi información: facturas, dinero, control interno y todo (cada operación con sus tres patas). El servidor
+    // decide qué clientes ve cada quien y quién sube (Autorizador).
+    path: 'mi-informacion',
+    loadComponent: () => import('./mi-informacion/mi-informacion.component').then(c => c.MiInformacionComponent),
     canActivate: [authGuard],
+    children: [
+      { path: '', pathMatch: 'full', redirectTo: 'facturas' },
+      {
+        path: 'facturas',
+        loadComponent: () => import('./documentos/documentos.component').then(c => c.DocumentosComponent),
+        data: { zona: 'facturas' },
+      },
+      { path: 'facturas/pedir', loadComponent: () => import('./facturar/facturar.component').then(c => c.FacturarComponent) },
+      {
+        path: 'dinero',
+        loadComponent: () => import('./documentos/documentos.component').then(c => c.DocumentosComponent),
+        data: { zona: 'dinero' },
+      },
+      { path: 'dinero/efectivo', loadComponent: () => import('./dinero/dinero.component').then(c => c.DineroComponent) },
+      {
+        path: 'control',
+        loadComponent: () => import('./documentos/documentos.component').then(c => c.DocumentosComponent),
+        data: { zona: 'control' },
+      },
+      {
+        path: 'control/expedientes',
+        loadComponent: () => import('./control-interno/control-interno.component').then(c => c.ControlInternoComponent),
+      },
+      { path: 'todo', loadComponent: () => import('./mi-informacion/todo.component').then(c => c.TodoComponent) },
+    ],
   },
-  {
-    // El servidor decide qué clientes ve cada quien y quién puede agregar evidencia (Autorizador).
-    path: 'control-interno',
-    loadComponent: () => import('./control-interno/control-interno.component').then(c => c.ControlInternoComponent),
-    canActivate: [authGuard],
-  },
-  {
-    // El servidor decide qué clientes ve cada quien y quién puede registrar (Autorizador).
-    path: 'dinero',
-    loadComponent: () => import('./dinero/dinero.component').then(c => c.DineroComponent),
-    canActivate: [authGuard],
-  },
+  // Las pantallas de antes viven ahora en «Mi información» (las ligas viejas siguen sirviendo; ?cliente= se conserva).
+  { path: 'documentos', redirectTo: 'mi-informacion/facturas' },
+  { path: 'facturar', redirectTo: 'mi-informacion/facturas/pedir' },
+  { path: 'dinero', redirectTo: 'mi-informacion/dinero/efectivo' },
+  { path: 'control-interno', redirectTo: 'mi-informacion/control/expedientes' },
   {
     // El servidor decide qué clientes ve cada quien y quién ve contraseñas (Autorizador).
     path: 'credenciales',
@@ -83,12 +102,6 @@ export const APP_ROUTES: Routes = [
     // papel en la organización (el servidor responde 404 a lo demás).
     path: 'mi-organizacion',
     loadComponent: () => import('./mi-organizacion/mi-organizacion.component').then(c => c.MiOrganizacionComponent),
-    canActivate: [authGuard],
-  },
-  {
-    // Sin permiso: el servidor decide qué clientes ve cada quien (Autorizador).
-    path: 'documentos',
-    loadComponent: () => import('./documentos/documentos.component').then(c => c.DocumentosComponent),
     canActivate: [authGuard],
   },
   {

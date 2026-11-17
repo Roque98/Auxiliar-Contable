@@ -60,7 +60,7 @@
   <div class="ig-alerta ig-alerta-error" role="alert">
     {{ e }}
     @if (cliente(); as c) {
-      <a [routerLink]="['/documentos']" [queryParams]="{ cliente: c.id }">Ir a Documentos</a>
+      <a [routerLink]="['/mi-informacion/dinero']" [queryParams]="{ cliente: c.id }">Ir a Documentos</a>
     }
   </div>
 }
@@ -80,7 +80,7 @@
       }
     </ul>
     @if (c.etapa === Etapa.FaltanDocumentos && cliente(); as cl) {
-      <a class="btn btn-outline-primary cc-accion" [routerLink]="['/documentos']" [queryParams]="{ cliente: cl.id }">
+      <a class="btn btn-outline-primary cc-accion" [routerLink]="['/mi-informacion/dinero']" [queryParams]="{ cliente: cl.id }">
         <i class="bi bi-upload" aria-hidden="true"></i> Subir documentos
       </a>
     }

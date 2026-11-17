@@ -65,9 +65,6 @@ function configureRoutes() {
     routes.patch('::Menu:Leyes', { invisible: anonimo });
     routes.patch('::Menu:Sentencias', { invisible: anonimo });
     routes.patch('::Menu:Credenciales', { invisible: anonimo });
-    routes.patch('::Menu:Dinero', { invisible: anonimo });
-    routes.patch('::Menu:ControlInterno', { invisible: anonimo });
-    routes.patch('::Menu:Facturar', { invisible: anonimo });
     // El chat solo si está encendido en el servidor (sin API de Claude se trabaja por pantallas).
     const chat = String(config.getSetting(AJUSTE_DEL_CHAT)).toLowerCase() === 'true';
     routes.patch('::Menu:Asistente', { invisible: anonimo || !chat });
@@ -127,36 +124,6 @@ function configureRoutes() {
       invisible: true,
     },
 
-    // Pedir factura: el cliente pide y el despacho timbra (o rechaza). Para todos con sesión (patch de arriba).
-    {
-      path: '/facturar',
-      name: '::Menu:Facturar',
-      iconClass: 'bi bi-receipt',
-      order: 1.57,
-      layout: eLayoutType.application,
-      invisible: true,
-    },
-
-    // Control interno: la evidencia de cada salida de dinero (materialidad). Para todos con sesión (patch de arriba).
-    {
-      path: '/control-interno',
-      name: '::Menu:ControlInterno',
-      iconClass: 'bi bi-clipboard-check',
-      order: 1.56,
-      layout: eLayoutType.application,
-      invisible: true,
-    },
-
-    // Efectivo y crédito: lo que no pasa por el banco. Para todos con sesión (patch de arriba).
-    {
-      path: '/dinero',
-      name: '::Menu:Dinero',
-      iconClass: 'bi bi-cash-coin',
-      order: 1.55,
-      layout: eLayoutType.application,
-      invisible: true,
-    },
-
     // e.firma y CIEC de cada cliente, cifradas; ver contraseñas pide NIP. Para todos con sesión (patch de arriba).
     {
       path: '/credenciales',
@@ -187,10 +154,10 @@ function configureRoutes() {
       requiredPolicy: 'AuxiliarContable.Organizaciones',
     },
 
-    // La bóveda: facturas, estados de cuenta y tickets de cada cliente. Mismo criterio.
+    // Mi información: facturas, dinero, control interno y todo (cada operación con sus tres patas). Mismo criterio.
     {
-      path: '/documentos',
-      name: '::Menu:Documentos',
+      path: '/mi-informacion',
+      name: '::Menu:MiInformacion',
       iconClass: 'bi bi-folder2-open',
       order: 1.7,
       layout: eLayoutType.application,

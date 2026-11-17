@@ -79,7 +79,7 @@
           } @else {
             <a class="btn btn-outline-secondary" [routerLink]="['/conciliacion']" [queryParams]="{ cliente: c.id, anio: anio, mes: mes }" aria-label="Cierre del mes"><i class="bi bi-arrow-left-right" aria-hidden="true"></i></a>
           }
-          <a class="btn btn-outline-secondary" [routerLink]="['/documentos']" [queryParams]="{ cliente: c.id }" aria-label="Documentos"><i class="bi bi-folder2-open" aria-hidden="true"></i></a>
+          <a class="btn btn-outline-secondary" [routerLink]="['/mi-informacion']" [queryParams]="{ cliente: c.id }" aria-label="Documentos"><i class="bi bi-folder2-open" aria-hidden="true"></i></a>
           <a class="btn btn-outline-secondary" [routerLink]="['/perfil-fiscal']" [queryParams]="{ cliente: c.id }" aria-label="Perfil fiscal"><i class="bi bi-person-lines-fill" aria-hidden="true"></i></a>
         </nav>
       </li>

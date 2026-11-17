@@ -130,7 +130,7 @@ public class HerramientasDelAsistente : ITransientDependency
                 {"type":"object","properties":{
                   "anio":{"type":"integer","minimum":2000,"maximum":2100},
                   "mes":{"type":"integer","minimum":1,"maximum":12},
-                  "tipo":{"type":"string","enum":["cfdi","estado_de_cuenta","ticket","constancia","otro"]},
+                  "tipo":{"type":"string","enum":["cfdi","estado_de_cuenta","ticket","comprobante_de_pago","control_interno","constancia","otro"]},
                   "texto":{"type":"string"}}}
                 """),
             DeLeyes,
@@ -329,6 +329,8 @@ public class HerramientasDelAsistente : ITransientDependency
         ["cfdi"] = TipoDeDocumento.Cfdi,
         ["estado_de_cuenta"] = TipoDeDocumento.EstadoDeCuenta,
         ["ticket"] = TipoDeDocumento.Ticket,
+        ["comprobante_de_pago"] = TipoDeDocumento.ComprobanteDePago,
+        ["control_interno"] = TipoDeDocumento.ControlInterno,
         ["constancia"] = TipoDeDocumento.ConstanciaDeSituacionFiscal,
         ["otro"] = TipoDeDocumento.Otro,
     };

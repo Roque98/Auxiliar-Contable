@@ -63,7 +63,7 @@ describe('manual por rol', () => {
     const titulos = manualPara(() => false, 0, false).flatMap(s => s.temas.map(t => t.titulo));
     expect(titulos).not.toContain('Platica con el asistente');
     expect(titulos).toContain('Consultar leyes');
-    expect(titulos).toContain('Sube tus facturas y estados de cuenta');
+    expect(titulos).toContain('Mi información: facturas, dinero y control interno');
     expect(manualPara(() => false, 0, false).map(s => s.titulo)).not.toContain('Asistente');
   });
 });

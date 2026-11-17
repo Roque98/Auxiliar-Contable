@@ -145,6 +145,8 @@ export const NOMBRES_DE_TIPO: Record<TipoDeDocumento, string> = {
   [TipoDeDocumento.Cfdi]: 'Factura (CFDI)',
   [TipoDeDocumento.EstadoDeCuenta]: 'Estado de cuenta',
   [TipoDeDocumento.Ticket]: 'Ticket',
+  [TipoDeDocumento.ComprobanteDePago]: 'Comprobante de pago',
+  [TipoDeDocumento.ControlInterno]: 'Control interno',
 };
 
 export const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];

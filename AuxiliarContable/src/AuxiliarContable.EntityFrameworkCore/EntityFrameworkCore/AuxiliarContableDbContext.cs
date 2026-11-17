@@ -70,6 +70,8 @@ public class AuxiliarContableDbContext :
 
     public DbSet<Facturacion.SolicitudDeFactura> SolicitudesDeFactura { get; set; }
 
+    public DbSet<Contabilidad.Operacion> Operaciones { get; set; }
+
     public DbSet<Credenciales.CredencialesDelCliente> CredencialesDeClientes { get; set; }
 
     public DbSet<Credenciales.NipDeUsuario> NipsDeUsuarios { get; set; }
@@ -334,6 +336,25 @@ public class AuxiliarContableDbContext :
             b.Property(x => x.Clave).HasMaxLength(Contabilidad.ContabilidadConsts.ClaveLength);
             b.Property(x => x.Nota).HasMaxLength(Contabilidad.ControlInternoConsts.MaxNotaLength);
             b.HasIndex(x => new { x.OrganizacionId, x.Anio, x.Mes });
+        });
+
+        // Operaciones: factura · transacción · control interno de cada compra, gasto o venta.
+        builder.Entity<Contabilidad.Operacion>(b =>
+        {
+            b.ToTable(AuxiliarContableConsts.DbTablePrefix + "Operaciones", AuxiliarContableConsts.DbSchema);
+            b.ConfigureByConvention();
+            b.Property(x => x.Importe).HasPrecision(18, 2);
+            b.Property(x => x.Descripcion).IsRequired().HasMaxLength(Contabilidad.OperacionConsts.MaxDescripcionLength);
+            b.Property(x => x.Contraparte).HasMaxLength(Contabilidad.OperacionConsts.MaxContraparteLength);
+            b.Property(x => x.Uuid).HasMaxLength(Contabilidad.OperacionConsts.UuidLength);
+            b.Property(x => x.Referencia).HasMaxLength(Contabilidad.OperacionConsts.MaxReferenciaLength);
+            b.Property(x => x.FacturaMotivo).HasMaxLength(Contabilidad.OperacionConsts.MaxMotivoLength);
+            b.Property(x => x.TransaccionMotivo).HasMaxLength(Contabilidad.OperacionConsts.MaxMotivoLength);
+            b.Property(x => x.ControlMotivo).HasMaxLength(Contabilidad.OperacionConsts.MaxMotivoLength);
+            b.Ignore(x => x.Ligadas);
+            b.Ignore(x => x.Respondidas);
+            b.HasIndex(x => new { x.OrganizacionId, x.Fecha });
+            b.HasIndex(x => new { x.OrganizacionId, x.Uuid });
         });
 
         // Solicitudes de factura: lo que el cliente pide que se le timbre; conceptos en JSON (texto).

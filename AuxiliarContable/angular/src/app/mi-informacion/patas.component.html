@@ -1,0 +1,150 @@
+@if (o(); as op) {
+  <div class="pt" [attr.aria-busy]="ocupado()">
+    <div class="pt-datos">
+      <label class="pt-campo pt-ancho">
+        <span>Qué fue</span>
+        <input class="ig-control" [(ngModel)]="descripcion" [disabled]="!puedeEditar()" maxlength="256" />
+      </label>
+      <label class="pt-campo">
+        <span>Importe</span>
+        <input class="ig-control" type="number" min="0.01" step="0.01" [(ngModel)]="importe" [disabled]="!puedeEditar()" />
+      </label>
+      <label class="pt-campo">
+        <span>Es</span>
+        <select class="ig-control" [(ngModel)]="sentido" [disabled]="!puedeEditar()">
+          <option [ngValue]="Sentido.Salida">Compra o gasto</option>
+          <option [ngValue]="Sentido.Entrada">Venta o cobro</option>
+        </select>
+      </label>
+      @if (puedeEditar()) {
+        <button type="button" class="btn btn-outline-secondary pt-boton" (click)="guardarDatos()" [disabled]="ocupado()">Guardar datos</button>
+      }
+    </div>
+
+    <!-- Factura -->
+    <div class="pt-pata" data-testid="pata-factura">
+      <h4><span [class]="clase(op.factura.estado)" aria-hidden="true"></span> Factura <small>· {{ etiqueta(op.factura.estado) }}</small></h4>
+      @switch (op.factura.estado) {
+        @case (Estado.Ligada) {
+          <p class="pt-dato">
+            @if (op.factura.solicitudDeFacturaId && !op.factura.referencia) { Solicitada en «Pedir factura» }
+            @if (op.factura.referencia) { UUID {{ op.factura.referencia }} }
+            @if (op.factura.nombreDelDocumento) { · {{ op.factura.nombreDelDocumento }} }
+          </p>
+        }
+        @case (Estado.NoHay) { <p class="pt-dato">{{ op.factura.motivo }}</p> }
+      }
+      @if (puedeEditar() && op.factura.estado !== Estado.Ligada) {
+        <div class="pt-acciones">
+          <input class="ig-control pt-uuid" [(ngModel)]="uuid" placeholder="UUID (folio fiscal) de la factura" maxlength="36" aria-label="UUID de la factura" />
+          <button type="button" class="btn btn-primary pt-boton" (click)="ligarFactura()" [disabled]="ocupado() || !uuid.trim()">Amarrar</button>
+          @for (m of motivos.factura; track m) {
+            <button type="button" class="btn btn-outline-secondary pt-boton" (click)="noHay('factura', m)" [disabled]="ocupado()">{{ m }}</button>
+          }
+        </div>
+      }
+      @if (puedeEditar() && op.factura.estado !== Estado.Pendiente) {
+        <button type="button" class="btn btn-link pt-deshacer" (click)="despues('factura')" [disabled]="ocupado()">Cambiar</button>
+      }
+    </div>
+
+    <!-- Transacción -->
+    <div class="pt-pata" data-testid="pata-transaccion">
+      <h4><span [class]="clase(op.transaccion.estado)" aria-hidden="true"></span> Transacción <small>· {{ etiqueta(op.transaccion.estado) }}</small></h4>
+      @switch (op.transaccion.estado) {
+        @case (Estado.Ligada) {
+          <p class="pt-dato">
+            @switch (op.transaccion.forma) {
+              @case (Forma.Efectivo) { En efectivo }
+              @case (Forma.Credito) {
+                A crédito@if (op.transaccion.vence) { · vence {{ op.transaccion.vence | date: 'd MMM y' }} }
+                @if (op.transaccion.saldado) { · pagado {{ op.transaccion.saldado | date: 'd MMM y' }} } @else { · por pagar }
+              }
+              @default { Transferencia o tarjeta }
+            }
+            @if (op.transaccion.referencia) { · ref. {{ op.transaccion.referencia }} }
+            @if (op.transaccion.nombreDelDocumento) { · {{ op.transaccion.nombreDelDocumento }} }
+          </p>
+        }
+        @case (Estado.NoHay) { <p class="pt-dato">{{ op.transaccion.motivo }}</p> }
+      }
+      @if (puedeEditar() && op.transaccion.estado !== Estado.Ligada) {
+        <div class="pt-acciones">
+          <select class="ig-control pt-forma" [(ngModel)]="forma" aria-label="Cómo se pagó">
+            <option [ngValue]="Forma.Banco">Transferencia o tarjeta</option>
+            <option [ngValue]="Forma.Efectivo">Efectivo</option>
+            <option [ngValue]="Forma.Credito">A crédito (aún no se paga)</option>
+          </select>
+          @if (forma === Forma.Banco) {
+            <input class="ig-control pt-uuid" [(ngModel)]="referencia" placeholder="Referencia o folio (del comprobante o del estado de cuenta)" maxlength="100" aria-label="Referencia o folio" />
+          }
+          @if (forma === Forma.Credito) {
+            <label class="pt-campo"><span>Vence</span><input class="ig-control" type="date" [(ngModel)]="vence" /></label>
+          }
+          <button type="button" class="btn btn-primary pt-boton" (click)="ligarTransaccion()"
+                  [disabled]="ocupado() || (forma === Forma.Banco && !referencia.trim())">Amarrar</button>
+          @if (forma === Forma.Banco) {
+            <label class="btn btn-outline-primary pt-boton">
+              <i class="bi bi-paperclip" aria-hidden="true"></i> Subir comprobante
+              <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/*" (change)="subirA($event, 'transaccion')" hidden />
+            </label>
+          }
+          @for (m of motivos.transaccion; track m) {
+            <button type="button" class="btn btn-outline-secondary pt-boton" (click)="noHay('transaccion', m)" [disabled]="ocupado()">{{ m }}</button>
+          }
+        </div>
+      }
+      @if (puedeEditar() && op.transaccion.estado !== Estado.Pendiente) {
+        <button type="button" class="btn btn-link pt-deshacer" (click)="despues('transaccion')" [disabled]="ocupado()">Cambiar</button>
+      }
+    </div>
+
+    <!-- Control interno -->
+    <div class="pt-pata" data-testid="pata-control">
+      <h4><span [class]="clase(op.controlInterno.estado)" aria-hidden="true"></span> Control interno <small>· {{ etiqueta(op.controlInterno.estado) }}</small></h4>
+      @switch (op.controlInterno.estado) {
+        @case (Estado.Ligada) { <p class="pt-dato">{{ op.controlInterno.nombreDelDocumento }}</p> }
+        @case (Estado.NoHay) { <p class="pt-dato">{{ op.controlInterno.motivo }}</p> }
+      }
+      @if (puedeEditar() && op.controlInterno.estado !== Estado.Ligada) {
+        <div class="pt-acciones">
+          <label class="btn btn-outline-primary pt-boton">
+            <i class="bi bi-paperclip" aria-hidden="true"></i> Subir ticket o nota
+            <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/*" (change)="subirA($event, 'controlInterno')" hidden />
+          </label>
+          @for (m of motivos.controlInterno; track m) {
+            <button type="button" class="btn btn-outline-secondary pt-boton" (click)="noHay('controlInterno', m)" [disabled]="ocupado()">{{ m }}</button>
+          }
+        </div>
+      }
+      @if (puedeEditar() && op.controlInterno.estado !== Estado.Pendiente) {
+        <button type="button" class="btn btn-link pt-deshacer" (click)="despues('controlInterno')" [disabled]="ocupado()">Cambiar</button>
+      }
+    </div>
+
+    @if (puedeEditar() && candidatas().length) {
+      <div class="pt-juntar">
+        <label class="pt-campo pt-ancho">
+          <span>¿Es la misma que otra de este mes? Júntalas</span>
+          <select class="ig-control" [(ngModel)]="juntarCon">
+            <option [ngValue]="null">Elige…</option>
+            @for (c of candidatas(); track c.id) {
+              <option [ngValue]="c.id">{{ c.fecha | date: 'd MMM' }} · {{ c.descripcion }} · {{ (c.importe ?? 0) | currency: 'MXN' : 'symbol-narrow' }}</option>
+            }
+          </select>
+        </label>
+        <button type="button" class="btn btn-outline-primary pt-boton" (click)="juntar()" [disabled]="ocupado() || !juntarCon">Juntar</button>
+      </div>
+    }
+
+    @if (error(); as e) {
+      <div class="ig-alerta ig-alerta-error" role="alert">{{ e }}</div>
+    }
+
+    @if (puedeEditar()) {
+      <button type="button" class="btn btn-link pt-borrar" (click)="borrar()" [disabled]="ocupado()">
+        {{ borrando() ? 'Toca otra vez para borrar la operación (los archivos se quedan)' : 'Borrar operación' }}
+      </button>
+    }
+  </div>
+}
