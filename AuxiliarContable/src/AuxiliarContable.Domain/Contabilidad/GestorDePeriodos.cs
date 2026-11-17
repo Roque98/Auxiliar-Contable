@@ -30,7 +30,7 @@ public class GestorDePeriodos : DomainService
         if (await EstaCerradoAsync(organizacionId, fecha.Year, fecha.Month))
         {
             throw new UserFriendlyException(
-                $"El periodo {fecha:MM/yyyy} ya está cerrado: para cambiar sus documentos, alguien del despacho tiene que reabrirlo en «Conciliación».");
+                $"El periodo {fecha:MM/yyyy} ya está cerrado: para cambiar algo de ese mes, alguien del despacho tiene que reabrirlo en «Cierre del mes».");
         }
     }
 

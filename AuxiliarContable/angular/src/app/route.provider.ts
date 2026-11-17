@@ -65,6 +65,7 @@ function configureRoutes() {
     routes.patch('::Menu:Leyes', { invisible: anonimo });
     routes.patch('::Menu:Sentencias', { invisible: anonimo });
     routes.patch('::Menu:Credenciales', { invisible: anonimo });
+    routes.patch('::Menu:Dinero', { invisible: anonimo });
     // El chat solo si está encendido en el servidor (sin API de Claude se trabaja por pantallas).
     const chat = String(config.getSetting(AJUSTE_DEL_CHAT)).toLowerCase() === 'true';
     routes.patch('::Menu:Asistente', { invisible: anonimo || !chat });
@@ -120,6 +121,16 @@ function configureRoutes() {
       name: '::Menu:Leyes',
       iconClass: 'bi bi-journal-text',
       order: 1.85,
+      layout: eLayoutType.application,
+      invisible: true,
+    },
+
+    // Efectivo y crédito: lo que no pasa por el banco. Para todos con sesión (patch de arriba).
+    {
+      path: '/dinero',
+      name: '::Menu:Dinero',
+      iconClass: 'bi bi-cash-coin',
+      order: 1.55,
       layout: eLayoutType.application,
       invisible: true,
     },

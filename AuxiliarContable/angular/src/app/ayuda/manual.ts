@@ -244,6 +244,18 @@ export const SECCIONES: Seccion[] = [
         nota: 'Es el texto de la ley tal cual, sin interpretación: lo que hay que hacer en tu caso lo decide tu contador.',
       },
       {
+        titulo: 'Efectivo y crédito',
+        icono: 'bi-cash-coin',
+        ruta: '/dinero',
+        pasos: [
+          'Abre «Efectivo y crédito» y elige el mes: arriba ves cuánto entró y salió en efectivo, lo que falta por pagar y por cobrar.',
+          'Agrega una entrada en efectivo (una venta o el corte de caja del día), una salida en efectivo (un gasto), una compra a crédito o una venta a crédito.',
+          'Si tienes el ticket, la foto o la factura, súbelo ahí mismo: queda en Documentos y ligado al registro.',
+          'Lo comprado o vendido a crédito aparece cada mes hasta que pulses «Ya se pagó» o «Ya se cobró».',
+        ],
+        nota: 'Lo que no pasa por el banco también es ingreso, gasto o deuda: sin esto el mes queda incompleto. Un mes cerrado ya no se puede cambiar.',
+      },
+      {
         titulo: 'Mis credenciales',
         icono: 'bi-shield-lock',
         ruta: '/credenciales',
