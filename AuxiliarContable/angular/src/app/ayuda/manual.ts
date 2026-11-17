@@ -167,6 +167,20 @@ export const SECCIONES: Seccion[] = [
         nota: 'Si subes el mismo archivo dos veces no se duplica. Todo se guarda cifrado.',
       },
       {
+        titulo: 'Mesa de trabajo',
+        icono: 'bi-stars',
+        ruta: '/mesa',
+        permisos: ['AuxiliarContable.Organizaciones'],
+        pasos: [
+          'Elige al cliente y el mes: ves todas sus operaciones, completas o no, con sus tres círculos (factura · transacción · control interno).',
+          '«Analizar con Claude»: lee los tickets, notas, comprobantes y fotos que subió el cliente; saca fecha, importe, folio, referencia y UUID, dice qué es para su giro y completa la operación.',
+          '«Amarrar el banco» (después de conciliar en «Cierre del mes»): cada movimiento se vuelve operación y se amarra por UUID, luego por importe y fecha, y lo que quede con Claude.',
+          'Lo que Claude propone con duda aparece en «Claude sugiere»: acéptalo con «Sí, júntalas» o descártalo.',
+          'Filtra por lo que falta (sin factura, sin transacción, sin control interno) y abre una operación para completarla.',
+        ],
+        nota: 'Lo que Claude ya leyó no se vuelve a mandar. Nunca escribe encima de lo que dijo el cliente: solo llena lo que falta.',
+      },
+      {
         titulo: 'La bóveda de cada cliente',
         icono: 'bi-folder2-open',
         ruta: '/mi-informacion/facturas',

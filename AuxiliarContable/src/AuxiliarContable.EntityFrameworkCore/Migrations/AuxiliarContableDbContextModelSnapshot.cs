@@ -291,6 +291,10 @@ namespace AuxiliarContable.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("ClaveDeMovimiento")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
                     b.Property<string>("ConcurrencyStamp")
                         .IsConcurrencyToken()
                         .IsRequired()
@@ -389,6 +393,8 @@ namespace AuxiliarContable.Migrations
                         .HasColumnType("character varying(36)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("OrganizacionId", "ClaveDeMovimiento");
 
                     b.HasIndex("OrganizacionId", "Fecha");
 
@@ -760,6 +766,12 @@ namespace AuxiliarContable.Migrations
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid");
+
+                    b.Property<string>("Analisis")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("AnalizadoUtc")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("ConcurrencyStamp")
                         .IsConcurrencyToken()

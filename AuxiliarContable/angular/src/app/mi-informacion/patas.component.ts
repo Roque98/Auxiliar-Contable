@@ -10,6 +10,7 @@ import {
   FormaDeTransaccion,
   GuardarPataDto,
   MOTIVOS,
+  NOMBRES_DE_CATEGORIA,
   OperacionDto,
   OperacionesService,
   SentidoDeOperacion,
@@ -47,6 +48,7 @@ export class PatasComponent {
   readonly Forma = FormaDeTransaccion;
   readonly Sentido = SentidoDeOperacion;
   readonly motivos = MOTIVOS;
+  readonly categorias = NOMBRES_DE_CATEGORIA;
 
   readonly o = signal<OperacionDto | null>(null);
   readonly ocupado = signal(false);
