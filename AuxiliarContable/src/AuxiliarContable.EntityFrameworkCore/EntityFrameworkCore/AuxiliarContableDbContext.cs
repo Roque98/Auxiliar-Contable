@@ -74,6 +74,8 @@ public class AuxiliarContableDbContext :
 
     public DbSet<Contabilidad.PolizasDelMes> PolizasDeMeses { get; set; }
 
+    public DbSet<Contabilidad.SaldosDeApertura> SaldosDeAperturas { get; set; }
+
     public DbSet<Credenciales.CredencialesDelCliente> CredencialesDeClientes { get; set; }
 
     public DbSet<Credenciales.NipDeUsuario> NipsDeUsuarios { get; set; }
@@ -339,6 +341,15 @@ public class AuxiliarContableDbContext :
             b.Property(x => x.Clave).HasMaxLength(Contabilidad.ContabilidadConsts.ClaveLength);
             b.Property(x => x.Nota).HasMaxLength(Contabilidad.ControlInternoConsts.MaxNotaLength);
             b.HasIndex(x => new { x.OrganizacionId, x.Anio, x.Mes });
+        });
+
+        // Saldos de apertura: la balanza con la que llega el cliente (uno por cliente).
+        builder.Entity<Contabilidad.SaldosDeApertura>(b =>
+        {
+            b.ToTable(AuxiliarContableConsts.DbTablePrefix + "SaldosDeApertura", AuxiliarContableConsts.DbSchema);
+            b.ConfigureByConvention();
+            b.Property(x => x.Saldos).IsRequired().HasColumnType("text");
+            b.HasIndex(x => x.OrganizacionId).IsUnique();
         });
 
         // Pólizas del mes: lo último que se contabilizó (JSON del motor).

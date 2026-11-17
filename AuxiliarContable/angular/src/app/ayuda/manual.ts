@@ -178,6 +178,8 @@ export const SECCIONES: Seccion[] = [
           'Lo que Claude propone con duda aparece en «Claude sugiere»: acéptalo con «Sí, júntalas» o descártalo.',
           'Filtra por lo que falta (sin factura, sin transacción, sin control interno) y abre una operación para completarla.',
           '«Revisar y generar pólizas»: primero revisa que la información no traiga errores (pago distinto de la factura, PUE sin pago, efectivo de más de $2,000, ingreso sin factura, ticket de otro RFC, posible duplicado, gasto ajeno al giro). Lo que «detiene» no se contabiliza hasta que lo corrijas o pulses «Está bien, contabilízala».',
+          'Pagos y costo de ventas: una factura de un mes anterior que se paga en este lleva su póliza de pago (y el IVA pasa a pagado). Captura el inventario final (analítico) o el costo de lo vendido (perpetuo) y vuelve a generar: sale la póliza de costo de ventas; el inventario final pasa como inicial al mes siguiente.',
+          '«Balanza y contabilidad electrónica»: captura una vez los saldos de apertura (pega de Excel cuenta, deudor y acreedor); luego «Generar balanza y XML» da la balanza acumulada del mes y descarga el catálogo, la balanza y las pólizas en XML del SAT, validados contra su esquema, con la fecha en que vencen.',
           'Las cuentas dependen del tipo de empresa (comercial, servicios, fabricante, constructora) y del sistema de costos e inventarios: ponlos en el perfil fiscal del cliente. Abajo están las pólizas, la balanza del mes y lo pendiente para el cierre (costo de ventas, producción, depreciación).',
         ],
         nota: 'Lo que Claude ya leyó no se vuelve a mandar. Nunca escribe encima de lo que dijo el cliente: solo llena lo que falta.',

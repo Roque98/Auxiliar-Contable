@@ -70,6 +70,11 @@ public interface IMotorFiscal
         PerfilParaContabilizar perfil, IReadOnlyList<OperacionParaContabilizar> operaciones, IReadOnlyList<ArchivoParaElMotor> facturas,
         string periodo, DatosDeCierre? cierre, CancellationToken cancellationToken = default);
 
+    /// <summary>Saldos de apertura + pólizas de cada mes -> balanza acumulada del mes y XML del SAT (catálogo, balanza, pólizas).</summary>
+    Task<ContabilidadElectronica> ContabilidadElectronicaAsync(
+        string rfc, int anio, int mes, AperturaParaElMotor? apertura, IReadOnlyList<MesParaElMotor> meses,
+        CancellationToken cancellationToken = default);
+
     /// <summary>Movimientos del banco sin amarrar + operaciones sin pago -> parejas propuestas por Claude, con su porqué.</summary>
     Task<SugerenciasDeAmarre> SugerirAmarresAsync(
         IReadOnlyList<MovimientoParaAmarrar> movimientos, IReadOnlyList<CandidataParaAmarrar> candidatas, string? giro,
@@ -167,6 +172,11 @@ public class MotorFiscalSinConfigurar : IMotorFiscal, ISingletonDependency
     public Task<ResultadoContable> ContabilizarAsync(
         PerfilParaContabilizar perfil, IReadOnlyList<OperacionParaContabilizar> operaciones, IReadOnlyList<ArchivoParaElMotor> facturas,
         string periodo, DatosDeCierre? cierre, CancellationToken cancellationToken = default) =>
+        throw new MotorFiscalNoDisponibleException("No hay motor fiscal en este proceso.");
+
+    public Task<ContabilidadElectronica> ContabilidadElectronicaAsync(
+        string rfc, int anio, int mes, AperturaParaElMotor? apertura, IReadOnlyList<MesParaElMotor> meses,
+        CancellationToken cancellationToken = default) =>
         throw new MotorFiscalNoDisponibleException("No hay motor fiscal en este proceso.");
 
     public Task<SugerenciasDeAmarre> SugerirAmarresAsync(

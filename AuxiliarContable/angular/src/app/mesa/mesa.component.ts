@@ -12,9 +12,13 @@ import {
   SentidoDeOperacion,
 } from '../mi-informacion/operaciones.service';
 import { PatasComponent } from '../mi-informacion/patas.component';
+import { leerSaldos } from './saldos';
 import { ClienteVisibleDto, PerfilFiscalService } from '../perfil-fiscal/perfil-fiscal.service';
 import {
+  ContabilidadElectronicaDto,
   MesaDelMesDto,
+  SaldoDeAperturaDto,
+  SaldosDeAperturaDto,
   MesaService,
   PolizasDelMesDto,
   RenglonDeRevisionDto,
@@ -71,6 +75,19 @@ export class MesaComponent implements OnInit {
   readonly polizaAbierta = signal<string | null>(null);
   readonly verBalanza = signal(false);
   readonly verCierre = signal(false);
+
+  // Saldos de apertura y contabilidad electrónica
+  readonly apertura = signal<SaldosDeAperturaDto | null>(null);
+  readonly editandoApertura = signal(false);
+  textoApertura = '';
+  anioApertura = new Date().getFullYear();
+  mesApertura = 1;
+  readonly electronica = signal<ContabilidadElectronicaDto | null>(null);
+  readonly generandoXml = signal(false);
+  /** Lo que se pegó en el editor de apertura, ya leído. */
+  get aperturaLeida(): { saldos: SaldoDeAperturaDto[]; deudores: number; acreedores: number; malos: number } {
+    return leerSaldos(this.textoApertura);
+  }
   /** Lo que se captura para el costo de ventas del mes. */
   inventarioInicial: number | null = null;
   inventarioFinal: number | null = null;
@@ -154,6 +171,8 @@ export class MesaComponent implements OnInit {
       error: e => this.error.set(mensajeDeError(e, 'No se pudo cargar la mesa de trabajo.')),
     });
     this.api.polizas(id, this.anio, this.mes).subscribe({ next: p => this.ponerPolizas(p), error: () => this.ponerPolizas(null) });
+    this.electronica.set(null);
+    this.api.apertura(id).subscribe({ next: a => this.apertura.set(a), error: () => this.apertura.set(null) });
   }
 
   generarPolizas(): void {
@@ -181,6 +200,58 @@ export class MesaComponent implements OnInit {
     this.inventarioInicial = p?.cierre?.inventarioInicial ?? p?.inventarioInicialSugerido ?? null;
     this.inventarioFinal = p?.cierre?.inventarioFinal ?? null;
     this.costoVendido = p?.cierre?.costoVendido ?? null;
+  }
+
+  editarApertura(): void {
+    const a = this.apertura();
+    this.anioApertura = a?.anio ?? this.anio;
+    this.mesApertura = a?.mes ?? this.mes;
+    this.textoApertura = (a?.saldos ?? []).map(s => `${s.cuenta}\t${s.deudor || ''}\t${s.acreedor || ''}`).join('\n');
+    this.editandoApertura.set(true);
+  }
+
+  guardarApertura(): void {
+    const id = this.clienteId();
+    const leida = this.aperturaLeida;
+    if (!id || leida.malos) {
+      return;
+    }
+    this.api.guardarApertura(id, { anio: this.anioApertura, mes: this.mesApertura, saldos: leida.saldos }).subscribe({
+      next: a => {
+        this.apertura.set(a);
+        this.editandoApertura.set(false);
+      },
+      error: e => this.error.set(mensajeDeError(e, 'No se pudieron guardar los saldos de apertura.')),
+    });
+  }
+
+  generarElectronica(): void {
+    const id = this.clienteId();
+    if (!id || this.generandoXml()) {
+      return;
+    }
+    this.generandoXml.set(true);
+    this.error.set(null);
+    this.api.contabilidadElectronica(id, this.anio, this.mes).subscribe({
+      next: r => {
+        this.electronica.set(r);
+        this.generandoXml.set(false);
+      },
+      error: e => {
+        this.generandoXml.set(false);
+        this.error.set(mensajeDeError(e, 'No se pudo generar la contabilidad electrónica.'));
+      },
+    });
+  }
+
+  descargarXml(a: { nombre: string; contenidoB64: string }): void {
+    const bytes = Uint8Array.from(atob(a.contenidoB64), c => c.charCodeAt(0));
+    const url = URL.createObjectURL(new Blob([bytes], { type: 'application/xml' }));
+    const enlace = document.createElement('a');
+    enlace.href = url;
+    enlace.download = a.nombre;
+    enlace.click();
+    setTimeout(() => URL.revokeObjectURL(url), 10_000);
   }
 
   /** «Sí, está bien»: se acepta lo que detenía la operación y se vuelve a generar. */

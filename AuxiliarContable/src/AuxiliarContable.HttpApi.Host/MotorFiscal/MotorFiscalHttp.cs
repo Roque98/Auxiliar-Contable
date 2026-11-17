@@ -183,6 +183,18 @@ public class MotorFiscalHttp : IMotorFiscal, ITransientDependency
         return await EnviarAsync<ResultadoContable>(peticion, tope.Token, cancellationToken);
     }
 
+    public async Task<ContabilidadElectronica> ContabilidadElectronicaAsync(
+        string rfc, int anio, int mes, AperturaParaElMotor? apertura, IReadOnlyList<MesParaElMotor> meses,
+        CancellationToken cancellationToken = default)
+    {
+        using var tope = CancelationConTope(_opciones.TimeoutDeBancosSegundos, cancellationToken);
+        var peticion = new HttpRequestMessage(HttpMethod.Post, "contabilidad/electronica")
+        {
+            Content = JsonContent.Create(new { rfc, anio, mes, apertura, meses, con_polizas = true }, options: Json),
+        };
+        return await EnviarAsync<ContabilidadElectronica>(peticion, tope.Token, cancellationToken);
+    }
+
     public async Task<SugerenciasDeAmarre> SugerirAmarresAsync(
         IReadOnlyList<MovimientoParaAmarrar> movimientos, IReadOnlyList<CandidataParaAmarrar> candidatas, string? giro,
         CancellationToken cancellationToken = default)

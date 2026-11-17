@@ -30,6 +30,7 @@ public class MesaDeTrabajoAppService : AuxiliarContableAppService, IMesaDeTrabaj
     private readonly IRepository<ConciliacionBancaria, Guid> _conciliaciones;
     private readonly IRepository<MovimientoFueraDelBanco, Guid> _movimientos;
     private readonly IRepository<PolizasDelMes, Guid> _polizas;
+    private readonly IRepository<SaldosDeApertura, Guid> _aperturas;
     private readonly AlmacenDeDocumentos _almacen;
     private readonly IPerfilFiscalAppService _perfiles;
     private readonly IMotorFiscal _motor;
@@ -43,6 +44,7 @@ public class MesaDeTrabajoAppService : AuxiliarContableAppService, IMesaDeTrabaj
         IRepository<ConciliacionBancaria, Guid> conciliaciones,
         IRepository<MovimientoFueraDelBanco, Guid> movimientos,
         IRepository<PolizasDelMes, Guid> polizas,
+        IRepository<SaldosDeApertura, Guid> aperturas,
         AlmacenDeDocumentos almacen,
         IPerfilFiscalAppService perfiles,
         IMotorFiscal motor,
@@ -55,6 +57,7 @@ public class MesaDeTrabajoAppService : AuxiliarContableAppService, IMesaDeTrabaj
         _conciliaciones = conciliaciones;
         _movimientos = movimientos;
         _polizas = polizas;
+        _aperturas = aperturas;
         _almacen = almacen;
         _perfiles = perfiles;
         _motor = motor;
@@ -506,6 +509,121 @@ public class MesaDeTrabajoAppService : AuxiliarContableAppService, IMesaDeTrabaj
         }
 
         return Describir(guardadas, await InventarioAnteriorAsync(organizacionId, anio, mes));
+    }
+
+    public async Task<SaldosDeAperturaDto?> GetAperturaAsync(Guid organizacionId)
+    {
+        await ExigirEquipoAsync(organizacionId, AccionEnOrganizacion.Ver);
+        var a = await _aperturas.FirstOrDefaultAsync(x => x.OrganizacionId == organizacionId);
+        return a == null ? null : new SaldosDeAperturaDto
+        {
+            Anio = a.Anio, Mes = a.Mes, Saldos = JsonSerializer.Deserialize<List<SaldoDeApertura>>(a.Saldos) ?? [],
+        };
+    }
+
+    public async Task<SaldosDeAperturaDto> GuardarAperturaAsync(Guid organizacionId, SaldosDeAperturaDto input)
+    {
+        await ExigirEquipoAsync(organizacionId, AccionEnOrganizacion.Subir);
+        Mes(input.Anio, input.Mes);
+        var saldos = (input.Saldos ?? []).Where(s => s.Deudor != 0 || s.Acreedor != 0).Select(s => new SaldoDeApertura
+        {
+            Cuenta = (s.Cuenta ?? "").Trim(), Deudor = decimal.Round(s.Deudor, 2), Acreedor = decimal.Round(s.Acreedor, 2),
+        }).ToList();
+        var mal = saldos.FirstOrDefault(s => !System.Text.RegularExpressions.Regex.IsMatch(s.Cuenta, @"^\d{3}(\.\d{2,3})?$")
+                                            || s.Deudor < 0 || s.Acreedor < 0 || (s.Deudor > 0 && s.Acreedor > 0));
+        if (mal != null)
+        {
+            throw new UserFriendlyException($"Revisa la cuenta «{mal.Cuenta}»: va con el código agrupador (como 102.01) y un saldo deudor o acreedor, no los dos.");
+        }
+
+        if (saldos.GroupBy(s => s.Cuenta).Any(g => g.Count() > 1))
+        {
+            throw new UserFriendlyException("Hay cuentas repetidas en los saldos de apertura.");
+        }
+
+        var deudores = saldos.Sum(s => s.Deudor);
+        var acreedores = saldos.Sum(s => s.Acreedor);
+        if (deudores != acreedores)
+        {
+            throw new UserFriendlyException($"Los saldos de apertura no cuadran: deudores {deudores:N2} y acreedores {acreedores:N2}.");
+        }
+
+        var a = await _aperturas.FirstOrDefaultAsync(x => x.OrganizacionId == organizacionId);
+        var nueva = a == null;
+        a ??= new SaldosDeApertura(GuidGenerator.Create(), organizacionId);
+        a.Poner(input.Anio, input.Mes, JsonSerializer.Serialize(saldos));
+        if (nueva)
+        {
+            await _aperturas.InsertAsync(a, autoSave: true);
+        }
+        else
+        {
+            await _aperturas.UpdateAsync(a, autoSave: true);
+        }
+
+        return new SaldosDeAperturaDto { Anio = a.Anio, Mes = a.Mes, Saldos = saldos };
+    }
+
+    public async Task<ContabilidadElectronicaDto> ContabilidadElectronicaAsync(Guid organizacionId, int anio, int mes)
+    {
+        await ExigirEquipoAsync(organizacionId, AccionEnOrganizacion.Ver);
+        Mes(anio, mes);
+        var (rfc, _) = await RfcYGiroAsync(organizacionId);
+        if (rfc == null)
+        {
+            throw new UserFriendlyException("Falta el RFC del cliente en su perfil fiscal.");
+        }
+
+        var clave = anio * 100 + mes;
+        var meses = (await _polizas.GetListAsync(p => p.OrganizacionId == organizacionId && p.Anio * 100 + p.Mes <= clave))
+            .OrderBy(p => p.Anio).ThenBy(p => p.Mes).ToList();
+        if (!meses.Any(p => p.Anio == anio && p.Mes == mes))
+        {
+            throw new UserFriendlyException($"Primero genera las pólizas de {mes:00}/{anio} en esta mesa.");
+        }
+
+        var apertura = await _aperturas.FirstOrDefaultAsync(x => x.OrganizacionId == organizacionId);
+        if (apertura != null)
+        {
+            meses = meses.Where(p => p.Anio * 100 + p.Mes >= apertura.Anio * 100 + apertura.Mes).ToList();
+        }
+
+        // Un mes sin pólizas entre la apertura y este deja la balanza incompleta.
+        var avisos = new List<string>();
+        var desde = apertura != null ? new DateTime(apertura.Anio, apertura.Mes, 1) : new DateTime(meses[0].Anio, meses[0].Mes, 1);
+        for (var f = desde; f < new DateTime(anio, mes, 1); f = f.AddMonths(1))
+        {
+            if (!meses.Any(p => p.Anio == f.Year && p.Mes == f.Month))
+            {
+                avisos.Add($"Faltan las pólizas de {f:MM/yyyy}: la balanza no las incluye.");
+            }
+        }
+
+        ContabilidadElectronica resultado;
+        try
+        {
+            resultado = await _motor.ContabilidadElectronicaAsync(rfc, anio, mes,
+                apertura == null
+                    ? null
+                    : new AperturaParaElMotor
+                    {
+                        Periodo = $"{apertura.Anio:0000}-{apertura.Mes:00}",
+                        Saldos = JsonSerializer.Deserialize<List<SaldoDeApertura>>(apertura.Saldos) ?? [],
+                    },
+                meses.Select(p => new MesParaElMotor
+                {
+                    Periodo = $"{p.Anio:0000}-{p.Mes:00}",
+                    Polizas = (JsonSerializer.Deserialize<ResultadoContable>(p.Resultado) ?? new ResultadoContable()).Polizas,
+                }).ToList());
+        }
+        catch (MotorFiscalNoDisponibleException ex)
+        {
+            Logger.LogWarning(ex, "El motor no pudo generar la contabilidad electrónica");
+            throw new UserFriendlyException("El motor contable no está disponible en este momento. Intenta de nuevo en unos minutos.");
+        }
+
+        resultado.Avisos.InsertRange(0, avisos);
+        return new ContabilidadElectronicaDto { Anio = anio, Mes = mes, Resultado = resultado };
     }
 
     public async Task AceptarRevisionAsync(Guid organizacionId, Guid operacionId, string codigo)

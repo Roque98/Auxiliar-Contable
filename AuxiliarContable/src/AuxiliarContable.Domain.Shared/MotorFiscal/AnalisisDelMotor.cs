@@ -163,6 +163,12 @@ public class PolizaContable
     public string? Uuid { get; set; }
     public string? Categoria { get; set; }
     public List<MovimientoContable> Movimientos { get; set; } = [];
+
+    /// <summary>RFC de la contraparte, total y forma de pago del CFDI (para la contabilidad electrónica).</summary>
+    public string? Rfc { get; set; }
+
+    public decimal? Total { get; set; }
+    public string? Forma { get; set; }
 }
 
 public class MovimientoContable
@@ -206,4 +212,63 @@ public class DatosDeCierre
 
     /// <summary>Inventario perpetuo: el costo de lo vendido según el almacén.</summary>
     public decimal? CostoVendido { get; set; }
+}
+
+/// <summary>Un saldo de apertura: deudor o acreedor.</summary>
+public class SaldoDeApertura
+{
+    public string Cuenta { get; set; } = "";
+    public decimal Deudor { get; set; }
+    public decimal Acreedor { get; set; }
+}
+
+public class AperturaParaElMotor
+{
+    /// <summary>AAAA-MM: los saldos son al iniciar ese mes.</summary>
+    public string Periodo { get; set; } = "";
+
+    public List<SaldoDeApertura> Saldos { get; set; } = [];
+}
+
+public class MesParaElMotor
+{
+    public string Periodo { get; set; } = "";
+    public List<PolizaContable> Polizas { get; set; } = [];
+}
+
+/// <summary>Balanza del mes y XML de la contabilidad electrónica (motor /contabilidad/electronica).</summary>
+public class ContabilidadElectronica
+{
+    public List<RenglonDeBalanza> Balanza { get; set; } = [];
+    public List<ArchivoXml> Archivos { get; set; } = [];
+    public string Vencimiento { get; set; } = "";
+    public List<string> Avisos { get; set; } = [];
+}
+
+public class RenglonDeBalanza
+{
+    public string Cuenta { get; set; } = "";
+    public string Nombre { get; set; } = "";
+    public int Nivel { get; set; }
+
+    /// <summary>D deudora, A acreedora.</summary>
+    public string Naturaleza { get; set; } = "D";
+
+    public decimal SaldoInicial { get; set; }
+    public decimal Debe { get; set; }
+    public decimal Haber { get; set; }
+    public decimal SaldoFinal { get; set; }
+}
+
+public class ArchivoXml
+{
+    public string Nombre { get; set; } = "";
+
+    /// <summary>CT catálogo, BN balanza, PL pólizas.</summary>
+    public string Tipo { get; set; } = "";
+
+    public string ContenidoB64 { get; set; } = "";
+
+    /// <summary>Errores contra el XSD del SAT (vacío = válido).</summary>
+    public List<string> Errores { get; set; } = [];
 }

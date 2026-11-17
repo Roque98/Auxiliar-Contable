@@ -11,6 +11,7 @@ using AuxiliarContable.MotorFiscal;
 using AuxiliarContable.Organizaciones;
 using AuxiliarContable.PerfilesFiscales;
 using Shouldly;
+using Volo.Abp;
 using Volo.Abp.Authorization;
 using Volo.Abp.Content;
 using Xunit;
@@ -251,5 +252,43 @@ public class MesaDeTrabajoIntegrationTests : ConJerarquiaTestBase
         clavos.Transaccion.Importe.ShouldBe(480m);
         clavos.Transaccion.Fecha.ShouldBe(Dia.AddDays(3).ToString("yyyy-MM-dd"));
         r.InventarioInicialSugerido.ShouldBe(4500m);
+    }
+
+    [Fact]
+    public async Task Apertura_balanza_acumulada_y_contabilidad_electronica()
+    {
+        var apertura = Dia.AddMonths(-2);
+        // Saldos que no cuadran no se guardan.
+        await Should.ThrowAsync<UserFriendlyException>(() => ComoAsync(Administrador, () => _mesa.GuardarAperturaAsync(_cliente, new SaldosDeAperturaDto
+        {
+            Anio = apertura.Year, Mes = apertura.Month, Saldos = [new SaldoDeApertura { Cuenta = "102.01", Deudor = 100 }],
+        })));
+        await ComoAsync(Administrador, () => _mesa.GuardarAperturaAsync(_cliente, new SaldosDeAperturaDto
+        {
+            Anio = apertura.Year, Mes = apertura.Month,
+            Saldos = [new SaldoDeApertura { Cuenta = "102.01", Deudor = 50000 }, new SaldoDeApertura { Cuenta = "301.01", Acreedor = 50000 }],
+        }));
+        (await ComoAsync(Administrador, () => _mesa.GetAperturaAsync(_cliente)))!.Saldos.Count.ShouldBe(2);
+        await Should.ThrowAsync<AbpAuthorizationException>(() => ComoAsync(Usuario, () => _mesa.GetAperturaAsync(_cliente)));
+
+        // Sin pólizas del mes no hay contabilidad electrónica.
+        await Should.ThrowAsync<UserFriendlyException>(() => ComoAsync(Administrador, () => _mesa.ContabilidadElectronicaAsync(_cliente, Dia.Year, Dia.Month)));
+
+        await ComoAsync(Administrador, () => GetRequiredService<IPerfilFiscalAppService>().ResponderAsync(_cliente,
+            new ResponderDatoDelPerfilDto { Campo = CamposDelPerfil.TipoDeEmpresa, Valor = "servicios" }));
+        _motor.Contabilidad = (_, _, _) => new ResultadoContable
+        {
+            Polizas = [new PolizaContable { Operacion = "x", Tipo = "Diario", Numero = 1, Fecha = Dia.ToString("yyyy-MM-dd"), Rfc = "AAA010101AAA",
+                Movimientos = [new MovimientoContable { Cuenta = "601.84", Debe = 10 }, new MovimientoContable { Cuenta = "102.01", Haber = 10 }] }],
+        };
+        await ComoAsync(Administrador, () => _mesa.GenerarPolizasAsync(_cliente, Dia.Year, Dia.Month, new DatosDeCierre()));
+
+        var r = await ComoAsync(Administrador, () => _mesa.ContabilidadElectronicaAsync(_cliente, Dia.Year, Dia.Month));
+        r.Resultado.Archivos.ShouldHaveSingleItem().Nombre.ShouldBe($"GODE561231GR8{Dia:yyyyMM}BN.xml");
+        var (aperturaMandada, meses) = _motor.Electronica!.Value;
+        aperturaMandada!.Periodo.ShouldBe($"{apertura:yyyy-MM}");
+        meses.ShouldHaveSingleItem().Polizas.Single().Rfc.ShouldBe("AAA010101AAA");
+        // Entre la apertura y este mes faltan dos meses de pólizas.
+        r.Resultado.Avisos.Count(a => a.StartsWith("Faltan las pólizas")).ShouldBe(2);
     }
 }

@@ -212,6 +212,93 @@
     }
   </section>
 
+  <section class="ms-tarjeta" aria-labelledby="ms-electronica" data-testid="electronica">
+    <div class="ms-cabecera-fila">
+      <h2 id="ms-electronica"><i class="bi bi-file-earmark-code" aria-hidden="true"></i> Balanza y contabilidad electrónica</h2>
+      <button type="button" class="btn btn-primary ms-boton" (click)="generarElectronica()" [disabled]="generandoXml() || !polizas()">
+        @if (generandoXml()) { <span class="ig-girando" aria-hidden="true"></span> Generando… } @else { Generar balanza y XML }
+      </button>
+    </div>
+    <p class="ms-nota">
+      La balanza acumula desde los saldos de apertura las pólizas de cada mes. Los XML (catálogo, balanza y pólizas 1.3) se validan contra el esquema del SAT.
+      @if (!polizas()) { Primero genera las pólizas del mes. }
+    </p>
+
+    <div class="ms-apertura">
+      @if (apertura(); as a) {
+        <p class="ms-nota">Saldos de apertura al iniciar {{ meses[a.mes - 1] }} {{ a.anio }}: {{ a.saldos.length }} cuentas.</p>
+      } @else {
+        <p class="ms-aviso">Sin saldos de apertura: la balanza parte de cero. Captura la balanza con la que llegó el cliente.</p>
+      }
+      @if (m.operaciones.puedeEditar && !editandoApertura()) {
+        <button type="button" class="btn btn-link ms-rev-op" (click)="editarApertura()">{{ apertura() ? 'Cambiar' : 'Capturar' }} los saldos de apertura</button>
+      }
+    </div>
+    @if (editandoApertura()) {
+      <div class="ms-cierre">
+        <label class="ms-campo">
+          <span>Al iniciar el mes</span>
+          <select class="ig-control ms-capital" [(ngModel)]="mesApertura">
+            @for (n of meses; track $index) { <option [ngValue]="$index + 1">{{ n }}</option> }
+          </select>
+        </label>
+        <label class="ms-campo">
+          <span>Año</span>
+          <select class="ig-control" [(ngModel)]="anioApertura">
+            @for (y of anios; track y) { <option [ngValue]="y">{{ y }}</option> }
+          </select>
+        </label>
+        <label class="ms-campo ms-ancho">
+          <span>Cuenta, deudor, acreedor (pega de Excel; una cuenta por renglón, con el código agrupador)</span>
+          <textarea class="ig-control" rows="8" [(ngModel)]="textoApertura" placeholder="102.01&#9;150000&#10;201.01&#9;&#9;35000"></textarea>
+        </label>
+        @if (aperturaLeida; as l) {
+          <p class="ms-nota">
+            {{ l.saldos.length }} cuentas · deudores {{ l.deudores | currency: 'MXN' : 'symbol-narrow' }} · acreedores {{ l.acreedores | currency: 'MXN' : 'symbol-narrow' }}
+            @if (l.deudores !== l.acreedores) { · <strong>no cuadran</strong> }
+            @if (l.malos) { · <strong>{{ l.malos }} renglones no se entienden</strong> }
+          </p>
+          <div class="ms-acciones">
+            <button type="button" class="btn btn-primary ms-boton" (click)="guardarApertura()" [disabled]="!!l.malos || l.deudores !== l.acreedores">Guardar</button>
+            <button type="button" class="btn btn-outline-secondary ms-boton" (click)="editandoApertura.set(false)">Cancelar</button>
+          </div>
+        }
+      </div>
+    }
+
+    @if (electronica(); as e) {
+      @for (a of e.resultado.avisos; track $index) { <p class="ms-aviso">{{ a }}</p> }
+      <p class="ms-resultado">Vence el {{ e.resultado.vencimiento }} (regla 2.8.1.6 RMF).</p>
+      <div class="ms-acciones">
+        @for (a of e.resultado.archivos; track a.nombre) {
+          <button type="button" class="btn btn-outline-primary ms-boton" (click)="descargarXml(a)">
+            <i [class]="'bi ' + (a.errores.length ? 'bi-exclamation-triangle' : 'bi-check-circle')" aria-hidden="true"></i>
+            {{ a.tipo === 'CT' ? 'Catálogo' : a.tipo === 'BN' ? 'Balanza' : 'Pólizas' }} · {{ a.nombre }}
+          </button>
+        }
+      </div>
+      @for (a of e.resultado.archivos; track a.nombre) {
+        @for (err of a.errores; track $index) { <p class="ms-aviso">{{ a.nombre }}: {{ err }}</p> }
+      }
+      <div class="ms-tabla-caja">
+        <table class="ms-tabla">
+          <thead><tr><th>Cuenta</th><th class="ms-num">Saldo inicial</th><th class="ms-num">Cargos</th><th class="ms-num">Abonos</th><th class="ms-num">Saldo final</th></tr></thead>
+          <tbody>
+            @for (b of e.resultado.balanza; track b.cuenta) {
+              <tr [class.ms-total]="b.nivel === 1">
+                <td><strong>{{ b.cuenta }}</strong> {{ b.nombre }}</td>
+                <td class="ms-num">{{ b.saldoInicial | currency: 'MXN' : 'symbol-narrow' }}</td>
+                <td class="ms-num">{{ b.debe | currency: 'MXN' : 'symbol-narrow' }}</td>
+                <td class="ms-num">{{ b.haber | currency: 'MXN' : 'symbol-narrow' }}</td>
+                <td class="ms-num">{{ b.saldoFinal | currency: 'MXN' : 'symbol-narrow' }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </section>
+
   <section class="ms-tarjeta" aria-labelledby="ms-operaciones">
     <h2 id="ms-operaciones">Operaciones de {{ meses[mes - 1] }} {{ anio }}</h2>
     <div class="ms-filtros" role="tablist">
