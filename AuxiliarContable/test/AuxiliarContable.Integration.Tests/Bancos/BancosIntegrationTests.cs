@@ -272,5 +272,32 @@ public class BancosIntegrationTests : ConJerarquiaTestBase
         _motor.FacturasDiagnosticadas.ShouldBeEmpty();
     }
 
+    [Fact]
+    public async Task Mis_facturas_se_clasifican_con_el_giro_del_perfil()
+    {
+        await PonerRfcAsync(_cliente, "GODE561231GR8");
+        await ComoAsync(Administrador, () => _perfil.ResponderAsync(_cliente,
+            new ResponderDatoDelPerfilDto { Campo = CamposDelPerfil.Giro, Valor = "Panadería y pastelería" }));
+        var mes = new DateTime(Anio, Mes, 1).AddMonths(-1);
+        await SubirFacturaAsync(_cliente, "del-mes.xml", mes.AddDays(9));
+        await SubirFacturaAsync(_cliente, "anterior.xml", mes.AddMonths(-1).AddDays(3));
+        _motor.Clasificadas = new FacturasClasificadas
+        {
+            Actividad = new ActividadDelGiro { Id = "A0600", Nombre = "Panadería" },
+            Facturas = [new FacturaClasificada { Uuid = "U1", Lado = "recibida", Categoria = "insumo_directo" }],
+        };
+
+        // El cliente también las ve: son las suyas.
+        var r = await ComoAsync(Usuario, () => _bancos.ClasificarFacturasAsync(_cliente, mes.Year, mes.Month));
+
+        _motor.GiroRecibido.ShouldBe("Panadería y pastelería");
+        _motor.FacturasDiagnosticadas.ShouldBe(["del-mes.xml", "anterior.xml"]);
+        _motor.ArchivosDelPeriodo.ShouldBe(1);
+        r.Actividad!.Nombre.ShouldBe("Panadería");
+        r.Facturas.Single().Categoria.ShouldBe("insumo_directo");
+        await Should.ThrowAsync<EntityNotFoundException>(() =>
+            ComoAsync(Usuario, () => _bancos.ClasificarFacturasAsync(_otroCliente, mes.Year, mes.Month)));
+    }
+
     private IAsistenteAppService Asistente() => GetRequiredService<IAsistenteAppService>();
 }
