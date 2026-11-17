@@ -1,0 +1,235 @@
+<header class="fc-cabecera">
+  <h1>Pedir factura</h1>
+  <p class="fc-nota">
+    Captura a quién y qué hay que facturar; el despacho la timbra y aquí mismo aparecen el XML y el PDF. Los datos del
+    receptor tienen que ser exactos como en su Constancia de Situación Fiscal: lo más fácil es subirla.
+  </p>
+  @if (clientes(); as lista) {
+    @if (lista.length > 1) {
+      <label class="fc-campo fc-campo-cliente">
+        <span>Cliente</span>
+        <select class="ig-control" [ngModel]="clienteId()" (ngModelChange)="elegir($event)" data-testid="cliente">
+          <option [ngValue]="null" disabled>Elige un cliente…</option>
+          @for (c of lista; track c.id) {
+            <option [ngValue]="c.id">{{ c.nombre }}</option>
+          }
+        </select>
+      </label>
+    }
+  }
+</header>
+
+@if (error(); as e) {
+  <div class="ig-alerta ig-alerta-error" role="alert">{{ e }}</div>
+}
+@if (aviso(); as a) {
+  <div class="ig-alerta ig-alerta-exito" role="status">{{ a }}</div>
+}
+
+@if (cola(); as c) {
+  @if (c.length) {
+    <section class="fc-tarjeta" aria-labelledby="fc-cola">
+      <h2 id="fc-cola"><i class="bi bi-inbox" aria-hidden="true"></i> Por timbrar (todos los clientes): {{ c.length }}</h2>
+      <ul class="fc-cola">
+        @for (s of c; track s.id) {
+          <li>
+            <button type="button" class="btn btn-link" (click)="irA(s)">{{ s.cliente }}</button>
+            <span>{{ s.receptor.nombre }} · {{ s.total | currency: 'MXN' : 'symbol-narrow' }} · {{ s.pedidaUtc | date: 'd MMM, HH:mm' }}</span>
+          </li>
+        }
+      </ul>
+    </section>
+  }
+}
+
+@if (datos(); as d) {
+  @if (d.puedePedir && !pidiendo()) {
+    <button type="button" class="btn btn-primary fc-boton" (click)="nueva()"><i class="bi bi-plus-lg" aria-hidden="true"></i> Pedir una factura</button>
+  }
+
+  @if (pidiendo()) {
+    <form class="fc-tarjeta fc-forma" (ngSubmit)="pedir()" data-testid="forma">
+      <h2>¿A quién se le factura?</h2>
+      <div class="fc-renglon">
+        @if (d.receptores.length) {
+          <label class="fc-campo"><span>Uno de antes</span>
+            <select class="ig-control" (change)="usarReceptor($any($event.target).value)">
+              <option value="">Elegir…</option>
+              @for (r of d.receptores; track r.rfc) {
+                <option [value]="r.rfc">{{ r.nombre }} ({{ r.rfc }})</option>
+              }
+            </select>
+          </label>
+        }
+        <label class="fc-campo"><span>O sube su constancia (PDF del SAT)</span>
+          <input class="ig-control" type="file" accept=".pdf" (change)="leerConstancia($event)" /></label>
+      </div>
+      <div class="fc-renglon">
+        <label class="fc-campo"><span>RFC</span>
+          <input class="ig-control" name="rfc" [(ngModel)]="receptor.rfc" maxlength="13" required autocomplete="off" /></label>
+        <label class="fc-campo fc-ancho"><span>Nombre o razón social (sin régimen de capital, como en su constancia)</span>
+          <input class="ig-control" name="nombre" [(ngModel)]="receptor.nombre" maxlength="254" required /></label>
+      </div>
+      <div class="fc-renglon">
+        <label class="fc-campo"><span>Código postal</span>
+          <input class="ig-control" name="cp" [(ngModel)]="receptor.codigoPostal" maxlength="5" inputmode="numeric" required /></label>
+        <label class="fc-campo fc-ancho"><span>Régimen fiscal</span>
+          <select class="ig-control" name="regimen" [(ngModel)]="receptor.regimen" required>
+            <option value="" disabled>Elegir…</option>
+            @for (r of regimenes; track r[0]) {
+              <option [value]="r[0]">{{ r[0] }} · {{ r[1] }}</option>
+            }
+          </select>
+        </label>
+      </div>
+
+      <h2>Datos de la factura</h2>
+      <div class="fc-renglon">
+        <label class="fc-campo fc-ancho"><span>Uso del CFDI</span>
+          <select class="ig-control" name="uso" [(ngModel)]="usoCfdi">
+            @for (u of usos; track u[0]) {
+              <option [value]="u[0]">{{ u[0] }} · {{ u[1] }}</option>
+            }
+          </select>
+        </label>
+        <label class="fc-campo"><span>Método de pago</span>
+          <select class="ig-control" name="metodo" [(ngModel)]="metodoDePago">
+            <option value="PUE">PUE · ya está pagada</option>
+            <option value="PPD">PPD · se paga después (lleva complemento)</option>
+          </select>
+        </label>
+        <label class="fc-campo"><span>Forma de pago</span>
+          <select class="ig-control" name="forma" [(ngModel)]="formaDePago" [disabled]="metodoDePago === 'PPD'">
+            @for (f of formas; track f[0]) {
+              <option [value]="f[0]">{{ f[0] }} · {{ f[1] }}</option>
+            }
+          </select>
+        </label>
+      </div>
+      @if (metodoDePago === 'PPD') {
+        <p class="fc-nota">Con PPD la forma de pago va como «99 · Por definir» y, cuando te paguen, hay que emitir el complemento de pago.</p>
+      }
+
+      <h2>Conceptos</h2>
+      <p class="fc-sugerencia"><i class="bi bi-lightbulb" aria-hidden="true"></i>
+        Recomendación: pon tus precios <strong>más IVA</strong>, no con el IVA adentro. Si tu precio de lista ya incluye el IVA, marca la casilla y se lo separamos.</p>
+      <label class="fc-casilla"><input type="checkbox" name="incluyeIva" [(ngModel)]="incluyeIva" /> Los precios que escribo ya incluyen IVA</label>
+      @for (c of conceptos; track $index; let i = $index) {
+        <fieldset class="fc-concepto">
+          <legend>Concepto {{ i + 1 }}</legend>
+          <div class="fc-renglon">
+            <label class="fc-campo"><span>Clave SAT (8 dígitos)</span>
+              <input class="ig-control" [name]="'clave' + i" [(ngModel)]="c.claveProdServ" maxlength="8" inputmode="numeric" required /></label>
+            <label class="fc-campo fc-ancho"><span>Descripción</span>
+              <input class="ig-control" [name]="'desc' + i" [(ngModel)]="c.descripcion" maxlength="1000" required /></label>
+          </div>
+          <div class="fc-renglon">
+            <label class="fc-campo"><span>Cantidad</span>
+              <input class="ig-control" type="number" [name]="'cant' + i" [(ngModel)]="c.cantidad" min="0.000001" step="any" required /></label>
+            <label class="fc-campo"><span>Unidad</span>
+              <select class="ig-control" [name]="'unidad' + i" [(ngModel)]="c.claveUnidad">
+                @for (u of unidades; track u[0]) {
+                  <option [value]="u[0]">{{ u[0] }} · {{ u[1] }}</option>
+                }
+              </select>
+            </label>
+            <label class="fc-campo"><span>Precio unitario {{ incluyeIva ? '(con IVA)' : '(sin IVA)' }}</span>
+              <input class="ig-control" type="number" [name]="'precio' + i" [(ngModel)]="c.precioUnitario" min="0.01" step="0.01" required /></label>
+            <label class="fc-campo"><span>IVA</span>
+              <select class="ig-control" [name]="'iva' + i" [(ngModel)]="c.tasaIva">
+                @for (t of tasas; track t.nombre) {
+                  <option [ngValue]="t.valor">{{ t.nombre }}</option>
+                }
+              </select>
+            </label>
+          </div>
+          <p class="fc-nota">Importe {{ importe(c) | currency: 'MXN' : 'symbol-narrow' }} · IVA {{ ivaDe(c) | currency: 'MXN' : 'symbol-narrow' }}
+            @if (conceptos.length > 1) { <button type="button" class="btn btn-link btn-sm fc-peligro" (click)="quitarConcepto(i)">Quitar</button> }
+          </p>
+        </fieldset>
+      }
+      <button type="button" class="btn btn-link fc-izquierda" (click)="agregarConcepto()"><i class="bi bi-plus-lg" aria-hidden="true"></i> Otro concepto</button>
+
+      <dl class="fc-totales">
+        <div><dt>Subtotal</dt><dd>{{ subtotal | currency: 'MXN' : 'symbol-narrow' }}</dd></div>
+        <div><dt>IVA</dt><dd>{{ iva | currency: 'MXN' : 'symbol-narrow' }}</dd></div>
+        <div><dt>Total</dt><dd><strong>{{ subtotal + iva | currency: 'MXN' : 'symbol-narrow' }}</strong></dd></div>
+      </dl>
+
+      <label class="fc-campo"><span>Nota para el despacho (opcional)</span>
+        <input class="ig-control" name="nota" [(ngModel)]="nota" maxlength="1000" placeholder="p. ej. que diga el número de pedido" /></label>
+      <div class="fc-botones">
+        <button type="submit" class="btn btn-primary" [disabled]="ocupado()">
+          @if (ocupado()) { <span class="ig-girando" aria-hidden="true"></span> } Enviar al despacho
+        </button>
+        <button type="button" class="btn btn-link" (click)="pidiendo.set(false)">Cancelar</button>
+      </div>
+    </form>
+  }
+
+  <section aria-labelledby="fc-solicitudes">
+    <h2 id="fc-solicitudes">Solicitudes</h2>
+    @if (d.solicitudes.length) {
+      <ol class="fc-lista">
+        @for (s of d.solicitudes; track s.id) {
+          <li class="fc-tarjeta">
+            <header class="fc-solicitud-cabecera">
+              <div>
+                <strong>{{ s.receptor.nombre }}</strong>
+                <small>{{ s.receptor.rfc }} · pedida el {{ s.pedidaUtc | date: 'd MMM yyyy, HH:mm' }}</small>
+              </div>
+              <div class="fc-derecha">
+                <strong>{{ s.total | currency: 'MXN' : 'symbol-narrow' }}</strong>
+                <span [class]="'ig-etiqueta ' + estados[s.estado].clase">{{ estados[s.estado].texto }}</span>
+              </div>
+            </header>
+            <p class="fc-nota">
+              {{ s.conceptos.length }} concepto(s): {{ s.conceptos[0].descripcion }}{{ s.conceptos.length > 1 ? '…' : '' }} ·
+              {{ s.usoCfdi }} · {{ s.metodoDePago }} · {{ nombreDe(formas, s.formaDePago) }}
+            </p>
+            @if (s.nota) { <p class="fc-nota">Nota: {{ s.nota }}</p> }
+            @if (s.respuesta) { <p class="fc-respuesta">Despacho: {{ s.respuesta }}</p> }
+            @if (s.nombreDelXml) {
+              <p class="fc-nota"><i class="bi bi-file-earmark-code" aria-hidden="true"></i> {{ s.nombreDelXml }}
+                @if (s.nombreDelPdf) { · <i class="bi bi-file-earmark-pdf" aria-hidden="true"></i> {{ s.nombreDelPdf }} } (en Documentos)</p>
+            }
+            @if (s.estado === Estado.Pendiente) {
+              <div class="fc-botones">
+                @if (d.esEquipo) {
+                  <button type="button" class="btn btn-outline-secondary btn-sm" (click)="abrirAtencion(s, 'atender')">Ya la timbré</button>
+                  <button type="button" class="btn btn-outline-secondary btn-sm" (click)="abrirAtencion(s, 'rechazar')">No se puede emitir</button>
+                }
+                @if (d.puedePedir) {
+                  <button type="button" class="btn btn-link btn-sm fc-peligro" (click)="cancelar(s)" [disabled]="ocupado()">Cancelar solicitud</button>
+                }
+              </div>
+              @if (atendiendo()?.id === s.id) {
+                @if (atendiendo()?.modo === 'atender') {
+                  <form class="fc-forma" (ngSubmit)="atender(s)">
+                    <label class="fc-campo"><span>XML timbrado</span>
+                      <input class="ig-control" type="file" accept=".xml" (change)="elegirArchivo($event, 'xml')" /></label>
+                    <label class="fc-campo"><span>PDF (opcional)</span>
+                      <input class="ig-control" type="file" accept=".pdf" (change)="elegirArchivo($event, 'pdf')" /></label>
+                    <label class="fc-campo"><span>Mensaje para el cliente (opcional)</span>
+                      <input class="ig-control" name="respuesta" [(ngModel)]="respuesta" maxlength="1000" /></label>
+                    <button type="submit" class="btn btn-primary" [disabled]="ocupado() || !xml">Marcar como emitida</button>
+                  </form>
+                } @else {
+                  <form class="fc-forma" (ngSubmit)="rechazar(s)">
+                    <label class="fc-campo"><span>¿Por qué no se puede emitir?</span>
+                      <input class="ig-control" name="motivo" [(ngModel)]="respuesta" maxlength="1000" required /></label>
+                    <button type="submit" class="btn btn-primary" [disabled]="ocupado() || !respuesta.trim()">Rechazar</button>
+                  </form>
+                }
+              }
+            }
+          </li>
+        }
+      </ol>
+    } @else {
+      <p class="fc-nota">Todavía no hay solicitudes de este cliente.</p>
+    }
+  </section>
+} @else if (!error() && clienteId()) {
+  <p class="fc-nota">Cargando…</p>
+}
