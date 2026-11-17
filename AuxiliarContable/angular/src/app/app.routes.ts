@@ -25,6 +25,12 @@ export const APP_ROUTES: Routes = [
     canActivate: [authGuard],
   },
   {
+    // El servidor decide qué clientes ve cada quien y quién puede agregar evidencia (Autorizador).
+    path: 'control-interno',
+    loadComponent: () => import('./control-interno/control-interno.component').then(c => c.ControlInternoComponent),
+    canActivate: [authGuard],
+  },
+  {
     // El servidor decide qué clientes ve cada quien y quién puede registrar (Autorizador).
     path: 'dinero',
     loadComponent: () => import('./dinero/dinero.component').then(c => c.DineroComponent),

@@ -66,6 +66,8 @@ public class AuxiliarContableDbContext :
 
     public DbSet<Contabilidad.MovimientoFueraDelBanco> MovimientosFueraDelBanco { get; set; }
 
+    public DbSet<Contabilidad.EvidenciaDeOperacion> EvidenciasDeOperaciones { get; set; }
+
     public DbSet<Credenciales.CredencialesDelCliente> CredencialesDeClientes { get; set; }
 
     public DbSet<Credenciales.NipDeUsuario> NipsDeUsuarios { get; set; }
@@ -320,6 +322,16 @@ public class AuxiliarContableDbContext :
             b.Property(x => x.Contraparte).HasMaxLength(Contabilidad.DineroFueraDelBancoConsts.MaxContraparteLength);
             b.Property(x => x.Nota).HasMaxLength(Contabilidad.DineroFueraDelBancoConsts.MaxNotaLength);
             b.HasIndex(x => new { x.OrganizacionId, x.Fecha });
+        });
+
+        // Control interno: la evidencia de cada operacion (banco por su clave, o efectivo y credito por su id).
+        builder.Entity<Contabilidad.EvidenciaDeOperacion>(b =>
+        {
+            b.ToTable(AuxiliarContableConsts.DbTablePrefix + "EvidenciasDeOperaciones", AuxiliarContableConsts.DbSchema);
+            b.ConfigureByConvention();
+            b.Property(x => x.Clave).HasMaxLength(Contabilidad.ContabilidadConsts.ClaveLength);
+            b.Property(x => x.Nota).HasMaxLength(Contabilidad.ControlInternoConsts.MaxNotaLength);
+            b.HasIndex(x => new { x.OrganizacionId, x.Anio, x.Mes });
         });
 
         // Credenciales del cliente (e.firma y CIEC): lo secreto va cifrado con su propia llave

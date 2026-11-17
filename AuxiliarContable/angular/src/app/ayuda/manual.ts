@@ -256,6 +256,18 @@ export const SECCIONES: Seccion[] = [
         nota: 'Lo que no pasa por el banco también es ingreso, gasto o deuda: sin esto el mes queda incompleto. Un mes cerrado ya no se puede cambiar.',
       },
       {
+        titulo: 'Control interno',
+        icono: 'bi-clipboard-check',
+        ruta: '/control-interno',
+        pasos: [
+          'Abre «Control interno» y elige el mes: salen las salidas de dinero del banco (de la conciliación del mes) y las de «Efectivo y crédito».',
+          '«Falta probar que ocurrió»: el gasto tiene factura, pero hace falta el contrato, el entregable, una foto o el pedido.',
+          '«Falta comprobante o explicación»: no tiene factura; sube el comprobante o escribe qué fue.',
+          'Con «Agregar evidencia» sube el archivo (queda en Documentos) o escribe la explicación, o las dos cosas.',
+        ],
+        nota: 'Ante una revisión del SAT, la factura y el registro contable solos no bastan para probar que la operación existió (materialidad).',
+      },
+      {
         titulo: 'Mis credenciales',
         icono: 'bi-shield-lock',
         ruta: '/credenciales',
