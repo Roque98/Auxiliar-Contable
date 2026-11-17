@@ -7,6 +7,8 @@ import { chatEncendido } from '../shared/chat';
 import {
   DocumentoDeBovedaDto,
   DocumentosService,
+  FacturaClasificadaDto,
+  FacturasClasificadasDto,
   MESES,
   NOMBRES_DE_TIPO,
   ResumenDelMesDto,
@@ -53,7 +55,7 @@ export class DocumentosComponent implements OnInit {
   readonly Estado = EstadoDeDocumento;
   readonly nombresDeTipo = NOMBRES_DE_TIPO;
   readonly meses = MESES;
-  readonly tiposParaSubir = [TipoDeDocumento.EstadoDeCuenta, TipoDeDocumento.Ticket, TipoDeDocumento.Otro];
+  readonly categorias = CATEGORIAS;
   readonly tiposParaFiltrar = [TipoDeDocumento.Cfdi, TipoDeDocumento.EstadoDeCuenta, TipoDeDocumento.Ticket,
     TipoDeDocumento.ConstanciaDeSituacionFiscal, TipoDeDocumento.Otro];
 
@@ -72,10 +74,32 @@ export class DocumentosComponent implements OnInit {
   readonly mes = signal<number | null>(null);
   tipo: TipoDeDocumento | null = null;
   texto = '';
-  tipoAlSubir = TipoDeDocumento.EstadoDeCuenta;
-  /** A qué mes van (menos las facturas, que van al de su XML). */
+  /** Estados de cuenta y dinero: qué es (estado de cuenta o comprobante de transferencia/pago). */
+  tipoDeDinero = TipoDeDocumento.EstadoDeCuenta;
+  /** A qué mes van (las facturas van al de su XML; el estado de cuenta, si se deja en 0, al que lea el motor). */
   anioAlSubir = 0;
   mesAlSubir = 0;
+  anioDeControl = 0;
+  mesDeControl = 0;
+  /** «Mis facturas» del mes elegido: se piden con el botón (el motor lee cada XML). */
+  readonly clasificadas = signal<FacturasClasificadasDto | null>(null);
+  readonly clasificando = signal(false);
+  readonly lado = signal<'recibida' | 'emitida'>('recibida');
+  readonly abierta = signal<string | null>(null);
+  readonly grupos = computed(() => {
+    const c = this.clasificadas();
+    if (!c) {
+      return [];
+    }
+    const porCategoria = new Map<string, FacturaClasificadaDto[]>();
+    for (const f of c.facturas.filter(x => x.lado === this.lado())) {
+      porCategoria.set(f.categoria, [...(porCategoria.get(f.categoria) ?? []), f]);
+    }
+    return [...porCategoria.entries()]
+      .map(([categoria, facturas]) => ({ categoria, facturas, total: facturas.reduce((s, f) => s + (f.total ?? 0), 0) }))
+      .sort((a, b) => (CATEGORIAS[a.categoria]?.orden ?? 99) - (CATEGORIAS[b.categoria]?.orden ?? 99));
+  });
+  readonly porDefinir = computed(() => this.clasificadas()?.facturas.filter(f => f.estadoDePago === 'por_definir').length ?? 0);
   readonly aniosParaSubir = [0, 1, 2].map(n => new Date().getFullYear() - n);
 
   /** El documento al que se le está cambiando el mes, y el mes elegido. */
@@ -108,12 +132,13 @@ export class DocumentosComponent implements OnInit {
    */
   sugerirMes(): void {
     const hoy = new Date();
-    this.anioAlSubir = hoy.getFullYear();
-    this.mesAlSubir = this.tipoAlSubir === TipoDeDocumento.EstadoDeCuenta ? 0 : hoy.getMonth() + 1;
+    this.anioAlSubir = this.anioDeControl = hoy.getFullYear();
+    this.mesAlSubir = this.tipoDeDinero === TipoDeDocumento.EstadoDeCuenta ? 0 : hoy.getMonth() + 1;
+    this.mesDeControl = hoy.getMonth() + 1;
   }
 
   get leerElMes(): boolean {
-    return this.tipoAlSubir === TipoDeDocumento.EstadoDeCuenta && this.mesAlSubir === 0;
+    return this.tipoDeDinero === TipoDeDocumento.EstadoDeCuenta && this.mesAlSubir === 0;
   }
 
   ngOnInit(): void {
@@ -163,12 +188,42 @@ export class DocumentosComponent implements OnInit {
   elegirAnio(anio: number): void {
     this.anio.set(anio);
     this.mes.set(null);
+    this.clasificadas.set(null);
     this.buscar();
   }
 
   elegirMes(mes: number | null): void {
     this.mes.set(this.mes() === mes ? null : mes);
+    this.clasificadas.set(null);
     this.buscar();
+  }
+
+  /** «Mis facturas» del mes elegido, clasificadas por el motor con el giro del perfil. */
+  verFacturas(): void {
+    const id = this.clienteId();
+    const anio = this.anio();
+    const mes = this.mes();
+    if (!id || !anio || !mes || this.clasificando()) {
+      return;
+    }
+    this.clasificando.set(true);
+    this.error.set(null);
+    this.api.clasificarFacturas(id, anio, mes).subscribe({
+      next: c => {
+        if (id === this.clienteId() && anio === this.anio() && mes === this.mes()) {
+          this.clasificadas.set(c);
+        }
+        this.clasificando.set(false);
+      },
+      error: e => {
+        this.error.set(mensajeDeError(e, 'No se pudieron clasificar las facturas.'));
+        this.clasificando.set(false);
+      },
+    });
+  }
+
+  nombreDeCategoria(c: string | null): string {
+    return (c && CATEGORIAS[c]?.nombre) || 'Sin clasificar';
   }
 
   buscar(mas = false): void {
@@ -196,8 +251,11 @@ export class DocumentosComponent implements OnInit {
       });
   }
 
-  /** Uno por uno: cada archivo con su resultado, y un error no detiene a los demás. */
-  async subir(evento: Event): Promise<void> {
+  /**
+   * Uno por uno: cada archivo con su resultado, y un error no detiene a los demás. Cada zona decide qué es lo que se
+   * sube: facturas (el XML como factura y su PDF aparte), estados de cuenta y dinero, o control interno.
+   */
+  async subir(evento: Event, zona: 'facturas' | 'dinero' | 'control'): Promise<void> {
     const entrada = evento.target as HTMLInputElement;
     const archivos = Array.from(entrada.files ?? []).slice(0, 50);
     entrada.value = '';
@@ -209,7 +267,7 @@ export class DocumentosComponent implements OnInit {
     this.subidas.set(archivos.map(a => ({ nombre: a.name, estado: 'subiendo' as const })));
     for (let i = 0; i < archivos.length; i++) {
       const resultado = await new Promise<Subida>(resolver =>
-        this.api.subir(id, this.tipoAlSubir, archivos[i], this.anioAlSubir, this.mesAlSubir).subscribe({
+        this.api.subir(id, ...this.destino(zona, archivos[i])).subscribe({
           next: r => resolver({
             nombre: archivos[i].name,
             estado: r.aviso ? 'aviso' : r.esDuplicado ? 'duplicado' : 'ok',
@@ -221,6 +279,20 @@ export class DocumentosComponent implements OnInit {
       this.subidas.update(s => s.map((x, j) => (j === i ? resultado : x)));
     }
     this.recargar();
+  }
+
+  /** Tipo y mes con que se sube un archivo según la zona. */
+  private destino(zona: 'facturas' | 'dinero' | 'control', archivo: File): [TipoDeDocumento, File, number?, number?] {
+    if (zona === 'facturas') {
+      // El XML se acomoda solo en el mes de su fecha; el PDF de la factura va como «otro» en el mes actual.
+      return /\.xml$/i.test(archivo.name) || archivo.type.includes('xml')
+        ? [TipoDeDocumento.Cfdi, archivo]
+        : [TipoDeDocumento.Otro, archivo];
+    }
+    if (zona === 'dinero') {
+      return [this.tipoDeDinero, archivo, this.anioAlSubir, this.mesAlSubir];
+    }
+    return [TipoDeDocumento.Otro, archivo, this.anioDeControl, this.mesDeControl];
   }
 
   descargar(d: DocumentoDeBovedaDto): void {
@@ -310,3 +382,20 @@ export class DocumentosComponent implements OnInit {
     }
   }
 }
+
+/** Cómo se nombra cada categoría de «Mis facturas», en el orden en que se enseñan. */
+const CATEGORIAS: Record<string, { nombre: string; clase: string; orden: number }> = {
+  mercancia: { nombre: 'Mercancía para revender', clase: 'ig-etiqueta-exito', orden: 1 },
+  insumo_directo: { nombre: 'Materia prima o insumo', clase: 'ig-etiqueta-exito', orden: 2 },
+  gasto_indirecto: { nombre: 'Gasto indirecto', clase: 'ig-etiqueta-tinta', orden: 3 },
+  gasto_operacion: { nombre: 'Gasto de operación', clase: 'ig-etiqueta-tinta', orden: 4 },
+  inversion: { nombre: 'Inversión (activo fijo)', clase: 'ig-etiqueta-acento', orden: 5 },
+  deduccion_personal: { nombre: 'Deducción personal', clase: 'ig-etiqueta-acento', orden: 6 },
+  ajeno: { nombre: 'Ajeno al giro', clase: 'ig-etiqueta-error', orden: 7 },
+  sin_clasificar: { nombre: 'Sin clasificar (falta el giro en el perfil)', clase: 'ig-etiqueta-alerta', orden: 8 },
+  venta: { nombre: 'Venta', clase: 'ig-etiqueta-exito', orden: 10 },
+  nota_de_credito: { nombre: 'Nota de crédito', clase: 'ig-etiqueta-tinta', orden: 11 },
+  complemento_de_pago: { nombre: 'Complemento de pago', clase: 'ig-etiqueta-tinta', orden: 12 },
+  nomina: { nombre: 'Nómina', clase: 'ig-etiqueta-tinta', orden: 13 },
+  traslado: { nombre: 'Traslado', clase: 'ig-etiqueta-tinta', orden: 14 },
+};

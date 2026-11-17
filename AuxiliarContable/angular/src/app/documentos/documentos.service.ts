@@ -24,6 +24,32 @@ export interface ResultadoDeSubidaDto {
   aviso?: string | null;
 }
 
+/** Una factura del mes ya clasificada (motor /cfdi/clasificar). */
+export interface FacturaClasificadaDto {
+  uuid: string;
+  archivo: string | null;
+  lado: 'emitida' | 'recibida';
+  tipo: string | null;
+  fecha: string | null;
+  serieFolio: string | null;
+  rfcContraparte: string | null;
+  nombreContraparte: string | null;
+  total: number | null;
+  metodo: string | null;
+  forma: string | null;
+  uso: string | null;
+  estadoDePago: 'por_definir' | 'parcial' | 'pagada' | null;
+  pagado: number | null;
+  categoria: string;
+  conceptos: { clave: string | null; descripcion: string | null; importe: number | null; categoria: string | null; certeza: string | null; fundamento: string | null }[];
+}
+
+export interface FacturasClasificadasDto {
+  actividad: { id: string; nombre: string } | null;
+  facturas: FacturaClasificadaDto[];
+  errores: { archivo: string; error: string }[];
+}
+
 export interface ResumenDelMesDto {
   anio: number;
   mes: number;
@@ -100,6 +126,14 @@ export class DocumentosService {
   eliminar(organizacionId: string, documentoId: string): Observable<void> {
     return this.rest.request<void, void>(
       { method: 'POST', url: `${this.base}/eliminar`, params: { organizacionId, documentoId } },
+      this.opciones,
+    );
+  }
+
+  /** «Mis facturas»: las del mes clasificadas por el motor (`BancosAppService.ClasificarFacturas`). */
+  clasificarFacturas(organizacionId: string, anio: number, mes: number): Observable<FacturasClasificadasDto> {
+    return this.rest.request<void, FacturasClasificadasDto>(
+      { method: 'POST', url: `/api/app/bancos/clasificar-facturas/${organizacionId}`, params: { anio, mes } },
       this.opciones,
     );
   }

@@ -130,6 +130,38 @@ public class BancosAppService : AuxiliarContableAppService, IBancosAppService
         }
 
         var rfc = await RfcDelClienteAsync(organizacionId);
+        var (archivos, delMes) = await FacturasDelMesAsync(organizacionId, anio, mes);
+        return await AlMotorAsync(() => _motor.DiagnosticarFacturasAsync(rfc, archivos, delMes));
+    }
+
+    public async Task<FacturasClasificadas> ClasificarFacturasAsync(Guid organizacionId, int anio, int mes)
+    {
+        await _autorizador.ExigirAsync(organizacionId, AccionEnOrganizacion.Ver);
+        if (mes is < 1 or > 12 || anio is < 2000 or > 2100)
+        {
+            throw new UserFriendlyException("Mes no válido.");
+        }
+
+        var rfc = await RfcDelClienteAsync(organizacionId);
+        // El giro con que se clasifican las compras: lo que dijo el cliente, o su primera actividad de la constancia.
+        var perfil = await _perfiles.GetAsync(organizacionId);
+        var giro = perfil.Campos.FirstOrDefault(c => c.Clave == CamposDelPerfil.Giro)?.Valor;
+        if (string.IsNullOrWhiteSpace(giro))
+        {
+            giro = perfil.Campos.FirstOrDefault(c => c.Clave == CamposDelPerfil.ActividadesEconomicas)?.Valor?
+                .Split(['\n', ';'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).FirstOrDefault();
+        }
+
+        var (archivos, delMes) = await FacturasDelMesAsync(organizacionId, anio, mes);
+        return await AlMotorAsync(() => _motor.ClasificarFacturasAsync(rfc, archivos, giro, delMes));
+    }
+
+    /// <summary>
+    /// Las facturas del mes (primero) y las de los <see cref="MesesDeHistoria"/> anteriores; y cuántas son del mes. Sin
+    /// facturas del mes no hay nada que revisar.
+    /// </summary>
+    private async Task<(List<ArchivoParaElMotor> Archivos, int DelMes)> FacturasDelMesAsync(Guid organizacionId, int anio, int mes)
+    {
         var desde = new DateTime(anio, mes, 1);
         var hasta = desde.AddMonths(1);
         var historia = desde.AddMonths(-MesesDeHistoria);
@@ -156,8 +188,7 @@ public class BancosAppService : AuxiliarContableAppService, IBancosAppService
         }
 
         // Lo que no quepa de la historia se queda fuera (las más viejas primero): las del mes siempre van.
-        var archivos = await ArchivosAsync(delMes.Concat(anteriores.Take(MaxFacturas - delMes.Count)));
-        return await AlMotorAsync(() => _motor.DiagnosticarFacturasAsync(rfc, archivos, delMes.Count));
+        return (await ArchivosAsync(delMes.Concat(anteriores.Take(MaxFacturas - delMes.Count))), delMes.Count);
     }
 
     /// <summary>Una conciliación guardada, como la devuelve <see cref="ConciliarAsync"/>.</summary>

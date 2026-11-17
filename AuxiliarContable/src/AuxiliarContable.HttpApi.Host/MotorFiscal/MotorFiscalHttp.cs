@@ -136,6 +136,24 @@ public class MotorFiscalHttp : IMotorFiscal, ITransientDependency
         return await EnviarAsync<DiagnosticoDeFacturas>(peticion, tope.Token, cancellationToken);
     }
 
+    public async Task<FacturasClasificadas> ClasificarFacturasAsync(
+        string rfcDelCliente, IReadOnlyList<ArchivoParaElMotor> facturas, string? giro, int archivosDelPeriodo,
+        CancellationToken cancellationToken = default)
+    {
+        using var tope = CancelationConTope(_opciones.TimeoutDeBancosSegundos, cancellationToken);
+        var peticion = new HttpRequestMessage(HttpMethod.Post, "cfdi/clasificar")
+        {
+            Content = JsonContent.Create(new
+            {
+                rfc_cliente = rfcDelCliente,
+                cfdis = facturas.Select(Base64),
+                giro,
+                archivos_del_periodo = archivosDelPeriodo,
+            }, options: Json),
+        };
+        return await EnviarAsync<FacturasClasificadas>(peticion, tope.Token, cancellationToken);
+    }
+
     public async Task<IReadOnlyList<SentenciaDelMotor>> BuscarSentenciasAsync(
         string consulta, string? fuente = null, int cuantos = 5, int desde = 0, CancellationToken cancellationToken = default)
     {

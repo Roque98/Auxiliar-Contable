@@ -60,6 +60,8 @@ public class MotorFiscalDePrueba : IMotorFiscal
         RfcRecibido = null;
         Sentencias.Clear();
         Diagnostico = new DiagnosticoDeFacturas();
+        Clasificadas = new FacturasClasificadas();
+        GiroRecibido = null;
         FacturasDiagnosticadas.Clear();
         ArchivosDelPeriodo = null;
         ConsultasDeSentencias.Clear();
@@ -137,6 +139,27 @@ public class MotorFiscalDePrueba : IMotorFiscal
         FacturasDiagnosticadas.AddRange(facturas.Select(f => f.Nombre));
         ArchivosDelPeriodo = archivosDelPeriodo;
         return Task.FromResult(Diagnostico);
+    }
+
+    /// <summary>Lo que «clasifica» el motor; el test lo arma. Y con qué giro se le pidió.</summary>
+    public FacturasClasificadas Clasificadas { get; set; } = new();
+
+    public string? GiroRecibido { get; private set; }
+
+    public Task<FacturasClasificadas> ClasificarFacturasAsync(
+        string rfcDelCliente, IReadOnlyList<ArchivoParaElMotor> facturas, string? giro, int archivosDelPeriodo,
+        CancellationToken cancellationToken = default)
+    {
+        if (Caido)
+        {
+            throw new MotorFiscalNoDisponibleException("El motor fiscal no responde.");
+        }
+
+        RfcRecibido = rfcDelCliente;
+        GiroRecibido = giro;
+        FacturasDiagnosticadas.AddRange(facturas.Select(f => f.Nombre));
+        ArchivosDelPeriodo = archivosDelPeriodo;
+        return Task.FromResult(Clasificadas);
     }
 
     public Task<IReadOnlyList<SentenciaDelMotor>> BuscarSentenciasAsync(

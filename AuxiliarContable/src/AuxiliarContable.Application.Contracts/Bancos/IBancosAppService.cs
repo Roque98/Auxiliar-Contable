@@ -26,6 +26,12 @@ public interface IBancosAppService : IApplicationService
     /// la historia de cada PPD, pero solo se reporta lo que toca el mes. No se guarda: se calcula al pedirlo.
     /// </summary>
     Task<DiagnosticoDeFacturas> DiagnosticarFacturasAsync(Guid organizacionId, int anio, int mes);
+
+    /// <summary>
+    /// «Mis facturas»: las del mes clasificadas (emitidas o recibidas, tipo, PPD por definir, inversiones, y qué es cada
+    /// compra para el giro del cliente según su perfil). Con la historia de 3 meses para el estado de las PPD.
+    /// </summary>
+    Task<FacturasClasificadas> ClasificarFacturasAsync(Guid organizacionId, int anio, int mes);
 }
 
 public class ConciliacionDelMesDto

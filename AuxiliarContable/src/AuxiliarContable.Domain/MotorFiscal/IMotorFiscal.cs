@@ -51,6 +51,14 @@ public interface IMotorFiscal
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Cada factura de los primeros <paramref name="archivosDelPeriodo"/> archivos, clasificada (lado, tipo, PPD por
+    /// definir, categoría); <paramref name="giro"/> es cómo describe el cliente su negocio, para las compras.
+    /// </summary>
+    Task<FacturasClasificadas> ClasificarFacturasAsync(
+        string rfcDelCliente, IReadOnlyList<ArchivoParaElMotor> facturas, string? giro, int archivosDelPeriodo,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Tesis y jurisprudencias del TFJA y de la SCJN sobre una situación o tema, con lo que se concluyó de cada una.
     /// <paramref name="fuente"/> (TFJA o SCJN) acota; null busca en las dos.
     /// </summary>
@@ -123,6 +131,13 @@ public class MotorFiscalSinConfigurar : IMotorFiscal, ISingletonDependency
 
     public Task<DiagnosticoDeFacturas> DiagnosticarFacturasAsync(
         string rfcDelCliente, IReadOnlyList<ArchivoParaElMotor> facturas, int archivosDelPeriodo,
+        CancellationToken cancellationToken = default)
+    {
+        throw new MotorFiscalNoDisponibleException("No hay motor fiscal en este proceso.");
+    }
+
+    public Task<FacturasClasificadas> ClasificarFacturasAsync(
+        string rfcDelCliente, IReadOnlyList<ArchivoParaElMotor> facturas, string? giro, int archivosDelPeriodo,
         CancellationToken cancellationToken = default)
     {
         throw new MotorFiscalNoDisponibleException("No hay motor fiscal en este proceso.");
