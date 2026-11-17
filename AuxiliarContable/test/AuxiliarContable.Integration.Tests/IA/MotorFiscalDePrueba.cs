@@ -64,6 +64,9 @@ public class MotorFiscalDePrueba : IMotorFiscal
 
     public string? PeriodoRecibido { get; private set; }
 
+    /// <summary>Lo que se mandó a la contabilidad electrónica.</summary>
+    public (AperturaParaElMotor? Apertura, IReadOnlyList<MesParaElMotor> Meses)? Electronica { get; private set; }
+
     public DatosDeCierre? CierreRecibido { get; private set; }
 
     public void Reiniciar()
@@ -74,6 +77,7 @@ public class MotorFiscalDePrueba : IMotorFiscal
         PeticionesDeAmarre = 0;
         Contabilidad = null;
         Contabilizadas = [];
+        Electronica = null;
         EstaConfigurado = true;
         Caido = false;
         Resultados.Clear();
@@ -200,6 +204,24 @@ public class MotorFiscalDePrueba : IMotorFiscal
         PeriodoRecibido = periodo;
         CierreRecibido = cierre;
         return Task.FromResult(Contabilidad?.Invoke(perfil, operaciones, facturas) ?? new ResultadoContable());
+    }
+
+    public Task<ContabilidadElectronica> ContabilidadElectronicaAsync(
+        string rfc, int anio, int mes, AperturaParaElMotor? apertura, IReadOnlyList<MesParaElMotor> meses,
+        CancellationToken cancellationToken = default)
+    {
+        if (Caido)
+        {
+            throw new MotorFiscalNoDisponibleException("El motor fiscal no responde.");
+        }
+
+        Electronica = (apertura, meses);
+        return Task.FromResult(new ContabilidadElectronica
+        {
+            Balanza = [new RenglonDeBalanza { Cuenta = "102.01", Nivel = 2, SaldoFinal = 1 }],
+            Archivos = [new ArchivoXml { Nombre = rfc + $"{anio:0000}{mes:00}BN.xml", Tipo = "BN", ContenidoB64 = "PEJhbGFuemEvPg==" }],
+            Vencimiento = "2026-12-03",
+        });
     }
 
     public Task<SugerenciasDeAmarre> SugerirAmarresAsync(

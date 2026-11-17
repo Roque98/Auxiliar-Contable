@@ -37,8 +37,36 @@ public interface IMesaDeTrabajoAppService : IApplicationService
     /// </summary>
     Task<PolizasDelMesDto> GenerarPolizasAsync(Guid organizacionId, int anio, int mes, MotorFiscal.DatosDeCierre cierre);
 
+    /// <summary>Los saldos con los que el cliente llegó al despacho (null = aún no se capturan).</summary>
+    Task<SaldosDeAperturaDto?> GetAperturaAsync(Guid organizacionId);
+
+    /// <summary>Guarda los saldos de apertura (deben cuadrar: deudores = acreedores).</summary>
+    Task<SaldosDeAperturaDto> GuardarAperturaAsync(Guid organizacionId, SaldosDeAperturaDto input);
+
+    /// <summary>
+    /// Balanza acumulada del mes (desde la apertura, con las pólizas de cada mes) y los XML de la contabilidad
+    /// electrónica del SAT: catálogo, balanza y pólizas, validados contra el XSD.
+    /// </summary>
+    Task<ContabilidadElectronicaDto> ContabilidadElectronicaAsync(Guid organizacionId, int anio, int mes);
+
     /// <summary>El despacho acepta lo que detenía una operación (p. ej. «sí es del negocio»); vuelve a generar después.</summary>
     Task AceptarRevisionAsync(Guid organizacionId, Guid operacionId, string codigo);
+}
+
+public class SaldosDeAperturaDto
+{
+    /// <summary>Los saldos son al iniciar este mes.</summary>
+    public int Anio { get; set; }
+
+    public int Mes { get; set; }
+    public List<MotorFiscal.SaldoDeApertura> Saldos { get; set; } = [];
+}
+
+public class ContabilidadElectronicaDto
+{
+    public int Anio { get; set; }
+    public int Mes { get; set; }
+    public MotorFiscal.ContabilidadElectronica Resultado { get; set; } = new();
 }
 
 public class PolizasDelMesDto

@@ -85,6 +85,29 @@ export interface PolizasDelMesDto {
   };
 }
 
+export interface SaldoDeAperturaDto {
+  cuenta: string;
+  deudor: number;
+  acreedor: number;
+}
+
+export interface SaldosDeAperturaDto {
+  anio: number;
+  mes: number;
+  saldos: SaldoDeAperturaDto[];
+}
+
+export interface ContabilidadElectronicaDto {
+  anio: number;
+  mes: number;
+  resultado: {
+    balanza: { cuenta: string; nombre: string; nivel: number; naturaleza: string; saldoInicial: number; debe: number; haber: number; saldoFinal: number }[];
+    archivos: { nombre: string; tipo: string; contenidoB64: string; errores: string[] }[];
+    vencimiento: string;
+    avisos: string[];
+  };
+}
+
 /** `MesaDeTrabajoAppService` (`/api/app/mesa-de-trabajo`): el mes de un cliente para el despacho. */
 @Injectable({ providedIn: 'root' })
 export class MesaService {
@@ -109,6 +132,20 @@ export class MesaService {
   generarPolizas(organizacionId: string, anio: number, mes: number, cierre: DatosDeCierreDto): Observable<PolizasDelMesDto> {
     return this.rest.request<DatosDeCierreDto, PolizasDelMesDto>(
       { method: 'POST', url: `${this.base}/generar-polizas/${organizacionId}`, params: { anio, mes }, body: cierre }, this.opciones);
+  }
+
+  apertura(organizacionId: string): Observable<SaldosDeAperturaDto | null> {
+    return this.rest.request<void, SaldosDeAperturaDto | null>({ method: 'GET', url: `${this.base}/apertura/${organizacionId}` }, this.opciones);
+  }
+
+  guardarApertura(organizacionId: string, a: SaldosDeAperturaDto): Observable<SaldosDeAperturaDto> {
+    return this.rest.request<SaldosDeAperturaDto, SaldosDeAperturaDto>(
+      { method: 'POST', url: `${this.base}/guardar-apertura/${organizacionId}`, body: a }, this.opciones);
+  }
+
+  contabilidadElectronica(organizacionId: string, anio: number, mes: number): Observable<ContabilidadElectronicaDto> {
+    return this.rest.request<void, ContabilidadElectronicaDto>(
+      { method: 'POST', url: `${this.base}/contabilidad-electronica/${organizacionId}`, params: { anio, mes } }, this.opciones);
   }
 
   aceptarRevision(organizacionId: string, operacionId: string, codigo: string): Observable<void> {
