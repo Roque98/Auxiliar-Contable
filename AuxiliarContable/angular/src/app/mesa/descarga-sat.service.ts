@@ -9,6 +9,7 @@ export interface FacturasDelSatDelMesDto {
   canceladas: number;
   enProceso: number;
   sinEstatus: number;
+  noEncontradas: number;
   danadas: number;
   sinEntregaDelCliente: boolean;
 }
@@ -43,6 +44,17 @@ export interface ResultadoDelPaqueteDto {
   enProceso: number;
   sinXmlEnElSat: number;
   avisos: string[];
+}
+
+export interface RevisionDeEstatusDto {
+  revisadas: number;
+  cambiaron: number;
+  canceladas: number;
+  enProceso: number;
+  noEncontradas: number;
+  fallaron: number;
+  faltan: number;
+  satSinResponder: boolean;
 }
 
 export interface MesDeImpuestosDto {
@@ -144,6 +156,11 @@ export class DescargaSatService {
   ordenPorFolios(organizacionId: string, folios: string[], emitidas: boolean, recibidas: boolean): Observable<OrdenDeDescargaDto> {
     return this.rest.request<{ folios: string[]; emitidas: boolean; recibidas: boolean }, OrdenDeDescargaDto>(
       { method: 'POST', url: `${this.base}/crear-orden-por-folios/${organizacionId}`, body: { folios, emitidas, recibidas } }, this.opciones);
+  }
+
+  revisarEstatus(organizacionId: string, anio: number, mes: number): Observable<RevisionDeEstatusDto> {
+    return this.rest.request<void, RevisionDeEstatusDto>(
+      { method: 'POST', url: `${this.base}/revisar-estatus/${organizacionId}`, params: { anio, mes } }, this.opciones);
   }
 
   subirPaquete(organizacionId: string, archivo: File): Observable<ResultadoDelPaqueteDto> {

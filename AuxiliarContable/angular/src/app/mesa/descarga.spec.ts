@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MAX_MESES_POR_ORDEN, diasDeLaOrden, foliosEn, haceCuanto, mesesDeLaOrden, textoDelPaquete } from './descarga';
+import { MAX_MESES_POR_ORDEN, diasDeLaOrden, textoDeLaRevision, foliosEn, haceCuanto, mesesDeLaOrden, textoDelPaquete } from './descarga';
 
 describe('orden del Descargador 1', () => {
   it('cuenta los meses de la orden, cruzando el año', () => {
@@ -50,5 +50,17 @@ describe('orden por días y por folio', () => {
     const t = 'Factura 6f9619ff-8b86-d011-b42d-00c04fc964ff y la 6F9619FF-8B86-D011-B42D-00C04FC964FF; otra: 11111111-2222-3333-4444-555555555555, basura 1234';
     expect(foliosEn(t)).toEqual(['6F9619FF-8B86-D011-B42D-00C04FC964FF', '11111111-2222-3333-4444-555555555555']);
     expect(foliosEn('')).toEqual([]);
+  });
+});
+
+describe('revisión de estatus', () => {
+  const base = { revisadas: 0, cambiaron: 0, canceladas: 0, enProceso: 0, noEncontradas: 0, fallaron: 0, faltan: 0, satSinResponder: false };
+  it('dice qué cambió', () => {
+    expect(textoDeLaRevision({ ...base, revisadas: 40, cambiaron: 2, canceladas: 1, enProceso: 1 }))
+      .toBe('40 revisadas en el SAT · 2 cambiaron · 1 cancelada · 1 en proceso de cancelación.');
+    expect(textoDeLaRevision({ ...base, revisadas: 150, faltan: 30 })).toContain('faltan 30');
+  });
+  it('si el SAT no respondió', () => {
+    expect(textoDeLaRevision({ ...base, fallaron: 5, satSinResponder: true })).toBe('El SAT no respondió: se vuelve a intentar esta noche.');
   });
 });

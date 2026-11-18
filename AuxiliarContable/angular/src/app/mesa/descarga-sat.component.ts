@@ -3,10 +3,10 @@ import { ChangeDetectionStrategy, Component, effect, inject, input, signal } fro
 import { FormsModule } from '@angular/forms';
 import { MESES } from '../documentos/documentos.service';
 import { mensajeDeError } from '../invitaciones/invitaciones.service';
-import { MAX_DIAS_POR_ORDEN, MAX_FOLIOS_POR_ORDEN, MAX_MESES_POR_ORDEN, descargarBlob, diasDeLaOrden, foliosEn, mesesDeLaOrden, textoDelPaquete } from './descarga';
+import { MAX_DIAS_POR_ORDEN, MAX_FOLIOS_POR_ORDEN, MAX_MESES_POR_ORDEN, descargarBlob, diasDeLaOrden, foliosEn, mesesDeLaOrden, textoDeLaRevision, textoDelPaquete } from './descarga';
 import { OrdenDeDescargaDto } from './descarga-sat.service';
 import { Observable } from 'rxjs';
-import { DescargaDelSatDto, DescargaSatService, ResultadoDelPaqueteDto } from './descarga-sat.service';
+import { DescargaDelSatDto, DescargaSatService, ResultadoDelPaqueteDto, RevisionDeEstatusDto } from './descarga-sat.service';
 
 /**
  * Descarga del SAT e impuestos, dentro de la mesa de trabajo. Si el cliente no entregó nada, se marca el mes y se
@@ -37,6 +37,8 @@ export class DescargaSatComponent {
   readonly error = signal<string | null>(null);
   readonly ocupado = signal<string | null>(null);
   readonly paquete = signal<ResultadoDelPaqueteDto | null>(null);
+  readonly revision = signal<RevisionDeEstatusDto | null>(null);
+  textoDeLaRevision = textoDeLaRevision;
 
   desdeAnio = new Date().getFullYear();
   desdeMes = 1;
@@ -67,6 +69,7 @@ export class DescargaSatComponent {
       this.desdeDia = dd(1);
       this.hastaDia = dd(new Date(anio, mes, 0).getDate());
       this.paquete.set(null);
+      this.revision.set(null);
       this.cargar(id, anio, mes);
     });
   }
@@ -153,6 +156,24 @@ export class DescargaSatComponent {
       error: e => {
         this.ocupado.set(null);
         this.error.set(mensajeDeError(e, 'No se pudo armar la orden.'));
+      },
+    });
+  }
+
+  /** Pregunta ya al SAT el estatus de las facturas del mes (lo mismo corre solo cada noche). */
+  revisarEstatus(): void {
+    this.ocupado.set('estatus');
+    this.error.set(null);
+    this.revision.set(null);
+    this.api.revisarEstatus(this.organizacionId(), this.anio(), this.mes()).subscribe({
+      next: r => {
+        this.ocupado.set(null);
+        this.revision.set(r);
+        this.cargar();
+      },
+      error: e => {
+        this.ocupado.set(null);
+        this.error.set(mensajeDeError(e, 'No se pudo revisar el estatus.'));
       },
     });
   }

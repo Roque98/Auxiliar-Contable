@@ -244,6 +244,12 @@ public class AuxiliarContableHttpApiHostModule : AbpModule
             cliente.Timeout = TimeSpan.FromSeconds(claude.TimeoutSegundos);
         });
 
+        // Verificación de CFDI del SAT (servicio público del código QR): el estatus de cada factura cada noche.
+        context.Services.AddHttpClient(AuxiliarContable.HealthChecks.VerificadorDeCfdiSat.NombreHttpClient, cliente =>
+        {
+            cliente.Timeout = TimeSpan.FromSeconds(20);
+        });
+
         // Motor fiscal (motores-fiscales): servicio Python en 127.0.0.1 del mismo servidor. Sin
         // MotorFiscal:Url queda «sin configurar» y el chat dice que no pudo consultar.
         Configure<MotorFiscalOptions>(configuration.GetSection(MotorFiscalOptions.Seccion));
@@ -600,6 +606,9 @@ public class AuxiliarContableHttpApiHostModule : AbpModule
 
         // Los impuestos del mes al día: recalcula lo que quedó «por actualizar» al entrar una factura.
         await context.AddBackgroundWorkerAsync<ActualizadorDeImpuestosWorker>();
+
+        // Cada noche, el estatus de las facturas en el SAT (servicio público de verificación).
+        await context.AddBackgroundWorkerAsync<RevisorDeEstatusSatWorker>();
 
         await FecharFacturasSinFechaAsync(context.ServiceProvider);
     }

@@ -20,6 +20,23 @@ public sealed record DatosDelCfdi(
     string? ReceptorNombre,
     string? PrimerConcepto)
 {
+    /// <summary>El atributo Total tal como viene en el XML (lo pide así la verificación del SAT); null si no lo trae.</summary>
+    public static string? TotalTalCual(byte[] xml)
+    {
+        try
+        {
+            var opciones = new XmlReaderSettings { DtdProcessing = DtdProcessing.Prohibit, XmlResolver = null };
+            using var lector = XmlReader.Create(new MemoryStream(xml), opciones);
+            return lector.MoveToContent() == XmlNodeType.Element && lector.LocalName == "Comprobante"
+                ? lector.GetAttribute("Total")?.Trim()
+                : null;
+        }
+        catch (XmlException)
+        {
+            return null;
+        }
+    }
+
     /// <summary>Null si no es un CFDI.</summary>
     public static DatosDelCfdi? Leer(byte[] xml)
     {

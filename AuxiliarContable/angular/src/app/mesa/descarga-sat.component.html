@@ -19,7 +19,7 @@
     <div class="ms-tabla-caja">
       <table class="ms-tabla">
         <thead>
-          <tr><th>Mes</th><th class="ms-num">Facturas</th><th class="ms-num">Canceladas</th><th class="ms-num">En proceso de cancelación</th><th class="ms-num">Sin estatus del SAT</th><th class="ms-num">XML dañados</th></tr>
+          <tr><th>Mes</th><th class="ms-num">Facturas</th><th class="ms-num">Canceladas</th><th class="ms-num">En proceso de cancelación</th><th class="ms-num">El SAT no las encuentra</th><th class="ms-num">Sin estatus del SAT</th><th class="ms-num">XML dañados</th></tr>
         </thead>
         <tbody>
           @for (f of e.meses; track f.mes) {
@@ -28,6 +28,7 @@
               <td class="ms-num">{{ f.facturas }}</td>
               <td class="ms-num">{{ f.canceladas || '' }}</td>
               <td class="ms-num">{{ f.enProceso || '' }}</td>
+              <td class="ms-num">@if (f.noEncontradas) { <strong>{{ f.noEncontradas }}</strong> }</td>
               <td class="ms-num">{{ f.sinEstatus || '' }}</td>
               <td class="ms-num">@if (f.danadas) { <strong>{{ f.danadas }}</strong> }</td>
             </tr>
@@ -35,6 +36,17 @@
         </tbody>
       </table>
     </div>
+    <div class="ms-acciones">
+      <button type="button" class="btn btn-outline-primary ms-boton" (click)="revisarEstatus()" [disabled]="!!ocupado() || !puedeEditar()">
+        @if (ocupado() === 'estatus') { <span class="ig-girando" aria-hidden="true"></span> Preguntando al SAT… } @else { <i class="bi bi-patch-check" aria-hidden="true"></i> Revisar estatus en el SAT }
+      </button>
+    </div>
+    @if (revision(); as r) { <p class="ms-resultado">{{ textoDeLaRevision(r) }}</p> }
+    <p class="ms-nota">
+      Cada noche se revisa solo, con el servicio público de verificación del SAT (sin contraseña): las facturas en proceso de cancelación,
+      las que nunca se han revisado y las del mes en curso y el anterior. Si alguna se cancela, «Impuestos al día» se recalcula.
+      «El SAT no las encuentra»: recién emitidas que aún no registra (hasta 72 horas) o que no existen; revísalas.
+    </p>
     <p class="ms-nota">
       @if (e.ultimoEstatusUtc) { Último estatus del SAT: {{ e.ultimoEstatusUtc | date: 'd MMM y, HH:mm' }}. } @else { Aún no se ha consultado el estatus en el SAT. }
     </p>

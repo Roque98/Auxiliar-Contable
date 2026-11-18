@@ -31,6 +31,12 @@ public interface IDescargaDelSatAppService : IApplicationService
     /// <summary>La orden por folio fiscal (UUID): para revisar su estatus o bajar unas facturas en particular.</summary>
     Task<OrdenDeDescargaDto> CrearOrdenPorFoliosAsync(Guid organizacionId, OrdenPorFoliosDto input);
 
+    /// <summary>
+    /// Pregunta ya al SAT (servicio público de verificación) el estatus de las facturas del mes, salvo las canceladas.
+    /// Lo mismo corre solo cada noche para todos los clientes.
+    /// </summary>
+    Task<RevisionDeEstatusDto> RevisarEstatusAsync(Guid organizacionId, int anio, int mes);
+
     /// <summary>El paquete (.zip) que dejó el Descargador 1.</summary>
     Task<ResultadoDelPaqueteDto> SubirPaqueteAsync(Guid organizacionId, IRemoteStreamContent paquete);
 
@@ -67,6 +73,9 @@ public class FacturasDelSatDelMesDto
     /// <summary>Con UUID pero sin estatus del SAT todavía.</summary>
     public int SinEstatus { get; set; }
 
+    /// <summary>El SAT dice que no existen (recién emitidas aún no registradas, o apócrifas): hay que revisarlas.</summary>
+    public int NoEncontradas { get; set; }
+
     public int Danadas { get; set; }
     public bool SinEntregaDelCliente { get; set; }
 }
@@ -76,6 +85,18 @@ public class FacturaDanadaDto
     public Guid DocumentoId { get; set; }
     public string Nombre { get; set; } = "";
     public DateTime? Fecha { get; set; }
+}
+
+public class RevisionDeEstatusDto
+{
+    public int Revisadas { get; set; }
+    public int Cambiaron { get; set; }
+    public int Canceladas { get; set; }
+    public int EnProceso { get; set; }
+    public int NoEncontradas { get; set; }
+    public int Fallaron { get; set; }
+    public int Faltan { get; set; }
+    public bool SatSinResponder { get; set; }
 }
 
 public class OrdenPorFoliosDto
