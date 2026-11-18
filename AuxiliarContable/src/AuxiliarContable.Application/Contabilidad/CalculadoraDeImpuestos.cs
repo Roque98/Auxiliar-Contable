@@ -54,11 +54,16 @@ public class CalculadoraDeImpuestos : ITransientDependency
         _reloj = reloj;
     }
 
-    public sealed record Perfil(string? Rfc, string? Nombre, List<string> Regimenes, decimal? Coeficiente)
+    public sealed record Perfil(string? Rfc, string? Nombre, List<string> Regimenes, decimal? Coeficiente,
+        string? Plataformas = null, string? ActividadDePlataformas = null)
     {
-        /// <summary>Si cambia algo de esto, el cálculo guardado ya no vale.</summary>
+        /// <summary>
+        /// Si cambia algo de esto, el cálculo guardado ya no vale. Lo de plataformas solo entra si se contestó: así la huella
+        /// de los demás clientes no cambia y no se recalcula todo.
+        /// </summary>
         public string Huella => Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(
-            $"{Rfc}|{string.Join(";", Regimenes)}|{Coeficiente?.ToString(CultureInfo.InvariantCulture)}")))[..32];
+            $"{Rfc}|{string.Join(";", Regimenes)}|{Coeficiente?.ToString(CultureInfo.InvariantCulture)}"
+            + (Plataformas == null && ActividadDePlataformas == null ? "" : $"|{Plataformas}|{ActividadDePlataformas}"))))[..32];
     }
 
     public sealed record Calculo(PagosProvisionales Resultado, int Facturas, int Canceladas, int Danadas, int SinEstatus, string HuellaDelPerfil);
@@ -71,7 +76,8 @@ public class CalculadoraDeImpuestos : ITransientDependency
         decimal? coeficiente = decimal.TryParse(Campo(CamposDelPerfil.CoeficienteDeUtilidad), NumberStyles.Number, CultureInfo.InvariantCulture, out var c)
             ? c
             : null;
-        return new Perfil(string.IsNullOrWhiteSpace(rfc) ? null : rfc, Campo(CamposDelPerfil.Nombre), Lista(Campo(CamposDelPerfil.Regimenes)), coeficiente);
+        return new Perfil(string.IsNullOrWhiteSpace(rfc) ? null : rfc, Campo(CamposDelPerfil.Nombre), Lista(Campo(CamposDelPerfil.Regimenes)), coeficiente,
+            Campo(CamposDelPerfil.PagoDePlataformas), Campo(CamposDelPerfil.ActividadEnPlataformas));
     }
 
     /// <summary>
@@ -107,7 +113,8 @@ public class CalculadoraDeImpuestos : ITransientDependency
 
         var canceladas = buenas.Where(d => d.Cancelada && d.Uuid != null).Select(d => d.Uuid!).ToList();
         var resultado = await _motor.PagosProvisionalesAsync(
-            perfil.Rfc, perfil.Regimenes, $"{anio:0000}-{mes:00}", perfil.Nombre, archivos, canceladas, perfil.Coeficiente, conExcel);
+            perfil.Rfc, perfil.Regimenes, $"{anio:0000}-{mes:00}", perfil.Nombre, archivos, canceladas, perfil.Coeficiente, conExcel,
+            perfil.Plataformas, perfil.ActividadDePlataformas);
 
         var sinEstatus = delEjercicio.Count(d => d.Uuid != null && d.EstatusSat == null);
         if (sinEstatus > 0)

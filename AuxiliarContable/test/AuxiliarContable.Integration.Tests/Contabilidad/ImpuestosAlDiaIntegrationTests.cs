@@ -121,6 +121,23 @@ public class ImpuestosAlDiaIntegrationTests : ConJerarquiaTestBase
     }
 
     [Fact]
+    public async Task Contestar_lo_de_plataformas_en_el_perfil_recalcula_y_llega_al_motor()
+    {
+        await SubirFacturaAsync("6F9619FF-8B86-D011-B42D-00C04FC96405");
+        await _actualizador.ActualizarAsync(espera: TimeSpan.Zero);
+        _motor.PlataformasRecibidas.ShouldBe((null, null));
+
+        await PonerEnElPerfilAsync(CamposDelPerfil.PagoDePlataformas, "Definitivo");
+        await PonerEnElPerfilAsync(CamposDelPerfil.ActividadEnPlataformas, "hospedaje");
+        (await VerAsync()).Actualizando.ShouldBeTrue();
+
+        await _actualizador.ActualizarAsync(espera: TimeSpan.Zero);
+        (await VerAsync()).Actualizando.ShouldBeFalse();
+        _motor.PlataformasRecibidas.ShouldBe(("definitivo", "hospedaje"));
+        await Should.ThrowAsync<BusinessException>(() => PonerEnElPerfilAsync(CamposDelPerfil.PagoDePlataformas, "a veces"));
+    }
+
+    [Fact]
     public async Task El_coeficiente_de_utilidad_es_un_numero_entre_cero_y_uno()
     {
         await Should.ThrowAsync<BusinessException>(() => PonerEnElPerfilAsync(CamposDelPerfil.CoeficienteDeUtilidad, "1.5"));
