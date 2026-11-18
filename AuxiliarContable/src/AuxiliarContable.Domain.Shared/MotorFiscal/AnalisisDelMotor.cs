@@ -246,6 +246,26 @@ public class ContabilidadElectronica
 
     /// <summary>Estado de situación financiera y de resultados del ejercicio hasta el mes (NIF B-6 y B-3).</summary>
     public EstadosFinancieros? Estados { get; set; }
+
+    /// <summary>Cargos y abonos del mes por cuenta (los mismos de la balanza): el auxiliar de cada cuenta.</summary>
+    public List<MovimientoDeAuxiliar> Movimientos { get; set; } = [];
+}
+
+public class MovimientoDeAuxiliar
+{
+    public string Cuenta { get; set; } = "";
+    public string Fecha { get; set; } = "";
+
+    /// <summary>Folio de la póliza (I-2026-10-0001).</summary>
+    public string Poliza { get; set; } = "";
+
+    public string Tipo { get; set; } = "";
+    public string Concepto { get; set; } = "";
+    public string Texto { get; set; } = "";
+    public decimal Debe { get; set; }
+    public decimal Haber { get; set; }
+    public string? Uuid { get; set; }
+    public string? Rfc { get; set; }
 }
 
 public class EstadosFinancieros

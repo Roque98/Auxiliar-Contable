@@ -342,12 +342,60 @@
           <tbody>
             @for (b of e.resultado.balanza; track b.cuenta) {
               <tr [class.ms-total]="b.nivel === 1">
-                <td><strong>{{ b.cuenta }}</strong> {{ b.nombre }}</td>
+                <td>
+                  @if (e.resultado.movimientos) {
+                    <button type="button" class="btn btn-link ms-cuenta" (click)="abrirAuxiliar(b)" [attr.aria-expanded]="cuentaAbierta() === b.cuenta"
+                            [title]="'Ver el auxiliar de ' + b.cuenta">
+                      <strong>{{ b.cuenta }}</strong> {{ b.nombre }}
+                    </button>
+                  } @else {
+                    <strong>{{ b.cuenta }}</strong> {{ b.nombre }}
+                  }
+                </td>
                 <td class="ms-num">{{ b.saldoInicial | currency: 'MXN' : 'symbol-narrow' }}</td>
                 <td class="ms-num">{{ b.debe | currency: 'MXN' : 'symbol-narrow' }}</td>
                 <td class="ms-num">{{ b.haber | currency: 'MXN' : 'symbol-narrow' }}</td>
                 <td class="ms-num">{{ b.saldoFinal | currency: 'MXN' : 'symbol-narrow' }}</td>
               </tr>
+              @if (cuentaAbierta() === b.cuenta && auxiliar(); as ax) {
+                <tr class="ms-auxiliar-fila">
+                  <td colspan="5">
+                    <div class="ms-tabla-caja" data-testid="auxiliar">
+                      <table class="ms-tabla ms-auxiliar">
+                        <caption>Auxiliar de {{ b.cuenta }} {{ b.nombre }} · {{ meses[mes - 1] }} {{ anio }} (cuenta {{ b.naturaleza === 'A' ? 'acreedora' : 'deudora' }})</caption>
+                        <thead><tr><th scope="col">Fecha</th><th scope="col">Póliza</th><th scope="col">Concepto</th><th scope="col" class="ms-num">Cargo</th><th scope="col" class="ms-num">Abono</th><th scope="col" class="ms-num">Saldo</th></tr></thead>
+                        <tbody>
+                          <tr><td colspan="5">Saldo inicial</td><td class="ms-num">{{ b.saldoInicial | currency: 'MXN' : 'symbol-narrow' }}</td></tr>
+                          @for (r of ax.renglones; track $index) {
+                            <tr>
+                              <td>{{ r.fecha }}</td>
+                              <td>{{ r.poliza }}</td>
+                              <td>
+                                {{ r.concepto }}
+                                @if (r.cuenta !== b.cuenta) { <span class="ms-nota">· {{ r.cuenta }}</span> }
+                                @if (r.texto && r.texto !== r.concepto) { <span class="ms-nota">· {{ r.texto }}</span> }
+                                @if (r.rfc) { <span class="ms-nota">· {{ r.rfc }}</span> }
+                              </td>
+                              <td class="ms-num">{{ r.debe ? (r.debe | currency: 'MXN' : 'symbol-narrow') : '' }}</td>
+                              <td class="ms-num">{{ r.haber ? (r.haber | currency: 'MXN' : 'symbol-narrow') : '' }}</td>
+                              <td class="ms-num">{{ r.saldo | currency: 'MXN' : 'symbol-narrow' }}</td>
+                            </tr>
+                          } @empty {
+                            <tr><td colspan="6" class="ms-nota">Sin movimientos este mes.</td></tr>
+                          }
+                          <tr class="ms-total">
+                            <td colspan="3">Totales del mes</td>
+                            <td class="ms-num">{{ ax.cargos | currency: 'MXN' : 'symbol-narrow' }}</td>
+                            <td class="ms-num">{{ ax.abonos | currency: 'MXN' : 'symbol-narrow' }}</td>
+                            <td class="ms-num">{{ ax.saldoFinal | currency: 'MXN' : 'symbol-narrow' }}</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                    @if (!ax.cuadra) { <p class="ms-aviso">El auxiliar no llega al saldo final de la balanza ({{ b.saldoFinal | currency: 'MXN' : 'symbol-narrow' }}): revisa las pólizas del mes.</p> }
+                  </td>
+                </tr>
+              }
             }
           </tbody>
         </table>

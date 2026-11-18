@@ -18,6 +18,7 @@ import { DescargaSatComponent } from './descarga-sat.component';
 import { ImpuestosAlDiaComponent } from './impuestos-al-dia.component';
 import { RenglonesComponent } from './renglones.component';
 import { mesLargo, renglonesDeResultado, renglonesDeSituacion } from './estados';
+import { Auxiliar, RenglonDeBalanzaDto, auxiliarDe } from './auxiliar';
 import { ClienteVisibleDto, PerfilFiscalService } from '../perfil-fiscal/perfil-fiscal.service';
 import {
   ContabilidadAlDiaDto,
@@ -96,6 +97,18 @@ export class MesaComponent implements OnInit {
   readonly renglonesDeResultado = renglonesDeResultado;
   readonly renglonesDeSituacion = renglonesDeSituacion;
   readonly mesLargo = mesLargo;
+  /** La cuenta de la balanza abierta en su auxiliar. */
+  readonly cuentaAbierta = signal<string | null>(null);
+  readonly auxiliar = computed<Auxiliar | null>(() => {
+    const e = this.electronica();
+    const c = this.cuentaAbierta();
+    const fila = c ? e?.resultado.balanza.find(b => b.cuenta === c) : undefined;
+    return fila && e ? auxiliarDe(fila, e.resultado.movimientos ?? []) : null;
+  });
+
+  abrirAuxiliar(b: RenglonDeBalanzaDto): void {
+    this.cuentaAbierta.set(this.cuentaAbierta() === b.cuenta ? null : b.cuenta);
+  }
   readonly generandoXml = signal(false);
   /** Lo que se pegó en el editor de apertura, ya leído. */
   get aperturaLeida(): { saldos: SaldoDeAperturaDto[]; deudores: number; acreedores: number; malos: number } {
