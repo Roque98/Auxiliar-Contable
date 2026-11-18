@@ -18,15 +18,14 @@ namespace AuxiliarContable.Contabilidad;
 [Authorize]
 public class OperacionesAppService : AuxiliarContableAppService, IOperacionesAppService
 {
-    /// <summary>Una referencia más corta que esto no se usa para juntar operaciones solas: «1» o «12» se repiten.</summary>
-    public const int MinReferenciaParaJuntar = 4;
+    public const int MinReferenciaParaJuntar = RegistroDeOperaciones.MinReferenciaParaJuntar;
 
     private readonly IRepository<Operacion, Guid> _operaciones;
     private readonly IRepository<Documento, Guid> _documentos;
     private readonly IRepository<MovimientoFueraDelBanco, Guid> _movimientos;
     private readonly IRepository<SolicitudDeFactura, Guid> _solicitudes;
     private readonly AlmacenDeDocumentos _almacen;
-    private readonly IPerfilFiscalAppService _perfiles;
+    private readonly RegistroDeOperaciones _registro;
     private readonly GestorDePeriodos _periodos;
     private readonly Autorizador _autorizador;
 
@@ -36,7 +35,7 @@ public class OperacionesAppService : AuxiliarContableAppService, IOperacionesApp
         IRepository<MovimientoFueraDelBanco, Guid> movimientos,
         IRepository<SolicitudDeFactura, Guid> solicitudes,
         AlmacenDeDocumentos almacen,
-        IPerfilFiscalAppService perfiles,
+        RegistroDeOperaciones registro,
         GestorDePeriodos periodos,
         Autorizador autorizador)
     {
@@ -45,7 +44,7 @@ public class OperacionesAppService : AuxiliarContableAppService, IOperacionesApp
         _movimientos = movimientos;
         _solicitudes = solicitudes;
         _almacen = almacen;
-        _perfiles = perfiles;
+        _registro = registro;
         _periodos = periodos;
         _autorizador = autorizador;
     }
@@ -60,7 +59,7 @@ public class OperacionesAppService : AuxiliarContableAppService, IOperacionesApp
 
         var desde = new DateTime(anio, mes, 1);
         var hasta = desde.AddMonths(1);
-        await AgregarLoQueFaltaAsync(organizacionId, desde, hasta);
+        await _registro.AgregarLoQueFaltaAsync(organizacionId, desde, hasta);
 
         var lista = await AsyncExecuter.ToListAsync((await _operaciones.GetQueryableAsync())
             .Where(o => o.OrganizacionId == organizacionId && o.Fecha >= desde && o.Fecha < hasta));
@@ -83,7 +82,7 @@ public class OperacionesAppService : AuxiliarContableAppService, IOperacionesApp
     {
         await _autorizador.ExigirAsync(organizacionId, AccionEnOrganizacion.Subir);
         var documento = await DocumentoDelClienteAsync(organizacionId, documentoId);
-        var operacion = await DeDocumentoInternoAsync(organizacionId, documento, await RfcDelClienteAsync(organizacionId))
+        var operacion = await _registro.DeDocumentoAsync(organizacionId, documento, await _registro.RfcAsync(organizacionId))
                         ?? throw new UserFriendlyException(
                             "Un estado de cuenta trae muchos movimientos: cada uno se amarra en «Mi información → Todo» después de conciliar el mes.");
         return (await DescribirAsync([operacion]))[0];
@@ -150,7 +149,7 @@ public class OperacionesAppService : AuxiliarContableAppService, IOperacionesApp
         var otra = await DelClienteAsync(organizacionId, conOperacionId);
         await _periodos.ExigirAbiertoAsync(organizacionId, o.Fecha);
         await _periodos.ExigirAbiertoAsync(organizacionId, otra.Fecha);
-        await JuntarEnAsync(o, otra);
+        await _registro.JuntarEnAsync(o, otra);
         return (await DescribirAsync([o]))[0];
     }
 
@@ -192,13 +191,13 @@ public class OperacionesAppService : AuxiliarContableAppService, IOperacionesApp
         await _operaciones.UpdateAsync(o, autoSave: true);
 
         // ¿El UUID o la referencia ya estaban en otra operación del cliente? Son la misma: se juntan.
-        var gemela = await GemelaAsync(o);
+        var gemela = await _registro.GemelaAsync(o);
         if (gemela != null)
         {
             await _periodos.ExigirAbiertoAsync(o.OrganizacionId, gemela.Fecha);
             // Se queda la más antigua (la que el cliente ya conocía).
             var (queda, sale) = gemela.CreationTime <= o.CreationTime ? (gemela, o) : (o, gemela);
-            await JuntarEnAsync(queda, sale);
+            await _registro.JuntarEnAsync(queda, sale);
             return queda;
         }
 
@@ -323,164 +322,6 @@ public class OperacionesAppService : AuxiliarContableAppService, IOperacionesApp
         }
     }
 
-    private async Task<Operacion?> GemelaAsync(Operacion o)
-    {
-        var q = (await _operaciones.GetQueryableAsync()).Where(x => x.OrganizacionId == o.OrganizacionId && x.Id != o.Id);
-        if (o.Uuid is { } uuid)
-        {
-            var conUuid = await AsyncExecuter.FirstOrDefaultAsync(q.Where(x => x.Uuid == uuid));
-            if (conUuid != null)
-            {
-                return conUuid;
-            }
-        }
-
-        if (o.TransaccionForma == FormaDeTransaccion.Banco && o.Referencia is { Length: >= MinReferenciaParaJuntar } referencia)
-        {
-            var r = referencia.ToUpper();
-            return await AsyncExecuter.FirstOrDefaultAsync(q.Where(x => x.TransaccionForma == FormaDeTransaccion.Banco
-                                                                         && x.Referencia != null && x.Referencia.ToUpper() == r));
-        }
-
-        return null;
-    }
-
-    private async Task JuntarEnAsync(Operacion queda, Operacion sale)
-    {
-        // Si las dos traen la misma pata amarrada a cosas distintas, no se adivina cuál vale.
-        foreach (var pata in Enum.GetValues<PataDeOperacion>())
-        {
-            if (queda.Estado(pata) == EstadoDePata.Ligada && sale.Estado(pata) == EstadoDePata.Ligada && !MismaPata(queda, sale, pata))
-            {
-                throw new UserFriendlyException(pata switch
-                {
-                    PataDeOperacion.Factura => "Las dos operaciones ya tienen factura y son distintas: deja la que no va «para después» antes de juntarlas.",
-                    PataDeOperacion.Transaccion => "Las dos operaciones ya tienen transacción y son distintas: deja la que no va «para después» antes de juntarlas.",
-                    _ => "Las dos operaciones ya tienen control interno y son distintos: deja el que no va «para después» antes de juntarlas.",
-                });
-            }
-        }
-
-        queda.Absorber(sale);
-        await _operaciones.DeleteAsync(sale, autoSave: true);
-        await _operaciones.UpdateAsync(queda, autoSave: true);
-    }
-
-    private static bool MismaPata(Operacion a, Operacion b, PataDeOperacion pata) => pata switch
-    {
-        PataDeOperacion.Factura => (a.Uuid != null && a.Uuid == b.Uuid) || (a.FacturaDocumentoId != null && a.FacturaDocumentoId == b.FacturaDocumentoId),
-        PataDeOperacion.Transaccion => (a.Referencia != null && string.Equals(a.Referencia, b.Referencia, StringComparison.OrdinalIgnoreCase))
-                                       || (a.MovimientoFueraDelBancoId != null && a.MovimientoFueraDelBancoId == b.MovimientoFueraDelBancoId)
-                                       || (a.ClaveDeMovimiento != null && a.ClaveDeMovimiento == b.ClaveDeMovimiento)
-                                       || (a.TransaccionDocumentoId != null && a.TransaccionDocumentoId == b.TransaccionDocumentoId),
-        _ => a.ControlDocumentoId != null && a.ControlDocumentoId == b.ControlDocumentoId,
-    };
-
-    /// <summary>
-    /// Lo del mes que aún no tiene operación: las facturas, los comprobantes de pago, el control interno y los
-    /// registros de efectivo y crédito. Así «Todo» enseña también lo que se subió antes de que existieran las operaciones.
-    /// </summary>
-    private async Task AgregarLoQueFaltaAsync(Guid organizacionId, DateTime desde, DateTime hasta)
-    {
-        var tipos = new[] { TipoDeDocumento.Cfdi, TipoDeDocumento.ComprobanteDePago, TipoDeDocumento.ControlInterno, TipoDeDocumento.Ticket };
-        var ops = await _operaciones.GetQueryableAsync();
-        var documentos = await AsyncExecuter.ToListAsync(
-            from d in await _documentos.GetQueryableAsync()
-            where d.OrganizacionId == organizacionId && tipos.Contains(d.Tipo)
-                  && (d.FechaDelDocumento ?? d.CreationTime) >= desde && (d.FechaDelDocumento ?? d.CreationTime) < hasta
-                  && !ops.Any(o => o.FacturaDocumentoId == d.Id || o.TransaccionDocumentoId == d.Id || o.ControlDocumentoId == d.Id)
-            select d);
-        var movimientos = await AsyncExecuter.ToListAsync(
-            from m in await _movimientos.GetQueryableAsync()
-            where m.OrganizacionId == organizacionId && m.Fecha >= desde && m.Fecha < hasta
-                  && !ops.Any(o => o.MovimientoFueraDelBancoId == m.Id)
-            select m);
-        if (documentos.Count == 0 && movimientos.Count == 0)
-        {
-            return;
-        }
-
-        var rfc = await RfcDelClienteAsync(organizacionId);
-        foreach (var d in documentos.OrderBy(d => d.Tipo == TipoDeDocumento.Cfdi ? 0 : 1))
-        {
-            await DeDocumentoInternoAsync(organizacionId, d, rfc);
-        }
-
-        foreach (var m in movimientos)
-        {
-            var o = new Operacion(GuidGenerator.Create(), organizacionId);
-            var entrada = m.Tipo is TipoDeMovimientoFueraDelBanco.EntradaEnEfectivo or TipoDeMovimientoFueraDelBanco.VentaACredito;
-            o.Describir(m.Fecha, entrada ? SentidoDeOperacion.Entrada : SentidoDeOperacion.Salida, m.Importe, m.Concepto, m.Contraparte);
-            o.LigarTransaccion(m.EsACredito ? FormaDeTransaccion.Credito : FormaDeTransaccion.Efectivo, null, null, m.Id);
-            await _operaciones.InsertAsync(o, autoSave: true);
-        }
-    }
-
-    /// <summary>La operación del documento (la que ya lo tiene, la de su mismo UUID, o una nueva). Null si es un estado de cuenta o una constancia.</summary>
-    private async Task<Operacion?> DeDocumentoInternoAsync(Guid organizacionId, Documento d, string? rfcDelCliente)
-    {
-        var ya = await _operaciones.FirstOrDefaultAsync(o => o.OrganizacionId == organizacionId
-            && (o.FacturaDocumentoId == d.Id || o.TransaccionDocumentoId == d.Id || o.ControlDocumentoId == d.Id));
-        if (ya != null)
-        {
-            return ya;
-        }
-
-        var fecha = d.FechaDelDocumento ?? d.CreationTime;
-        switch (d.Tipo)
-        {
-            case TipoDeDocumento.Cfdi:
-            {
-                var cfdi = DatosDelCfdi.Leer(await _almacen.LeerAsync(d));
-                // El mismo UUID ya tiene operación (p. ej. la abrió su ticket): el XML se le amarra a esa.
-                if (cfdi?.Uuid is { } uuid && await _operaciones.FirstOrDefaultAsync(o => o.OrganizacionId == organizacionId && o.Uuid == uuid) is { } conUuid)
-                {
-                    if (conUuid.FacturaDocumentoId is null)
-                    {
-                        conUuid.LigarFactura(uuid, d.Id, conUuid.SolicitudDeFacturaId);
-                        await _operaciones.UpdateAsync(conUuid, autoSave: true);
-                    }
-
-                    return conUuid;
-                }
-
-                var emitida = rfcDelCliente != null && cfdi?.EmisorRfc == rfcDelCliente;
-                var o = new Operacion(GuidGenerator.Create(), organizacionId);
-                o.Describir(cfdi?.Fecha is { } f ? FechaDelCfdi.ComoFecha(f) : fecha,
-                    emitida ? SentidoDeOperacion.Entrada : SentidoDeOperacion.Salida,
-                    cfdi?.Total is > 0 ? cfdi.Total : null,
-                    Corto(cfdi?.PrimerConcepto ?? d.NombreOriginal, OperacionConsts.MaxDescripcionLength)!,
-                    Corto(emitida ? cfdi?.ReceptorNombre ?? cfdi?.ReceptorRfc : cfdi?.EmisorNombre ?? cfdi?.EmisorRfc, OperacionConsts.MaxContraparteLength));
-                o.LigarFactura(cfdi?.Uuid, d.Id, null);
-                await _operaciones.InsertAsync(o, autoSave: true);
-                return o;
-            }
-            case TipoDeDocumento.ComprobanteDePago:
-            {
-                var o = Nueva(organizacionId, d, fecha);
-                o.LigarTransaccion(FormaDeTransaccion.Banco, null, d.Id, null);
-                await _operaciones.InsertAsync(o, autoSave: true);
-                return o;
-            }
-            case TipoDeDocumento.ControlInterno or TipoDeDocumento.Ticket or TipoDeDocumento.Otro:
-            {
-                var o = Nueva(organizacionId, d, fecha);
-                o.LigarControl(d.Id);
-                await _operaciones.InsertAsync(o, autoSave: true);
-                return o;
-            }
-            default:
-                return null;
-        }
-    }
-
-    private Operacion Nueva(Guid organizacionId, Documento d, DateTime fecha)
-    {
-        var o = new Operacion(GuidGenerator.Create(), organizacionId);
-        o.Describir(fecha, SentidoDeOperacion.Salida, null, Corto(d.NombreOriginal, OperacionConsts.MaxDescripcionLength)!, null);
-        return o;
-    }
-
     private async Task<List<OperacionDelClienteDto>> DescribirAsync(List<Operacion> lista)
     {
         var docIds = lista.SelectMany(o => new[] { o.FacturaDocumentoId, o.TransaccionDocumentoId, o.ControlDocumentoId })
@@ -551,14 +392,6 @@ public class OperacionesAppService : AuxiliarContableAppService, IOperacionesApp
         }
 
         return d;
-    }
-
-    /// <summary>Para saber si una factura es emitida o recibida; sin RFC en el perfil se toma como recibida.</summary>
-    private async Task<string?> RfcDelClienteAsync(Guid organizacionId)
-    {
-        var perfil = await _perfiles.GetAsync(organizacionId);
-        var rfc = perfil.Campos.FirstOrDefault(c => c.Clave == CamposDelPerfil.Rfc)?.Valor?.Trim().ToUpperInvariant();
-        return string.IsNullOrWhiteSpace(rfc) ? null : rfc;
     }
 
     private static void ValidarFecha(DateTime fecha)

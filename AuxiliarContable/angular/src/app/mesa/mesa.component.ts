@@ -1,5 +1,5 @@
 import { CurrencyPipe, DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MESES } from '../documentos/documentos.service';
@@ -13,10 +13,12 @@ import {
 } from '../mi-informacion/operaciones.service';
 import { PatasComponent } from '../mi-informacion/patas.component';
 import { leerSaldos } from './saldos';
+import { haceCuanto } from './descarga';
 import { DescargaSatComponent } from './descarga-sat.component';
 import { ImpuestosAlDiaComponent } from './impuestos-al-dia.component';
 import { ClienteVisibleDto, PerfilFiscalService } from '../perfil-fiscal/perfil-fiscal.service';
 import {
+  ContabilidadAlDiaDto,
   ContabilidadElectronicaDto,
   MesaDelMesDto,
   SaldoDeAperturaDto,
@@ -77,6 +79,10 @@ export class MesaComponent implements OnInit {
   readonly polizaAbierta = signal<string | null>(null);
   readonly verBalanza = signal(false);
   readonly verCierre = signal(false);
+  /** La contabilidad al día: se concilia, se amarra lo seguro y se rehacen las pólizas solas. */
+  readonly alDia = signal<ContabilidadAlDiaDto | null>(null);
+  haceCuanto = haceCuanto;
+  private relojAlDia: ReturnType<typeof setTimeout> | null = null;
 
   // Saldos de apertura y contabilidad electrónica
   readonly apertura = signal<SaldosDeAperturaDto | null>(null);
@@ -132,6 +138,10 @@ export class MesaComponent implements OnInit {
     }
   });
 
+  constructor() {
+    inject(DestroyRef).onDestroy(() => this.pararAlDia());
+  }
+
   ngOnInit(): void {
     this.perfiles.clientes().subscribe({
       next: lista => {
@@ -173,6 +183,7 @@ export class MesaComponent implements OnInit {
       error: e => this.error.set(mensajeDeError(e, 'No se pudo cargar la mesa de trabajo.')),
     });
     this.api.polizas(id, this.anio, this.mes).subscribe({ next: p => this.ponerPolizas(p), error: () => this.ponerPolizas(null) });
+    this.cargarAlDia();
     this.electronica.set(null);
     this.api.apertura(id).subscribe({ next: a => this.apertura.set(a), error: () => this.apertura.set(null) });
   }
@@ -195,6 +206,68 @@ export class MesaComponent implements OnInit {
         this.error.set(mensajeDeError(e, 'No se pudieron generar las pólizas.'));
       },
     });
+  }
+
+  /**
+   * Cómo va la contabilidad al día. Mientras está por actualizar se vuelve a preguntar poco después de la hora en que
+   * toca; cuando termina, se recargan la mesa y las pólizas (pudo conciliar, amarrar y generar).
+   */
+  cargarAlDia(): void {
+    this.pararAlDia();
+    const id = this.clienteId();
+    const anio = this.anio;
+    const mes = this.mes;
+    if (!id) {
+      this.alDia.set(null);
+      return;
+    }
+    this.api.contabilidadAlDia(id, anio, mes).subscribe({
+      next: r => {
+        // Llegó tarde la respuesta de otro cliente o mes: no se pinta.
+        if (id !== this.clienteId() || anio !== this.anio || mes !== this.mes) {
+          return;
+        }
+        const antes = this.alDia();
+        this.alDia.set(r);
+        if (antes?.actualizando && !r.actualizando && antes.anio === anio && antes.mes === mes) {
+          this.api.delMes(id, anio, mes).subscribe({ next: m => this.mesa.set(m) });
+          this.api.polizas(id, anio, mes).subscribe({ next: p => this.ponerPolizas(p) });
+        }
+        if (r.actualizando) {
+          const falta = r.seActualizaUtc ? new Date(r.seActualizaUtc).getTime() - Date.now() + 70_000 : 0;
+          this.relojAlDia = setTimeout(() => this.cargarAlDia(), Math.max(20_000, falta));
+        }
+      },
+      error: () => this.alDia.set(null),
+    });
+  }
+
+  /** «Actualizar ahora»: el servidor lo pone al día en la siguiente vuelta (alrededor de un minuto). */
+  actualizarContabilidad(): void {
+    const id = this.clienteId();
+    if (!id) {
+      return;
+    }
+    this.error.set(null);
+    this.api.actualizarContabilidad(id, this.anio, this.mes).subscribe({
+      next: r => {
+        this.alDia.set(r);
+        this.pararAlDia();
+        this.relojAlDia = setTimeout(() => this.cargarAlDia(), 20_000);
+      },
+      error: e => this.error.set(mensajeDeError(e, 'No se pudo pedir la actualización.')),
+    });
+  }
+
+  hora(utc: string): string {
+    return new Date(utc).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+  }
+
+  private pararAlDia(): void {
+    if (this.relojAlDia) {
+      clearTimeout(this.relojAlDia);
+      this.relojAlDia = null;
+    }
   }
 
   private ponerPolizas(p: PolizasDelMesDto | null): void {

@@ -77,6 +77,8 @@ public class AuxiliarContableDbContext :
 
     public DbSet<Contabilidad.PolizasDelMes> PolizasDeMeses { get; set; }
 
+    public DbSet<Contabilidad.ContabilidadDelMes> ContabilidadesDeMeses { get; set; }
+
     public DbSet<Contabilidad.SaldosDeApertura> SaldosDeAperturas { get; set; }
 
     public DbSet<Credenciales.CredencialesDelCliente> CredencialesDeClientes { get; set; }
@@ -402,6 +404,17 @@ public class AuxiliarContableDbContext :
             b.Property(x => x.Resultado).IsRequired().HasColumnType("text");
             b.Property(x => x.DatosDeCierre).HasColumnType("text");
             b.HasIndex(x => new { x.OrganizacionId, x.Anio, x.Mes }).IsUnique();
+        });
+
+        // AppContabilidadesDeMeses: la contabilidad al día de cada mes (por actualizar, qué se hizo la última vez).
+        builder.Entity<Contabilidad.ContabilidadDelMes>(b =>
+        {
+            b.ToTable(AuxiliarContableConsts.DbTablePrefix + "ContabilidadesDeMeses", AuxiliarContableConsts.DbSchema);
+            b.ConfigureByConvention();
+            b.Property(x => x.Resumen).HasMaxLength(Contabilidad.ContabilidadDelMes.MaxTextoLength);
+            b.Property(x => x.Error).HasMaxLength(Contabilidad.ContabilidadDelMes.MaxTextoLength);
+            b.HasIndex(x => new { x.OrganizacionId, x.Anio, x.Mes }).IsUnique();
+            b.HasIndex(x => new { x.PorActualizar, x.PedidoUtc });
         });
 
         // Operaciones: factura · transacción · control interno de cada compra, gasto o venta.

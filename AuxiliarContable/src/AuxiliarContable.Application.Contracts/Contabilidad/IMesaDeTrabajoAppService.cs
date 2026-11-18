@@ -37,6 +37,15 @@ public interface IMesaDeTrabajoAppService : IApplicationService
     /// </summary>
     Task<PolizasDelMesDto> GenerarPolizasAsync(Guid organizacionId, int anio, int mes, MotorFiscal.DatosDeCierre cierre);
 
+    /// <summary>
+    /// Cómo va la contabilidad al día del mes: se pone al día sola (conciliar, amarrar lo seguro y rehacer las pólizas)
+    /// un momento después de que entra o cambia algo del mes.
+    /// </summary>
+    Task<ContabilidadAlDiaDto> GetContabilidadAlDiaAsync(Guid organizacionId, int anio, int mes);
+
+    /// <summary>«Actualizar ahora»: se pone al día en la siguiente vuelta (alrededor de un minuto), sin esperar.</summary>
+    Task<ContabilidadAlDiaDto> ActualizarContabilidadAsync(Guid organizacionId, int anio, int mes);
+
     /// <summary>Los saldos con los que el cliente llegó al despacho (null = aún no se capturan).</summary>
     Task<SaldosDeAperturaDto?> GetAperturaAsync(Guid organizacionId);
 
@@ -84,6 +93,22 @@ public class PolizasDelMesDto
 
     /// <summary>El inventario final del mes anterior: el inicial que se propone.</summary>
     public decimal? InventarioInicialSugerido { get; set; }
+}
+
+public class ContabilidadAlDiaDto
+{
+    public int Anio { get; set; }
+    public int Mes { get; set; }
+
+    /// <summary>Cambió algo y aún no se pone al día.</summary>
+    public bool Actualizando { get; set; }
+
+    /// <summary>Cuándo toca (si nada más cambia).</summary>
+    public DateTime? SeActualizaUtc { get; set; }
+
+    public DateTime? ActualizadaUtc { get; set; }
+    public string? Resumen { get; set; }
+    public string? Error { get; set; }
 }
 
 public static class MesaDeTrabajoConsts

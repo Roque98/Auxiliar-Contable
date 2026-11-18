@@ -104,7 +104,25 @@
         @if (generando()) { <span class="ig-girando" aria-hidden="true"></span> Revisando… } @else { {{ polizas() ? 'Volver a generar' : 'Revisar y generar pólizas' }} }
       </button>
     </div>
+    @if (alDia(); as a) {
+      <p class="ms-nota" aria-live="polite" data-testid="contabilidad-al-dia">
+        @if (a.actualizando) {
+          <span class="ig-girando" aria-hidden="true"></span> Entró algo nuevo · la contabilidad se pone al día
+          @if (a.seActualizaUtc) { a las {{ hora(a.seActualizaUtc) }} }
+        } @else if (a.actualizadaUtc) {
+          Al día {{ haceCuanto(a.actualizadaUtc) }}@if (a.resumen) { · {{ a.resumen }} }
+        } @else {
+          Se pone al día sola cuando entra algo del mes.
+        }
+        @if (m.operaciones.puedeEditar) {
+          <button type="button" class="btn btn-link ms-rev-op" (click)="actualizarContabilidad()">Actualizar ahora</button>
+        }
+        @if (a.error) { <br /><span class="text-danger">{{ a.error }}</span> }
+      </p>
+    }
     <p class="ms-nota">
+      Con cada factura, estado de cuenta, ticket o registro que entra, la plataforma concilia el banco, amarra lo seguro
+      (por UUID y por regla, sin Claude) y rehace las pólizas sola, unos minutos después del último cambio.
       Primero se revisa que la información no traiga errores; lo que «detiene» no se contabiliza hasta que lo corrijas o lo aceptes.
       Las cuentas dependen del <a routerLink="/perfil-fiscal" [queryParams]="{ cliente: clienteId() }">tipo de empresa y sistema de costos</a> del cliente.
     </p>
