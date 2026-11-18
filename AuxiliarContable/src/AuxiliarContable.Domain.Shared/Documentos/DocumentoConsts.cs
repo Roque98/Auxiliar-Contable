@@ -16,6 +16,12 @@ public static class DocumentoConsts
 
     /// <summary>SHA-256 en hexadecimal.</summary>
     public const int HashLength = 64;
+
+    /// <summary>Folio fiscal (UUID) de un CFDI: 36 caracteres.</summary>
+    public const int UuidLength = 36;
+
+    /// <summary>«Vigente», «Cancelado»… tal como lo dice el portal del SAT.</summary>
+    public const int MaxEstatusSatLength = 40;
 }
 
 /// <summary>Qué es el documento. Lo decide quien sube (o, más adelante, la clasificación).</summary>

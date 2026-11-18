@@ -69,6 +69,9 @@ public class MotorFiscalDePrueba : IMotorFiscal
 
     public DatosDeCierre? CierreRecibido { get; private set; }
 
+    /// <summary>Lo que se mandó al cálculo de pagos provisionales.</summary>
+    public (string Rfc, IReadOnlyList<string> Regimenes, string Periodo, IReadOnlyList<string> Facturas, IReadOnlyList<string> Cancelados)? Provisionales { get; private set; }
+
     public void Reiniciar()
     {
         Analisis.Clear();
@@ -78,6 +81,7 @@ public class MotorFiscalDePrueba : IMotorFiscal
         Contabilidad = null;
         Contabilizadas = [];
         Electronica = null;
+        Provisionales = null;
         EstaConfigurado = true;
         Caido = false;
         Resultados.Clear();
@@ -221,6 +225,24 @@ public class MotorFiscalDePrueba : IMotorFiscal
             Balanza = [new RenglonDeBalanza { Cuenta = "102.01", Nivel = 2, SaldoFinal = 1 }],
             Archivos = [new ArchivoXml { Nombre = rfc + $"{anio:0000}{mes:00}BN.xml", Tipo = "BN", ContenidoB64 = "PEJhbGFuemEvPg==" }],
             Vencimiento = "2026-12-03",
+        });
+    }
+
+    public Task<PagosProvisionales> PagosProvisionalesAsync(
+        string rfc, IReadOnlyList<string> regimenes, string periodo, string? nombre, IReadOnlyList<ArchivoParaElMotor> facturas,
+        IReadOnlyList<string> cancelados, CancellationToken cancellationToken = default)
+    {
+        if (Caido)
+        {
+            throw new MotorFiscalNoDisponibleException("El motor fiscal no responde.");
+        }
+
+        Provisionales = (rfc, regimenes, periodo, facturas.Select(f => f.Nombre).ToList(), cancelados);
+        return Task.FromResult(new PagosProvisionales
+        {
+            Regimen = new RegimenDelCalculo { Principal = "612", Claves = ["612"], Flujo = true },
+            Meses = [new MesDeImpuestos { Periodo = periodo, Cobrado = 1000, IvaCobrado = 160, IvaEstimado = 160, CfdiEmitidos = facturas.Count }],
+            Archivo = new ArchivoDelMotor { Nombre = "papel de impuestos.xlsx", ContenidoB64 = "UEsDBA==" },
         });
     }
 

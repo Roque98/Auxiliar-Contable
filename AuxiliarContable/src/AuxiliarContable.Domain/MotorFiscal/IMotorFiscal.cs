@@ -75,6 +75,15 @@ public interface IMotorFiscal
         string rfc, int anio, int mes, AperturaParaElMotor? apertura, IReadOnlyList<MesParaElMotor> meses,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Pago provisional de ISR e IVA del <paramref name="periodo"/> (AAAA-MM) solo con los CFDI del ejercicio: el papel de
+    /// trabajo de impuestos (Excel) y lo que mueve el impuesto mes por mes. <paramref name="cancelados"/>: UUID que el SAT
+    /// dio por cancelados; <paramref name="regimenes"/>: los del perfil fiscal (nombres o claves).
+    /// </summary>
+    Task<PagosProvisionales> PagosProvisionalesAsync(
+        string rfc, IReadOnlyList<string> regimenes, string periodo, string? nombre, IReadOnlyList<ArchivoParaElMotor> facturas,
+        IReadOnlyList<string> cancelados, CancellationToken cancellationToken = default);
+
     /// <summary>Movimientos del banco sin amarrar + operaciones sin pago -> parejas propuestas por Claude, con su porqué.</summary>
     Task<SugerenciasDeAmarre> SugerirAmarresAsync(
         IReadOnlyList<MovimientoParaAmarrar> movimientos, IReadOnlyList<CandidataParaAmarrar> candidatas, string? giro,
@@ -182,6 +191,11 @@ public class MotorFiscalSinConfigurar : IMotorFiscal, ISingletonDependency
     public Task<SugerenciasDeAmarre> SugerirAmarresAsync(
         IReadOnlyList<MovimientoParaAmarrar> movimientos, IReadOnlyList<CandidataParaAmarrar> candidatas, string? giro,
         CancellationToken cancellationToken = default) =>
+        throw new MotorFiscalNoDisponibleException("No hay motor fiscal en este proceso.");
+
+    public Task<PagosProvisionales> PagosProvisionalesAsync(
+        string rfc, IReadOnlyList<string> regimenes, string periodo, string? nombre, IReadOnlyList<ArchivoParaElMotor> facturas,
+        IReadOnlyList<string> cancelados, CancellationToken cancellationToken = default) =>
         throw new MotorFiscalNoDisponibleException("No hay motor fiscal en este proceso.");
 
     public Task<IReadOnlyList<SentenciaDelMotor>> BuscarSentenciasAsync(

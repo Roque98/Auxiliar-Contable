@@ -39,6 +39,10 @@
 }
 
 @if (mesa(); as m) {
+  @if (clienteId(); as id) {
+    <app-descarga-sat [organizacionId]="id" [anio]="anio" [mes]="mes" [puedeEditar]="m.operaciones.puedeEditar" />
+  }
+
   <div class="ms-tareas">
     <section class="ms-tarjeta" aria-labelledby="ms-analizar">
       <h2 id="ms-analizar"><i class="bi bi-stars" aria-hidden="true"></i> Lo que subió el cliente</h2>

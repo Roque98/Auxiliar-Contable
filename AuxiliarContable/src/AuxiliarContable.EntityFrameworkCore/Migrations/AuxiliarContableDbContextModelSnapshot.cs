@@ -211,6 +211,48 @@ namespace AuxiliarContable.Migrations
                     b.ToTable("AppEvidenciasDeOperaciones", (string)null);
                 });
 
+            modelBuilder.Entity("AuxiliarContable.Contabilidad.MesSinEntrega", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Anio")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("ConcurrencyStamp");
+
+                    b.Property<DateTime>("CreationTime")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("CreationTime");
+
+                    b.Property<Guid?>("CreatorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("CreatorId");
+
+                    b.Property<string>("ExtraProperties")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("ExtraProperties");
+
+                    b.Property<int>("Mes")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("OrganizacionId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrganizacionId", "Anio", "Mes")
+                        .IsUnique();
+
+                    b.ToTable("AppMesesSinEntrega", (string)null);
+                });
+
             modelBuilder.Entity("AuxiliarContable.Contabilidad.MovimientoFueraDelBanco", b =>
                 {
                     b.Property<Guid>("Id")
@@ -917,6 +959,13 @@ namespace AuxiliarContable.Migrations
                     b.Property<int>("Estado")
                         .HasColumnType("integer");
 
+                    b.Property<string>("EstatusSat")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<DateTime?>("EstatusSatUtc")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("ExtraProperties")
                         .IsRequired()
                         .HasColumnType("text")
@@ -967,11 +1016,20 @@ namespace AuxiliarContable.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<string>("Uuid")
+                        .HasMaxLength(36)
+                        .HasColumnType("character varying(36)");
+
+                    b.Property<bool>("XmlDanado")
+                        .HasColumnType("boolean");
+
                     b.HasKey("Id");
 
                     b.HasIndex("OrganizacionId", "Sha256");
 
                     b.HasIndex("OrganizacionId", "Tipo");
+
+                    b.HasIndex("OrganizacionId", "Uuid");
 
                     b.ToTable("AppDocumentos", (string)null);
                 });

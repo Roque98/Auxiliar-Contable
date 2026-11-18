@@ -45,6 +45,22 @@ public class Documento : FullAuditedAggregateRoot<Guid>
 
     public DateTime? AnalizadoUtc { get; protected set; }
 
+    /// <summary>Folio fiscal de una factura (de su timbre). Null en lo que no es CFDI, o si el XML no se pudo leer.</summary>
+    public string? Uuid { get; protected set; }
+
+    /// <summary>
+    /// Una factura cuyo XML no abre o no trae timbre (vacío, la página de error del SAT, cortado): hay que bajarla otra
+    /// vez del portal (Descargador 1).
+    /// </summary>
+    public bool XmlDanado { get; protected set; }
+
+    /// <summary>Lo que dice el portal del SAT de esta factura («Vigente», «Cancelado»); null = no se ha consultado.</summary>
+    public string? EstatusSat { get; protected set; }
+
+    public DateTime? EstatusSatUtc { get; protected set; }
+
+    public bool Cancelada => string.Equals(EstatusSat, "Cancelado", StringComparison.OrdinalIgnoreCase);
+
     protected Documento()
     {
     }
@@ -73,6 +89,29 @@ public class Documento : FullAuditedAggregateRoot<Guid>
     {
         Analisis = Check.NotNullOrWhiteSpace(json, nameof(json));
         AnalizadoUtc = utc;
+    }
+
+    /// <summary>El UUID leído del XML; null = el XML está dañado.</summary>
+    public void Identificar(string? uuid)
+    {
+        var limpio = uuid?.Trim().ToUpperInvariant();
+        if (limpio is { Length: DocumentoConsts.UuidLength })
+        {
+            Uuid = limpio;
+            XmlDanado = false;
+        }
+        else
+        {
+            Uuid = null;
+            XmlDanado = true;
+        }
+    }
+
+    public void PonerEstatusSat(string estatus, DateTime utc)
+    {
+        var limpio = Check.NotNullOrWhiteSpace(estatus, nameof(estatus)).Trim();
+        EstatusSat = limpio.Length <= DocumentoConsts.MaxEstatusSatLength ? limpio : limpio[..DocumentoConsts.MaxEstatusSatLength];
+        EstatusSatUtc = utc;
     }
 
     public void MarcarProcesado()

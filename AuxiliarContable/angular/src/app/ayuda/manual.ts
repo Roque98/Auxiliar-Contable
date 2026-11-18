@@ -173,6 +173,7 @@ export const SECCIONES: Seccion[] = [
         permisos: ['AuxiliarContable.Organizaciones'],
         pasos: [
           'Elige al cliente y el mes: ves todas sus operaciones, completas o no, con sus tres círculos (factura · transacción · control interno).',
+          '«Descarga del SAT e impuestos»: si el cliente no entregó nada, marca «El cliente no entregó nada». Baja la orden (meses, emitidas y/o recibidas), ábrela en el Descargador 1 con «Orden de la plataforma…» e inicia sesión en el SAT con el RFC del cliente: lee el estatus de todo y baja solo lo que falta o está dañado. Sube aquí el paquete .zip que deja y pulsa «Calcular ISR e IVA»: sale el pago provisional del mes con el papel de trabajo en Excel (las canceladas no cuentan).',
           '«Analizar con Claude»: lee los tickets, notas, comprobantes y fotos que subió el cliente; saca fecha, importe, folio, referencia y UUID, dice qué es para su giro y completa la operación.',
           '«Amarrar el banco» (después de conciliar en «Cierre del mes»): cada movimiento se vuelve operación y se amarra por UUID, luego por importe y fecha, y lo que quede con Claude.',
           'Lo que Claude propone con duda aparece en «Claude sugiere»: acéptalo con «Sí, júntalas» o descártalo.',
