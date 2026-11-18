@@ -236,6 +236,30 @@ public class MotorFiscalDePrueba : IMotorFiscal
 
     public (string? Pago, string? Actividad) PlataformasRecibidas { get; private set; }
 
+    /// <summary>Lo que recibió la última DIOT: RFC, periodo, archivos, cancelados y regímenes.</summary>
+    public (string Rfc, string Periodo, List<string> Facturas, IReadOnlyList<string> Cancelados, IReadOnlyList<string> Regimenes)? DiotRecibida { get; private set; }
+
+    public Task<DiotDelMotor> DiotAsync(
+        string rfc, string periodo, IReadOnlyList<ArchivoParaElMotor> facturas, IReadOnlyList<string> cancelados,
+        IReadOnlyList<string> regimenes, CancellationToken cancellationToken = default)
+    {
+        if (Caido)
+        {
+            throw new MotorFiscalNoDisponibleException("El motor fiscal no responde.");
+        }
+
+        DiotRecibida = (rfc, periodo, facturas.Select(f => f.Nombre).ToList(), cancelados, regimenes);
+        return Task.FromResult(new DiotDelMotor
+        {
+            Periodo = periodo,
+            Renglones = [new RenglonDeDiot { TipoTercero = "04", TipoOperacion = "85", TipoOperacionTexto = "Otros", Rfc = "PRO030303CCC", Valor16 = 1000, AcrExcl16 = 160, IvaAcreditable = 160, Cfdi = 1 }],
+            Totales = new TotalesDeDiot { Valor16 = 1000, AcrExcl16 = 160, IvaAcreditable = 160 },
+            Vencimiento = "2026-11-30",
+            Archivo = new ArchivoDelMotor { Nombre = "DIOT.txt", ContenidoB64 = "MDR8ODV8" },
+        });
+    }
+
+
     public Task<PagosProvisionales> PagosProvisionalesAsync(
         string rfc, IReadOnlyList<string> regimenes, string periodo, string? nombre, IReadOnlyList<ArchivoParaElMotor> facturas,
         IReadOnlyList<string> cancelados, decimal? coeficienteDeUtilidad, bool conExcel, string? plataformas = null,

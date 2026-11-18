@@ -92,26 +92,14 @@ public class CalculadoraDeImpuestos : ITransientDependency
             throw new UserFriendlyException("Falta el RFC del cliente en su perfil fiscal.");
         }
 
-        // El ejercicio hasta el mes y el anterior: un complemento de este año puede pagar una factura PPD del pasado.
-        var desde = new DateTime(anio - 1, 1, 1);
-        var hasta = new DateTime(anio, mes, 1).AddMonths(1);
-        var facturas = await _documentos.GetListAsync(d => d.OrganizacionId == organizacionId && d.Tipo == TipoDeDocumento.Cfdi
-            && ((d.FechaDelDocumento != null && d.FechaDelDocumento >= desde && d.FechaDelDocumento < hasta)
-                || (d.FechaDelDocumento == null && d.CreationTime >= desde && d.CreationTime < hasta)));
-        var buenas = facturas.Where(d => !d.XmlDanado).ToList();
-        var delEjercicio = buenas.Where(d => (d.FechaDelDocumento ?? d.CreationTime).Year == anio).ToList();
+        var (facturas, buenas) = await FacturasAsync(organizacionId, anio, mes);
+        var delEjercicio = buenas.Where(d => Fecha(d).Year == anio).ToList();
         if (delEjercicio.Count == 0)
         {
             throw new UserFriendlyException($"No hay facturas de {anio}: sube las del cliente o bájalas del SAT con el Descargador 1.");
         }
 
-        var archivos = new List<ArchivoParaElMotor>();
-        foreach (var d in buenas)
-        {
-            archivos.Add(new ArchivoParaElMotor($"{d.Uuid ?? d.Id.ToString()}.xml", await _almacen.LeerAsync(d)));
-        }
-
-        var canceladas = buenas.Where(d => d.Cancelada && d.Uuid != null).Select(d => d.Uuid!).ToList();
+        var (archivos, canceladas) = await ParaElMotorAsync(buenas);
         var resultado = await _motor.PagosProvisionalesAsync(
             perfil.Rfc, perfil.Regimenes, $"{anio:0000}-{mes:00}", perfil.Nombre, archivos, canceladas, perfil.Coeficiente, conExcel,
             perfil.Plataformas, perfil.ActividadDePlataformas);
@@ -129,6 +117,72 @@ public class CalculadoraDeImpuestos : ITransientDependency
         }
 
         return new Calculo(resultado, delEjercicio.Count, canceladas.Count, danadas, sinEstatus, perfil.Huella);
+    }
+
+    /// <summary>
+    /// La DIOT del mes (la del Armador, en el motor): por flujo de pagos, con lo que no entra y el archivo de carga masiva.
+    /// Lanza <see cref="UserFriendlyException"/> si falta el RFC o no hay facturas del mes, y
+    /// <see cref="MotorFiscalNoDisponibleException"/> si el motor no responde.
+    /// </summary>
+    public async Task<DiotDelMotor> DiotAsync(Guid organizacionId, int anio, int mes)
+    {
+        var perfil = await PerfilAsync(organizacionId);
+        if (perfil.Rfc == null)
+        {
+            throw new UserFriendlyException("Falta el RFC del cliente en su perfil fiscal.");
+        }
+
+        var (facturas, buenas) = await FacturasAsync(organizacionId, anio, mes);
+        bool DelMes(Documento d) => Fecha(d).Year == anio && Fecha(d).Month == mes;
+        var delMes = buenas.Where(DelMes).ToList();
+        if (delMes.Count == 0)
+        {
+            throw new UserFriendlyException($"No hay facturas de {mes:00}/{anio}: sube las del cliente o bájalas del SAT con el Descargador 1.");
+        }
+
+        var (archivos, canceladas) = await ParaElMotorAsync(buenas);
+        var resultado = await _motor.DiotAsync(perfil.Rfc, $"{anio:0000}-{mes:00}", archivos, canceladas, perfil.Regimenes);
+
+        var sinEstatus = delMes.Count(d => d.Uuid != null && d.EstatusSat == null);
+        if (sinEstatus > 0)
+        {
+            resultado.Avisos.Insert(0, $"{sinEstatus} facturas del mes no tienen su estatus del SAT: si alguna está cancelada, cuenta de más. Corre una orden del Descargador 1 para revisarlas.");
+        }
+
+        var danadas = facturas.Count(d => d.XmlDanado && DelMes(d));
+        if (danadas > 0)
+        {
+            resultado.Avisos.Insert(0, $"{danadas} XML del mes están dañados y no entran a la DIOT: bájalos otra vez con el Descargador 1.");
+        }
+
+        return resultado;
+    }
+
+    private static DateTime Fecha(Documento d) => d.FechaDelDocumento ?? d.CreationTime;
+
+    /// <summary>
+    /// Las facturas del ejercicio hasta el mes y las del anterior (un complemento de este año puede pagar una factura PPD
+    /// del pasado). -> (todas, las que tienen el XML bueno)
+    /// </summary>
+    private async Task<(List<Documento> Facturas, List<Documento> Buenas)> FacturasAsync(Guid organizacionId, int anio, int mes)
+    {
+        var desde = new DateTime(anio - 1, 1, 1);
+        var hasta = new DateTime(anio, mes, 1).AddMonths(1);
+        var facturas = await _documentos.GetListAsync(d => d.OrganizacionId == organizacionId && d.Tipo == TipoDeDocumento.Cfdi
+            && ((d.FechaDelDocumento != null && d.FechaDelDocumento >= desde && d.FechaDelDocumento < hasta)
+                || (d.FechaDelDocumento == null && d.CreationTime >= desde && d.CreationTime < hasta)));
+        return (facturas, facturas.Where(d => !d.XmlDanado).ToList());
+    }
+
+    private async Task<(List<ArchivoParaElMotor> Archivos, List<string> Canceladas)> ParaElMotorAsync(List<Documento> buenas)
+    {
+        var archivos = new List<ArchivoParaElMotor>();
+        foreach (var d in buenas)
+        {
+            archivos.Add(new ArchivoParaElMotor($"{d.Uuid ?? d.Id.ToString()}.xml", await _almacen.LeerAsync(d)));
+        }
+
+        return (archivos, buenas.Where(d => d.Cancelada && d.Uuid != null).Select(d => d.Uuid!).ToList());
     }
 
     /// <summary>La fila del mes (la crea si no existe). <paramref name="pedidoUtc"/> solo cuenta al crearla.</summary>

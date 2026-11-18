@@ -1,0 +1,139 @@
+<section class="ms-tarjeta" aria-labelledby="ms-diot" data-testid="diot">
+  <div class="ms-cabecera-fila">
+    <h2 id="ms-diot"><i class="bi bi-people" aria-hidden="true"></i> DIOT · <span class="ms-capital">{{ meses[mes() - 1] }}</span> {{ anio() }}</h2>
+    <button type="button" class="btn btn-primary ms-boton" (click)="armar()" [disabled]="armando()">
+      @if (armando()) { <span class="ig-girando" aria-hidden="true"></span> Armando… } @else { {{ diot() ? 'Volver a armar' : 'Armar la DIOT' }} }
+    </button>
+  </div>
+  <p class="ms-nota">
+    Con las facturas recibidas, por flujo de pagos (LIVA 5-III): las PUE en el mes de la factura y las PPD en el de cada complemento de pago.
+    Un renglón por proveedor y tipo de operación, como en la carga masiva del SAT.
+  </p>
+
+  @if (error(); as e) { <div class="ig-alerta ig-alerta-error" role="alert">{{ e }}</div> }
+
+  @if (diot(); as d) {
+    @let r = d.resultado;
+    @for (x of r.avisos; track $index) { <p class="ms-aviso">{{ x }}</p> }
+    <div class="ms-cifras">
+      <div class="ms-cifra-grande">
+        <span>Proveedores</span>
+        <strong>{{ r.renglones.length }}</strong>
+        <small>{{ r.excluidos.length }} CFDI del mes no entran</small>
+      </div>
+      <div class="ms-cifra-grande">
+        <span>Valor pagado al 16 %</span>
+        <strong>{{ r.totales.valor16 | currency: 'MXN' : 'symbol-narrow' : '1.0-0' }}</strong>
+        @if (ocho(r.totales)) { <small>al 8 % {{ ocho(r.totales) | currency: 'MXN' : 'symbol-narrow' : '1.0-0' }}</small> }
+      </div>
+      <div class="ms-cifra-grande">
+        <span>IVA acreditable</span>
+        <strong>{{ r.totales.ivaAcreditable | currency: 'MXN' : 'symbol-narrow' : '1.0-0' }}</strong>
+        @if (noAcreditable(r.totales)) { <small>no acreditable {{ noAcreditable(r.totales) | currency: 'MXN' : 'symbol-narrow' : '1.0-0' }}</small> }
+      </div>
+    </div>
+    <p class="ms-resultado">
+      Se presenta a más tardar el {{ r.vencimiento }} (regla 4.5.1 RMF).
+      @if (r.proporcion !== null) { · IVA acreditable en proporción: {{ r.proporcion | percent: '1.0-2' }} (LIVA 5-V) }
+    </p>
+    @if (r.archivo; as a) {
+      <div class="ms-acciones">
+        <button type="button" class="btn btn-outline-primary ms-boton" (click)="descargar(d)">
+          <i class="bi bi-file-earmark-text" aria-hidden="true"></i> Archivo de carga masiva · {{ a.nombre }}
+        </button>
+      </div>
+    }
+
+    @if (r.renglones.length) {
+      <div class="ms-tabla-caja">
+        <table class="ms-tabla">
+          <thead>
+            <tr>
+              <th scope="col">Proveedor</th><th scope="col">Operación</th><th scope="col" class="ms-num">CFDI</th>
+              <th scope="col" class="ms-num">Valor 16 %</th><th scope="col" class="ms-num">Valor 8 %</th>
+              <th scope="col" class="ms-num">0 %</th><th scope="col" class="ms-num">Exento</th>
+              <th scope="col" class="ms-num">IVA acreditable</th><th scope="col" class="ms-num">No acreditable</th>
+              <th scope="col" class="ms-num">IVA retenido</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (p of r.renglones; track clave(p)) {
+              <tr>
+                <td>
+                  <button type="button" class="btn btn-link ms-cuenta" (click)="alternar(p)" [attr.aria-expanded]="abierto() === clave(p)">
+                    <strong>{{ p.rfc }}</strong> {{ p.nombre }}
+                  </button>
+                </td>
+                <td>{{ p.tipoOperacion }} {{ p.tipoOperacionTexto }}</td>
+                <td class="ms-num">{{ p.cfdi }}</td>
+                <td class="ms-num">{{ p.valor16 | currency: 'MXN' : 'symbol-narrow' : '1.0-0' }}</td>
+                <td class="ms-num">{{ ocho(p) | currency: 'MXN' : 'symbol-narrow' : '1.0-0' }}</td>
+                <td class="ms-num">{{ p.tasa0 | currency: 'MXN' : 'symbol-narrow' : '1.0-0' }}</td>
+                <td class="ms-num">{{ p.exento | currency: 'MXN' : 'symbol-narrow' : '1.0-0' }}</td>
+                <td class="ms-num">{{ p.ivaAcreditable | currency: 'MXN' : 'symbol-narrow' : '1.0-0' }}</td>
+                <td class="ms-num">{{ noAcreditable(p) | currency: 'MXN' : 'symbol-narrow' : '1.0-0' }}</td>
+                <td class="ms-num">{{ p.retIva | currency: 'MXN' : 'symbol-narrow' : '1.0-0' }}</td>
+              </tr>
+              @if (abierto() === clave(p)) {
+                <tr class="ms-auxiliar-fila">
+                  <td colspan="10">
+                    @for (n of p.notas; track $index) { <p class="ms-aviso">{{ n }}</p> }
+                    <div class="ms-tabla-caja">
+                      <table class="ms-tabla ms-auxiliar">
+                        <caption>De dónde sale cada peso de {{ p.rfc }}</caption>
+                        <thead><tr><th scope="col">Fecha</th><th scope="col">CFDI</th><th scope="col">Cómo entra</th><th scope="col" class="ms-num">Valor</th><th scope="col" class="ms-num">IVA</th></tr></thead>
+                        <tbody>
+                          @for (a of p.detalle; track $index) {
+                            <tr>
+                              <td>{{ a.fecha }}</td>
+                              <td><code>{{ a.uuid }}</code> @if (a.factura !== a.uuid) { <span class="ms-nota">· paga {{ a.factura }}</span> }</td>
+                              <td>{{ a.como }} @if (a.noCumple) { <span class="ms-aviso">· IVA no acreditable: {{ a.noCumple }}</span> }</td>
+                              <td class="ms-num">{{ a.base | currency: 'MXN' : 'symbol-narrow' }}</td>
+                              <td class="ms-num">{{ a.iva | currency: 'MXN' : 'symbol-narrow' }}</td>
+                            </tr>
+                          }
+                        </tbody>
+                      </table>
+                    </div>
+                  </td>
+                </tr>
+              }
+            }
+            <tr class="ms-total">
+              <td colspan="3">Total</td>
+              <td class="ms-num">{{ r.totales.valor16 | currency: 'MXN' : 'symbol-narrow' : '1.0-0' }}</td>
+              <td class="ms-num">{{ ocho(r.totales) | currency: 'MXN' : 'symbol-narrow' : '1.0-0' }}</td>
+              <td class="ms-num">{{ r.totales.tasa0 | currency: 'MXN' : 'symbol-narrow' : '1.0-0' }}</td>
+              <td class="ms-num">{{ r.totales.exento | currency: 'MXN' : 'symbol-narrow' : '1.0-0' }}</td>
+              <td class="ms-num">{{ r.totales.ivaAcreditable | currency: 'MXN' : 'symbol-narrow' : '1.0-0' }}</td>
+              <td class="ms-num">{{ noAcreditable(r.totales) | currency: 'MXN' : 'symbol-narrow' : '1.0-0' }}</td>
+              <td class="ms-num">{{ r.totales.retIva | currency: 'MXN' : 'symbol-narrow' : '1.0-0' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    }
+
+    @if (r.excluidos.length) {
+      <details>
+        <summary class="ms-nota">Lo que no entra a la DIOT ({{ r.excluidos.length }})</summary>
+        <div class="ms-tabla-caja">
+          <table class="ms-tabla">
+            <thead><tr><th scope="col">Fecha</th><th scope="col">Proveedor</th><th scope="col" class="ms-num">Total</th><th scope="col">Por qué</th></tr></thead>
+            <tbody>
+              @for (x of r.excluidos; track $index) {
+                <tr>
+                  <td>{{ x.fecha }}</td>
+                  <td><strong>{{ x.rfc }}</strong> {{ x.nombre }}</td>
+                  <td class="ms-num">{{ x.total | currency: 'MXN' : 'symbol-narrow' }}</td>
+                  <td>{{ x.motivo }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </details>
+    }
+    @for (x of r.errores; track $index) { <p class="ms-aviso">{{ x.archivo }}: {{ x.error }}</p> }
+  }
+</section>

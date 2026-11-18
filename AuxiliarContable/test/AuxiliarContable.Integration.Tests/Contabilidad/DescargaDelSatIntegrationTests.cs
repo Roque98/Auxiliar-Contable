@@ -158,6 +158,20 @@ public class DescargaDelSatIntegrationTests : ConJerarquiaTestBase
         enviado.Cancelados.ShouldBe([Venta]);
         enviado.Facturas.Order().ShouldBe(new[] { $"{Compra}.xml", $"{Venta}.xml" }.Order());
 
+        // La DIOT: las mismas facturas al motor, la cancelada marcada; el cliente no la ve.
+        var diot = await ComoAsync(Administrador, () => _descarga.GetDiotAsync(_cliente, Dia.Year, Dia.Month));
+        diot.Resultado.Renglones.ShouldHaveSingleItem().IvaAcreditable.ShouldBe(160);
+        diot.Resultado.Archivo.ShouldNotBeNull();
+        var paraDiot = _motor.DiotRecibida.ShouldNotBeNull();
+        paraDiot.Periodo.ShouldBe($"{Dia:yyyy-MM}");
+        paraDiot.Cancelados.ShouldBe([Venta]);
+        paraDiot.Regimenes.ShouldBe([Regimen]);
+        paraDiot.Facturas.Count.ShouldBe(2);
+        await Should.ThrowAsync<AbpAuthorizationException>(() => ComoAsync(Usuario, () => _descarga.GetDiotAsync(_cliente, Dia.Year, Dia.Month)));
+        _motor.Caido = true;
+        await Should.ThrowAsync<UserFriendlyException>(() => ComoAsync(Administrador, () => _descarga.GetDiotAsync(_cliente, Dia.Year, Dia.Month)));
+        _motor.Caido = false;
+
         // Un paquete de otro RFC no entra en este cliente.
         await Should.ThrowAsync<UserFriendlyException>(() => ComoAsync(Administrador, () =>
             _descarga.SubirPaqueteAsync(_cliente, Paquete("BBB010101BBB", archivos, estatus))));
@@ -209,6 +223,8 @@ public class DescargaDelSatIntegrationTests : ConJerarquiaTestBase
         var e = await Should.ThrowAsync<UserFriendlyException>(() => ComoAsync(Administrador, () =>
             _descarga.CalcularImpuestosAsync(_cliente, Dia.Year, Dia.Month)));
         e.Message.ShouldContain("Descargador 1");
+        (await Should.ThrowAsync<UserFriendlyException>(() => ComoAsync(Administrador, () =>
+            _descarga.GetDiotAsync(_cliente, Dia.Year, Dia.Month)))).Message.ShouldContain("Descargador 1");
     }
 
     [Fact]

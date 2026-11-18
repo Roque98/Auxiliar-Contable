@@ -119,6 +119,54 @@ export interface ImpuestosAlDiaDto {
   delMes: MesDeImpuestosDto | null;
 }
 
+/** Importes de un renglón de la DIOT (enteros, como los pide el SAT). fn/fs: 8 % frontera norte y sur. */
+export interface TotalesDeDiotDto {
+  valor16: number;
+  devol16: number;
+  acrExcl16: number;
+  acrProp16: number;
+  noProp16: number;
+  noReq16: number;
+  valorFn: number;
+  acrExclFn: number;
+  acrPropFn: number;
+  valorFs: number;
+  acrExclFs: number;
+  acrPropFs: number;
+  tasa0: number;
+  exento: number;
+  noObjeto: number;
+  retIva: number;
+  ivaAcreditable: number;
+}
+
+export interface RenglonDeDiotDto extends TotalesDeDiotDto {
+  tipoTercero: string;
+  tipoOperacion: string;
+  tipoOperacionTexto: string;
+  rfc: string;
+  nombre: string;
+  cfdi: number;
+  notas: string[];
+  detalle: { uuid: string; factura: string; fecha: string; como: string; base: number; iva: number; noCumple?: string | null }[];
+}
+
+export interface DiotDto {
+  anio: number;
+  mes: number;
+  resultado: {
+    periodo: string;
+    renglones: RenglonDeDiotDto[];
+    totales: TotalesDeDiotDto;
+    excluidos: { uuid?: string | null; rfc?: string | null; nombre: string; fecha: string; tipo?: string | null; total: number; motivo: string }[];
+    avisos: string[];
+    proporcion: number | null;
+    vencimiento: string;
+    archivo: { nombre: string; contenidoB64: string } | null;
+    errores: { archivo: string; error: string }[];
+  };
+}
+
 export interface ImpuestosDelMesDto {
   anio: number;
   mes: number;
@@ -227,6 +275,12 @@ export class DescargaSatService {
   actualizarImpuestosAhora(organizacionId: string, anio: number, mes: number): Observable<ImpuestosAlDiaDto> {
     return this.rest.request<void, ImpuestosAlDiaDto>(
       { method: 'POST', url: `/api/app/impuestos-al-dia/actualizar-ahora/${organizacionId}`, params: { anio, mes } }, this.opciones);
+  }
+
+  /** DIOT del mes (`GetDiotAsync`): se arma en el momento con las facturas recibidas. */
+  diot(organizacionId: string, anio: number, mes: number): Observable<DiotDto> {
+    return this.rest.request<void, DiotDto>(
+      { method: 'GET', url: `${this.base}/diot/${organizacionId}`, params: { anio, mes } }, this.opciones);
   }
 
   calcularImpuestos(organizacionId: string, anio: number, mes: number): Observable<ImpuestosDelMesDto> {

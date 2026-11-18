@@ -41,6 +41,7 @@
 @if (mesa(); as m) {
   @if (clienteId(); as id) {
     <app-impuestos-al-dia [organizacionId]="id" [anio]="anio" [mes]="mes" />
+    <app-diot [organizacionId]="id" [anio]="anio" [mes]="mes" />
     <app-descarga-sat [organizacionId]="id" [anio]="anio" [mes]="mes" [puedeEditar]="m.operaciones.puedeEditar" />
   }
 
