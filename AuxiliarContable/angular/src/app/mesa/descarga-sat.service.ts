@@ -7,6 +7,7 @@ export interface FacturasDelSatDelMesDto {
   mes: number;
   facturas: number;
   canceladas: number;
+  enProceso: number;
   sinEstatus: number;
   danadas: number;
   sinEntregaDelCliente: boolean;
@@ -39,6 +40,7 @@ export interface ResultadoDelPaqueteDto {
   rechazadas: number;
   estatusPuestos: number;
   canceladas: number;
+  enProceso: number;
   sinXmlEnElSat: number;
   avisos: string[];
 }
@@ -132,6 +134,16 @@ export class DescargaSatService {
     return this.rest.request<void, OrdenDeDescargaDto>(
       { method: 'GET', url: `${this.base}/orden/${organizacionId}`, params: { desdeAnio, desdeMes, hastaAnio, hastaMes, emitidas, recibidas } },
       this.opciones);
+  }
+
+  ordenPorDias(organizacionId: string, desde: string, hasta: string, emitidas: boolean, recibidas: boolean): Observable<OrdenDeDescargaDto> {
+    return this.rest.request<void, OrdenDeDescargaDto>(
+      { method: 'GET', url: `${this.base}/orden-por-dias/${organizacionId}`, params: { desde, hasta, emitidas, recibidas } }, this.opciones);
+  }
+
+  ordenPorFolios(organizacionId: string, folios: string[], emitidas: boolean, recibidas: boolean): Observable<OrdenDeDescargaDto> {
+    return this.rest.request<{ folios: string[]; emitidas: boolean; recibidas: boolean }, OrdenDeDescargaDto>(
+      { method: 'POST', url: `${this.base}/crear-orden-por-folios/${organizacionId}`, body: { folios, emitidas, recibidas } }, this.opciones);
   }
 
   subirPaquete(organizacionId: string, archivo: File): Observable<ResultadoDelPaqueteDto> {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MAX_MESES_POR_ORDEN, haceCuanto, mesesDeLaOrden, textoDelPaquete } from './descarga';
+import { MAX_MESES_POR_ORDEN, diasDeLaOrden, foliosEn, haceCuanto, mesesDeLaOrden, textoDelPaquete } from './descarga';
 
 describe('orden del Descargador 1', () => {
   it('cuenta los meses de la orden, cruzando el año', () => {
@@ -14,15 +14,15 @@ describe('resultado del paquete', () => {
   it('dice lo nuevo, lo repetido, lo cambiado y lo cancelado', () => {
     const texto = textoDelPaquete({
       desde: '2026-01', hasta: '2026-03', nuevas: 12, repetidas: 3, reemplazadas: 1, enMesCerrado: 0, rechazadas: 0,
-      estatusPuestos: 15, canceladas: 2, sinXmlEnElSat: 0, avisos: [],
+      estatusPuestos: 15, canceladas: 2, enProceso: 1, sinXmlEnElSat: 0, avisos: [],
     });
-    expect(texto).toBe('12 facturas nuevas · 3 ya estaban · 1 XML dañado cambiado por el bueno · estatus del SAT en 15 · 2 canceladas (2026-01 a 2026-03).');
+    expect(texto).toBe('12 facturas nuevas · 3 ya estaban · 1 XML dañado cambiado por el bueno · estatus del SAT en 15 · 2 canceladas · 1 en proceso de cancelación (2026-01 a 2026-03).');
   });
 
   it('con un solo mes y sin nada extra', () => {
     const texto = textoDelPaquete({
       desde: '2026-02', hasta: '2026-02', nuevas: 1, repetidas: 0, reemplazadas: 0, enMesCerrado: 0, rechazadas: 0,
-      estatusPuestos: 1, canceladas: 0, sinXmlEnElSat: 0, avisos: [],
+      estatusPuestos: 1, canceladas: 0, enProceso: 0, sinXmlEnElSat: 0, avisos: [],
     });
     expect(texto).toBe('1 factura nueva · estatus del SAT en 1 (2026-02).');
   });
@@ -35,5 +35,20 @@ describe('cuándo se calculó', () => {
     expect(haceCuanto('2026-11-17T17:57:00Z', ahora)).toBe('hace 3 min');
     expect(haceCuanto('2026-11-17T15:00:00Z', ahora)).toBe('hace 3 h');
     expect(haceCuanto('2026-11-14T18:00:00Z', ahora)).toMatch(/^el /);
+  });
+});
+
+describe('orden por días y por folio', () => {
+  it('cuenta los días con los dos extremos', () => {
+    expect(diasDeLaOrden('2026-11-01', '2026-11-07')).toBe(7);
+    expect(diasDeLaOrden('2026-11-05', '2026-11-05')).toBe(1);
+    expect(diasDeLaOrden('2026-11-05', '2026-11-01')).toBeLessThan(1);
+    expect(diasDeLaOrden('', '2026-11-01')).toBeNull();
+  });
+
+  it('saca los UUID de lo pegado, sin repetir', () => {
+    const t = 'Factura 6f9619ff-8b86-d011-b42d-00c04fc964ff y la 6F9619FF-8B86-D011-B42D-00C04FC964FF; otra: 11111111-2222-3333-4444-555555555555, basura 1234';
+    expect(foliosEn(t)).toEqual(['6F9619FF-8B86-D011-B42D-00C04FC964FF', '11111111-2222-3333-4444-555555555555']);
+    expect(foliosEn('')).toEqual([]);
   });
 });

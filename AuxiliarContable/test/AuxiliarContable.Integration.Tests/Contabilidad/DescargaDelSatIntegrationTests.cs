@@ -210,4 +210,49 @@ public class DescargaDelSatIntegrationTests : ConJerarquiaTestBase
             _descarga.CalcularImpuestosAsync(_cliente, Dia.Year, Dia.Month)));
         e.Message.ShouldContain("Descargador 1");
     }
+
+    [Fact]
+    public async Task La_orden_se_pide_por_dias_o_por_folio_y_el_estatus_dice_en_proceso_de_cancelacion()
+    {
+        // Una factura que ya está, y el SAT dice que tiene una solicitud de cancelación pendiente.
+        var r = await ComoAsync(Administrador, () => _descarga.SubirPaqueteAsync(_cliente, Paquete(Rfc,
+            new Dictionary<string, string> { [$"xml/recibidas/{Compra}.xml"] = Xml(Compra, "AAA010101AAA", Rfc, 1160m) },
+            $"{Compra},recibidas,En proceso de cancelación,Cancelable con aceptación,,,,,,En proceso\n")));
+        r.EnProceso.ShouldBe(1);
+        r.Canceladas.ShouldBe(0);
+        var mes = (await ComoAsync(Administrador, () => _descarga.GetAsync(_cliente, Dia.Year, Dia.Month))).Meses.Last();
+        mes.EnProceso.ShouldBe(1);
+        mes.Canceladas.ShouldBe(0);
+
+        // Por días: el modo y los días van en la orden; «tengo» es lo de esos días.
+        var dias = await ComoAsync(Administrador, () => _descarga.GetOrdenPorDiasAsync(_cliente, Dia, Dia.AddDays(6), true, false));
+        dias.Tengo.ShouldBe(1);
+        dias.NombreDeArchivo.ShouldContain($"del {Dia:yyyy-MM-dd} al {Dia.AddDays(6):yyyy-MM-dd}");
+        using (var json = JsonDocument.Parse(dias.Contenido))
+        {
+            json.RootElement.GetProperty("modo").GetString().ShouldBe("dias");
+            json.RootElement.GetProperty("desde").GetString().ShouldBe($"{Dia:yyyy-MM-dd}");
+            json.RootElement.GetProperty("tipos").EnumerateArray().Select(t => t.GetString()).ShouldBe(["emitidas"]);
+        }
+
+        await Should.ThrowAsync<UserFriendlyException>(() => ComoAsync(Administrador, () =>
+            _descarga.GetOrdenPorDiasAsync(_cliente, Dia, Dia.AddDays(-1), true, true)));
+        await Should.ThrowAsync<UserFriendlyException>(() => ComoAsync(Administrador, () =>
+            _descarga.GetOrdenPorDiasAsync(_cliente, Dia.AddYears(-2), Dia, true, true)));
+
+        // Por folio: lo pegado puede traer texto alrededor; se quedan los UUID, sin repetir.
+        var folios = await ComoAsync(Administrador, () => _descarga.CrearOrdenPorFoliosAsync(_cliente, new OrdenPorFoliosDto
+        {
+            Folios = [$"Factura {Compra.ToLowerInvariant()}, otra: {Venta}", Compra],
+        }));
+        folios.Tengo.ShouldBe(1);
+        using (var json = JsonDocument.Parse(folios.Contenido))
+        {
+            json.RootElement.GetProperty("modo").GetString().ShouldBe("folios");
+            json.RootElement.GetProperty("folios").EnumerateArray().Select(t => t.GetString()).ShouldBe([Compra, Venta]);
+        }
+
+        await Should.ThrowAsync<UserFriendlyException>(() => ComoAsync(Administrador, () =>
+            _descarga.CrearOrdenPorFoliosAsync(_cliente, new OrdenPorFoliosDto { Folios = ["nada"] })));
+    }
 }

@@ -33,6 +33,11 @@ public partial class DescargaDelSatAppService : AuxiliarContableAppService, IDes
     /// <summary>Meses que abarca una orden: el portal busca mes por mes y la sesión del SAT caduca.</summary>
     public const int MaxMesesPorOrden = 24;
 
+    public const int MaxDiasPorOrden = 366;
+    public const int MaxFoliosPorOrden = 500;
+
+    public const string EnProcesoDeCancelacion = "En proceso de cancelación";
+
     /// <summary>Contra un .zip armado a mano: lo que se descomprime y cuántos archivos.</summary>
     private const long MaxBytesDescomprimidos = 400L * 1024 * 1024;
 
@@ -99,6 +104,7 @@ public partial class DescargaDelSatAppService : AuxiliarContableAppService, IDes
                     Mes = m,
                     Facturas = delMes.Count(d => !d.XmlDanado),
                     Canceladas = delMes.Count(d => d.Cancelada),
+                    EnProceso = delMes.Count(d => d.EstatusSat == EnProcesoDeCancelacion),
                     SinEstatus = delMes.Count(d => d.Uuid != null && d.EstatusSat == null),
                     Danadas = delMes.Count(d => d.XmlDanado),
                     SinEntregaDelCliente = sinEntrega.Contains(m),
@@ -145,6 +151,58 @@ public partial class DescargaDelSatAppService : AuxiliarContableAppService, IDes
             throw new UserFriendlyException($"Una orden abarca hasta {MaxMesesPorOrden} meses: pártela en dos.");
         }
 
+        var desdeTexto = $"{desdeAnio:0000}-{desdeMes:00}";
+        var hastaTexto = $"{hastaAnio:0000}-{hastaMes:00}";
+        return await OrdenAsync(organizacionId, "meses", desdeTexto, hastaTexto, desde, hasta, null, emitidas, recibidas,
+            desdeTexto == hastaTexto ? desdeTexto : $"{desdeTexto} a {hastaTexto}");
+    }
+
+    public async Task<OrdenDeDescargaDto> GetOrdenPorDiasAsync(Guid organizacionId, DateTime desde, DateTime hasta, bool emitidas, bool recibidas)
+    {
+        await ExigirEquipoAsync(organizacionId, AccionEnOrganizacion.Subir);
+        desde = desde.Date;
+        hasta = hasta.Date;
+        if (hasta < desde)
+        {
+            throw new UserFriendlyException("El día final es antes del inicial.");
+        }
+
+        if ((hasta - desde).TotalDays > MaxDiasPorOrden)
+        {
+            throw new UserFriendlyException($"Una orden por días abarca hasta {MaxDiasPorOrden} días: para más, pídela por meses.");
+        }
+
+        var desdeTexto = desde.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+        var hastaTexto = hasta.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+        return await OrdenAsync(organizacionId, "dias", desdeTexto, hastaTexto, desde, hasta.AddDays(1), null, emitidas, recibidas,
+            $"del {desdeTexto} al {hastaTexto}");
+    }
+
+    public async Task<OrdenDeDescargaDto> CrearOrdenPorFoliosAsync(Guid organizacionId, OrdenPorFoliosDto input)
+    {
+        await ExigirEquipoAsync(organizacionId, AccionEnOrganizacion.Subir);
+        var folios = Folios(input.Folios);
+        if (folios.Count == 0)
+        {
+            throw new UserFriendlyException("Escribe o pega al menos un folio fiscal (UUID).");
+        }
+
+        if (folios.Count > MaxFoliosPorOrden)
+        {
+            throw new UserFriendlyException($"Una orden por folio lleva hasta {MaxFoliosPorOrden} UUID: pártela en varias.");
+        }
+
+        return await OrdenAsync(organizacionId, "folios", null, null, null, null, folios, input.Emitidas, input.Recibidas,
+            $"{folios.Count} folios");
+    }
+
+    /// <summary>Los UUID de un texto pegado (separados por lo que sea), sin repetir, en mayúsculas.</summary>
+    public static List<string> Folios(IEnumerable<string>? textos) =>
+        (textos ?? []).SelectMany(t => UuidEnTexto().Matches(t ?? "").Select(m => m.Value.ToUpperInvariant())).Distinct().ToList();
+
+    private async Task<OrdenDeDescargaDto> OrdenAsync(Guid organizacionId, string modo, string? desdeTexto, string? hastaTexto,
+        DateTime? desde, DateTime? hasta, List<string>? folios, bool emitidas, bool recibidas, string descripcion)
+    {
         if (!emitidas && !recibidas)
         {
             throw new UserFriendlyException("Elige emitidas, recibidas o las dos.");
@@ -156,11 +214,19 @@ public partial class DescargaDelSatAppService : AuxiliarContableAppService, IDes
             throw new UserFriendlyException("Falta el RFC del cliente en su perfil fiscal.");
         }
 
-        var facturas = await FacturasAsync(organizacionId, desde, hasta);
+        List<Documento> facturas;
+        if (folios != null)
+        {
+            facturas = await _documentos.GetListAsync(d => d.OrganizacionId == organizacionId && d.Tipo == TipoDeDocumento.Cfdi
+                                                           && d.Uuid != null && folios.Contains(d.Uuid));
+        }
+        else
+        {
+            facturas = await FacturasAsync(organizacionId, desde!.Value, hasta!.Value);
+        }
+
         var tengo = facturas.Where(d => d.Uuid != null).Select(d => d.Uuid!).Distinct().Order(StringComparer.Ordinal).ToList();
         var danadas = facturas.Count(d => d.XmlDanado);
-        var desdeTexto = $"{desdeAnio:0000}-{desdeMes:00}";
-        var hastaTexto = $"{hastaAnio:0000}-{hastaMes:00}";
         var tipos = new List<string>();
         if (recibidas)
         {
@@ -175,19 +241,28 @@ public partial class DescargaDelSatAppService : AuxiliarContableAppService, IDes
         var orden = new Dictionary<string, object>
         {
             ["tipo"] = TipoDeOrden,
-            ["version"] = 1,
+            ["version"] = 2,
+            ["modo"] = modo,
             ["rfc"] = rfc,
-            ["desde"] = desdeTexto,
-            ["hasta"] = hastaTexto,
             ["tipos"] = tipos,
             ["tengo"] = tengo,
             ["danados"] = danadas,
             ["generada"] = Clock.Now.ToString("s", CultureInfo.InvariantCulture),
         };
+        if (desdeTexto != null)
+        {
+            orden["desde"] = desdeTexto;
+            orden["hasta"] = hastaTexto!;
+        }
+
+        if (folios != null)
+        {
+            orden["folios"] = folios;
+        }
 
         return new OrdenDeDescargaDto
         {
-            NombreDeArchivo = $"orden SAT {rfc} {desdeTexto} a {hastaTexto}.json",
+            NombreDeArchivo = $"orden SAT {rfc} {descripcion}.json",
             Contenido = JsonSerializer.Serialize(orden, JsonDeLaOrden),
             Tengo = tengo.Count,
             Danadas = danadas,
@@ -235,6 +310,10 @@ public partial class DescargaDelSatAppService : AuxiliarContableAppService, IDes
             }
 
             var r = new ResultadoDelPaqueteDto { Desde = resumen.Desde, Hasta = resumen.Hasta, SinXmlEnElSat = resumen.NoDisponibles };
+            if (resumen.NoEncontrados > 0)
+            {
+                r.Avisos.Add($"{resumen.NoEncontrados} folios no aparecieron en el portal con el RFC del cliente: revisa que sean suyos.");
+            }
             if (resumen.Danados > 0)
             {
                 r.Avisos.Add($"{resumen.Danados} XML llegaron dañados del portal: vuelve a correr la orden más tarde.");
@@ -408,6 +487,7 @@ public partial class DescargaDelSatAppService : AuxiliarContableAppService, IDes
             await _documentos.UpdateAsync(d);
             r.EstatusPuestos++;
             r.Canceladas += d.Cancelada ? 1 : 0;
+            r.EnProceso += d.EstatusSat == EnProcesoDeCancelacion ? 1 : 0;
         }
     }
 
@@ -433,7 +513,8 @@ public partial class DescargaDelSatAppService : AuxiliarContableAppService, IDes
                 raiz.TryGetProperty("desde", out var desde) ? desde.GetString() ?? "" : "",
                 raiz.TryGetProperty("hasta", out var hasta) ? hasta.GetString() ?? "" : "",
                 Cuantos(raiz, "danados"),
-                Cuantos(raiz, "no_disponibles"));
+                Cuantos(raiz, "no_disponibles"),
+                Cuantos(raiz, "no_encontrados"));
         }
         catch (Exception ex) when (ex is JsonException or KeyNotFoundException or InvalidOperationException)
         {
@@ -523,5 +604,8 @@ public partial class DescargaDelSatAppService : AuxiliarContableAppService, IDes
     [GeneratedRegex("^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$")]
     private static partial Regex UuidValido();
 
-    private sealed record ResumenDelPaquete(string Rfc, string Desde, string Hasta, int Danados, int NoDisponibles);
+    [GeneratedRegex("[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}")]
+    private static partial Regex UuidEnTexto();
+
+    private sealed record ResumenDelPaquete(string Rfc, string Desde, string Hasta, int Danados, int NoDisponibles, int NoEncontrados);
 }
