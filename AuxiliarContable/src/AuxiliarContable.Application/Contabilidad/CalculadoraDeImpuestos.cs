@@ -158,6 +158,44 @@ public class CalculadoraDeImpuestos : ITransientDependency
         return resultado;
     }
 
+    /// <summary>
+    /// La declaración anual del ejercicio con sus facturas y lo capturado. Lanza <see cref="UserFriendlyException"/> si
+    /// falta el RFC o no hay facturas del ejercicio, y <see cref="MotorFiscalNoDisponibleException"/> si el motor no responde.
+    /// </summary>
+    public async Task<AnualDelMotor> AnualAsync(Guid organizacionId, int anio, CapturaDeAnual captura)
+    {
+        var perfil = await PerfilAsync(organizacionId);
+        if (perfil.Rfc == null)
+        {
+            throw new UserFriendlyException("Falta el RFC del cliente en su perfil fiscal.");
+        }
+
+        var (facturas, buenas) = await FacturasAsync(organizacionId, anio, 12);
+        var delEjercicio = buenas.Where(d => Fecha(d).Year == anio).ToList();
+        if (delEjercicio.Count == 0)
+        {
+            throw new UserFriendlyException($"No hay facturas de {anio}: sube las del cliente o bájalas del SAT con el Descargador 1.");
+        }
+
+        var (archivos, canceladas) = await ParaElMotorAsync(buenas);
+        var resultado = await _motor.AnualAsync(perfil.Rfc, perfil.Regimenes, anio, archivos, canceladas, perfil.Coeficiente,
+            perfil.Plataformas, perfil.ActividadDePlataformas, captura.ParaElMotor());
+
+        var sinEstatus = delEjercicio.Count(d => d.Uuid != null && d.EstatusSat == null);
+        if (sinEstatus > 0)
+        {
+            resultado.Avisos.Insert(0, $"{sinEstatus} facturas del ejercicio no tienen su estatus del SAT: si alguna está cancelada, cuenta de más. Corre una orden del Descargador 1 para revisarlas.");
+        }
+
+        var danadas = facturas.Count(d => d.XmlDanado && Fecha(d).Year == anio);
+        if (danadas > 0)
+        {
+            resultado.Avisos.Insert(0, $"{danadas} XML del ejercicio están dañados y no entran a la anual: bájalos otra vez con el Descargador 1.");
+        }
+
+        return resultado;
+    }
+
     private static DateTime Fecha(Documento d) => d.FechaDelDocumento ?? d.CreationTime;
 
     /// <summary>

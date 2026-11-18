@@ -95,6 +95,15 @@ public interface IMotorFiscal
         string rfc, string periodo, IReadOnlyList<ArchivoParaElMotor> facturas, IReadOnlyList<string> cancelados,
         IReadOnlyList<string> regimenes, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Declaración anual de ISR del ejercicio <paramref name="anio"/> con los CFDI del ejercicio y del anterior;
+    /// <paramref name="captura"/>: lo que no viene en los CFDI (PTU, pérdidas, UMA, inventarios, sueldos, pagos).
+    /// </summary>
+    Task<AnualDelMotor> AnualAsync(
+        string rfc, IReadOnlyList<string> regimenes, int anio, IReadOnlyList<ArchivoParaElMotor> facturas,
+        IReadOnlyList<string> cancelados, decimal? coeficienteDeUtilidad, string? plataformas, string? actividadDePlataformas,
+        IReadOnlyDictionary<string, decimal> captura, CancellationToken cancellationToken = default);
+
     /// <summary>Movimientos del banco sin amarrar + operaciones sin pago -> parejas propuestas por Claude, con su porqué.</summary>
     Task<SugerenciasDeAmarre> SugerirAmarresAsync(
         IReadOnlyList<MovimientoParaAmarrar> movimientos, IReadOnlyList<CandidataParaAmarrar> candidatas, string? giro,
@@ -208,6 +217,12 @@ public class MotorFiscalSinConfigurar : IMotorFiscal, ISingletonDependency
         string rfc, IReadOnlyList<string> regimenes, string periodo, string? nombre, IReadOnlyList<ArchivoParaElMotor> facturas,
         IReadOnlyList<string> cancelados, decimal? coeficienteDeUtilidad, bool conExcel, string? plataformas = null,
         string? actividadDePlataformas = null, CancellationToken cancellationToken = default) =>
+        throw new MotorFiscalNoDisponibleException("No hay motor fiscal en este proceso.");
+
+    public Task<AnualDelMotor> AnualAsync(
+        string rfc, IReadOnlyList<string> regimenes, int anio, IReadOnlyList<ArchivoParaElMotor> facturas,
+        IReadOnlyList<string> cancelados, decimal? coeficienteDeUtilidad, string? plataformas, string? actividadDePlataformas,
+        IReadOnlyDictionary<string, decimal> captura, CancellationToken cancellationToken = default) =>
         throw new MotorFiscalNoDisponibleException("No hay motor fiscal en este proceso.");
 
     public Task<DiotDelMotor> DiotAsync(

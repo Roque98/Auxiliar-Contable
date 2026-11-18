@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -91,6 +92,23 @@ public class LecturaDelMotorTests
         var mes = p.Meses.ShouldHaveSingleItem();
         mes.RenglonesIsr.ShouldHaveSingleItem().Importe.ShouldBe(373.48m);
         mes.RenglonesIva.Single().Tipo.ShouldBe("tasa");
+    }
+
+    [Fact]
+    public async Task La_anual_se_lee_completa()
+    {
+        const string json = """
+            {"ejercicio": 2026, "tipo": "Persona moral, régimen general (art. 9 LISR)", "regimen": "601",
+             "renglones": [{"concepto": "(=) ISR a cargo", "importe": 36000.0, "fundamento": "", "tipo": "resultado"}],
+             "isr_del_ejercicio": 45000.0, "a_cargo": 36000.0, "a_favor": 0.0, "coeficiente_siguiente": 1.0,
+             "deducciones_personales": [{"uso": "D01", "concepto": "Honorarios médicos", "rfc": "PRO030303CCC", "nombre": "X",
+                                         "fecha": "2026-05-10", "importe": 1160.0, "uuid": "U", "efectivo": false}],
+             "avisos": ["a"], "supuestos": [], "vence": "2027-03-31", "captura": {}, "errores": []}
+            """;
+        var a = await Motor(json).AnualAsync("AAA010101AAA", [], 2026, [], [], null, null, null, new Dictionary<string, decimal>());
+        (a.IsrDelEjercicio, a.ACargo, a.AFavor, a.CoeficienteSiguiente, a.Vence).ShouldBe((45000m, 36000m, 0m, (decimal?)1.0m, "2027-03-31"));
+        a.Renglones.ShouldHaveSingleItem().Tipo.ShouldBe("resultado");
+        a.DeduccionesPersonales.ShouldHaveSingleItem().Importe.ShouldBe(1160);
     }
 
     private sealed class Respuesta(string json) : HttpMessageHandler

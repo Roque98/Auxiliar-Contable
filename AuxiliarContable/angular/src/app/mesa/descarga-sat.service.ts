@@ -119,6 +119,37 @@ export interface ImpuestosAlDiaDto {
   delMes: MesDeImpuestosDto | null;
 }
 
+/** Lo que la anual necesita y no viene en los CFDI; lo que no se captura va en null. */
+export interface CapturaDeAnualDto {
+  ptuPagada: number | null;
+  perdidasAnteriores: number | null;
+  umaAnual: number | null;
+  inventarioInicial: number | null;
+  inventarioFinal: number | null;
+  sueldosGravados: number | null;
+  isrRetenidoSueldos: number | null;
+  pagosProvisionales: number | null;
+}
+
+export interface AnualDto {
+  anio: number;
+  resultado: {
+    ejercicio: number;
+    tipo: string;
+    regimen: string | null;
+    renglones: RenglonDto[];
+    isrDelEjercicio: number;
+    aCargo: number;
+    aFavor: number;
+    coeficienteSiguiente: number | null;
+    deduccionesPersonales: { uso: string; concepto: string; rfc?: string | null; nombre: string; fecha: string; importe: number; uuid?: string | null; efectivo: boolean }[];
+    avisos: string[];
+    supuestos: string[];
+    vence: string;
+    errores: { archivo: string; error: string }[];
+  };
+}
+
 /** Importes de un renglón de la DIOT (enteros, como los pide el SAT). fn/fs: 8 % frontera norte y sur. */
 export interface TotalesDeDiotDto {
   valor16: number;
@@ -275,6 +306,12 @@ export class DescargaSatService {
   actualizarImpuestosAhora(organizacionId: string, anio: number, mes: number): Observable<ImpuestosAlDiaDto> {
     return this.rest.request<void, ImpuestosAlDiaDto>(
       { method: 'POST', url: `/api/app/impuestos-al-dia/actualizar-ahora/${organizacionId}`, params: { anio, mes } }, this.opciones);
+  }
+
+  /** Declaración anual del ejercicio (`CalcularAnualAsync`): se calcula en el momento con lo capturado. */
+  calcularAnual(organizacionId: string, anio: number, captura: CapturaDeAnualDto): Observable<AnualDto> {
+    return this.rest.request<CapturaDeAnualDto, AnualDto>(
+      { method: 'POST', url: `${this.base}/calcular-anual/${organizacionId}`, params: { anio }, body: captura }, this.opciones);
   }
 
   /** DIOT del mes (`GetDiotAsync`): se arma en el momento con las facturas recibidas. */
