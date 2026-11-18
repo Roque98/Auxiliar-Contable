@@ -19,7 +19,7 @@
     <div class="ms-tabla-caja">
       <table class="ms-tabla">
         <thead>
-          <tr><th>Mes</th><th class="ms-num">Facturas</th><th class="ms-num">Canceladas</th><th class="ms-num">Sin estatus del SAT</th><th class="ms-num">XML dañados</th></tr>
+          <tr><th>Mes</th><th class="ms-num">Facturas</th><th class="ms-num">Canceladas</th><th class="ms-num">En proceso de cancelación</th><th class="ms-num">Sin estatus del SAT</th><th class="ms-num">XML dañados</th></tr>
         </thead>
         <tbody>
           @for (f of e.meses; track f.mes) {
@@ -27,6 +27,7 @@
               <td class="ms-capital">{{ meses[f.mes - 1] }} @if (f.sinEntregaDelCliente) { <small class="ms-etiqueta">sin entrega</small> }</td>
               <td class="ms-num">{{ f.facturas }}</td>
               <td class="ms-num">{{ f.canceladas || '' }}</td>
+              <td class="ms-num">{{ f.enProceso || '' }}</td>
               <td class="ms-num">{{ f.sinEstatus || '' }}</td>
               <td class="ms-num">@if (f.danadas) { <strong>{{ f.danadas }}</strong> }</td>
             </tr>
@@ -47,32 +48,56 @@
     }
 
     <h3 class="ms-subtitulo">1. Orden para el Descargador 1</h3>
+    <div class="ms-filtros" role="radiogroup" aria-label="Cómo se piden las facturas">
+      @for (m of modos; track m.valor) {
+        <button type="button" class="ms-chip" role="radio" [attr.aria-checked]="modo === m.valor" [class.ms-chip-activo]="modo === m.valor"
+                (click)="modo = m.valor">{{ m.etiqueta }}</button>
+      }
+    </div>
     <div class="ms-cierre">
-      <label class="ms-campo"><span>Desde</span>
-        <select class="ig-control ms-capital" [(ngModel)]="desdeMes">@for (n of meses; track $index) { <option [ngValue]="$index + 1">{{ n }}</option> }</select>
-      </label>
-      <label class="ms-campo"><span>Año</span>
-        <select class="ig-control" [(ngModel)]="desdeAnio">@for (y of anios; track y) { <option [ngValue]="y">{{ y }}</option> }</select>
-      </label>
-      <label class="ms-campo"><span>Hasta</span>
-        <select class="ig-control ms-capital" [(ngModel)]="hastaMes">@for (n of meses; track $index) { <option [ngValue]="$index + 1">{{ n }}</option> }</select>
-      </label>
-      <label class="ms-campo"><span>Año</span>
-        <select class="ig-control" [(ngModel)]="hastaAnio">@for (y of anios; track y) { <option [ngValue]="y">{{ y }}</option> }</select>
-      </label>
+      @switch (modo) {
+        @case ('meses') {
+          <label class="ms-campo"><span>Desde</span>
+            <select class="ig-control ms-capital" [(ngModel)]="desdeMes">@for (n of meses; track $index) { <option [ngValue]="$index + 1">{{ n }}</option> }</select>
+          </label>
+          <label class="ms-campo"><span>Año</span>
+            <select class="ig-control" [(ngModel)]="desdeAnio">@for (y of anios; track y) { <option [ngValue]="y">{{ y }}</option> }</select>
+          </label>
+          <label class="ms-campo"><span>Hasta</span>
+            <select class="ig-control ms-capital" [(ngModel)]="hastaMes">@for (n of meses; track $index) { <option [ngValue]="$index + 1">{{ n }}</option> }</select>
+          </label>
+          <label class="ms-campo"><span>Año</span>
+            <select class="ig-control" [(ngModel)]="hastaAnio">@for (y of anios; track y) { <option [ngValue]="y">{{ y }}</option> }</select>
+          </label>
+        }
+        @case ('anio') {
+          <label class="ms-campo"><span>Año completo</span>
+            <select class="ig-control" [(ngModel)]="anioCompleto">@for (y of anios; track y) { <option [ngValue]="y">{{ y }}</option> }</select>
+          </label>
+        }
+        @case ('dias') {
+          <label class="ms-campo"><span>Del día</span><input type="date" class="ig-control" [(ngModel)]="desdeDia" /></label>
+          <label class="ms-campo"><span>Al día</span><input type="date" class="ig-control" [(ngModel)]="hastaDia" /></label>
+        }
+        @case ('folios') {
+          <label class="ms-campo ms-ancho">
+            <span>Folios fiscales (UUID): pégalos como vengan, uno o muchos</span>
+            <textarea class="ig-control" rows="4" [(ngModel)]="textoFolios" placeholder="6F9619FF-8B86-D011-B42D-00C04FC964FF"></textarea>
+          </label>
+          <p class="ms-nota">{{ foliosPegados.length }} folios reconocidos</p>
+        }
+      }
       <label class="ms-check"><input type="checkbox" [(ngModel)]="emitidas" /> <span>Emitidas</span></label>
       <label class="ms-check"><input type="checkbox" [(ngModel)]="recibidas" /> <span>Recibidas</span></label>
-      <button type="button" class="btn btn-primary ms-boton" (click)="bajarOrden()"
-              [disabled]="!!ocupado() || !e.tieneRfc || mesesPedidos < 1 || mesesPedidos > maxMeses || (!emitidas && !recibidas)">
+      <button type="button" class="btn btn-primary ms-boton" (click)="bajarOrden()" [disabled]="!!ocupado() || !e.tieneRfc || !!problemaDeLaOrden">
         @if (ocupado() === 'orden') { <span class="ig-girando" aria-hidden="true"></span> Armando… } @else { <i class="bi bi-download" aria-hidden="true"></i> Bajar la orden }
       </button>
     </div>
-    @if (mesesPedidos < 1) { <p class="ms-aviso">El mes final es antes del inicial.</p> }
-    @if (mesesPedidos > maxMeses) { <p class="ms-aviso">Una orden abarca hasta {{ maxMeses }} meses: pártela en dos.</p> }
+    @if (problemaDeLaOrden; as p) { <p class="ms-aviso">{{ p }}</p> }
     <p class="ms-nota">
       En la computadora del despacho abre el Descargador 1 → «Orden de la plataforma…» y elige este archivo. Se abre el SAT: inicia sesión con el
-      RFC del cliente. El robot lee el estatus (vigente o cancelada) de todo lo de esos meses y baja solo lo que aquí falta o está dañado;
-      si el cliente no entregó nada, baja todo.
+      RFC del cliente. El robot lee el estatus (vigente, cancelada o en proceso de cancelación) de todo lo pedido y baja solo lo que aquí falta o
+      está dañado; si el cliente no entregó nada, baja todo. Por folio sirve para revisar el estatus de facturas en particular.
     </p>
 
     <h3 class="ms-subtitulo">2. Subir el paquete</h3>

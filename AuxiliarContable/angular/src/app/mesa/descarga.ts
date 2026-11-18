@@ -5,8 +5,24 @@ export function mesesDeLaOrden(desdeAnio: number, desdeMes: number, hastaAnio: n
   return (hastaAnio - desdeAnio) * 12 + hastaMes - desdeMes + 1;
 }
 
-/** El tope que pone la plataforma (la sesión del SAT caduca si se piden demasiados meses). */
+/** Los topes que pone la plataforma (la sesión del SAT caduca si se pide demasiado de una vez). */
 export const MAX_MESES_POR_ORDEN = 24;
+export const MAX_DIAS_POR_ORDEN = 366;
+export const MAX_FOLIOS_POR_ORDEN = 500;
+
+/** Días de una orden por días, contando los dos extremos; null si falta una fecha. */
+export function diasDeLaOrden(desde: string, hasta: string): number | null {
+  if (!desde || !hasta) {
+    return null;
+  }
+  return Math.round((Date.parse(hasta + 'T00:00:00Z') - Date.parse(desde + 'T00:00:00Z')) / 86_400_000) + 1;
+}
+
+/** Los folios fiscales (UUID) de un texto pegado, en mayúsculas y sin repetir. */
+export function foliosEn(texto: string): string[] {
+  const encontrados = (texto ?? '').match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi) ?? [];
+  return [...new Set(encontrados.map(u => u.toUpperCase()))];
+}
 
 /** Lo que pasó al subir un paquete, en una frase. */
 export function textoDelPaquete(r: ResultadoDelPaqueteDto): string {
@@ -20,6 +36,9 @@ export function textoDelPaquete(r: ResultadoDelPaqueteDto): string {
   partes.push(`estatus del SAT en ${r.estatusPuestos}`);
   if (r.canceladas) {
     partes.push(`${r.canceladas} ${r.canceladas === 1 ? 'cancelada' : 'canceladas'}`);
+  }
+  if (r.enProceso) {
+    partes.push(`${r.enProceso} en proceso de cancelación`);
   }
   const periodo = r.desde && r.hasta ? (r.desde === r.hasta ? ` (${r.desde})` : ` (${r.desde} a ${r.hasta})`) : '';
   return partes.join(' · ') + periodo + '.';

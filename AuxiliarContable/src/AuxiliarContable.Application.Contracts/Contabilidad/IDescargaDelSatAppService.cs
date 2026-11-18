@@ -25,6 +25,12 @@ public interface IDescargaDelSatAppService : IApplicationService
     /// <summary>La orden (.json) para el Descargador 1: «Orden de la plataforma…» en su ventana o <c>--orden</c>.</summary>
     Task<OrdenDeDescargaDto> GetOrdenAsync(Guid organizacionId, int desdeAnio, int desdeMes, int hastaAnio, int hastaMes, bool emitidas, bool recibidas);
 
+    /// <summary>La orden por días (un día, una semana… hasta un año): emitidas de corrido; recibidas, día por día.</summary>
+    Task<OrdenDeDescargaDto> GetOrdenPorDiasAsync(Guid organizacionId, DateTime desde, DateTime hasta, bool emitidas, bool recibidas);
+
+    /// <summary>La orden por folio fiscal (UUID): para revisar su estatus o bajar unas facturas en particular.</summary>
+    Task<OrdenDeDescargaDto> CrearOrdenPorFoliosAsync(Guid organizacionId, OrdenPorFoliosDto input);
+
     /// <summary>El paquete (.zip) que dejó el Descargador 1.</summary>
     Task<ResultadoDelPaqueteDto> SubirPaqueteAsync(Guid organizacionId, IRemoteStreamContent paquete);
 
@@ -55,6 +61,9 @@ public class FacturasDelSatDelMesDto
     public int Facturas { get; set; }
     public int Canceladas { get; set; }
 
+    /// <summary>Vigentes con una solicitud de cancelación pendiente (el receptor aún no responde).</summary>
+    public int EnProceso { get; set; }
+
     /// <summary>Con UUID pero sin estatus del SAT todavía.</summary>
     public int SinEstatus { get; set; }
 
@@ -67,6 +76,15 @@ public class FacturaDanadaDto
     public Guid DocumentoId { get; set; }
     public string Nombre { get; set; } = "";
     public DateTime? Fecha { get; set; }
+}
+
+public class OrdenPorFoliosDto
+{
+    /// <summary>Lo que se pegó: cada texto puede traer uno o varios UUID, separados por lo que sea.</summary>
+    public List<string> Folios { get; set; } = [];
+
+    public bool Emitidas { get; set; } = true;
+    public bool Recibidas { get; set; } = true;
 }
 
 public class OrdenDeDescargaDto
@@ -101,6 +119,7 @@ public class ResultadoDelPaqueteDto
 
     public int EstatusPuestos { get; set; }
     public int Canceladas { get; set; }
+    public int EnProceso { get; set; }
 
     /// <summary>En el SAT, pero el portal no dio el XML (cancelados, o falla del portal).</summary>
     public int SinXmlEnElSat { get; set; }
