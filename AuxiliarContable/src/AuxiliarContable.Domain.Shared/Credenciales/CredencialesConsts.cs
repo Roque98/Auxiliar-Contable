@@ -15,6 +15,9 @@ public enum AccionSobreCredencial
     DescargarCer = 2,
     DescargarKey = 3,
     Borrar = 4,
+
+    /// <summary>La plataforma la usó para bajar las facturas del cliente con la Descarga Masiva del SAT.</summary>
+    UsarEnDescargaMasiva = 5,
 }
 
 public static class CredencialesConsts

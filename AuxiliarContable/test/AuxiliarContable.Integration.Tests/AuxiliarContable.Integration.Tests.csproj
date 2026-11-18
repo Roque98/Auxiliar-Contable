@@ -29,6 +29,8 @@
     <PackageReference Include="xunit" />
     <PackageReference Include="xunit.runner.visualstudio" />
     <PackageReference Include="Shouldly" />
+    <!-- Solo para comprobar, con la implementación estándar, las firmas XML de la Descarga Masiva del SAT. -->
+    <PackageReference Include="System.Security.Cryptography.Xml" />
   </ItemGroup>
 
 </Project>

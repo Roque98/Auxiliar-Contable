@@ -84,6 +84,7 @@ public class AuxiliarContablePostgreSqlTestModule : AbpModule
         context.Services.Replace(ServiceDescriptor.Singleton<AuxiliarContable.MotorFiscal.IMotorFiscal, MotorFiscalDePrueba>());
         // Ni el SAT: la verificación de CFDI contesta lo que programe cada test.
         context.Services.Replace(ServiceDescriptor.Singleton<AuxiliarContable.Documentos.IVerificadorDeCfdi, VerificadorDeCfdiDePrueba>());
+        context.Services.Replace(ServiceDescriptor.Singleton<AuxiliarContable.Contabilidad.IServicioDescargaMasiva, ServicioDescargaMasivaDePrueba>());
         context.Services.Configure<AbpDbConnectionOptions>(options =>
         {
             options.ConnectionStrings.Default = PostgresTestConsts.MainConnectionString;

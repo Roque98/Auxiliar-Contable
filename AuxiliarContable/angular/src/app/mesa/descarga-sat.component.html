@@ -8,7 +8,7 @@
     </label>
     @if (e.sinEntregaDelCliente) {
       <p class="ms-aviso">
-        Se trabaja solo con lo del SAT: baja la orden, córrela en el Descargador 1, sube el paquete que deja y calcula el impuesto.
+        Se trabaja solo con lo del SAT: pide la Descarga Masiva con la e.firma (o, de respaldo, la orden del Descargador 1) y el impuesto se calcula solo.
         Sin estados de cuenta, lo PUE se toma como cobrado o pagado al facturarse y lo PPD con sus complementos de pago.
       </p>
     }
@@ -59,7 +59,48 @@
       </details>
     }
 
-    <h3 class="ms-subtitulo">1. Orden para el Descargador 1</h3>
+    <h3 class="ms-subtitulo">Descarga Masiva con la e.firma del cliente</h3>
+    @if (masiva(); as dm) {
+      @if (!dm.disponible) {
+        <p class="ms-aviso">La descarga masiva no está encendida en este servidor: usa el Descargador 1.</p>
+      } @else if (dm.problema) {
+        <p class="ms-aviso">{{ dm.problema }} Mientras, usa el Descargador 1.</p>
+      } @else {
+        <div class="ms-cierre">
+          <label class="ms-check"><input type="checkbox" [(ngModel)]="masivaEmitidas" /> <span>Emitidas</span></label>
+          <label class="ms-check"><input type="checkbox" [(ngModel)]="masivaRecibidas" /> <span>Recibidas</span></label>
+          <button type="button" class="btn btn-primary ms-boton" (click)="solicitarMasiva()"
+                  [disabled]="!!ocupado() || !puedeEditar() || !e.tieneRfc || (!masivaEmitidas && !masivaRecibidas)">
+            @if (ocupado() === 'masiva') { <span class="ig-girando" aria-hidden="true"></span> Pidiendo al SAT… }
+            @else { <i class="bi bi-cloud-download" aria-hidden="true"></i> Pedir {{ meses[mes() - 1] }} {{ anio() }} al SAT }
+          </button>
+          @if (enProcesoMasiva) {
+            <button type="button" class="btn btn-outline-primary ms-boton" (click)="avanzarMasiva()" [disabled]="!!ocupado() || !puedeEditar()">
+              @if (ocupado() === 'avanzar') { <span class="ig-girando" aria-hidden="true"></span> Preguntando… } @else { <i class="bi bi-arrow-repeat" aria-hidden="true"></i> ¿Ya está? }
+            </button>
+          }
+        </div>
+      }
+      @if (dm.aviso) { <p class="ms-resultado">{{ dm.aviso }}</p> }
+      @if (dm.solicitudes.length) {
+        <ul class="ms-pendientes" data-testid="descarga-masiva">
+          @for (s of dm.solicitudes; track s.id) {
+            <li>
+              <span class="ms-capital">{{ meses[s.mes - 1] }} {{ s.anio }}</span> · {{ textoDeLaSolicitud(s) }}
+              <small class="ms-nota"> pedida {{ s.solicitadaUtc | date: 'd MMM, HH:mm' }}</small>
+            </li>
+          }
+        </ul>
+      }
+      <p class="ms-nota">
+        El servicio oficial del SAT con la e.firma guardada en Credenciales: sin captcha ni robot. El SAT arma los paquetes en minutos u horas y
+        la plataforma los baja sola; solo entra lo que falta (por UUID). Las recibidas canceladas el SAT no las entrega por aquí: su estatus lo da la
+        revisión de cada noche. Desde el día 3 de cada mes se pide sola la del mes anterior para el cliente que no mandó nada.
+        Cada uso de la e.firma queda en su bitácora.
+      </p>
+    }
+
+    <h3 class="ms-subtitulo">De respaldo: 1. Orden para el Descargador 1</h3>
     <div class="ms-filtros" role="radiogroup" aria-label="Cómo se piden las facturas">
       @for (m of modos; track m.valor) {
         <button type="button" class="ms-chip" role="radio" [attr.aria-checked]="modo === m.valor" [class.ms-chip-activo]="modo === m.valor"

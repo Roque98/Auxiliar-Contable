@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MAX_MESES_POR_ORDEN, diasDeLaOrden, textoDeLaRevision, foliosEn, haceCuanto, mesesDeLaOrden, textoDelPaquete } from './descarga';
+import { MAX_MESES_POR_ORDEN, diasDeLaOrden, textoDeLaRevision, foliosEn, haceCuanto, mesesDeLaOrden, textoDelPaquete, textoDeLaSolicitud } from './descarga';
 
 describe('orden del Descargador 1', () => {
   it('cuenta los meses de la orden, cruzando el año', () => {
@@ -62,5 +62,23 @@ describe('revisión de estatus', () => {
   });
   it('si el SAT no respondió', () => {
     expect(textoDeLaRevision({ ...base, fallaron: 5, satSinResponder: true })).toBe('El SAT no respondió: se vuelve a intentar esta noche.');
+  });
+});
+
+describe('descarga masiva', () => {
+  const base = {
+    id: 'x', anio: 2026, mes: 10, emitidas: true, desde: '2026-10-01T00:00:00', hasta: '2026-10-31T23:59:59', automatica: false,
+    numeroCfdis: 0, paquetes: 0, paquetesBajados: 0, nuevas: 0, repetidas: 0, rechazadas: 0, solicitadaUtc: '2026-11-03T12:00:00Z',
+  };
+
+  it('dice cómo va cada solicitud', () => {
+    expect(textoDeLaSolicitud({ ...base, estado: 'EnProceso' })).toBe('Emitidas: el SAT la está armando; se baja sola en cuanto esté.');
+    expect(textoDeLaSolicitud({ ...base, estado: 'EnProceso', paquetes: 3, paquetesBajados: 1, automatica: true }))
+      .toBe('Emitidas (sola, al cerrar el mes): bajando paquetes (1 de 3).');
+    expect(textoDeLaSolicitud({ ...base, emitidas: false, estado: 'Descargada', nuevas: 12, repetidas: 3 }))
+      .toBe('Recibidas: lista — 12 facturas nuevas · 3 ya estaban.');
+    expect(textoDeLaSolicitud({ ...base, estado: 'SinFacturas' })).toBe('Emitidas: el SAT no tiene facturas en ese rango.');
+    expect(textoDeLaSolicitud({ ...base, estado: 'Rechazada', mensaje: 'El SAT dice que el certificado no es válido.' }))
+      .toBe('Emitidas: no se pudo — El SAT dice que el certificado no es válido.');
   });
 });

@@ -126,6 +126,36 @@ export interface ImpuestosDelMesDto {
   resultado: PagosProvisionalesDto;
 }
 
+/** Una solicitud a la Descarga Masiva del SAT (servicio oficial con la e.firma del cliente). */
+export interface SolicitudDeDescargaMasivaDto {
+  id: string;
+  anio: number;
+  mes: number;
+  emitidas: boolean;
+  desde: string;
+  hasta: string;
+  automatica: boolean;
+  estado: 'EnProceso' | 'Descargada' | 'SinFacturas' | 'Rechazada';
+  mensaje?: string | null;
+  numeroCfdis: number;
+  paquetes: number;
+  paquetesBajados: number;
+  nuevas: number;
+  repetidas: number;
+  rechazadas: number;
+  solicitadaUtc: string;
+  revisadaUtc?: string | null;
+  terminadaUtc?: string | null;
+}
+
+export interface DescargaMasivaDto {
+  disponible: boolean;
+  problema?: string | null;
+  efirmaVigenteHastaUtc?: string | null;
+  aviso?: string | null;
+  solicitudes: SolicitudDeDescargaMasivaDto[];
+}
+
 /** `DescargaDelSatAppService` (`/api/app/descarga-del-sat`): facturas bajadas del SAT con el Descargador 1 e impuesto del mes. */
 @Injectable({ providedIn: 'root' })
 export class DescargaSatService {
@@ -168,6 +198,20 @@ export class DescargaSatService {
     datos.append('paquete', archivo, archivo.name);
     return this.rest.request<FormData, ResultadoDelPaqueteDto>(
       { method: 'POST', url: `${this.base}/subir-paquete/${organizacionId}`, body: datos }, this.opciones);
+  }
+
+  descargaMasiva(organizacionId: string): Observable<DescargaMasivaDto> {
+    return this.rest.request<void, DescargaMasivaDto>({ method: 'GET', url: `${this.base}/descarga-masiva/${organizacionId}` }, this.opciones);
+  }
+
+  solicitarDescargaMasiva(organizacionId: string, anio: number, mes: number, emitidas: boolean, recibidas: boolean): Observable<DescargaMasivaDto> {
+    return this.rest.request<{ anio: number; mes: number; emitidas: boolean; recibidas: boolean }, DescargaMasivaDto>(
+      { method: 'POST', url: `${this.base}/solicitar-descarga-masiva/${organizacionId}`, body: { anio, mes, emitidas, recibidas } }, this.opciones);
+  }
+
+  avanzarDescargaMasiva(organizacionId: string): Observable<DescargaMasivaDto> {
+    return this.rest.request<void, DescargaMasivaDto>(
+      { method: 'POST', url: `${this.base}/avanzar-descarga-masiva/${organizacionId}` }, this.opciones);
   }
 
   /** `ImpuestosAlDiaAppService`: el cálculo guardado del mes (se recalcula solo al entrar facturas). */

@@ -13,6 +13,7 @@ export enum AccionSobreCredencial {
   DescargarCer = 2,
   DescargarKey = 3,
   Borrar = 4,
+  UsarEnDescargaMasiva = 5,
 }
 
 export interface CredencialesDto {
@@ -112,4 +113,5 @@ export const NOMBRE_DE_ACCION: Record<AccionSobreCredencial, string> = {
   [AccionSobreCredencial.DescargarCer]: 'Descargó el .cer',
   [AccionSobreCredencial.DescargarKey]: 'Descargó el .key',
   [AccionSobreCredencial.Borrar]: 'Borró',
+  [AccionSobreCredencial.UsarEnDescargaMasiva]: 'La usó para la Descarga Masiva del SAT',
 };

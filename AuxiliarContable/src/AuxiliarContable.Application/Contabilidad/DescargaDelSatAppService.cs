@@ -9,6 +9,7 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using AuxiliarContable.Autorizacion;
+using AuxiliarContable.Credenciales;
 using AuxiliarContable.Documentos;
 using AuxiliarContable.Files;
 using AuxiliarContable.MotorFiscal;
@@ -38,46 +39,46 @@ public partial class DescargaDelSatAppService : AuxiliarContableAppService, IDes
 
     public const string EnProcesoDeCancelacion = "En proceso de cancelación";
 
-    /// <summary>Contra un .zip armado a mano: lo que se descomprime y cuántos archivos.</summary>
-    private const long MaxBytesDescomprimidos = 400L * 1024 * 1024;
-
-    private const int MaxArchivosEnElPaquete = 30000;
-    private const int MaxBytesPorXml = 5 * 1024 * 1024;
-
     private static readonly JsonSerializerOptions JsonDeLaOrden = new() { WriteIndented = true };
 
     private readonly IRepository<Documento, Guid> _documentos;
     private readonly IRepository<MesSinEntrega, Guid> _sinEntrega;
-    private readonly GestorDeDocumentos _gestor;
     private readonly AlmacenDeDocumentos _almacen;
     private readonly IPerfilFiscalAppService _perfiles;
     private readonly IMotorFiscal _motor;
-    private readonly GestorDePeriodos _periodos;
     private readonly Autorizador _autorizador;
     private readonly CalculadoraDeImpuestos _calculadora;
     private readonly RevisorDeEstatusSat _revisor;
+    private readonly ImportadorDeCfdi _importador;
+    private readonly DescargadorMasivo _masiva;
+    private readonly IRepository<SolicitudDeDescargaMasiva, Guid> _solicitudesMasivas;
+    private readonly IRepository<CredencialesDelCliente, Guid> _credenciales;
 
     public DescargaDelSatAppService(
         IRepository<Documento, Guid> documentos,
         IRepository<MesSinEntrega, Guid> sinEntrega,
-        GestorDeDocumentos gestor,
         AlmacenDeDocumentos almacen,
         IPerfilFiscalAppService perfiles,
         IMotorFiscal motor,
-        GestorDePeriodos periodos,
         Autorizador autorizador,
         CalculadoraDeImpuestos calculadora,
-        RevisorDeEstatusSat revisor)
+        RevisorDeEstatusSat revisor,
+        ImportadorDeCfdi importador,
+        DescargadorMasivo masiva,
+        IRepository<SolicitudDeDescargaMasiva, Guid> solicitudesMasivas,
+        IRepository<CredencialesDelCliente, Guid> credenciales)
     {
+        _solicitudesMasivas = solicitudesMasivas;
+        _credenciales = credenciales;
+        _importador = importador;
+        _masiva = masiva;
         _calculadora = calculadora;
         _revisor = revisor;
         _documentos = documentos;
         _sinEntrega = sinEntrega;
-        _gestor = gestor;
         _almacen = almacen;
         _perfiles = perfiles;
         _motor = motor;
-        _periodos = periodos;
         _autorizador = autorizador;
     }
 
@@ -319,11 +320,6 @@ public partial class DescargaDelSatAppService : AuxiliarContableAppService, IDes
 
         using (zip)
         {
-            if (zip.Entries.Count > MaxArchivosEnElPaquete)
-            {
-                throw new UserFriendlyException("El paquete trae demasiados archivos.");
-            }
-
             var resumen = LeerResumen(zip);
             if (!string.Equals(resumen.Rfc, rfc, StringComparison.OrdinalIgnoreCase))
             {
@@ -341,71 +337,12 @@ public partial class DescargaDelSatAppService : AuxiliarContableAppService, IDes
                 r.Avisos.Add($"{resumen.Danados} XML llegaron dañados del portal: vuelve a correr la orden más tarde.");
             }
 
-            var danadasDelCliente = await _documentos.GetListAsync(d => d.OrganizacionId == organizacionId && d.Tipo == TipoDeDocumento.Cfdi && d.XmlDanado);
-            long descomprimidos = 0;
-            foreach (var entrada in zip.Entries.Where(e => e.FullName.StartsWith("xml/", StringComparison.Ordinal)
-                                                          && e.FullName.EndsWith(".xml", StringComparison.OrdinalIgnoreCase)))
-            {
-                if (entrada.Length > MaxBytesPorXml)
-                {
-                    r.Rechazadas++;
-                    continue;
-                }
-
-                descomprimidos += entrada.Length;
-                if (descomprimidos > MaxBytesDescomprimidos)
-                {
-                    throw new UserFriendlyException("El paquete descomprimido es demasiado grande.");
-                }
-
-                var xml = await LeerAsync(entrada);
-                if (xml == null || xml.Length == 0)
-                {
-                    r.Rechazadas++;
-                    continue;
-                }
-
-                var datos = DatosDelCfdi.Leer(xml);
-                var uuid = datos?.Uuid;
-                var esDelCliente = datos != null && (string.Equals(datos.EmisorRfc, rfc, StringComparison.OrdinalIgnoreCase)
-                                                     || string.Equals(datos.ReceptorRfc, rfc, StringComparison.OrdinalIgnoreCase));
-                if (uuid is not { Length: DocumentoConsts.UuidLength } || !esDelCliente || FechaDelCfdi.Leer(xml) is not { } dia)
-                {
-                    r.Rechazadas++;
-                    continue;
-                }
-
-                if (await _documentos.AnyAsync(d => d.OrganizacionId == organizacionId && d.Uuid == uuid))
-                {
-                    r.Repetidas++;
-                    continue;
-                }
-
-                var fecha = FechaDelCfdi.ComoFecha(dia);
-                if (await _periodos.EstaCerradoAsync(organizacionId, fecha.Year, fecha.Month))
-                {
-                    r.EnMesCerrado++;
-                    continue;
-                }
-
-                var (documento, duplicado) = await _gestor.RecibirAsync(organizacionId, TipoDeDocumento.Cfdi, uuid + ".xml", xml,
-                    mime => mime == DetectorDeDocumento.Xml, fecha);
-                if (duplicado)
-                {
-                    r.Repetidas++;
-                    continue;
-                }
-
-                r.Nuevas++;
-                // El dañado que el cliente subió de esta misma factura (su nombre trae el UUID): ya sobra.
-                foreach (var danada in danadasDelCliente.Where(d => d.NombreOriginal.Contains(uuid, StringComparison.OrdinalIgnoreCase)).ToList())
-                {
-                    await _documentos.DeleteAsync(danada, autoSave: true);
-                    danadasDelCliente.Remove(danada);
-                    r.Reemplazadas++;
-                }
-            }
-
+            var c = await _importador.AgregarAsync(organizacionId, rfc, zip, e => e.FullName.StartsWith("xml/", StringComparison.Ordinal));
+            r.Nuevas = c.Nuevas;
+            r.Repetidas = c.Repetidas;
+            r.Rechazadas = c.Rechazadas;
+            r.EnMesCerrado = c.EnMesCerrado;
+            r.Reemplazadas = c.Reemplazadas;
             await PonerEstatusAsync(organizacionId, zip, r);
             if (r.EnMesCerrado > 0)
             {
@@ -422,9 +359,9 @@ public partial class DescargaDelSatAppService : AuxiliarContableAppService, IDes
                 r.Avisos.Add($"{r.SinXmlEnElSat} facturas están en el SAT pero el portal no dio su XML (casi siempre canceladas).");
             }
 
-            if (danadasDelCliente.Count > 0)
+            if (c.DanadasQueQuedan > 0)
             {
-                r.Avisos.Add($"Quedan {danadasDelCliente.Count} XML dañados que no se pudieron cambiar (su nombre no dice su UUID): revísalos y bórralos si ya llegó el bueno.");
+                r.Avisos.Add($"Quedan {c.DanadasQueQuedan} XML dañados que no se pudieron cambiar (su nombre no dice su UUID): revísalos y bórralos si ya llegó el bueno.");
             }
 
             return r;
@@ -460,6 +397,83 @@ public partial class DescargaDelSatAppService : AuxiliarContableAppService, IDes
             Danadas = c.Danadas,
             SinEstatus = c.SinEstatus,
             Resultado = c.Resultado,
+        };
+    }
+
+    public async Task<DescargaMasivaDto> GetDescargaMasivaAsync(Guid organizacionId)
+    {
+        await ExigirEquipoAsync(organizacionId, AccionEnOrganizacion.Ver);
+        return await DescargaMasivaAsync(organizacionId, null);
+    }
+
+    public async Task<DescargaMasivaDto> SolicitarDescargaMasivaAsync(Guid organizacionId, SolicitarDescargaMasivaDto input)
+    {
+        await ExigirEquipoAsync(organizacionId, AccionEnOrganizacion.Subir);
+        Validar(input.Anio, input.Mes);
+        if (!_masiva.EstaConfigurado)
+        {
+            throw new UserFriendlyException("La descarga masiva del SAT no está encendida en este servidor.");
+        }
+
+        try
+        {
+            await _masiva.PedirAsync(organizacionId, input.Anio, input.Mes, input.Emitidas, input.Recibidas, automatica: false);
+        }
+        catch (DescargaMasivaNoDisponibleException ex)
+        {
+            Logger.LogInformation("La descarga masiva del SAT no respondió: {Mensaje}", ex.Message);
+            throw new UserFriendlyException("El SAT no responde en este momento. Intenta de nuevo en unos minutos (o usa el Descargador 1).");
+        }
+
+        return await DescargaMasivaAsync(organizacionId, null);
+    }
+
+    public async Task<DescargaMasivaDto> AvanzarDescargaMasivaAsync(Guid organizacionId)
+    {
+        await ExigirEquipoAsync(organizacionId, AccionEnOrganizacion.Subir);
+        var v = await _masiva.AvanzarAsync(organizacionId);
+        var aviso = v.SatSinResponder ? "El SAT no respondió: se vuelve a intentar solo en unos minutos."
+            : v.Fallaron > 0 ? "No se pudo revisar: revisa la e.firma del cliente."
+            : v.Revisadas == 0 ? "No hay descargas en proceso."
+            : v.Nuevas > 0 ? $"Llegaron {v.Nuevas} facturas nuevas."
+            : null;
+        return await DescargaMasivaAsync(organizacionId, aviso);
+    }
+
+    private async Task<DescargaMasivaDto> DescargaMasivaAsync(Guid organizacionId, string? aviso)
+    {
+        var lista = (await _solicitudesMasivas.GetQueryableAsync())
+            .Where(s => s.OrganizacionId == organizacionId)
+            .OrderByDescending(s => s.SolicitadaUtc)
+            .Take(20)
+            .ToList();
+        return new DescargaMasivaDto
+        {
+            Disponible = _masiva.EstaConfigurado,
+            Problema = await _masiva.ProblemaConLaEfirmaAsync(organizacionId),
+            EfirmaVigenteHastaUtc = (await _credenciales.FirstOrDefaultAsync(c => c.OrganizacionId == organizacionId))?.VigenteHastaUtc,
+            Aviso = aviso,
+            Solicitudes = lista.Select(s => new SolicitudDeDescargaMasivaDto
+            {
+                Id = s.Id,
+                Anio = s.Anio,
+                Mes = s.Mes,
+                Emitidas = s.Emitidas,
+                Desde = s.Desde,
+                Hasta = s.Hasta,
+                Automatica = s.Automatica,
+                Estado = s.Estado.ToString(),
+                Mensaje = s.Mensaje,
+                NumeroCfdis = s.NumeroCfdis,
+                Paquetes = s.ListaDePaquetes.Count,
+                PaquetesBajados = s.PaquetesBajados,
+                Nuevas = s.Nuevas,
+                Repetidas = s.Repetidas,
+                Rechazadas = s.Rechazadas,
+                SolicitadaUtc = s.SolicitadaUtc,
+                RevisadaUtc = s.RevisadaUtc,
+                TerminadaUtc = s.TerminadaUtc,
+            }).ToList(),
         };
     }
 
@@ -542,26 +556,6 @@ public partial class DescargaDelSatAppService : AuxiliarContableAppService, IDes
         {
             throw new UserFriendlyException("El resumen del paquete está dañado: vuelve a correr la orden en el Descargador 1.");
         }
-    }
-
-    /// <summary>Con tope: el tamaño que declara el .zip puede mentir. Null si se pasa.</summary>
-    private static async Task<byte[]?> LeerAsync(ZipArchiveEntry entrada)
-    {
-        await using var flujo = entrada.Open();
-        using var memoria = new MemoryStream();
-        var bufer = new byte[81920];
-        int leidos;
-        while ((leidos = await flujo.ReadAsync(bufer)) > 0)
-        {
-            if (memoria.Length + leidos > MaxBytesPorXml)
-            {
-                return null;
-            }
-
-            memoria.Write(bufer, 0, leidos);
-        }
-
-        return memoria.ToArray();
     }
 
     /// <summary>Facturas (XML) del cliente de [desde, hasta): por la fecha del CFDI; las dañadas sin fecha, por cuándo se subieron.</summary>
