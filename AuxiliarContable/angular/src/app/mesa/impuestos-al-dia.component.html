@@ -3,8 +3,10 @@
     <h2 id="ms-al-dia"><i class="bi bi-calculator" aria-hidden="true"></i> Impuestos al día · <span class="ms-capital">{{ meses[mes() - 1] }}</span> {{ anio() }}</h2>
     @if (alDia(); as a) {
       <span class="ms-nota" aria-live="polite">
-        @if (a.actualizando) { <span class="ig-girando" aria-hidden="true"></span> Actualizando con lo nuevo… }
-        @else if (a.calculadoUtc) { Al día · calculado {{ haceCuanto(a.calculadoUtc) }} }
+        @if (a.actualizando) {
+          <span class="ig-girando" aria-hidden="true"></span> Entró algo nuevo · se actualiza @if (a.seActualizaUtc) { a las {{ hora(a.seActualizaUtc) }} }
+        } @else if (a.calculadoUtc) { Al día · calculado {{ haceCuanto(a.calculadoUtc) }} }
+        <button type="button" class="btn btn-link ms-rev-op" (click)="actualizarAhora()">Actualizar ahora</button>
       </span>
     }
   </div>

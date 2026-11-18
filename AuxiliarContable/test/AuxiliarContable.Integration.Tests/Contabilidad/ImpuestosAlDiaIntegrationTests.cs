@@ -84,9 +84,8 @@ public class ImpuestosAlDiaIntegrationTests : ConJerarquiaTestBase
         // Llega otra: el mes vuelve a quedar por actualizar; con la espera normal todavía no se toca (se juntan cambios).
         await SubirFacturaAsync("6F9619FF-8B86-D011-B42D-00C04FC96402");
         (await VerAsync()).Actualizando.ShouldBeTrue();
-        var llamadas = _motor.LlamadasDeProvisionales;
-        await _actualizador.ActualizarAsync();
-        _motor.LlamadasDeProvisionales.ShouldBe(llamadas);
+        await _actualizador.ActualizarAsync(maximo: 500);
+        (await VerAsync()).Actualizando.ShouldBeTrue();
 
         await _actualizador.ActualizarAsync(espera: TimeSpan.Zero);
         var dos = await VerAsync();
@@ -126,5 +125,27 @@ public class ImpuestosAlDiaIntegrationTests : ConJerarquiaTestBase
     {
         await Should.ThrowAsync<BusinessException>(() => PonerEnElPerfilAsync(CamposDelPerfil.CoeficienteDeUtilidad, "1.5"));
         await Should.ThrowAsync<BusinessException>(() => PonerEnElPerfilAsync(CamposDelPerfil.CoeficienteDeUtilidad, "mucho"));
+    }
+
+    [Fact]
+    public async Task Actualizar_ahora_y_la_vuelta_de_medianoche_no_esperan_los_diez_minutos()
+    {
+        await SubirFacturaAsync("6F9619FF-8B86-D011-B42D-00C04FC96404");
+        var pedido = await VerAsync();
+        pedido.SeActualizaUtc.ShouldNotBeNull();
+        (pedido.SeActualizaUtc!.Value - DateTime.UtcNow).ShouldBeGreaterThan(TimeSpan.FromMinutes(8));
+        await _actualizador.ActualizarAsync(maximo: 500);
+        (await VerAsync()).Actualizando.ShouldBeTrue();
+
+        // «Actualizar ahora»: entra en la siguiente vuelta.
+        await ComoAsync(Administrador, () => _alDia.ActualizarAhoraAsync(_cliente, Dia.Year, Dia.Month));
+        await _actualizador.ActualizarAsync(maximo: 500);
+        (await VerAsync()).Actualizando.ShouldBeFalse();
+
+        // Medianoche: el mes en curso se vuelve a pedir aunque no haya entrado nada.
+        (await _actualizador.PedirLaVueltaDeLaNocheAsync(DateTime.Now)).ShouldBeGreaterThan(0);
+        (await VerAsync()).Actualizando.ShouldBeTrue();
+        await _actualizador.ActualizarAsync(maximo: 500);
+        (await VerAsync()).Actualizando.ShouldBeFalse();
     }
 }

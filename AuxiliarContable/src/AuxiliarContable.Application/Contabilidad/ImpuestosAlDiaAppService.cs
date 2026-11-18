@@ -33,7 +33,11 @@ public class ImpuestosAlDiaAppService : AuxiliarContableAppService, IImpuestosAl
         _autorizador = autorizador;
     }
 
-    public async Task<ImpuestosAlDiaDto> GetAsync(Guid organizacionId, int anio, int mes)
+    public Task<ImpuestosAlDiaDto> GetAsync(Guid organizacionId, int anio, int mes) => VerAsync(organizacionId, anio, mes, ahora: false);
+
+    public Task<ImpuestosAlDiaDto> ActualizarAhoraAsync(Guid organizacionId, int anio, int mes) => VerAsync(organizacionId, anio, mes, ahora: true);
+
+    private async Task<ImpuestosAlDiaDto> VerAsync(Guid organizacionId, int anio, int mes, bool ahora)
     {
         await _autorizador.ExigirAsync(organizacionId, AccionEnOrganizacion.Ver);
         if (!(await _autorizador.QuienMiraAsync()).Equipo)
@@ -49,7 +53,7 @@ public class ImpuestosAlDiaAppService : AuxiliarContableAppService, IImpuestosAl
         // Un mes que nadie había pedido, o calculado con otro régimen o coeficiente: se pide sin esperar.
         var ya = Clock.Now.ToUniversalTime() - ActualizadorDeImpuestos.Espera;
         var fila = await _calculadora.FilaAsync(organizacionId, anio, mes, ya);
-        if (!fila.PorActualizar && fila.HuellaDelPerfil != (await _calculadora.PerfilAsync(organizacionId)).Huella)
+        if (ahora || (!fila.PorActualizar && fila.HuellaDelPerfil != (await _calculadora.PerfilAsync(organizacionId)).Huella))
         {
             fila.Pedir(ya);
             await _impuestos.UpdateAsync(fila, autoSave: true);
@@ -64,6 +68,7 @@ public class ImpuestosAlDiaAppService : AuxiliarContableAppService, IImpuestosAl
             Calculado = resultado != null,
             CalculadoUtc = fila.CalculadoUtc,
             Actualizando = fila.PorActualizar,
+            SeActualizaUtc = fila.PorActualizar ? fila.PedidoUtc + ActualizadorDeImpuestos.Espera : null,
             Error = fila.Error,
             Facturas = fila.Facturas,
             Canceladas = fila.Canceladas,

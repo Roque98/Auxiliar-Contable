@@ -12,6 +12,9 @@ namespace AuxiliarContable.Contabilidad;
 public interface IImpuestosAlDiaAppService : IApplicationService
 {
     Task<ImpuestosAlDiaDto> GetAsync(Guid organizacionId, int anio, int mes);
+
+    /// <summary>«Actualizar ahora»: se recalcula en la siguiente vuelta (menos de un minuto), sin esperar los 10 minutos.</summary>
+    Task<ImpuestosAlDiaDto> ActualizarAhoraAsync(Guid organizacionId, int anio, int mes);
 }
 
 public class ImpuestosAlDiaDto
@@ -24,8 +27,11 @@ public class ImpuestosAlDiaDto
 
     public DateTime? CalculadoUtc { get; set; }
 
-    /// <summary>Entró algo nuevo y se está recalculando (en menos de un minuto).</summary>
+    /// <summary>Entró algo nuevo: se recalcula 10 minutos después de lo último que entró (o ya, con «Actualizar ahora»).</summary>
     public bool Actualizando { get; set; }
+
+    /// <summary>Cuándo se va a recalcular, si está por actualizar.</summary>
+    public DateTime? SeActualizaUtc { get; set; }
 
     public string? Error { get; set; }
     public int Facturas { get; set; }

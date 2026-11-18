@@ -5,8 +5,8 @@ import { mensajeDeError } from '../invitaciones/invitaciones.service';
 import { descargarBase64, haceCuanto } from './descarga';
 import { DescargaSatService, ImpuestosAlDiaDto } from './descarga-sat.service';
 
-/** Cada cuánto se vuelve a preguntar mientras el servidor recalcula. */
-const REVISAR_CADA_MS = 15_000;
+/** Mientras está por actualizar, se vuelve a preguntar poco después de la hora en que toca (y nunca antes de esto). */
+const REVISAR_MINIMO_MS = 20_000;
 
 /**
  * Impuestos al día: el pago provisional de ISR e IVA del mes, que el servidor recalcula solo cada vez que entra una
@@ -59,11 +59,29 @@ export class ImpuestosAlDiaComponent {
         }
         this.alDia.set(r);
         if (r.actualizando) {
-          this.reloj = setTimeout(() => this.cargar(), REVISAR_CADA_MS);
+          const falta = r.seActualizaUtc ? new Date(r.seActualizaUtc).getTime() - Date.now() + 70_000 : 0;
+          this.reloj = setTimeout(() => this.cargar(), Math.max(REVISAR_MINIMO_MS, falta));
         }
       },
       error: e => this.error.set(mensajeDeError(e, 'No se pudo cargar el impuesto del mes.')),
     });
+  }
+
+  /** «Actualizar ahora»: el servidor lo recalcula en la siguiente vuelta (menos de un minuto). */
+  actualizarAhora(): void {
+    this.error.set(null);
+    this.api.actualizarImpuestosAhora(this.organizacionId(), this.anio(), this.mes()).subscribe({
+      next: r => {
+        this.alDia.set(r);
+        this.parar();
+        this.reloj = setTimeout(() => this.cargar(), REVISAR_MINIMO_MS);
+      },
+      error: e => this.error.set(mensajeDeError(e, 'No se pudo pedir la actualización.')),
+    });
+  }
+
+  hora(utc: string): string {
+    return new Date(utc).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
   }
 
   /** Lo calcula en este momento (con el papel de trabajo) y lo descarga. */
