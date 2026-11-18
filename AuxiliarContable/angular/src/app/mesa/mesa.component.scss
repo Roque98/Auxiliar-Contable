@@ -251,3 +251,9 @@ h2 {
 .ms-papel-titulo th { text-align: left; padding-top: 0.75rem; font-weight: var(--ig-peso-semi); }
 .ms-papel-resultado td { border-top: 2px solid currentColor; }
 .ms-papeles { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 26rem), 1fr)); }
+
+// Auxiliar (libro mayor) de una cuenta de la balanza
+.ms-cuenta { padding: 0; text-align: left; text-decoration: none; color: inherit; }
+.ms-cuenta:hover, .ms-cuenta:focus-visible { text-decoration: underline; }
+.ms-auxiliar-fila > td { padding-inline-start: 1.5rem; }
+.ms-auxiliar caption { caption-side: top; text-align: left; font-weight: var(--ig-peso-semi); padding-block: 0.25rem; }

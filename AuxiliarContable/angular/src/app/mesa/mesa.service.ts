@@ -1,3 +1,4 @@
+import { MovimientoDeAuxiliarDto, RenglonDeBalanzaDto } from './auxiliar';
 import { EstadosFinancierosDto } from './estados';
 import { RestService } from '@abp/ng.core';
 import { Injectable, inject } from '@angular/core';
@@ -113,12 +114,14 @@ export interface ContabilidadElectronicaDto {
   anio: number;
   mes: number;
   resultado: {
-    balanza: { cuenta: string; nombre: string; nivel: number; naturaleza: string; saldoInicial: number; debe: number; haber: number; saldoFinal: number }[];
+    balanza: RenglonDeBalanzaDto[];
     archivos: { nombre: string; tipo: string; contenidoB64: string; errores: string[] }[];
     vencimiento: string;
     avisos: string[];
     /** Null si el motor no los pudo armar (lo dice en avisos). */
     estados?: EstadosFinancierosDto | null;
+    /** Cargos y abonos del mes por cuenta: el auxiliar de cada una. */
+    movimientos?: MovimientoDeAuxiliarDto[];
   };
 }
 
