@@ -1,0 +1,83 @@
+<section class="ms-tarjeta" aria-labelledby="ms-anual" data-testid="anual">
+  <div class="ms-cabecera-fila">
+    <h2 id="ms-anual"><i class="bi bi-calendar-check" aria-hidden="true"></i> Declaración anual {{ anio() }}</h2>
+    <button type="button" class="btn btn-primary ms-boton" (click)="calcular()" [disabled]="calculando()">
+      @if (calculando()) { <span class="ig-girando" aria-hidden="true"></span> Calculando… } @else { {{ anual() ? 'Volver a calcular' : 'Calcular la anual' }} }
+    </button>
+  </div>
+  <p class="ms-nota">
+    ISR del ejercicio con las facturas del año: persona física (art. 152), RESICO (art. 113-F) o persona moral (art. 9), con los pagos provisionales
+    y las retenciones. Lo que no viene en las facturas se captura abajo.
+    <button type="button" class="btn btn-link ms-rev-op" (click)="verDatos.set(!verDatos())" [attr.aria-expanded]="verDatos()">
+      {{ verDatos() ? 'Ocultar' : 'Capturar' }} los datos que no vienen en las facturas
+    </button>
+  </p>
+
+  @if (verDatos()) {
+    <div class="ms-cierre">
+      @for (c of campos; track c.clave) {
+        <label class="ms-campo">
+          <span>{{ c.etiqueta }}</span>
+          <input class="ig-control" inputmode="decimal" [(ngModel)]="texto[c.clave]" [name]="c.clave" placeholder="—" />
+          <small class="ms-nota">{{ c.ayuda }}</small>
+        </label>
+      }
+    </div>
+  }
+
+  @if (error(); as e) { <div class="ig-alerta ig-alerta-error" role="alert">{{ e }}</div> }
+
+  @if (anual(); as a) {
+    @let r = a.resultado;
+    @for (x of r.avisos; track $index) { <p class="ms-aviso">{{ x }}</p> }
+    <div class="ms-cifras">
+      <div class="ms-cifra-grande">
+        <span>ISR del ejercicio</span>
+        <strong>{{ r.isrDelEjercicio | currency: 'MXN' : 'symbol-narrow' }}</strong>
+        <small>{{ r.tipo }}</small>
+      </div>
+      <div class="ms-cifra-grande">
+        <span>{{ r.aFavor ? 'Saldo a favor' : 'ISR a cargo' }}</span>
+        <strong>{{ (r.aFavor || r.aCargo) | currency: 'MXN' : 'symbol-narrow' }}</strong>
+        <small>se presenta a más tardar el {{ r.vence }}</small>
+      </div>
+      @if (r.coeficienteSiguiente !== null) {
+        <div class="ms-cifra-grande">
+          <span>Coeficiente de utilidad para {{ r.ejercicio + 1 }}</span>
+          <strong>{{ r.coeficienteSiguiente | number: '1.4-4' }}</strong>
+          <small>ponlo en el perfil fiscal en enero (art. 14-I)</small>
+        </div>
+      }
+    </div>
+    <app-renglones [titulo]="'Cálculo del ISR del ejercicio ' + r.ejercicio" [renglones]="r.renglones" />
+
+    @if (r.deduccionesPersonales.length) {
+      <details>
+        <summary class="ms-nota">Deducciones personales encontradas ({{ r.deduccionesPersonales.length }})</summary>
+        <div class="ms-tabla-caja">
+          <table class="ms-tabla">
+            <thead><tr><th scope="col">Fecha</th><th scope="col">Uso</th><th scope="col">Quién la emitió</th><th scope="col" class="ms-num">Pagado</th><th scope="col">Nota</th></tr></thead>
+            <tbody>
+              @for (p of r.deduccionesPersonales; track $index) {
+                <tr>
+                  <td>{{ p.fecha }}</td>
+                  <td>{{ p.uso }} {{ p.concepto }}</td>
+                  <td><strong>{{ p.rfc }}</strong> {{ p.nombre }}</td>
+                  <td class="ms-num">{{ p.importe | currency: 'MXN' : 'symbol-narrow' }}</td>
+                  <td class="ms-nota">@if (p.efectivo) { pagada en efectivo: no es deducible }</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </details>
+    }
+    @if (r.supuestos.length) {
+      <details>
+        <summary class="ms-nota">Qué supone el cálculo</summary>
+        <ul class="ms-pendientes">@for (x of r.supuestos; track $index) { <li>{{ x }}</li> }</ul>
+      </details>
+    }
+    @for (x of r.errores; track $index) { <p class="ms-aviso">{{ x.archivo }}: {{ x.error }}</p> }
+  }
+</section>

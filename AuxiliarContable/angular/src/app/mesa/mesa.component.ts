@@ -17,6 +17,7 @@ import { haceCuanto } from './descarga';
 import { DescargaSatComponent } from './descarga-sat.component';
 import { ImpuestosAlDiaComponent } from './impuestos-al-dia.component';
 import { DiotComponent } from './diot.component';
+import { AnualComponent } from './anual.component';
 import { RenglonesComponent } from './renglones.component';
 import { mesLargo, renglonesDeResultado, renglonesDeSituacion } from './estados';
 import { Auxiliar, RenglonDeBalanzaDto, auxiliarDe } from './auxiliar';
@@ -43,7 +44,7 @@ type Filtro = 'todas' | 'sin-factura' | 'sin-transaccion' | 'sin-control' | 'com
 @Component({
   selector: 'app-mesa',
   standalone: true,
-  imports: [FormsModule, CurrencyPipe, DatePipe, DecimalPipe, PercentPipe, RouterLink, PatasComponent, DescargaSatComponent, ImpuestosAlDiaComponent, DiotComponent, RenglonesComponent],
+  imports: [FormsModule, CurrencyPipe, DatePipe, DecimalPipe, PercentPipe, RouterLink, PatasComponent, DescargaSatComponent, ImpuestosAlDiaComponent, DiotComponent, AnualComponent, RenglonesComponent],
   templateUrl: './mesa.component.html',
   styleUrls: ['./mesa.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,

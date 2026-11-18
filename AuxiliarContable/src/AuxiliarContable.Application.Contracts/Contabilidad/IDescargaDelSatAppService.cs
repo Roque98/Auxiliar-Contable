@@ -50,6 +50,12 @@ public interface IDescargaDelSatAppService : IApplicationService
     Task<DiotDto> GetDiotAsync(Guid organizacionId, int anio, int mes);
 
     /// <summary>
+    /// Declaración anual de ISR del ejercicio con las facturas y lo que se captura (PTU, pérdidas, UMA, inventarios,
+    /// sueldos, pagos provisionales). Se calcula en el momento; no se guarda. Solo el equipo del despacho.
+    /// </summary>
+    Task<AnualDto> CalcularAnualAsync(Guid organizacionId, int anio, CapturaDeAnual captura);
+
+    /// <summary>
     /// La Descarga Masiva con la e.firma del cliente (servicio oficial del SAT, sin captcha ni robot): si se puede usar y
     /// las últimas solicitudes con su avance.
     /// </summary>
@@ -213,6 +219,12 @@ public class ResultadoDelPaqueteDto
     public int SinXmlEnElSat { get; set; }
 
     public List<string> Avisos { get; set; } = [];
+}
+
+public class AnualDto
+{
+    public int Anio { get; set; }
+    public AnualDelMotor Resultado { get; set; } = new();
 }
 
 public class DiotDto

@@ -172,6 +172,17 @@ public class DescargaDelSatIntegrationTests : ConJerarquiaTestBase
         await Should.ThrowAsync<UserFriendlyException>(() => ComoAsync(Administrador, () => _descarga.GetDiotAsync(_cliente, Dia.Year, Dia.Month)));
         _motor.Caido = false;
 
+        // La anual: las facturas del ejercicio y solo lo capturado; no se aceptan negativos; el cliente no la ve.
+        var anual = await ComoAsync(Administrador, () => _descarga.CalcularAnualAsync(_cliente, Dia.Year, new CapturaDeAnual { PtuPagada = 1000, UmaAnual = 41000 }));
+        anual.Resultado.ACargo.ShouldBe(100);
+        var paraAnual = _motor.AnualRecibida.ShouldNotBeNull();
+        paraAnual.Anio.ShouldBe(Dia.Year);
+        paraAnual.Facturas.Count.ShouldBe(2);
+        paraAnual.Captura.ShouldBe(new Dictionary<string, decimal> { ["ptu_pagada"] = 1000, ["uma_anual"] = 41000 });
+        await Should.ThrowAsync<UserFriendlyException>(() => ComoAsync(Administrador, () =>
+            _descarga.CalcularAnualAsync(_cliente, Dia.Year, new CapturaDeAnual { PerdidasAnteriores = -1 })));
+        await Should.ThrowAsync<AbpAuthorizationException>(() => ComoAsync(Usuario, () => _descarga.CalcularAnualAsync(_cliente, Dia.Year, new CapturaDeAnual())));
+
         // Un paquete de otro RFC no entra en este cliente.
         await Should.ThrowAsync<UserFriendlyException>(() => ComoAsync(Administrador, () =>
             _descarga.SubirPaqueteAsync(_cliente, Paquete("BBB010101BBB", archivos, estatus))));

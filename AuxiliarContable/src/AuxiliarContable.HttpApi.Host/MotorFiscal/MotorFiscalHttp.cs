@@ -195,6 +195,24 @@ public class MotorFiscalHttp : IMotorFiscal, ITransientDependency
         return await EnviarAsync<ContabilidadElectronica>(peticion, tope.Token, cancellationToken);
     }
 
+    public async Task<AnualDelMotor> AnualAsync(
+        string rfc, IReadOnlyList<string> regimenes, int anio, IReadOnlyList<ArchivoParaElMotor> facturas,
+        IReadOnlyList<string> cancelados, decimal? coeficienteDeUtilidad, string? plataformas, string? actividadDePlataformas,
+        IReadOnlyDictionary<string, decimal> captura, CancellationToken cancellationToken = default)
+    {
+        using var tope = CancelationConTope(_opciones.TimeoutDeBancosSegundos, cancellationToken);
+        var peticion = new HttpRequestMessage(HttpMethod.Post, "impuestos/anual")
+        {
+            Content = JsonContent.Create(
+                new
+                {
+                    rfc, regimenes, anio, cfdis = facturas.Select(Base64), cancelados, coeficiente = coeficienteDeUtilidad,
+                    plataformas, actividad_plataformas = actividadDePlataformas, captura,
+                }, options: Json),
+        };
+        return await EnviarAsync<AnualDelMotor>(peticion, tope.Token, cancellationToken);
+    }
+
     public async Task<DiotDelMotor> DiotAsync(
         string rfc, string periodo, IReadOnlyList<ArchivoParaElMotor> facturas, IReadOnlyList<string> cancelados,
         IReadOnlyList<string> regimenes, CancellationToken cancellationToken = default)

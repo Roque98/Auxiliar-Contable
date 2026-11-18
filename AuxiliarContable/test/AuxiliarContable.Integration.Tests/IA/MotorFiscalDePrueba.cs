@@ -236,6 +236,31 @@ public class MotorFiscalDePrueba : IMotorFiscal
 
     public (string? Pago, string? Actividad) PlataformasRecibidas { get; private set; }
 
+    /// <summary>Lo que recibió la última anual: ejercicio, archivos y lo capturado.</summary>
+    public (int Anio, List<string> Facturas, IReadOnlyDictionary<string, decimal> Captura)? AnualRecibida { get; private set; }
+
+    public Task<AnualDelMotor> AnualAsync(
+        string rfc, IReadOnlyList<string> regimenes, int anio, IReadOnlyList<ArchivoParaElMotor> facturas,
+        IReadOnlyList<string> cancelados, decimal? coeficienteDeUtilidad, string? plataformas, string? actividadDePlataformas,
+        IReadOnlyDictionary<string, decimal> captura, CancellationToken cancellationToken = default)
+    {
+        if (Caido)
+        {
+            throw new MotorFiscalNoDisponibleException("El motor fiscal no responde.");
+        }
+
+        AnualRecibida = (anio, facturas.Select(f => f.Nombre).ToList(), captura);
+        return Task.FromResult(new AnualDelMotor
+        {
+            Ejercicio = anio,
+            Tipo = "Persona física (art. 152 LISR)",
+            Renglones = [new RenglonDelPapel { Concepto = "(=) ISR a cargo", Importe = 100, Tipo = "resultado" }],
+            IsrDelEjercicio = 100,
+            ACargo = 100,
+            Vence = $"{anio + 1}-04-30",
+        });
+    }
+
     /// <summary>Lo que recibió la última DIOT: RFC, periodo, archivos, cancelados y regímenes.</summary>
     public (string Rfc, string Periodo, List<string> Facturas, IReadOnlyList<string> Cancelados, IReadOnlyList<string> Regimenes)? DiotRecibida { get; private set; }
 

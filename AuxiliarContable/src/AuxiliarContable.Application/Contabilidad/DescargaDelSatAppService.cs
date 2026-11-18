@@ -368,6 +368,30 @@ public partial class DescargaDelSatAppService : AuxiliarContableAppService, IDes
         }
     }
 
+    public async Task<AnualDto> CalcularAnualAsync(Guid organizacionId, int anio, CapturaDeAnual captura)
+    {
+        await ExigirEquipoAsync(organizacionId, AccionEnOrganizacion.Ver);
+        Validar(anio, 12);
+        captura ??= new CapturaDeAnual();
+        foreach (var (clave, valor) in captura.ParaElMotor())
+        {
+            if (valor < 0 || valor > 100_000_000_000m)
+            {
+                throw new UserFriendlyException($"«{clave.Replace('_', ' ')}» no puede ser negativo ni tan grande.");
+            }
+        }
+
+        try
+        {
+            return new AnualDto { Anio = anio, Resultado = await _calculadora.AnualAsync(organizacionId, anio, captura) };
+        }
+        catch (MotorFiscalNoDisponibleException ex)
+        {
+            Logger.LogWarning(ex, "El motor no pudo calcular la anual");
+            throw new UserFriendlyException("El motor fiscal no está disponible en este momento. Intenta de nuevo en unos minutos.");
+        }
+    }
+
     public async Task<DiotDto> GetDiotAsync(Guid organizacionId, int anio, int mes)
     {
         await ExigirEquipoAsync(organizacionId, AccionEnOrganizacion.Ver);
