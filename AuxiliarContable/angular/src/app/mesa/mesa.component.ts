@@ -1,4 +1,4 @@
-import { CurrencyPipe, DatePipe } from '@angular/common';
+import { CurrencyPipe, DatePipe, DecimalPipe, PercentPipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -16,6 +16,8 @@ import { leerSaldos } from './saldos';
 import { haceCuanto } from './descarga';
 import { DescargaSatComponent } from './descarga-sat.component';
 import { ImpuestosAlDiaComponent } from './impuestos-al-dia.component';
+import { RenglonesComponent } from './renglones.component';
+import { mesLargo, renglonesDeResultado, renglonesDeSituacion } from './estados';
 import { ClienteVisibleDto, PerfilFiscalService } from '../perfil-fiscal/perfil-fiscal.service';
 import {
   ContabilidadAlDiaDto,
@@ -39,7 +41,7 @@ type Filtro = 'todas' | 'sin-factura' | 'sin-transaccion' | 'sin-control' | 'com
 @Component({
   selector: 'app-mesa',
   standalone: true,
-  imports: [FormsModule, CurrencyPipe, DatePipe, RouterLink, PatasComponent, DescargaSatComponent, ImpuestosAlDiaComponent],
+  imports: [FormsModule, CurrencyPipe, DatePipe, DecimalPipe, PercentPipe, RouterLink, PatasComponent, DescargaSatComponent, ImpuestosAlDiaComponent, RenglonesComponent],
   templateUrl: './mesa.component.html',
   styleUrls: ['./mesa.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -91,6 +93,9 @@ export class MesaComponent implements OnInit {
   anioApertura = new Date().getFullYear();
   mesApertura = 1;
   readonly electronica = signal<ContabilidadElectronicaDto | null>(null);
+  readonly renglonesDeResultado = renglonesDeResultado;
+  readonly renglonesDeSituacion = renglonesDeSituacion;
+  readonly mesLargo = mesLargo;
   readonly generandoXml = signal(false);
   /** Lo que se pegó en el editor de apertura, ya leído. */
   get aperturaLeida(): { saldos: SaldoDeAperturaDto[]; deudores: number; acreedores: number; malos: number } {
