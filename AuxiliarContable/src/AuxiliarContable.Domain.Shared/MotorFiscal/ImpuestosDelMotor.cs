@@ -14,6 +14,9 @@ public class PagosProvisionales
 
     public List<string> Avisos { get; set; } = [];
 
+    /// <summary>Lo que el cálculo da por hecho (PTU y pérdidas en cero, pagos anteriores = los calculados…).</summary>
+    public List<string> Supuestos { get; set; } = [];
+
     public List<ErrorDeArchivo> Errores { get; set; } = [];
 
     /// <summary>El papel de trabajo (.xlsx) en base64.</summary>
@@ -56,6 +59,27 @@ public class MesDeImpuestos
 
     public int CfdiEmitidos { get; set; }
     public int CfdiRecibidos { get; set; }
+
+    /// <summary>Artículo con el que se calculó (art. 106, 113-E, 14…); null si el régimen no hace pago propio.</summary>
+    public string? Metodo { get; set; }
+
+    public decimal? IngresosAcumulados { get; set; }
+    public decimal? DeduccionesAcumuladas { get; set; }
+    public decimal DeduccionesDelMes { get; set; }
+    public decimal? Base { get; set; }
+
+    /// <summary>Null si falta un dato para calcularlo (p. ej. el coeficiente de utilidad de una persona moral).</summary>
+    public decimal? IsrCausado { get; set; }
+
+    public decimal IsrRetenido { get; set; }
+    public decimal? IsrPagosAnteriores { get; set; }
+    public decimal? IsrAPagar { get; set; }
+    public decimal? IsrAFavor { get; set; }
+    public decimal IvaAcreditable { get; set; }
+    public decimal IvaResultado { get; set; }
+    public decimal IvaSaldoAnterior { get; set; }
+    public decimal IvaAPagar { get; set; }
+    public decimal IvaSaldoAFavor { get; set; }
 }
 
 public class ArchivoDelMotor

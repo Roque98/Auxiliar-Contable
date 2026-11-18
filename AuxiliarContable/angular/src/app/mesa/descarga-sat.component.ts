@@ -1,21 +1,21 @@
-import { CurrencyPipe, DatePipe } from '@angular/common';
+import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, effect, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MESES } from '../documentos/documentos.service';
 import { mensajeDeError } from '../invitaciones/invitaciones.service';
-import { MAX_MESES_POR_ORDEN, descargarBase64, descargarBlob, mesesDeLaOrden, textoDelPaquete } from './descarga';
-import { DescargaDelSatDto, DescargaSatService, ImpuestosDelMesDto, ResultadoDelPaqueteDto } from './descarga-sat.service';
+import { MAX_MESES_POR_ORDEN, descargarBlob, mesesDeLaOrden, textoDelPaquete } from './descarga';
+import { DescargaDelSatDto, DescargaSatService, ResultadoDelPaqueteDto } from './descarga-sat.service';
 
 /**
  * Descarga del SAT e impuestos, dentro de la mesa de trabajo. Si el cliente no entregó nada, se marca el mes y se
  * trabaja solo con lo del SAT: (1) se baja la orden para el Descargador 1, que en la computadora del despacho entra al
  * portal (alguien inicia sesión con el captcha) y baja lo que falta, lo dañado y el estatus de todo; (2) se sube el
- * paquete que deja; (3) se calcula el ISR y el IVA del mes con esas facturas.
+ * paquete que deja; y el impuesto del mes se recalcula solo (ver «Impuestos al día»).
  */
 @Component({
   selector: 'app-descarga-sat',
   standalone: true,
-  imports: [FormsModule, CurrencyPipe, DatePipe],
+  imports: [FormsModule, DatePipe],
   templateUrl: './descarga-sat.component.html',
   styleUrls: ['./mesa.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -36,7 +36,6 @@ export class DescargaSatComponent {
   readonly error = signal<string | null>(null);
   readonly ocupado = signal<string | null>(null);
   readonly paquete = signal<ResultadoDelPaqueteDto | null>(null);
-  readonly impuestos = signal<ImpuestosDelMesDto | null>(null);
 
   desdeAnio = new Date().getFullYear();
   desdeMes = 1;
@@ -53,7 +52,6 @@ export class DescargaSatComponent {
       this.desdeAnio = this.hastaAnio = anio;
       this.desdeMes = this.hastaMes = mes;
       this.paquete.set(null);
-      this.impuestos.set(null);
       this.cargar(id, anio, mes);
     });
   }
@@ -115,7 +113,6 @@ export class DescargaSatComponent {
       next: r => {
         this.ocupado.set(null);
         this.paquete.set(r);
-        this.impuestos.set(null);
         this.cargar();
       },
       error: e => {
@@ -123,29 +120,5 @@ export class DescargaSatComponent {
         this.error.set(mensajeDeError(e, 'No se pudo subir el paquete.'));
       },
     });
-  }
-
-  calcular(): void {
-    this.ocupado.set('impuestos');
-    this.error.set(null);
-    this.api.calcularImpuestos(this.organizacionId(), this.anio(), this.mes()).subscribe({
-      next: r => {
-        this.ocupado.set(null);
-        this.impuestos.set(r);
-      },
-      error: e => {
-        this.ocupado.set(null);
-        this.error.set(mensajeDeError(e, 'No se pudo calcular el impuesto.'));
-      },
-    });
-  }
-
-  descargarPapel(a: { nombre: string; contenidoB64: string }): void {
-    descargarBase64(a.nombre, a.contenidoB64, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-  }
-
-  nombreDelMes(periodo: string): string {
-    const m = Number(periodo.slice(5, 7));
-    return this.meses[m - 1] ?? periodo;
   }
 }

@@ -82,7 +82,7 @@ public interface IMotorFiscal
     /// </summary>
     Task<PagosProvisionales> PagosProvisionalesAsync(
         string rfc, IReadOnlyList<string> regimenes, string periodo, string? nombre, IReadOnlyList<ArchivoParaElMotor> facturas,
-        IReadOnlyList<string> cancelados, CancellationToken cancellationToken = default);
+        IReadOnlyList<string> cancelados, decimal? coeficienteDeUtilidad, bool conExcel, CancellationToken cancellationToken = default);
 
     /// <summary>Movimientos del banco sin amarrar + operaciones sin pago -> parejas propuestas por Claude, con su porqué.</summary>
     Task<SugerenciasDeAmarre> SugerirAmarresAsync(
@@ -195,7 +195,7 @@ public class MotorFiscalSinConfigurar : IMotorFiscal, ISingletonDependency
 
     public Task<PagosProvisionales> PagosProvisionalesAsync(
         string rfc, IReadOnlyList<string> regimenes, string periodo, string? nombre, IReadOnlyList<ArchivoParaElMotor> facturas,
-        IReadOnlyList<string> cancelados, CancellationToken cancellationToken = default) =>
+        IReadOnlyList<string> cancelados, decimal? coeficienteDeUtilidad, bool conExcel, CancellationToken cancellationToken = default) =>
         throw new MotorFiscalNoDisponibleException("No hay motor fiscal en este proceso.");
 
     public Task<IReadOnlyList<SentenciaDelMotor>> BuscarSentenciasAsync(

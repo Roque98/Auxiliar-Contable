@@ -58,6 +58,46 @@ export interface MesDeImpuestosDto {
   ivaEstimado: number;
   cfdiEmitidos: number;
   cfdiRecibidos: number;
+  metodo: string | null;
+  ingresosAcumulados: number | null;
+  deduccionesAcumuladas: number | null;
+  deduccionesDelMes: number;
+  base: number | null;
+  isrCausado: number | null;
+  isrRetenido: number;
+  isrPagosAnteriores: number | null;
+  isrAPagar: number | null;
+  isrAFavor: number | null;
+  ivaAcreditable: number;
+  ivaResultado: number;
+  ivaSaldoAnterior: number;
+  ivaAPagar: number;
+  ivaSaldoAFavor: number;
+}
+
+export interface PagosProvisionalesDto {
+  regimen: { principal: string | null; claves: string[]; nombre: string | null; flujo: boolean; fuente: string | null };
+  meses: MesDeImpuestosDto[];
+  avisos: string[];
+  supuestos: string[];
+  errores: { archivo: string; error: string }[];
+  archivo: { nombre: string; contenidoB64: string } | null;
+}
+
+export interface ImpuestosAlDiaDto {
+  anio: number;
+  mes: number;
+  calculado: boolean;
+  calculadoUtc: string | null;
+  actualizando: boolean;
+  error: string | null;
+  facturas: number;
+  canceladas: number;
+  danadas: number;
+  sinEstatus: number;
+  sinEntregaDelCliente: boolean;
+  resultado: PagosProvisionalesDto | null;
+  delMes: MesDeImpuestosDto | null;
 }
 
 export interface ImpuestosDelMesDto {
@@ -68,13 +108,7 @@ export interface ImpuestosDelMesDto {
   canceladas: number;
   danadas: number;
   sinEstatus: number;
-  resultado: {
-    regimen: { principal: string | null; claves: string[]; nombre: string | null; flujo: boolean; fuente: string | null };
-    meses: MesDeImpuestosDto[];
-    avisos: string[];
-    errores: { archivo: string; error: string }[];
-    archivo: { nombre: string; contenidoB64: string } | null;
-  };
+  resultado: PagosProvisionalesDto;
 }
 
 /** `DescargaDelSatAppService` (`/api/app/descarga-del-sat`): facturas bajadas del SAT con el Descargador 1 e impuesto del mes. */
@@ -104,6 +138,12 @@ export class DescargaSatService {
     datos.append('paquete', archivo, archivo.name);
     return this.rest.request<FormData, ResultadoDelPaqueteDto>(
       { method: 'POST', url: `${this.base}/subir-paquete/${organizacionId}`, body: datos }, this.opciones);
+  }
+
+  /** `ImpuestosAlDiaAppService`: el cálculo guardado del mes (se recalcula solo al entrar facturas). */
+  impuestosAlDia(organizacionId: string, anio: number, mes: number): Observable<ImpuestosAlDiaDto> {
+    return this.rest.request<void, ImpuestosAlDiaDto>(
+      { method: 'GET', url: '/api/app/impuestos-al-dia', params: { organizacionId, anio, mes } }, this.opciones);
   }
 
   calcularImpuestos(organizacionId: string, anio: number, mes: number): Observable<ImpuestosDelMesDto> {

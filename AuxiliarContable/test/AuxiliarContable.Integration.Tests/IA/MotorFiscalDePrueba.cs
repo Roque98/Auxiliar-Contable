@@ -72,6 +72,10 @@ public class MotorFiscalDePrueba : IMotorFiscal
     /// <summary>Lo que se mandó al cálculo de pagos provisionales.</summary>
     public (string Rfc, IReadOnlyList<string> Regimenes, string Periodo, IReadOnlyList<string> Facturas, IReadOnlyList<string> Cancelados)? Provisionales { get; private set; }
 
+    public decimal? CoeficienteRecibido { get; private set; }
+
+    public int LlamadasDeProvisionales { get; private set; }
+
     public void Reiniciar()
     {
         Analisis.Clear();
@@ -82,6 +86,8 @@ public class MotorFiscalDePrueba : IMotorFiscal
         Contabilizadas = [];
         Electronica = null;
         Provisionales = null;
+        CoeficienteRecibido = null;
+        LlamadasDeProvisionales = 0;
         EstaConfigurado = true;
         Caido = false;
         Resultados.Clear();
@@ -230,7 +236,7 @@ public class MotorFiscalDePrueba : IMotorFiscal
 
     public Task<PagosProvisionales> PagosProvisionalesAsync(
         string rfc, IReadOnlyList<string> regimenes, string periodo, string? nombre, IReadOnlyList<ArchivoParaElMotor> facturas,
-        IReadOnlyList<string> cancelados, CancellationToken cancellationToken = default)
+        IReadOnlyList<string> cancelados, decimal? coeficienteDeUtilidad, bool conExcel, CancellationToken cancellationToken = default)
     {
         if (Caido)
         {
@@ -238,11 +244,21 @@ public class MotorFiscalDePrueba : IMotorFiscal
         }
 
         Provisionales = (rfc, regimenes, periodo, facturas.Select(f => f.Nombre).ToList(), cancelados);
+        CoeficienteRecibido = coeficienteDeUtilidad;
+        LlamadasDeProvisionales++;
         return Task.FromResult(new PagosProvisionales
         {
             Regimen = new RegimenDelCalculo { Principal = "612", Claves = ["612"], Flujo = true },
-            Meses = [new MesDeImpuestos { Periodo = periodo, Cobrado = 1000, IvaCobrado = 160, IvaEstimado = 160, CfdiEmitidos = facturas.Count }],
-            Archivo = new ArchivoDelMotor { Nombre = "papel de impuestos.xlsx", ContenidoB64 = "UEsDBA==" },
+            Meses =
+            [
+                new MesDeImpuestos
+                {
+                    Periodo = periodo, Cobrado = 1000 * facturas.Count, IvaCobrado = 160, IvaEstimado = 160, CfdiEmitidos = facturas.Count,
+                    Metodo = "art. 106", Base = 1000 * facturas.Count, IsrCausado = 19.2m * facturas.Count, IsrAPagar = 19.2m * facturas.Count,
+                    IvaAPagar = 160,
+                },
+            ],
+            Archivo = conExcel ? new ArchivoDelMotor { Nombre = "papel de impuestos.xlsx", ContenidoB64 = "UEsDBA==" } : null,
         });
     }
 

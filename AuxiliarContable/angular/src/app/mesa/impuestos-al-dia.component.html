@@ -1,0 +1,99 @@
+<section class="ms-tarjeta" aria-labelledby="ms-al-dia" data-testid="impuestos-al-dia">
+  <div class="ms-cabecera-fila">
+    <h2 id="ms-al-dia"><i class="bi bi-calculator" aria-hidden="true"></i> Impuestos al día · <span class="ms-capital">{{ meses[mes() - 1] }}</span> {{ anio() }}</h2>
+    @if (alDia(); as a) {
+      <span class="ms-nota" aria-live="polite">
+        @if (a.actualizando) { <span class="ig-girando" aria-hidden="true"></span> Actualizando con lo nuevo… }
+        @else if (a.calculadoUtc) { Al día · calculado {{ haceCuanto(a.calculadoUtc) }} }
+      </span>
+    }
+  </div>
+
+  @if (alDia(); as a) {
+    @if (a.delMes; as m) {
+      <div class="ms-cifras">
+        <div class="ms-cifra-grande">
+          <span>ISR a pagar</span>
+          @if (m.isrAPagar !== null) {
+            <strong>{{ m.isrAPagar | currency: 'MXN' : 'symbol-narrow' }}</strong>
+            @if (m.isrAFavor) { <small>a favor {{ m.isrAFavor | currency: 'MXN' : 'symbol-narrow' }}</small> }
+          } @else {
+            <strong>—</strong><small>falta un dato (mira abajo)</small>
+          }
+        </div>
+        <div class="ms-cifra-grande">
+          <span>IVA a pagar</span>
+          <strong>{{ m.ivaAPagar | currency: 'MXN' : 'symbol-narrow' }}</strong>
+          @if (m.ivaSaldoAFavor) { <small>a favor {{ m.ivaSaldoAFavor | currency: 'MXN' : 'symbol-narrow' }}</small> }
+        </div>
+        <div class="ms-cifra-grande">
+          <span>Facturas del ejercicio</span>
+          <strong>{{ a.facturas }}</strong>
+          <small>{{ m.cfdiEmitidos }} emitidas y {{ m.cfdiRecibidos }} recibidas este mes</small>
+        </div>
+      </div>
+      <p class="ms-nota">
+        @if (a.resultado?.regimen?.principal) { Régimen {{ a.resultado?.regimen?.principal }} {{ a.resultado?.regimen?.nombre }} · }
+        {{ m.metodo || 'este régimen no hace pago provisional propio' }} ·
+        @if (m.ingresosAcumulados !== null) { ingresos acumulados {{ m.ingresosAcumulados | currency: 'MXN' : 'symbol-narrow' }} · }
+        @if (m.deduccionesAcumuladas !== null) { deducciones {{ m.deduccionesAcumuladas | currency: 'MXN' : 'symbol-narrow' }} · }
+        @if (m.base !== null) { base {{ m.base | currency: 'MXN' : 'symbol-narrow' }} · }
+        @if (m.isrCausado !== null) { ISR causado {{ m.isrCausado | currency: 'MXN' : 'symbol-narrow' }} }
+        @if (m.isrRetenido) { · retenido {{ m.isrRetenido | currency: 'MXN' : 'symbol-narrow' }} }
+        @if (m.isrPagosAnteriores) { · pagos anteriores {{ m.isrPagosAnteriores | currency: 'MXN' : 'symbol-narrow' }} }
+      </p>
+      <p class="ms-nota">
+        IVA: cobrado {{ m.ivaCobrado | currency: 'MXN' : 'symbol-narrow' }} − retenido {{ m.ivaRetenidoPorClientes | currency: 'MXN' : 'symbol-narrow' }}
+        − acreditable {{ m.ivaAcreditable | currency: 'MXN' : 'symbol-narrow' }}
+        @if (m.ivaSaldoAnterior) { − saldo a favor anterior {{ m.ivaSaldoAnterior | currency: 'MXN' : 'symbol-narrow' }} }
+      </p>
+    } @else if (!a.calculado && !a.error) {
+      <p class="ms-nota">Se está calculando por primera vez; en menos de un minuto aparece aquí.</p>
+    }
+
+    @if (a.error) { <p class="ms-aviso">{{ a.error }}</p> }
+    @if (a.sinEntregaDelCliente) { <p class="ms-aviso">El cliente no entregó nada este mes: el cálculo sale solo de lo descargado del SAT.</p> }
+    @for (x of a.resultado?.avisos ?? []; track $index) { <p class="ms-aviso">{{ x }}</p> }
+
+    @if (a.resultado; as r) {
+      <div class="ms-acciones">
+        <button type="button" class="btn btn-outline-primary ms-boton" (click)="papel()" [disabled]="bajando()">
+          @if (bajando()) { <span class="ig-girando" aria-hidden="true"></span> Armando… } @else { <i class="bi bi-file-earmark-spreadsheet" aria-hidden="true"></i> Papel de trabajo (Excel) }
+        </button>
+        <button type="button" class="btn btn-link ms-rev-op" (click)="verMeses.set(!verMeses())">{{ verMeses() ? 'Ocultar' : 'Ver' }} enero a {{ meses[mes() - 1] }}</button>
+      </div>
+      @if (verMeses()) {
+        <div class="ms-tabla-caja">
+          <table class="ms-tabla">
+            <thead>
+              <tr><th>Mes</th><th class="ms-num">Cobrado</th><th class="ms-num">Deducciones</th><th class="ms-num">ISR causado</th><th class="ms-num">ISR a pagar</th><th class="ms-num">IVA a pagar</th><th class="ms-num">IVA a favor</th></tr>
+            </thead>
+            <tbody>
+              @for (x of r.meses; track x.periodo) {
+                <tr [class.ms-total]="x.periodo === a.delMes?.periodo">
+                  <td class="ms-capital">{{ nombreDelMes(x.periodo) }}</td>
+                  <td class="ms-num">{{ x.cobrado | currency: 'MXN' : 'symbol-narrow' }}</td>
+                  <td class="ms-num">{{ x.deduccionesDelMes | currency: 'MXN' : 'symbol-narrow' }}</td>
+                  <td class="ms-num">{{ x.isrCausado === null ? '—' : (x.isrCausado | currency: 'MXN' : 'symbol-narrow') }}</td>
+                  <td class="ms-num">{{ x.isrAPagar === null ? '—' : (x.isrAPagar | currency: 'MXN' : 'symbol-narrow') }}</td>
+                  <td class="ms-num">{{ x.ivaAPagar | currency: 'MXN' : 'symbol-narrow' }}</td>
+                  <td class="ms-num">{{ x.ivaSaldoAFavor | currency: 'MXN' : 'symbol-narrow' }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+      @if (r.supuestos.length) {
+        <details>
+          <summary class="ms-nota">Qué supone el cálculo</summary>
+          <ul class="ms-pendientes">@for (x of r.supuestos; track $index) { <li>{{ x }}</li> }</ul>
+        </details>
+      }
+    }
+  } @else if (!error()) {
+    <p class="ms-nota"><span class="ig-girando" aria-hidden="true"></span> Cargando…</p>
+  }
+
+  @if (error(); as e) { <div class="ig-alerta ig-alerta-error" role="alert">{{ e }}</div> }
+</section>

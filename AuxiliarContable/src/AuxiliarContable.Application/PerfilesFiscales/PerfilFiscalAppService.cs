@@ -208,6 +208,10 @@ public class PerfilFiscalAppService : AuxiliarContableAppService, IPerfilFiscalA
 
         switch (clave)
         {
+            case CamposDelPerfil.CoeficienteDeUtilidad:
+                return decimal.TryParse(v.Replace(",", "."), NumberStyles.Number, CultureInfo.InvariantCulture, out var cu) && cu is >= 0 and <= 1
+                    ? cu.ToString("0.####", CultureInfo.InvariantCulture)
+                    : throw Invalido(campo, "es un número entre 0 y 1, p. ej. 0.1834");
             case CamposDelPerfil.Rfc:
                 v = v.ToUpperInvariant().Replace(" ", string.Empty).Replace("-", string.Empty);
                 return Sat.EsRfc(v) ? v : throw Invalido(campo, "no tiene formato de RFC (12 o 13 caracteres)");

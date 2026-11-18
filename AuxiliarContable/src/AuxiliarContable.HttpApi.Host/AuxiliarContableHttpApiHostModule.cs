@@ -598,6 +598,9 @@ public class AuxiliarContableHttpApiHostModule : AbpModule
         // y el script que las usaba empieza a recibir 401 sin explicacion.
         await context.AddBackgroundWorkerAsync<ApiKeyExpiryWatchWorker>();
 
+        // Los impuestos del mes al día: recalcula lo que quedó «por actualizar» al entrar una factura.
+        await context.AddBackgroundWorkerAsync<ActualizadorDeImpuestosWorker>();
+
         await FecharFacturasSinFechaAsync(context.ServiceProvider);
     }
 

@@ -78,6 +78,12 @@ public static class CamposDelPerfil
     /// <summary>Perpetuo: el costo se registra en cada venta. Analítico: por compras e inventario final.</summary>
     public const string SistemaDeInventarios = "sistema_inventarios";
 
+    /// <summary>
+    /// Personas morales del régimen general: el coeficiente de utilidad de su última declaración anual (art. 14 LISR),
+    /// con el que se calcula el pago provisional. Entre 0 y 1, p. ej. 0.1834.
+    /// </summary>
+    public const string CoeficienteDeUtilidad = "coeficiente_utilidad";
+
     public const int MaxValorLength = 8000;
 
     public static readonly IReadOnlyList<CampoDelPerfil> Todos =
@@ -119,6 +125,7 @@ public static class CamposDelPerfil
             new("perpetuo", "Perpetuo: registra el costo en cada venta"),
             new("analitico", "Analítico: por compras e inventario final"),
         ]),
+        new(CoeficienteDeUtilidad, "Coeficiente de utilidad (personas morales)", TipoDeCampo.Texto, GrupoDeCampos.Fiscal, false),
     ];
 
     public static CampoDelPerfil? Buscar(string clave) => Todos.FirstOrDefault(c => c.Clave == clave);

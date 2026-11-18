@@ -211,6 +211,90 @@ namespace AuxiliarContable.Migrations
                     b.ToTable("AppEvidenciasDeOperaciones", (string)null);
                 });
 
+            modelBuilder.Entity("AuxiliarContable.Contabilidad.ImpuestosDelMes", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Anio")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("CalculadoUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Canceladas")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("ConcurrencyStamp");
+
+                    b.Property<DateTime>("CreationTime")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("CreationTime");
+
+                    b.Property<Guid?>("CreatorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("CreatorId");
+
+                    b.Property<int>("Danadas")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Error")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("ExtraProperties")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("ExtraProperties");
+
+                    b.Property<int>("Facturas")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("HuellaDelPerfil")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTime?>("LastModificationTime")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("LastModificationTime");
+
+                    b.Property<Guid?>("LastModifierId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("LastModifierId");
+
+                    b.Property<int>("Mes")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("OrganizacionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("PedidoUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("PorActualizar")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Resultado")
+                        .HasColumnType("text");
+
+                    b.Property<int>("SinEstatus")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PorActualizar", "PedidoUtc");
+
+                    b.HasIndex("OrganizacionId", "Anio", "Mes")
+                        .IsUnique();
+
+                    b.ToTable("AppImpuestosDelMes", (string)null);
+                });
+
             modelBuilder.Entity("AuxiliarContable.Contabilidad.MesSinEntrega", b =>
                 {
                     b.Property<Guid>("Id")

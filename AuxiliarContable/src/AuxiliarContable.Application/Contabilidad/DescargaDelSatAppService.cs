@@ -49,6 +49,7 @@ public partial class DescargaDelSatAppService : AuxiliarContableAppService, IDes
     private readonly IMotorFiscal _motor;
     private readonly GestorDePeriodos _periodos;
     private readonly Autorizador _autorizador;
+    private readonly CalculadoraDeImpuestos _calculadora;
 
     public DescargaDelSatAppService(
         IRepository<Documento, Guid> documentos,
@@ -58,8 +59,10 @@ public partial class DescargaDelSatAppService : AuxiliarContableAppService, IDes
         IPerfilFiscalAppService perfiles,
         IMotorFiscal motor,
         GestorDePeriodos periodos,
-        Autorizador autorizador)
+        Autorizador autorizador,
+        CalculadoraDeImpuestos calculadora)
     {
+        _calculadora = calculadora;
         _documentos = documentos;
         _sinEntrega = sinEntrega;
         _gestor = gestor;
@@ -331,32 +334,12 @@ public partial class DescargaDelSatAppService : AuxiliarContableAppService, IDes
     {
         await ExigirEquipoAsync(organizacionId, AccionEnOrganizacion.Ver);
         Validar(anio, mes);
-        var (rfc, nombre, regimenes) = await PerfilAsync(organizacionId);
-        if (rfc == null)
-        {
-            throw new UserFriendlyException("Falta el RFC del cliente en su perfil fiscal.");
-        }
-
-        // El ejercicio hasta el mes y el anterior: un complemento de este año puede pagar una factura PPD del pasado.
-        var facturas = await FacturasAsync(organizacionId, new DateTime(anio - 1, 1, 1), new DateTime(anio, mes, 1).AddMonths(1));
-        var buenas = facturas.Where(d => !d.XmlDanado).ToList();
-        var delEjercicio = buenas.Where(d => (d.FechaDelDocumento ?? d.CreationTime).Year == anio).ToList();
-        if (delEjercicio.Count == 0)
-        {
-            throw new UserFriendlyException($"No hay facturas de {anio}: sube las del cliente o bájalas del SAT con el Descargador 1.");
-        }
-
-        var archivos = new List<ArchivoParaElMotor>();
-        foreach (var d in buenas)
-        {
-            archivos.Add(new ArchivoParaElMotor($"{d.Uuid ?? d.Id.ToString()}.xml", await _almacen.LeerAsync(d)));
-        }
-
-        var canceladas = buenas.Where(d => d.Cancelada && d.Uuid != null).Select(d => d.Uuid!).ToList();
-        PagosProvisionales resultado;
+        var fila = await _calculadora.FilaAsync(organizacionId, anio, mes, Clock.Now.ToUniversalTime());
+        var pedido = fila.PedidoUtc;
+        CalculadoraDeImpuestos.Calculo c;
         try
         {
-            resultado = await _motor.PagosProvisionalesAsync(rfc, regimenes, $"{anio:0000}-{mes:00}", nombre, archivos, canceladas);
+            c = await _calculadora.CalcularAsync(organizacionId, anio, mes, conExcel: true);
         }
         catch (MotorFiscalNoDisponibleException ex)
         {
@@ -364,28 +347,18 @@ public partial class DescargaDelSatAppService : AuxiliarContableAppService, IDes
             throw new UserFriendlyException("El motor fiscal no está disponible en este momento. Intenta de nuevo en unos minutos.");
         }
 
-        var sinEstatus = delEjercicio.Count(d => d.Uuid != null && d.EstatusSat == null);
-        if (sinEstatus > 0)
-        {
-            resultado.Avisos.Insert(0, $"{sinEstatus} facturas del ejercicio no tienen su estatus del SAT: si alguna está cancelada, cuenta de más. Corre una orden del Descargador 1 para revisarlas.");
-        }
-
-        var danadas = facturas.Count(d => d.XmlDanado && (d.FechaDelDocumento ?? d.CreationTime).Year == anio);
-        if (danadas > 0)
-        {
-            resultado.Avisos.Insert(0, $"{danadas} XML del ejercicio están dañados y no entran al cálculo: bájalos otra vez con el Descargador 1.");
-        }
-
+        // Lo que se calcula a mano también deja al día el cálculo guardado.
+        await _calculadora.GuardarAsync(fila, c, pedido);
         return new ImpuestosDelMesDto
         {
             Anio = anio,
             Mes = mes,
             SinEntregaDelCliente = await _sinEntrega.AnyAsync(s => s.OrganizacionId == organizacionId && s.Anio == anio && s.Mes == mes),
-            FacturasEnviadas = archivos.Count,
-            Canceladas = canceladas.Count,
-            Danadas = danadas,
-            SinEstatus = sinEstatus,
-            Resultado = resultado,
+            FacturasEnviadas = c.Facturas,
+            Canceladas = c.Canceladas,
+            Danadas = c.Danadas,
+            SinEstatus = c.SinEstatus,
+            Resultado = c.Resultado,
         };
     }
 

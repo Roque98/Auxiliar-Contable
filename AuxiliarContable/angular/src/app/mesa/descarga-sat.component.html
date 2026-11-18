@@ -1,5 +1,5 @@
 <section class="ms-tarjeta" aria-labelledby="ms-sat" data-testid="descarga-sat">
-  <h2 id="ms-sat"><i class="bi bi-cloud-arrow-down" aria-hidden="true"></i> Descarga del SAT e impuestos</h2>
+  <h2 id="ms-sat"><i class="bi bi-cloud-arrow-down" aria-hidden="true"></i> Descarga del SAT</h2>
 
   @if (estado(); as e) {
     <label class="ms-check">
@@ -88,55 +88,7 @@
       @for (a of p.avisos; track $index) { <p class="ms-aviso">{{ a }}</p> }
     }
 
-    <h3 class="ms-subtitulo">3. Impuesto de {{ meses[mes() - 1] }} {{ anio() }}</h3>
-    <div class="ms-acciones">
-      <button type="button" class="btn btn-primary ms-boton" (click)="calcular()" [disabled]="!!ocupado() || !e.tieneRfc">
-        @if (ocupado() === 'impuestos') { <span class="ig-girando" aria-hidden="true"></span> Calculando… } @else { <i class="bi bi-calculator" aria-hidden="true"></i> Calcular ISR e IVA }
-      </button>
-    </div>
-    <p class="ms-nota">Pago provisional con las facturas del ejercicio hasta el mes (las canceladas en el SAT no cuentan), con el régimen del perfil fiscal. El papel de trabajo trae las fórmulas, la tarifa y el fundamento.</p>
-    @if (impuestos(); as i) {
-      <p class="ms-resultado">
-        @if (i.resultado.regimen.principal) { Régimen {{ i.resultado.regimen.principal }} {{ i.resultado.regimen.nombre }} · } @else { Régimen sin identificar · }
-        ISR {{ i.resultado.regimen.flujo ? 'con lo cobrado y lo pagado' : 'con lo facturado (devengado)' }} · {{ i.facturasEnviadas }} facturas
-        @if (i.canceladas) { ({{ i.canceladas }} canceladas no cuentan) }
-      </p>
-      @for (a of i.resultado.avisos; track $index) { <p class="ms-aviso">{{ a }}</p> }
-      @for (er of i.resultado.errores; track $index) { <p class="ms-aviso">«{{ er.archivo }}»: {{ er.error }}</p> }
-      <div class="ms-tabla-caja">
-        <table class="ms-tabla">
-          <thead>
-            <tr>
-              <th>Mes</th><th class="ms-num">Facturado</th><th class="ms-num">Cobrado</th><th class="ms-num">Gastos pagados</th><th class="ms-num">Nómina</th>
-              <th class="ms-num">IVA cobrado</th><th class="ms-num">IVA pagado</th><th class="ms-num">IVA retenido</th><th class="ms-num">IVA del mes (estimado)</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (x of i.resultado.meses; track x.periodo) {
-              <tr [class.ms-total]="x.periodo.endsWith('-' + (mes() < 10 ? '0' + mes() : mes()))">
-                <td class="ms-capital">{{ nombreDelMes(x.periodo) }}</td>
-                <td class="ms-num">{{ x.facturado - x.notasDeCredito | currency: 'MXN' : 'symbol-narrow' }}</td>
-                <td class="ms-num">{{ x.cobrado | currency: 'MXN' : 'symbol-narrow' }}</td>
-                <td class="ms-num">{{ x.pagado | currency: 'MXN' : 'symbol-narrow' }}</td>
-                <td class="ms-num">{{ x.nomina | currency: 'MXN' : 'symbol-narrow' }}</td>
-                <td class="ms-num">{{ x.ivaCobrado | currency: 'MXN' : 'symbol-narrow' }}</td>
-                <td class="ms-num">{{ x.ivaPagado | currency: 'MXN' : 'symbol-narrow' }}</td>
-                <td class="ms-num">{{ x.ivaRetenidoPorClientes | currency: 'MXN' : 'symbol-narrow' }}</td>
-                <td class="ms-num">{{ x.ivaEstimado | currency: 'MXN' : 'symbol-narrow' }}</td>
-              </tr>
-            }
-          </tbody>
-        </table>
-      </div>
-      <p class="ms-nota">Las cifras son sin IVA. El ISR del mes (con la tarifa del Anexo 8 o el coeficiente) y el IVA formal están en el papel de trabajo.</p>
-      @if (i.resultado.archivo; as a) {
-        <div class="ms-acciones">
-          <button type="button" class="btn btn-outline-primary ms-boton" (click)="descargarPapel(a)">
-            <i class="bi bi-file-earmark-spreadsheet" aria-hidden="true"></i> Papel de trabajo de impuestos
-          </button>
-        </div>
-      }
-    }
+    <p class="ms-nota"><i class="bi bi-arrow-up" aria-hidden="true"></i> Al subirlo, «Impuestos al día» se recalcula solo con lo que entró.</p>
   } @else if (!error()) {
     <p class="ms-nota"><span class="ig-girando" aria-hidden="true"></span> Cargando…</p>
   }
