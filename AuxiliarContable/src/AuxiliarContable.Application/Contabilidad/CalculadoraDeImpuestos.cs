@@ -179,8 +179,14 @@ public class CalculadoraDeImpuestos : ITransientDependency
 /// </summary>
 public class ActualizadorDeImpuestos : ITransientDependency
 {
-    /// <summary>Sin cambios durante esto antes de recalcular: un paquete de cien XML se calcula una vez, no cien.</summary>
-    public static readonly TimeSpan Espera = TimeSpan.FromSeconds(45);
+    /// <summary>
+    /// Sin cambios durante esto antes de recalcular (pedido 17-nov-2026: «10 o 15 minutos después de la última
+    /// información»): un paquete de cien XML, o una mañana de facturas, se calcula una vez y no cien.
+    /// </summary>
+    public static readonly TimeSpan Espera = TimeSpan.FromMinutes(10);
+
+    /// <summary>La hora de México: a las 12 de la noche se recalcula todo lo del mes en curso y el anterior.</summary>
+    public static TimeZoneInfo ZonaDeMexico { get; } = BuscarZona();
 
     private readonly IRepository<ImpuestosDelMes, Guid> _impuestos;
     private readonly CalculadoraDeImpuestos _calculadora;
@@ -248,6 +254,47 @@ public class ActualizadorDeImpuestos : ITransientDependency
         }
 
         return hechos;
+    }
+
+    /// <summary>
+    /// La vuelta de medianoche: el mes en curso y el anterior de todos los clientes quedan pedidos (sin espera), para que
+    /// amanezcan al día aunque no haya entrado nada (estatus del SAT, cambios del perfil…). -> cuántos meses se pidieron.
+    /// </summary>
+    public async Task<int> PedirLaVueltaDeLaNocheAsync(DateTime hoyEnMexico)
+    {
+        var actual = new DateTime(hoyEnMexico.Year, hoyEnMexico.Month, 1);
+        var anterior = actual.AddMonths(-1);
+        using var uow = _unidades.Begin(requiresNew: true);
+        var filas = await _impuestos.GetListAsync(i => (i.Anio == actual.Year && i.Mes == actual.Month)
+                                                      || (i.Anio == anterior.Year && i.Mes == anterior.Month));
+        var ya = _reloj.Now.ToUniversalTime() - Espera;
+        foreach (var f in filas.Where(f => !f.PorActualizar))
+        {
+            f.Pedir(ya);
+            await _impuestos.UpdateAsync(f);
+        }
+
+        await uow.CompleteAsync();
+        return filas.Count;
+    }
+
+    /// <summary>Lo que pide el auxiliar con «Actualizar ahora»: sin espera, en la siguiente vuelta.</summary>
+    public static DateTime SinEspera(DateTime ahoraUtc) => ahoraUtc - Espera;
+
+    private static TimeZoneInfo BuscarZona()
+    {
+        foreach (var id in new[] { "America/Mexico_City", "Central Standard Time (Mexico)" })
+        {
+            try
+            {
+                return TimeZoneInfo.FindSystemTimeZoneById(id);
+            }
+            catch (TimeZoneNotFoundException)
+            {
+            }
+        }
+
+        return TimeZoneInfo.CreateCustomTimeZone("Mexico", TimeSpan.FromHours(-6), "México", "México");
     }
 
     /// <summary>Que una falla inesperada no lo reintente en cada vuelta: espera como cualquier otro pedido.</summary>

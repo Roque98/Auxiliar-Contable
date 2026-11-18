@@ -90,6 +90,7 @@ export interface ImpuestosAlDiaDto {
   calculado: boolean;
   calculadoUtc: string | null;
   actualizando: boolean;
+  seActualizaUtc: string | null;
   error: string | null;
   facturas: number;
   canceladas: number;
@@ -144,6 +145,11 @@ export class DescargaSatService {
   impuestosAlDia(organizacionId: string, anio: number, mes: number): Observable<ImpuestosAlDiaDto> {
     return this.rest.request<void, ImpuestosAlDiaDto>(
       { method: 'GET', url: '/api/app/impuestos-al-dia', params: { organizacionId, anio, mes } }, this.opciones);
+  }
+
+  actualizarImpuestosAhora(organizacionId: string, anio: number, mes: number): Observable<ImpuestosAlDiaDto> {
+    return this.rest.request<void, ImpuestosAlDiaDto>(
+      { method: 'POST', url: `/api/app/impuestos-al-dia/actualizar-ahora/${organizacionId}`, params: { anio, mes } }, this.opciones);
   }
 
   calcularImpuestos(organizacionId: string, anio: number, mes: number): Observable<ImpuestosDelMesDto> {
