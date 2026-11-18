@@ -186,7 +186,7 @@ public class CredencialesAppService : AuxiliarContableAppService, ICredencialesA
         return usos.Select(u => new UsoDeCredencialDto
         {
             Cuando = u.CreationTime,
-            Quien = u.CreatorId is not { } id ? "—" : ocultos.Contains(id) ? EquipoTecnico : nombres.GetValueOrDefault(id, "—"),
+            Quien = u.CreatorId is not { } id ? u.Accion == AccionSobreCredencial.UsarEnDescargaMasiva ? "La plataforma (automático)" : "—" : ocultos.Contains(id) ? EquipoTecnico : nombres.GetValueOrDefault(id, "—"),
             Tipo = u.Tipo,
             Accion = u.Accion,
         }).ToList();

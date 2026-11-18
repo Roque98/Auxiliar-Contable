@@ -1,16 +1,17 @@
 import { DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, effect, inject, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, effect, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MESES } from '../documentos/documentos.service';
 import { mensajeDeError } from '../invitaciones/invitaciones.service';
-import { MAX_DIAS_POR_ORDEN, MAX_FOLIOS_POR_ORDEN, MAX_MESES_POR_ORDEN, descargarBlob, diasDeLaOrden, foliosEn, mesesDeLaOrden, textoDeLaRevision, textoDelPaquete } from './descarga';
+import { MAX_DIAS_POR_ORDEN, MAX_FOLIOS_POR_ORDEN, MAX_MESES_POR_ORDEN, descargarBlob, diasDeLaOrden, foliosEn, mesesDeLaOrden, textoDeLaRevision, textoDeLaSolicitud, textoDelPaquete } from './descarga';
 import { OrdenDeDescargaDto } from './descarga-sat.service';
 import { Observable } from 'rxjs';
-import { DescargaDelSatDto, DescargaSatService, ResultadoDelPaqueteDto, RevisionDeEstatusDto } from './descarga-sat.service';
+import { DescargaDelSatDto, DescargaMasivaDto, DescargaSatService, ResultadoDelPaqueteDto, RevisionDeEstatusDto } from './descarga-sat.service';
 
 /**
  * Descarga del SAT e impuestos, dentro de la mesa de trabajo. Si el cliente no entregó nada, se marca el mes y se
- * trabaja solo con lo del SAT: (1) se baja la orden para el Descargador 1, que en la computadora del despacho entra al
+ * trabaja solo con lo del SAT. Lo primero es la Descarga Masiva con la e.firma del cliente (servicio oficial, sin
+ * captcha: se pide y se baja sola; al cerrar el mes se pide sola si no mandó nada). De respaldo, (1) se baja la orden para el Descargador 1, que en la computadora del despacho entra al
  * portal (alguien inicia sesión con el captcha) y baja lo que falta, lo dañado y el estatus de todo; (2) se sube el
  * paquete que deja; y el impuesto del mes se recalcula solo (ver «Impuestos al día»).
  */
@@ -24,6 +25,7 @@ import { DescargaDelSatDto, DescargaSatService, ResultadoDelPaqueteDto, Revision
 })
 export class DescargaSatComponent {
   private readonly api = inject(DescargaSatService);
+  private reloj: ReturnType<typeof setTimeout> | null = null;
 
   readonly organizacionId = input.required<string>();
   readonly anio = input.required<number>();
@@ -39,6 +41,10 @@ export class DescargaSatComponent {
   readonly paquete = signal<ResultadoDelPaqueteDto | null>(null);
   readonly revision = signal<RevisionDeEstatusDto | null>(null);
   textoDeLaRevision = textoDeLaRevision;
+  textoDeLaSolicitud = textoDeLaSolicitud;
+  readonly masiva = signal<DescargaMasivaDto | null>(null);
+  masivaEmitidas = true;
+  masivaRecibidas = true;
 
   desdeAnio = new Date().getFullYear();
   desdeMes = 1;
@@ -59,6 +65,7 @@ export class DescargaSatComponent {
   textoFolios = '';
 
   constructor() {
+    inject(DestroyRef).onDestroy(() => this.pararReloj());
     effect(() => {
       const id = this.organizacionId();
       const anio = this.anio();
@@ -71,6 +78,69 @@ export class DescargaSatComponent {
       this.paquete.set(null);
       this.revision.set(null);
       this.cargar(id, anio, mes);
+      this.cargarMasiva(id);
+    });
+  }
+
+  /** Las solicitudes del cliente; mientras alguna está en proceso, se vuelve a mirar cada minuto (el servidor la avanza solo). */
+  cargarMasiva(id = this.organizacionId()): void {
+    this.api.descargaMasiva(id).subscribe({
+      next: m => this.ponerMasiva(m),
+      error: () => this.masiva.set(null),
+    });
+  }
+
+  private ponerMasiva(m: DescargaMasivaDto): void {
+    const antes = this.masiva()?.solicitudes.reduce((n, s) => n + s.nuevas, 0) ?? 0;
+    this.masiva.set(m);
+    const ahora = m.solicitudes.reduce((n, s) => n + s.nuevas, 0);
+    if (ahora !== antes) {
+      this.cargar();
+    }
+    this.pararReloj();
+    if (m.solicitudes.some(s => s.estado === 'EnProceso')) {
+      this.reloj = setTimeout(() => this.cargarMasiva(), 60_000);
+    }
+  }
+
+  private pararReloj(): void {
+    if (this.reloj) {
+      clearTimeout(this.reloj);
+      this.reloj = null;
+    }
+  }
+
+  get enProcesoMasiva(): boolean {
+    return this.masiva()?.solicitudes.some(s => s.estado === 'EnProceso') ?? false;
+  }
+
+  solicitarMasiva(): void {
+    this.ocupado.set('masiva');
+    this.error.set(null);
+    this.api.solicitarDescargaMasiva(this.organizacionId(), this.anio(), this.mes(), this.masivaEmitidas, this.masivaRecibidas).subscribe({
+      next: m => {
+        this.ocupado.set(null);
+        this.ponerMasiva(m);
+      },
+      error: e => {
+        this.ocupado.set(null);
+        this.error.set(mensajeDeError(e, 'No se pudo pedir la descarga al SAT.'));
+      },
+    });
+  }
+
+  avanzarMasiva(): void {
+    this.ocupado.set('avanzar');
+    this.error.set(null);
+    this.api.avanzarDescargaMasiva(this.organizacionId()).subscribe({
+      next: m => {
+        this.ocupado.set(null);
+        this.ponerMasiva(m);
+      },
+      error: e => {
+        this.ocupado.set(null);
+        this.error.set(mensajeDeError(e, 'No se pudo preguntar al SAT.'));
+      },
     });
   }
 

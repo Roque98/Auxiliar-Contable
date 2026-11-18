@@ -250,6 +250,13 @@ public class AuxiliarContableHttpApiHostModule : AbpModule
             cliente.Timeout = TimeSpan.FromSeconds(20);
         });
 
+        // Descarga Masiva del SAT (servicio oficial con la e.firma del cliente): un paquete puede tardar en bajar.
+        context.Services.AddHttpClient(AuxiliarContable.HealthChecks.ServicioDescargaMasivaSat.NombreHttpClient, cliente =>
+        {
+            cliente.Timeout = TimeSpan.FromMinutes(5);
+            cliente.MaxResponseContentBufferSize = 300L * 1024 * 1024;
+        });
+
         // Motor fiscal (motores-fiscales): servicio Python en 127.0.0.1 del mismo servidor. Sin
         // MotorFiscal:Url queda «sin configurar» y el chat dice que no pudo consultar.
         Configure<MotorFiscalOptions>(configuration.GetSection(MotorFiscalOptions.Seccion));
@@ -609,6 +616,7 @@ public class AuxiliarContableHttpApiHostModule : AbpModule
 
         // Cada noche, el estatus de las facturas en el SAT (servicio público de verificación).
         await context.AddBackgroundWorkerAsync<RevisorDeEstatusSatWorker>();
+        await context.AddBackgroundWorkerAsync<DescargaMasivaWorker>();
 
         await FecharFacturasSinFechaAsync(context.ServiceProvider);
     }

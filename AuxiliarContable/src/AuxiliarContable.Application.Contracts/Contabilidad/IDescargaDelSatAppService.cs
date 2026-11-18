@@ -42,6 +42,67 @@ public interface IDescargaDelSatAppService : IApplicationService
 
     /// <summary>Pago provisional de ISR e IVA del mes solo con las facturas (las canceladas en el SAT no cuentan).</summary>
     Task<ImpuestosDelMesDto> CalcularImpuestosAsync(Guid organizacionId, int anio, int mes);
+
+    /// <summary>
+    /// La Descarga Masiva con la e.firma del cliente (servicio oficial del SAT, sin captcha ni robot): si se puede usar y
+    /// las últimas solicitudes con su avance.
+    /// </summary>
+    Task<DescargaMasivaDto> GetDescargaMasivaAsync(Guid organizacionId);
+
+    /// <summary>Pide ya al SAT las emitidas y/o recibidas de un mes. El SAT las arma en minutos u horas; se bajan solas.</summary>
+    Task<DescargaMasivaDto> SolicitarDescargaMasivaAsync(Guid organizacionId, SolicitarDescargaMasivaDto input);
+
+    /// <summary>Pregunta ya al SAT por las solicitudes en proceso del cliente y baja lo que esté listo.</summary>
+    Task<DescargaMasivaDto> AvanzarDescargaMasivaAsync(Guid organizacionId);
+}
+
+public class SolicitarDescargaMasivaDto
+{
+    public int Anio { get; set; }
+    public int Mes { get; set; }
+    public bool Emitidas { get; set; } = true;
+    public bool Recibidas { get; set; } = true;
+}
+
+public class DescargaMasivaDto
+{
+    /// <summary>El servidor tiene la descarga masiva encendida.</summary>
+    public bool Disponible { get; set; }
+
+    /// <summary>Por qué no se puede usar la e.firma (null si sí se puede).</summary>
+    public string? Problema { get; set; }
+
+    public DateTime? EfirmaVigenteHastaUtc { get; set; }
+
+    /// <summary>Lo que pasó al avanzar a mano (p. ej. «el SAT no respondió»).</summary>
+    public string? Aviso { get; set; }
+
+    public List<SolicitudDeDescargaMasivaDto> Solicitudes { get; set; } = [];
+}
+
+public class SolicitudDeDescargaMasivaDto
+{
+    public Guid Id { get; set; }
+    public int Anio { get; set; }
+    public int Mes { get; set; }
+    public bool Emitidas { get; set; }
+    public DateTime Desde { get; set; }
+    public DateTime Hasta { get; set; }
+    public bool Automatica { get; set; }
+
+    /// <summary>EnProceso, Descargada, SinFacturas o Rechazada.</summary>
+    public string Estado { get; set; } = "";
+
+    public string? Mensaje { get; set; }
+    public int NumeroCfdis { get; set; }
+    public int Paquetes { get; set; }
+    public int PaquetesBajados { get; set; }
+    public int Nuevas { get; set; }
+    public int Repetidas { get; set; }
+    public int Rechazadas { get; set; }
+    public DateTime SolicitadaUtc { get; set; }
+    public DateTime? RevisadaUtc { get; set; }
+    public DateTime? TerminadaUtc { get; set; }
 }
 
 public class DescargaDelSatDto

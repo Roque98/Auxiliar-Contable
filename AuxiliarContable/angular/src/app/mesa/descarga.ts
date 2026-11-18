@@ -1,4 +1,4 @@
-import type { ResultadoDelPaqueteDto, RevisionDeEstatusDto } from './descarga-sat.service';
+import type { ResultadoDelPaqueteDto, RevisionDeEstatusDto, SolicitudDeDescargaMasivaDto } from './descarga-sat.service';
 
 /** Meses que abarca una orden del Descargador 1 (0 o menos = el final es antes del inicio). */
 export function mesesDeLaOrden(desdeAnio: number, desdeMes: number, hastaAnio: number, hastaMes: number): number {
@@ -97,4 +97,30 @@ export function textoDeLaRevision(r: RevisionDeEstatusDto): string {
     partes.push(`faltan ${r.faltan} (vuelve a pulsar o se terminan esta noche)`);
   }
   return partes.join(' · ') + '.';
+}
+
+/** Cómo va una solicitud de Descarga Masiva, en una línea. */
+export function textoDeLaSolicitud(s: SolicitudDeDescargaMasivaDto): string {
+  const que = s.emitidas ? 'Emitidas' : 'Recibidas';
+  const quien = s.automatica ? ' (sola, al cerrar el mes)' : '';
+  switch (s.estado) {
+    case 'EnProceso':
+      return s.paquetes > 0
+        ? `${que}${quien}: bajando paquetes (${s.paquetesBajados} de ${s.paquetes}).`
+        : `${que}${quien}: el SAT la está armando; se baja sola en cuanto esté.`;
+    case 'Descargada': {
+      const partes = [s.nuevas === 1 ? '1 factura nueva' : `${s.nuevas} facturas nuevas`];
+      if (s.repetidas) {
+        partes.push(`${s.repetidas} ya estaban`);
+      }
+      if (s.rechazadas) {
+        partes.push(`${s.rechazadas} no eran del cliente o no abrieron`);
+      }
+      return `${que}${quien}: lista — ${partes.join(' · ')}.`;
+    }
+    case 'SinFacturas':
+      return `${que}${quien}: el SAT no tiene facturas en ese rango.`;
+    default:
+      return `${que}${quien}: no se pudo — ${s.mensaje ?? 'el SAT la rechazó'}`;
+  }
 }

@@ -780,6 +780,100 @@ namespace AuxiliarContable.Migrations
                     b.ToTable("AppSaldosDeApertura", (string)null);
                 });
 
+            modelBuilder.Entity("AuxiliarContable.Contabilidad.SolicitudDeDescargaMasiva", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Anio")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("Automatica")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("ConcurrencyStamp");
+
+                    b.Property<DateTime>("CreationTime")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("CreationTime");
+
+                    b.Property<Guid?>("CreatorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("CreatorId");
+
+                    b.Property<DateTime>("Desde")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<bool>("Emitidas")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("Estado")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ExtraProperties")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("ExtraProperties");
+
+                    b.Property<DateTime>("Hasta")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("IdSolicitud")
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<string>("Mensaje")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<int>("Mes")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Nuevas")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("NumeroCfdis")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("OrganizacionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Paquetes")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<int>("PaquetesBajados")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Rechazadas")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Repetidas")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("RevisadaUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("SolicitadaUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("TerminadaUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Estado", "RevisadaUtc");
+
+                    b.HasIndex("OrganizacionId", "Anio", "Mes");
+
+                    b.ToTable("AppSolicitudesDeDescargaMasiva", (string)null);
+                });
+
             modelBuilder.Entity("AuxiliarContable.Conversaciones.Conversacion", b =>
                 {
                     b.Property<Guid>("Id")

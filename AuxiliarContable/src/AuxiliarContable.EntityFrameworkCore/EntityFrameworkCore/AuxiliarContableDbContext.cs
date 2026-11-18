@@ -61,6 +61,7 @@ public class AuxiliarContableDbContext :
     public DbSet<Contabilidad.PeriodoContable> PeriodosContables { get; set; }
     public DbSet<Contabilidad.MesSinEntrega> MesesSinEntrega { get; set; }
     public DbSet<Contabilidad.ImpuestosDelMes> ImpuestosDeMeses { get; set; }
+    public DbSet<Contabilidad.SolicitudDeDescargaMasiva> SolicitudesDeDescargaMasiva { get; set; }
 
     public DbSet<Contabilidad.ConciliacionBancaria> ConciliacionesBancarias { get; set; }
 
@@ -300,6 +301,21 @@ public class AuxiliarContableDbContext :
             b.Property(x => x.HuellaDelPerfil).HasMaxLength(Contabilidad.ImpuestosDelMes.MaxHuellaLength);
             b.HasIndex(x => new { x.OrganizacionId, x.Anio, x.Mes }).IsUnique();
             b.HasIndex(x => new { x.PorActualizar, x.PedidoUtc });
+        });
+
+        // AppSolicitudesDeDescargaMasiva: cada solicitud al servicio de Descarga Masiva del SAT y su avance.
+        builder.Entity<Contabilidad.SolicitudDeDescargaMasiva>(b =>
+        {
+            b.ToTable(AuxiliarContableConsts.DbTablePrefix + "SolicitudesDeDescargaMasiva", AuxiliarContableConsts.DbSchema);
+            b.ConfigureByConvention();
+            b.Property(x => x.IdSolicitud).HasMaxLength(Contabilidad.SolicitudDeDescargaMasiva.MaxIdLength);
+            b.Property(x => x.Mensaje).HasMaxLength(Contabilidad.SolicitudDeDescargaMasiva.MaxMensajeLength);
+            b.Property(x => x.Paquetes).HasMaxLength(Contabilidad.SolicitudDeDescargaMasiva.MaxPaquetesLength);
+            // Hora de México tal cual (así la entiende el SAT), sin zona.
+            b.Property(x => x.Desde).HasColumnType("timestamp without time zone");
+            b.Property(x => x.Hasta).HasColumnType("timestamp without time zone");
+            b.HasIndex(x => new { x.OrganizacionId, x.Anio, x.Mes });
+            b.HasIndex(x => new { x.Estado, x.RevisadaUtc });
         });
 
         // AppMesesSinEntrega: el cliente no entregó nada ese mes y se trabaja solo con lo que se baja del SAT.
