@@ -1,4 +1,4 @@
-import type { ResultadoDelPaqueteDto } from './descarga-sat.service';
+import type { ResultadoDelPaqueteDto, RevisionDeEstatusDto } from './descarga-sat.service';
 
 /** Meses que abarca una orden del Descargador 1 (0 o menos = el final es antes del inicio). */
 export function mesesDeLaOrden(desdeAnio: number, desdeMes: number, hastaAnio: number, hastaMes: number): number {
@@ -75,4 +75,26 @@ export function haceCuanto(utc: string, ahora: Date = new Date()): string {
     return `hace ${horas} h`;
   }
   return 'el ' + fecha.toLocaleDateString('es-MX', { day: 'numeric', month: 'short' });
+}
+
+/** Lo que dijo el SAT al revisar el estatus, en una frase. */
+export function textoDeLaRevision(r: RevisionDeEstatusDto): string {
+  if (r.satSinResponder && !r.revisadas) {
+    return 'El SAT no respondió: se vuelve a intentar esta noche.';
+  }
+  const partes = [`${r.revisadas} revisadas en el SAT`];
+  partes.push(r.cambiaron ? `${r.cambiaron} cambiaron` : 'ninguna cambió');
+  if (r.canceladas) {
+    partes.push(`${r.canceladas} ${r.canceladas === 1 ? 'cancelada' : 'canceladas'}`);
+  }
+  if (r.enProceso) {
+    partes.push(`${r.enProceso} en proceso de cancelación`);
+  }
+  if (r.noEncontradas) {
+    partes.push(`${r.noEncontradas} que el SAT no encuentra`);
+  }
+  if (r.faltan) {
+    partes.push(`faltan ${r.faltan} (vuelve a pulsar o se terminan esta noche)`);
+  }
+  return partes.join(' · ') + '.';
 }

@@ -55,6 +55,7 @@ public partial class DescargaDelSatAppService : AuxiliarContableAppService, IDes
     private readonly GestorDePeriodos _periodos;
     private readonly Autorizador _autorizador;
     private readonly CalculadoraDeImpuestos _calculadora;
+    private readonly RevisorDeEstatusSat _revisor;
 
     public DescargaDelSatAppService(
         IRepository<Documento, Guid> documentos,
@@ -65,9 +66,11 @@ public partial class DescargaDelSatAppService : AuxiliarContableAppService, IDes
         IMotorFiscal motor,
         GestorDePeriodos periodos,
         Autorizador autorizador,
-        CalculadoraDeImpuestos calculadora)
+        CalculadoraDeImpuestos calculadora,
+        RevisorDeEstatusSat revisor)
     {
         _calculadora = calculadora;
+        _revisor = revisor;
         _documentos = documentos;
         _sinEntrega = sinEntrega;
         _gestor = gestor;
@@ -105,6 +108,7 @@ public partial class DescargaDelSatAppService : AuxiliarContableAppService, IDes
                     Facturas = delMes.Count(d => !d.XmlDanado),
                     Canceladas = delMes.Count(d => d.Cancelada),
                     EnProceso = delMes.Count(d => d.EstatusSat == EnProcesoDeCancelacion),
+                    NoEncontradas = delMes.Count(d => d.EstatusSat == EstatusDelSat.NoEncontrado),
                     SinEstatus = delMes.Count(d => d.Uuid != null && d.EstatusSat == null),
                     Danadas = delMes.Count(d => d.XmlDanado),
                     SinEntregaDelCliente = sinEntrega.Contains(m),
@@ -266,6 +270,24 @@ public partial class DescargaDelSatAppService : AuxiliarContableAppService, IDes
             Contenido = JsonSerializer.Serialize(orden, JsonDeLaOrden),
             Tengo = tengo.Count,
             Danadas = danadas,
+        };
+    }
+
+    public async Task<RevisionDeEstatusDto> RevisarEstatusAsync(Guid organizacionId, int anio, int mes)
+    {
+        await ExigirEquipoAsync(organizacionId, AccionEnOrganizacion.Subir);
+        Validar(anio, mes);
+        var r = await _revisor.RevisarMesAsync(organizacionId, anio, mes);
+        return new RevisionDeEstatusDto
+        {
+            Revisadas = r.Revisadas,
+            Cambiaron = r.Cambiaron,
+            Canceladas = r.Canceladas,
+            EnProceso = r.EnProceso,
+            NoEncontradas = r.NoEncontradas,
+            Fallaron = r.Fallaron,
+            Faltan = r.Faltan,
+            SatSinResponder = r.SatSinResponder,
         };
     }
 
