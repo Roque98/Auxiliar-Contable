@@ -368,6 +368,21 @@ public partial class DescargaDelSatAppService : AuxiliarContableAppService, IDes
         }
     }
 
+    public async Task<DiotDto> GetDiotAsync(Guid organizacionId, int anio, int mes)
+    {
+        await ExigirEquipoAsync(organizacionId, AccionEnOrganizacion.Ver);
+        Validar(anio, mes);
+        try
+        {
+            return new DiotDto { Anio = anio, Mes = mes, Resultado = await _calculadora.DiotAsync(organizacionId, anio, mes) };
+        }
+        catch (MotorFiscalNoDisponibleException ex)
+        {
+            Logger.LogWarning(ex, "El motor no pudo armar la DIOT");
+            throw new UserFriendlyException("El motor fiscal no está disponible en este momento. Intenta de nuevo en unos minutos.");
+        }
+    }
+
     public async Task<ImpuestosDelMesDto> CalcularImpuestosAsync(Guid organizacionId, int anio, int mes)
     {
         await ExigirEquipoAsync(organizacionId, AccionEnOrganizacion.Ver);

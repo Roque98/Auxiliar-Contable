@@ -44,6 +44,12 @@ public interface IDescargaDelSatAppService : IApplicationService
     Task<ImpuestosDelMesDto> CalcularImpuestosAsync(Guid organizacionId, int anio, int mes);
 
     /// <summary>
+    /// DIOT del mes con las facturas recibidas: un renglón por proveedor, por flujo de pagos, lo que no entra y por qué, y
+    /// el archivo de carga masiva del SAT. Solo el equipo del despacho.
+    /// </summary>
+    Task<DiotDto> GetDiotAsync(Guid organizacionId, int anio, int mes);
+
+    /// <summary>
     /// La Descarga Masiva con la e.firma del cliente (servicio oficial del SAT, sin captcha ni robot): si se puede usar y
     /// las últimas solicitudes con su avance.
     /// </summary>
@@ -207,6 +213,13 @@ public class ResultadoDelPaqueteDto
     public int SinXmlEnElSat { get; set; }
 
     public List<string> Avisos { get; set; } = [];
+}
+
+public class DiotDto
+{
+    public int Anio { get; set; }
+    public int Mes { get; set; }
+    public DiotDelMotor Resultado { get; set; } = new();
 }
 
 public class ImpuestosDelMesDto
