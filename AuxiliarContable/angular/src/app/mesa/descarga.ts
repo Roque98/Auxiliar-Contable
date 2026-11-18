@@ -39,3 +39,21 @@ export function descargarBlob(nombre: string, blob: Blob): void {
   enlace.click();
   setTimeout(() => URL.revokeObjectURL(url), 10_000);
 }
+
+/** «hace 3 min», «hace 2 h», «el 14 nov»: cuándo se calculó, para ver de un vistazo si está al día. */
+export function haceCuanto(utc: string, ahora: Date = new Date()): string {
+  const fecha = new Date(utc);
+  const segundos = Math.max(0, Math.round((ahora.getTime() - fecha.getTime()) / 1000));
+  if (segundos < 60) {
+    return 'hace un momento';
+  }
+  const minutos = Math.round(segundos / 60);
+  if (minutos < 60) {
+    return `hace ${minutos} min`;
+  }
+  const horas = Math.round(minutos / 60);
+  if (horas < 24) {
+    return `hace ${horas} h`;
+  }
+  return 'el ' + fecha.toLocaleDateString('es-MX', { day: 'numeric', month: 'short' });
+}

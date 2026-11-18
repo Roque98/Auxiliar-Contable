@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MAX_MESES_POR_ORDEN, mesesDeLaOrden, textoDelPaquete } from './descarga';
+import { MAX_MESES_POR_ORDEN, haceCuanto, mesesDeLaOrden, textoDelPaquete } from './descarga';
 
 describe('orden del Descargador 1', () => {
   it('cuenta los meses de la orden, cruzando el año', () => {
@@ -25,5 +25,15 @@ describe('resultado del paquete', () => {
       estatusPuestos: 1, canceladas: 0, sinXmlEnElSat: 0, avisos: [],
     });
     expect(texto).toBe('1 factura nueva · estatus del SAT en 1 (2026-02).');
+  });
+});
+
+describe('cuándo se calculó', () => {
+  const ahora = new Date('2026-11-17T18:00:00Z');
+  it('en minutos u horas', () => {
+    expect(haceCuanto('2026-11-17T17:59:30Z', ahora)).toBe('hace un momento');
+    expect(haceCuanto('2026-11-17T17:57:00Z', ahora)).toBe('hace 3 min');
+    expect(haceCuanto('2026-11-17T15:00:00Z', ahora)).toBe('hace 3 h');
+    expect(haceCuanto('2026-11-14T18:00:00Z', ahora)).toMatch(/^el /);
   });
 });

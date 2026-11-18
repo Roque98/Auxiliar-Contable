@@ -60,6 +60,7 @@ public class AuxiliarContableDbContext :
 
     public DbSet<Contabilidad.PeriodoContable> PeriodosContables { get; set; }
     public DbSet<Contabilidad.MesSinEntrega> MesesSinEntrega { get; set; }
+    public DbSet<Contabilidad.ImpuestosDelMes> ImpuestosDeMeses { get; set; }
 
     public DbSet<Contabilidad.ConciliacionBancaria> ConciliacionesBancarias { get; set; }
 
@@ -287,6 +288,18 @@ public class AuxiliarContableDbContext :
             b.Property(x => x.EstatusSat).HasMaxLength(DocumentoConsts.MaxEstatusSatLength);
             // Por UUID: lo que baja el Descargador 1 solo entra si el cliente no lo tenía.
             b.HasIndex(x => new { x.OrganizacionId, x.Uuid });
+        });
+
+        // AppImpuestosDelMes: el pago provisional al día de cada mes (JSON del motor sin el Excel).
+        builder.Entity<Contabilidad.ImpuestosDelMes>(b =>
+        {
+            b.ToTable(AuxiliarContableConsts.DbTablePrefix + "ImpuestosDelMes", AuxiliarContableConsts.DbSchema);
+            b.ConfigureByConvention();
+            b.Property(x => x.Resultado).HasColumnType("text");
+            b.Property(x => x.Error).HasMaxLength(Contabilidad.ImpuestosDelMes.MaxErrorLength);
+            b.Property(x => x.HuellaDelPerfil).HasMaxLength(Contabilidad.ImpuestosDelMes.MaxHuellaLength);
+            b.HasIndex(x => new { x.OrganizacionId, x.Anio, x.Mes }).IsUnique();
+            b.HasIndex(x => new { x.PorActualizar, x.PedidoUtc });
         });
 
         // AppMesesSinEntrega: el cliente no entregó nada ese mes y se trabaja solo con lo que se baja del SAT.
