@@ -13,6 +13,7 @@ import {
 } from '../mi-informacion/operaciones.service';
 import { PatasComponent } from '../mi-informacion/patas.component';
 import { leerSaldos } from './saldos';
+import { DescargaSatComponent } from './descarga-sat.component';
 import { ClienteVisibleDto, PerfilFiscalService } from '../perfil-fiscal/perfil-fiscal.service';
 import {
   ContabilidadElectronicaDto,
@@ -35,7 +36,7 @@ type Filtro = 'todas' | 'sin-factura' | 'sin-transaccion' | 'sin-control' | 'com
 @Component({
   selector: 'app-mesa',
   standalone: true,
-  imports: [FormsModule, CurrencyPipe, DatePipe, RouterLink, PatasComponent],
+  imports: [FormsModule, CurrencyPipe, DatePipe, RouterLink, PatasComponent, DescargaSatComponent],
   templateUrl: './mesa.component.html',
   styleUrls: ['./mesa.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,

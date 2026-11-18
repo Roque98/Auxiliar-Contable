@@ -95,6 +95,11 @@ public class GestorDeDocumentos : DomainService
             documento.FecharEn(fecha.Value);
         }
 
+        if (tipo == TipoDeDocumento.Cfdi)
+        {
+            documento.Identificar(DatosDelCfdi.Leer(contenido)?.Uuid);
+        }
+
         // Primero el contenido y luego la fila: si falla el disco no queda un documento sin
         // archivo. Si falla la base, queda un archivo huérfano cifrado, que no expone nada.
         await _almacen.GuardarAsync(documento, contenido);
@@ -132,6 +137,35 @@ public class GestorDeDocumentos : DomainService
         }
 
         return fechadas;
+    }
+
+    /// <summary>
+    /// Lee el UUID de las facturas que se subieron antes de que la bóveda lo guardara; las que no lo traen quedan como
+    /// XML dañado. Corre al arrancar; cuando ya no queda ninguna no hace nada.
+    /// </summary>
+    public async Task<int> IdentificarFacturasAsync(int maximo = 2000)
+    {
+        var pendientes = await _documentos.GetListAsync(d => d.Tipo == TipoDeDocumento.Cfdi && d.Uuid == null && !d.XmlDanado);
+        var hechas = 0;
+        foreach (var documento in pendientes.Take(maximo))
+        {
+            byte[] contenido;
+            try
+            {
+                contenido = await _almacen.LeerAsync(documento);
+            }
+            catch (Exception ex) when (ex is IOException or CryptographicException or AbpException)
+            {
+                Logger.LogWarning(ex, "No se pudo abrir la factura {Documento} para leer su UUID.", documento.Id);
+                continue;
+            }
+
+            documento.Identificar(DatosDelCfdi.Leer(contenido)?.Uuid);
+            await _documentos.UpdateAsync(documento);
+            hechas++;
+        }
+
+        return hechas;
     }
 
     /// <summary>Solo el nombre (sin carpetas) y sin caracteres de control: se enseña, nunca se usa como ruta.</summary>

@@ -59,6 +59,7 @@ public class AuxiliarContableDbContext :
     public DbSet<PerfilFiscal> PerfilesFiscales { get; set; }
 
     public DbSet<Contabilidad.PeriodoContable> PeriodosContables { get; set; }
+    public DbSet<Contabilidad.MesSinEntrega> MesesSinEntrega { get; set; }
 
     public DbSet<Contabilidad.ConciliacionBancaria> ConciliacionesBancarias { get; set; }
 
@@ -282,6 +283,18 @@ public class AuxiliarContableDbContext :
             // borrado logico, un documento borrado y vuelto a subir chocaria con su fantasma.
             b.HasIndex(x => new { x.OrganizacionId, x.Sha256 });
             b.HasIndex(x => new { x.OrganizacionId, x.Tipo });
+            b.Property(x => x.Uuid).HasMaxLength(DocumentoConsts.UuidLength);
+            b.Property(x => x.EstatusSat).HasMaxLength(DocumentoConsts.MaxEstatusSatLength);
+            // Por UUID: lo que baja el Descargador 1 solo entra si el cliente no lo tenía.
+            b.HasIndex(x => new { x.OrganizacionId, x.Uuid });
+        });
+
+        // AppMesesSinEntrega: el cliente no entregó nada ese mes y se trabaja solo con lo que se baja del SAT.
+        builder.Entity<Contabilidad.MesSinEntrega>(b =>
+        {
+            b.ToTable(AuxiliarContableConsts.DbTablePrefix + "MesesSinEntrega", AuxiliarContableConsts.DbSchema);
+            b.ConfigureByConvention();
+            b.HasIndex(x => new { x.OrganizacionId, x.Anio, x.Mes }).IsUnique();
         });
 
         // Cierre mensual — un mes de un cliente es un periodo que se concilia y se cierra.

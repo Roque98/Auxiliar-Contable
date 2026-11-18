@@ -612,11 +612,18 @@ public class AuxiliarContableHttpApiHostModule : AbpModule
         try
         {
             using var uow = servicios.GetRequiredService<IUnitOfWorkManager>().Begin(requiresNew: true);
-            var fechadas = await servicios.GetRequiredService<GestorDeDocumentos>().FecharFacturasSinFechaAsync();
+            var gestor = servicios.GetRequiredService<GestorDeDocumentos>();
+            var fechadas = await gestor.FecharFacturasSinFechaAsync();
+            var identificadas = await gestor.IdentificarFacturasAsync();
             await uow.CompleteAsync();
             if (fechadas > 0)
             {
                 logger.LogInformation("Se fecharon {Cantidad} facturas con la fecha de su XML.", fechadas);
+            }
+
+            if (identificadas > 0)
+            {
+                logger.LogInformation("Se leyó el UUID de {Cantidad} facturas.", identificadas);
             }
         }
         catch (Exception ex)

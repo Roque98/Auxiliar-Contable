@@ -201,3 +201,33 @@ h2 {
 
 .ms-apertura { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ig-esp-2); }
 .ms-ancho { flex: 1 1 100%; }
+
+/* Descarga del SAT e impuestos */
+.ms-check {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ig-esp-2);
+  min-height: 44px;
+  font-size: var(--ig-texto-sm);
+  font-weight: var(--ig-peso-semi);
+
+  input { width: 1.1rem; height: 1.1rem; }
+}
+
+.ms-etiqueta {
+  margin-left: var(--ig-esp-1);
+  padding: 0 var(--ig-esp-2);
+  border-radius: 999px;
+  background: var(--ig-alerta-suave);
+  color: var(--ig-alerta-texto);
+  font-size: var(--ig-texto-sm);
+  text-transform: none;
+}
+
+.ms-oculto {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}

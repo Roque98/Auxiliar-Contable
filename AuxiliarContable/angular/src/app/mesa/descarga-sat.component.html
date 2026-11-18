@@ -1,0 +1,147 @@
+<section class="ms-tarjeta" aria-labelledby="ms-sat" data-testid="descarga-sat">
+  <h2 id="ms-sat"><i class="bi bi-cloud-arrow-down" aria-hidden="true"></i> Descarga del SAT e impuestos</h2>
+
+  @if (estado(); as e) {
+    <label class="ms-check">
+      <input type="checkbox" [checked]="e.sinEntregaDelCliente" (change)="marcar($any($event.target).checked)" [disabled]="!puedeEditar()" />
+      <span>El cliente no entregó nada en {{ meses[mes() - 1] }} {{ anio() }}</span>
+    </label>
+    @if (e.sinEntregaDelCliente) {
+      <p class="ms-aviso">
+        Se trabaja solo con lo del SAT: baja la orden, córrela en el Descargador 1, sube el paquete que deja y calcula el impuesto.
+        Sin estados de cuenta, lo PUE se toma como cobrado o pagado al facturarse y lo PPD con sus complementos de pago.
+      </p>
+    }
+    @if (!e.tieneRfc) {
+      <p class="ms-aviso">Falta el RFC del cliente en su perfil fiscal: sin él no se puede pedir nada al SAT.</p>
+    }
+
+    <div class="ms-tabla-caja">
+      <table class="ms-tabla">
+        <thead>
+          <tr><th>Mes</th><th class="ms-num">Facturas</th><th class="ms-num">Canceladas</th><th class="ms-num">Sin estatus del SAT</th><th class="ms-num">XML dañados</th></tr>
+        </thead>
+        <tbody>
+          @for (f of e.meses; track f.mes) {
+            <tr [class.ms-total]="f.mes === mes()">
+              <td class="ms-capital">{{ meses[f.mes - 1] }} @if (f.sinEntregaDelCliente) { <small class="ms-etiqueta">sin entrega</small> }</td>
+              <td class="ms-num">{{ f.facturas }}</td>
+              <td class="ms-num">{{ f.canceladas || '' }}</td>
+              <td class="ms-num">{{ f.sinEstatus || '' }}</td>
+              <td class="ms-num">@if (f.danadas) { <strong>{{ f.danadas }}</strong> }</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    <p class="ms-nota">
+      @if (e.ultimoEstatusUtc) { Último estatus del SAT: {{ e.ultimoEstatusUtc | date: 'd MMM y, HH:mm' }}. } @else { Aún no se ha consultado el estatus en el SAT. }
+    </p>
+    @if (e.danadas.length) {
+      <details>
+        <summary class="ms-nota">{{ e.danadas.length }} XML dañados (no abren o no traen timbre): la orden los vuelve a bajar</summary>
+        <ul class="ms-pendientes">
+          @for (d of e.danadas; track d.documentoId) { <li>{{ d.nombre }} @if (d.fecha) { · {{ d.fecha | date: 'd MMM y' }} }</li> }
+        </ul>
+      </details>
+    }
+
+    <h3 class="ms-subtitulo">1. Orden para el Descargador 1</h3>
+    <div class="ms-cierre">
+      <label class="ms-campo"><span>Desde</span>
+        <select class="ig-control ms-capital" [(ngModel)]="desdeMes">@for (n of meses; track $index) { <option [ngValue]="$index + 1">{{ n }}</option> }</select>
+      </label>
+      <label class="ms-campo"><span>Año</span>
+        <select class="ig-control" [(ngModel)]="desdeAnio">@for (y of anios; track y) { <option [ngValue]="y">{{ y }}</option> }</select>
+      </label>
+      <label class="ms-campo"><span>Hasta</span>
+        <select class="ig-control ms-capital" [(ngModel)]="hastaMes">@for (n of meses; track $index) { <option [ngValue]="$index + 1">{{ n }}</option> }</select>
+      </label>
+      <label class="ms-campo"><span>Año</span>
+        <select class="ig-control" [(ngModel)]="hastaAnio">@for (y of anios; track y) { <option [ngValue]="y">{{ y }}</option> }</select>
+      </label>
+      <label class="ms-check"><input type="checkbox" [(ngModel)]="emitidas" /> <span>Emitidas</span></label>
+      <label class="ms-check"><input type="checkbox" [(ngModel)]="recibidas" /> <span>Recibidas</span></label>
+      <button type="button" class="btn btn-primary ms-boton" (click)="bajarOrden()"
+              [disabled]="!!ocupado() || !e.tieneRfc || mesesPedidos < 1 || mesesPedidos > maxMeses || (!emitidas && !recibidas)">
+        @if (ocupado() === 'orden') { <span class="ig-girando" aria-hidden="true"></span> Armando… } @else { <i class="bi bi-download" aria-hidden="true"></i> Bajar la orden }
+      </button>
+    </div>
+    @if (mesesPedidos < 1) { <p class="ms-aviso">El mes final es antes del inicial.</p> }
+    @if (mesesPedidos > maxMeses) { <p class="ms-aviso">Una orden abarca hasta {{ maxMeses }} meses: pártela en dos.</p> }
+    <p class="ms-nota">
+      En la computadora del despacho abre el Descargador 1 → «Orden de la plataforma…» y elige este archivo. Se abre el SAT: inicia sesión con el
+      RFC del cliente. El robot lee el estatus (vigente o cancelada) de todo lo de esos meses y baja solo lo que aquí falta o está dañado;
+      si el cliente no entregó nada, baja todo.
+    </p>
+
+    <h3 class="ms-subtitulo">2. Subir el paquete</h3>
+    <div class="ms-acciones">
+      <label class="btn btn-outline-primary ms-boton" [class.disabled]="!!ocupado() || !puedeEditar()">
+        @if (ocupado() === 'paquete') { <span class="ig-girando" aria-hidden="true"></span> Subiendo… } @else { <i class="bi bi-upload" aria-hidden="true"></i> Subir el paquete (.zip) }
+        <input type="file" accept=".zip,application/zip" class="ms-oculto" (change)="subir($event)" [disabled]="!!ocupado() || !puedeEditar()" />
+      </label>
+    </div>
+    <p class="ms-nota">Solo entra lo que no estaba (por UUID); un XML dañado se cambia por el bueno y cada factura queda con su estatus del SAT.</p>
+    @if (paquete(); as p) {
+      <p class="ms-resultado">{{ textoDelPaquete(p) }}</p>
+      @for (a of p.avisos; track $index) { <p class="ms-aviso">{{ a }}</p> }
+    }
+
+    <h3 class="ms-subtitulo">3. Impuesto de {{ meses[mes() - 1] }} {{ anio() }}</h3>
+    <div class="ms-acciones">
+      <button type="button" class="btn btn-primary ms-boton" (click)="calcular()" [disabled]="!!ocupado() || !e.tieneRfc">
+        @if (ocupado() === 'impuestos') { <span class="ig-girando" aria-hidden="true"></span> Calculando… } @else { <i class="bi bi-calculator" aria-hidden="true"></i> Calcular ISR e IVA }
+      </button>
+    </div>
+    <p class="ms-nota">Pago provisional con las facturas del ejercicio hasta el mes (las canceladas en el SAT no cuentan), con el régimen del perfil fiscal. El papel de trabajo trae las fórmulas, la tarifa y el fundamento.</p>
+    @if (impuestos(); as i) {
+      <p class="ms-resultado">
+        @if (i.resultado.regimen.principal) { Régimen {{ i.resultado.regimen.principal }} {{ i.resultado.regimen.nombre }} · } @else { Régimen sin identificar · }
+        ISR {{ i.resultado.regimen.flujo ? 'con lo cobrado y lo pagado' : 'con lo facturado (devengado)' }} · {{ i.facturasEnviadas }} facturas
+        @if (i.canceladas) { ({{ i.canceladas }} canceladas no cuentan) }
+      </p>
+      @for (a of i.resultado.avisos; track $index) { <p class="ms-aviso">{{ a }}</p> }
+      @for (er of i.resultado.errores; track $index) { <p class="ms-aviso">«{{ er.archivo }}»: {{ er.error }}</p> }
+      <div class="ms-tabla-caja">
+        <table class="ms-tabla">
+          <thead>
+            <tr>
+              <th>Mes</th><th class="ms-num">Facturado</th><th class="ms-num">Cobrado</th><th class="ms-num">Gastos pagados</th><th class="ms-num">Nómina</th>
+              <th class="ms-num">IVA cobrado</th><th class="ms-num">IVA pagado</th><th class="ms-num">IVA retenido</th><th class="ms-num">IVA del mes (estimado)</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (x of i.resultado.meses; track x.periodo) {
+              <tr [class.ms-total]="x.periodo.endsWith('-' + (mes() < 10 ? '0' + mes() : mes()))">
+                <td class="ms-capital">{{ nombreDelMes(x.periodo) }}</td>
+                <td class="ms-num">{{ x.facturado - x.notasDeCredito | currency: 'MXN' : 'symbol-narrow' }}</td>
+                <td class="ms-num">{{ x.cobrado | currency: 'MXN' : 'symbol-narrow' }}</td>
+                <td class="ms-num">{{ x.pagado | currency: 'MXN' : 'symbol-narrow' }}</td>
+                <td class="ms-num">{{ x.nomina | currency: 'MXN' : 'symbol-narrow' }}</td>
+                <td class="ms-num">{{ x.ivaCobrado | currency: 'MXN' : 'symbol-narrow' }}</td>
+                <td class="ms-num">{{ x.ivaPagado | currency: 'MXN' : 'symbol-narrow' }}</td>
+                <td class="ms-num">{{ x.ivaRetenidoPorClientes | currency: 'MXN' : 'symbol-narrow' }}</td>
+                <td class="ms-num">{{ x.ivaEstimado | currency: 'MXN' : 'symbol-narrow' }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <p class="ms-nota">Las cifras son sin IVA. El ISR del mes (con la tarifa del Anexo 8 o el coeficiente) y el IVA formal están en el papel de trabajo.</p>
+      @if (i.resultado.archivo; as a) {
+        <div class="ms-acciones">
+          <button type="button" class="btn btn-outline-primary ms-boton" (click)="descargarPapel(a)">
+            <i class="bi bi-file-earmark-spreadsheet" aria-hidden="true"></i> Papel de trabajo de impuestos
+          </button>
+        </div>
+      }
+    }
+  } @else if (!error()) {
+    <p class="ms-nota"><span class="ig-girando" aria-hidden="true"></span> Cargando…</p>
+  }
+
+  @if (error(); as er) {
+    <div class="ig-alerta ig-alerta-error" role="alert">{{ er }}</div>
+  }
+</section>
