@@ -1,3 +1,4 @@
+import { EstadosFinancierosDto } from './estados';
 import { RestService } from '@abp/ng.core';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
@@ -116,6 +117,8 @@ export interface ContabilidadElectronicaDto {
     archivos: { nombre: string; tipo: string; contenidoB64: string; errores: string[] }[];
     vencimiento: string;
     avisos: string[];
+    /** Null si el motor no los pudo armar (lo dice en avisos). */
+    estados?: EstadosFinancierosDto | null;
   };
 }
 

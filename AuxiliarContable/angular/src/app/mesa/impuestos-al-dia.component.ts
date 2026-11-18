@@ -4,6 +4,7 @@ import { MESES } from '../documentos/documentos.service';
 import { mensajeDeError } from '../invitaciones/invitaciones.service';
 import { descargarBase64, haceCuanto } from './descarga';
 import { DescargaSatService, ImpuestosAlDiaDto } from './descarga-sat.service';
+import { RenglonesComponent } from './renglones.component';
 
 /** Mientras está por actualizar, se vuelve a preguntar poco después de la hora en que toca (y nunca antes de esto). */
 const REVISAR_MINIMO_MS = 20_000;
@@ -16,7 +17,7 @@ const REVISAR_MINIMO_MS = 20_000;
 @Component({
   selector: 'app-impuestos-al-dia',
   standalone: true,
-  imports: [CurrencyPipe],
+  imports: [CurrencyPipe, RenglonesComponent],
   templateUrl: './impuestos-al-dia.component.html',
   styleUrls: ['./mesa.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -33,6 +34,7 @@ export class ImpuestosAlDiaComponent {
   readonly error = signal<string | null>(null);
   readonly bajando = signal(false);
   readonly verMeses = signal(false);
+  readonly verPapel = signal(false);
   haceCuanto = haceCuanto;
 
   private reloj: ReturnType<typeof setTimeout> | null = null;

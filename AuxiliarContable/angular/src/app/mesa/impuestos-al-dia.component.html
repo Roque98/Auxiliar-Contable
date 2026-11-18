@@ -34,6 +34,21 @@
           <small>{{ m.cfdiEmitidos }} emitidas y {{ m.cfdiRecibidos }} recibidas este mes</small>
         </div>
       </div>
+      @if (m.renglonesIsr?.length || m.renglonesIva?.length) {
+        <p class="ms-nota">
+          @if (a.resultado?.regimen?.principal) { Régimen {{ a.resultado?.regimen?.principal }} {{ a.resultado?.regimen?.nombre }} · }
+          {{ m.metodo || 'este régimen no hace pago provisional propio' }}
+          <button type="button" class="btn btn-link ms-rev-op" (click)="verPapel.set(!verPapel())" [attr.aria-expanded]="verPapel()">
+            {{ verPapel() ? 'Ocultar' : 'Ver' }} el cálculo renglón por renglón
+          </button>
+        </p>
+        @if (verPapel()) {
+          <div class="ms-papeles" data-testid="papel-en-pantalla">
+            @if (m.renglonesIsr?.length) { <app-renglones titulo="ISR del mes" [renglones]="m.renglonesIsr ?? []" /> }
+            @if (m.renglonesIva?.length) { <app-renglones titulo="IVA del mes" [renglones]="m.renglonesIva ?? []" /> }
+          </div>
+        }
+      } @else {
       <p class="ms-nota">
         @if (a.resultado?.regimen?.principal) { Régimen {{ a.resultado?.regimen?.principal }} {{ a.resultado?.regimen?.nombre }} · }
         {{ m.metodo || 'este régimen no hace pago provisional propio' }} ·
@@ -49,6 +64,7 @@
         − acreditable {{ m.ivaAcreditable | currency: 'MXN' : 'symbol-narrow' }}
         @if (m.ivaSaldoAnterior) { − saldo a favor anterior {{ m.ivaSaldoAnterior | currency: 'MXN' : 'symbol-narrow' }} }
       </p>
+      }
     } @else if (!a.calculado && !a.error) {
       <p class="ms-nota">Se está calculando por primera vez; en menos de un minuto aparece aquí.</p>
     }

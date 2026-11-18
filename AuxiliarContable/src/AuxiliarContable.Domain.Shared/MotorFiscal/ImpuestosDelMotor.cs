@@ -80,6 +80,25 @@ public class MesDeImpuestos
     public decimal IvaSaldoAnterior { get; set; }
     public decimal IvaAPagar { get; set; }
     public decimal IvaSaldoAFavor { get; set; }
+
+    /// <summary>El ISR del mes renglón por renglón, como en el papel de trabajo, con su fundamento.</summary>
+    public List<RenglonDelPapel> RenglonesIsr { get; set; } = [];
+
+    /// <summary>El IVA del mes renglón por renglón.</summary>
+    public List<RenglonDelPapel> RenglonesIva { get; set; } = [];
+}
+
+public class RenglonDelPapel
+{
+    public string Concepto { get; set; } = "";
+
+    /// <summary>Null si falta un dato para calcularlo, o si el renglón solo explica (tipo «nota»).</summary>
+    public decimal? Importe { get; set; }
+
+    public string Fundamento { get; set; } = "";
+
+    /// <summary>renglon, subtotal, resultado, tasa (en %), factor o nota.</summary>
+    public string Tipo { get; set; } = "renglon";
 }
 
 public class ArchivoDelMotor

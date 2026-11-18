@@ -243,6 +243,49 @@ public class ContabilidadElectronica
     public List<ArchivoXml> Archivos { get; set; } = [];
     public string Vencimiento { get; set; } = "";
     public List<string> Avisos { get; set; } = [];
+
+    /// <summary>Estado de situación financiera y de resultados del ejercicio hasta el mes (NIF B-6 y B-3).</summary>
+    public EstadosFinancieros? Estados { get; set; }
+}
+
+public class EstadosFinancieros
+{
+    /// <summary>AAAA-MM: el estado de resultados va de este mes…</summary>
+    public string Desde { get; set; } = "";
+
+    /// <summary>…a este; el de situación financiera es al cierre de este.</summary>
+    public string Hasta { get; set; } = "";
+
+    public List<RenglonDeEstado> Resultado { get; set; } = [];
+    public List<RenglonDeEstado> Situacion { get; set; } = [];
+
+    /// <summary>Activo − (pasivo + capital): debe ser 0.</summary>
+    public decimal? Cuadre { get; set; }
+
+    /// <summary>Faltan saldos iniciales o el costo de lo vendido: así se rotulan.</summary>
+    public bool Preliminar { get; set; }
+
+    public List<string> Advertencias { get; set; } = [];
+    public List<RazonFinanciera> Razones { get; set; } = [];
+}
+
+public class RenglonDeEstado
+{
+    public string Concepto { get; set; } = "";
+    public decimal? Importe { get; set; }
+    public string Fuente { get; set; } = "";
+
+    /// <summary>Solo en el de situación financiera: titulo, rubro, subtotal o total.</summary>
+    public string? Tipo { get; set; }
+}
+
+public class RazonFinanciera
+{
+    public string Clave { get; set; } = "";
+    public string Nombre { get; set; } = "";
+    public decimal? Valor { get; set; }
+    public string Unidad { get; set; } = "";
+    public string Lectura { get; set; } = "";
 }
 
 public class RenglonDeBalanza

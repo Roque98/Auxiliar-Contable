@@ -245,3 +245,9 @@ h2 {
   strong { font-size: var(--ig-titulo-2); font-weight: var(--ig-peso-semi); font-variant-numeric: tabular-nums; }
   small { font-size: var(--ig-texto-sm); color: var(--ig-texto-secundario); }
 }
+
+// Papel de trabajo y estados financieros en pantalla (app-renglones)
+.ms-papel caption { caption-side: top; text-align: left; font-weight: var(--ig-peso-semi); padding-block: 0.25rem; }
+.ms-papel-titulo th { text-align: left; padding-top: 0.75rem; font-weight: var(--ig-peso-semi); }
+.ms-papel-resultado td { border-top: 2px solid currentColor; }
+.ms-papeles { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 26rem), 1fr)); }

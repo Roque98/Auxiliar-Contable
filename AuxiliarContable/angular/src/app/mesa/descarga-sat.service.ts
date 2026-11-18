@@ -1,3 +1,4 @@
+import { RenglonDto } from './renglones.component';
 import { RestService } from '@abp/ng.core';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
@@ -87,6 +88,9 @@ export interface MesDeImpuestosDto {
   ivaSaldoAnterior: number;
   ivaAPagar: number;
   ivaSaldoAFavor: number;
+  /** El cálculo renglón por renglón (vacío en cálculos guardados antes de que existiera). */
+  renglonesIsr?: RenglonDto[];
+  renglonesIva?: RenglonDto[];
 }
 
 export interface PagosProvisionalesDto {
