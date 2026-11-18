@@ -147,6 +147,8 @@ export interface AnualDto {
     supuestos: string[];
     vence: string;
     errores: { archivo: string; error: string }[];
+    /** Los CFDI de retenciones del ejercicio que usó (plataformas, intereses, dividendos…). */
+    retenciones?: { uuid?: string | null; tipo: string; descripcion: string; rfcEmisor: string; nombreEmisor: string; periodo?: string | null; montoOperacion: number; isrRetenido: number; ivaRetenido: number }[];
   };
 }
 

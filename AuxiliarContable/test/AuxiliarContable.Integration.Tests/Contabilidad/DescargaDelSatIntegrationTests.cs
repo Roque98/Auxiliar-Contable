@@ -222,6 +222,28 @@ public class DescargaDelSatIntegrationTests : ConJerarquiaTestBase
     }
 
     [Fact]
+    public async Task Un_cfdi_de_retenciones_no_queda_danado_y_va_al_mes_de_su_periodo()
+    {
+        const string uuid = "12345678-1234-4234-8234-123456789012";
+        var anio = Dia.Year - 1;
+        var xml = $"""
+            <?xml version="1.0" encoding="UTF-8"?><retenciones:Retenciones xmlns:retenciones="http://www.sat.gob.mx/esquemas/retencionpago/2" Version="2.0" FechaExp="{Dia.Year}-02-10T10:00:00" CveRetenc="16" DescRetenc="Intereses"><retenciones:Emisor RfcE="BAN010101AAA" NomDenRazSocE="BANCO" RegimenFiscalE="601"/><retenciones:Receptor NacionalidadR="Nacional"><retenciones:Nacional RfcR="{Rfc}" NomDenRazSocR="CLIENTE" DomicilioFiscalR="62420"/></retenciones:Receptor><retenciones:Periodo MesIni="1" MesFin="12" Ejercicio="{anio}"/><retenciones:Totales MontoTotOperacion="5000.00" MontoTotGrav="5000" MontoTotExent="0" MontoTotRet="450"/><retenciones:Complemento><tfd:TimbreFiscalDigital xmlns:tfd="http://www.sat.gob.mx/TimbreFiscalDigital" UUID="{uuid}"/></retenciones:Complemento></retenciones:Retenciones>
+            """;
+        await ComoAsync(Usuario, () => GetRequiredService<IBovedaAppService>().SubirAsync(_cliente, TipoDeDocumento.Cfdi,
+            new RemoteStreamContent(new MemoryStream(Encoding.UTF8.GetBytes(xml.Trim())), "intereses.xml", "application/xml"),
+            Dia.Year, Dia.Month));
+
+        var d = await WithUnitOfWorkAsync(() => GetRequiredService<IRepository<Documento, Guid>>().FirstAsync(x => x.OrganizacionId == _cliente && x.Uuid == uuid.ToUpperInvariant()));
+        d.XmlDanado.ShouldBeFalse();
+        d.FechaDelDocumento!.Value.Year.ShouldBe(anio);
+        d.FechaDelDocumento!.Value.Month.ShouldBe(12);
+
+        // No es una compra: no abre operación (si no, saldría como gasto en las pólizas).
+        var op = await WithUnitOfWorkAsync(() => GetRequiredService<RegistroDeOperaciones>().DeDocumentoAsync(_cliente, d, Rfc));
+        op.ShouldBeNull();
+    }
+
+    [Fact]
     public async Task Una_orden_pide_meses_validos_y_el_rfc()
     {
         await Should.ThrowAsync<UserFriendlyException>(() => ComoAsync(Administrador, () =>

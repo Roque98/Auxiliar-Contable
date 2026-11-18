@@ -14,7 +14,10 @@ public static class FechaDelCfdi
 {
     private static readonly string[] Formatos = ["yyyy-MM-ddTHH:mm:ss", "yyyy-MM-ddTHH:mm:ss.FFFFFFF", "yyyy-MM-dd"];
 
-    /// <summary>El día de emisión, o null si no es un CFDI o no trae una fecha válida.</summary>
+    /// <summary>
+    /// El día de emisión, o null si no es un CFDI o no trae una fecha válida. Un CFDI de retenciones se fecha el último día
+    /// de su periodo (Periodo MesFin / Ejercicio): la constancia anual de intereses que llega en febrero es del año anterior.
+    /// </summary>
     public static DateOnly? Leer(byte[] xml)
     {
         try
@@ -27,7 +30,12 @@ public static class FechaDelCfdi
                 IgnoreWhitespace = true,
             };
             using var lector = XmlReader.Create(new MemoryStream(xml), opciones);
-            if (lector.MoveToContent() != XmlNodeType.Element || lector.LocalName != "Comprobante")
+            if (lector.MoveToContent() == XmlNodeType.Element && lector.LocalName == "Retenciones")
+            {
+                return DelPeriodo(lector);
+            }
+
+            if (lector.NodeType != XmlNodeType.Element || lector.LocalName != "Comprobante")
             {
                 return null;
             }
@@ -41,6 +49,22 @@ public static class FechaDelCfdi
         {
             return null;
         }
+    }
+
+    private static DateOnly? DelPeriodo(XmlReader lector)
+    {
+        while (lector.Read())
+        {
+            if (lector.NodeType == XmlNodeType.Element && lector.LocalName == "Periodo")
+            {
+                return int.TryParse(lector.GetAttribute("Ejercicio"), out var anio) && anio is >= 2000 and <= 2100
+                       && int.TryParse(lector.GetAttribute("MesFin"), out var mes) && mes is >= 1 and <= 12
+                    ? new DateOnly(anio, mes, DateTime.DaysInMonth(anio, mes))
+                    : null;
+            }
+        }
+
+        return null;
     }
 
     /// <summary>

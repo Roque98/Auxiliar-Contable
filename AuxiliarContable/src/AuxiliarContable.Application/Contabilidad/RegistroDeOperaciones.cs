@@ -175,6 +175,13 @@ public class RegistroDeOperaciones : ITransientDependency
             case TipoDeDocumento.Cfdi:
             {
                 var cfdi = DatosDelCfdi.Leer(await _almacen.LeerAsync(d));
+                if (cfdi is { EsRetencion: true })
+                {
+                    // Una constancia de retenciones no es una compra ni una venta: solo informa lo retenido (la usa el motor
+                    // en los impuestos). Si abriera una operación saldría como gasto en las pólizas.
+                    return null;
+                }
+
                 // El mismo UUID ya tiene operación (p. ej. la abrió su ticket): el XML se le amarra a esa.
                 if (cfdi?.Uuid is { } uuid && await _operaciones.FirstOrDefaultAsync(o => o.OrganizacionId == organizacionId && o.Uuid == uuid) is { } conUuid)
                 {
