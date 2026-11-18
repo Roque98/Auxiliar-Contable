@@ -617,6 +617,7 @@ public class AuxiliarContableHttpApiHostModule : AbpModule
         // Cada noche, el estatus de las facturas en el SAT (servicio público de verificación).
         await context.AddBackgroundWorkerAsync<RevisorDeEstatusSatWorker>();
         await context.AddBackgroundWorkerAsync<DescargaMasivaWorker>();
+        await context.AddBackgroundWorkerAsync<ContabilidadAlDiaWorker>();
 
         await FecharFacturasSinFechaAsync(context.ServiceProvider);
     }

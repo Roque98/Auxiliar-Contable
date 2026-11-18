@@ -20,18 +20,16 @@ namespace AuxiliarContable.Bancos;
 [Authorize]
 public class BancosAppService : AuxiliarContableAppService, IBancosAppService
 {
-    /// <summary>Los mismos topes que acepta el motor (servicio/app.py).</summary>
-    public const int MaxEstadosDeCuenta = 24;
+    public const int MaxEstadosDeCuenta = Conciliador.MaxEstadosDeCuenta;
 
-    public const int MaxFacturas = 5000;
+    public const int MaxFacturas = Conciliador.MaxFacturas;
 
     private readonly IRepository<Documento, Guid> _documentos;
     private readonly AlmacenDeDocumentos _almacen;
     private readonly Autorizador _autorizador;
     private readonly IPerfilFiscalAppService _perfiles;
     private readonly IMotorFiscal _motor;
-    private readonly GestorDePeriodos _periodos;
-    private readonly GestorDeConciliaciones _conciliaciones;
+    private readonly Conciliador _conciliador;
 
     public BancosAppService(
         IRepository<Documento, Guid> documentos,
@@ -39,16 +37,14 @@ public class BancosAppService : AuxiliarContableAppService, IBancosAppService
         Autorizador autorizador,
         IPerfilFiscalAppService perfiles,
         IMotorFiscal motor,
-        GestorDePeriodos periodos,
-        GestorDeConciliaciones conciliaciones)
+        Conciliador conciliador)
     {
         _documentos = documentos;
         _almacen = almacen;
         _autorizador = autorizador;
         _perfiles = perfiles;
         _motor = motor;
-        _periodos = periodos;
-        _conciliaciones = conciliaciones;
+        _conciliador = conciliador;
     }
 
     public async Task<LecturaDeEstados> LeerEstadoDeCuentaAsync(Guid organizacionId, Guid documentoId)
@@ -78,44 +74,8 @@ public class BancosAppService : AuxiliarContableAppService, IBancosAppService
             throw new UserFriendlyException("Mes no válido.");
         }
 
-        // Un periodo cerrado se queda con la conciliación con la que se cerró.
-        if (await _periodos.EstaCerradoAsync(organizacionId, anio, mes))
-        {
-            throw new UserFriendlyException(
-                $"El periodo {mes:00}/{anio} ya está cerrado: se queda con la conciliación con la que se cerró. Para volver a conciliarlo hay que reabrirlo.");
-        }
-
-        var rfc = await RfcDelClienteAsync(organizacionId);
-
-        var desde = new DateTime(anio, mes, 1);
-        var hasta = desde.AddMonths(1);
-        var delMes = await AsyncExecuter.ToListAsync(
-            from d in await _documentos.GetQueryableAsync()
-            where d.OrganizacionId == organizacionId
-                  && (d.Tipo == TipoDeDocumento.EstadoDeCuenta || d.Tipo == TipoDeDocumento.Cfdi)
-                  && (d.FechaDelDocumento ?? d.CreationTime) >= desde
-                  && (d.FechaDelDocumento ?? d.CreationTime) < hasta
-            select d);
-
-        var estados = delMes.Where(d => d.Tipo == TipoDeDocumento.EstadoDeCuenta).ToList();
-        var facturas = delMes.Where(d => d.Tipo == TipoDeDocumento.Cfdi).ToList();
-        if (estados.Count == 0)
-        {
-            throw new UserFriendlyException($"No hay estados de cuenta de {desde:MM/yyyy} en la bóveda. Súbelos en «Documentos» eligiendo ese mes; si ya los subiste, ahí mismo cámbialos de mes.");
-        }
-
-        if (estados.Count > MaxEstadosDeCuenta || facturas.Count > MaxFacturas)
-        {
-            throw new UserFriendlyException($"Son demasiados archivos para un mes (máximo {MaxEstadosDeCuenta} estados de cuenta y {MaxFacturas} facturas).");
-        }
-
-        var resultado = await AlMotorAsync(async () => await _motor.ConciliarAsync(rfc,
-            await ArchivosAsync(estados), await ArchivosAsync(facturas)));
-
-        // Se guarda: es la que cuenta para el cierre del mes mientras no cambien sus archivos.
-        var guardada = await _conciliaciones.RegistrarAsync(organizacionId, anio, mes, rfc, estados.Count, facturas.Count,
-            GestorDePeriodos.HuellaDe(delMes), resultado);
-        return Describir(guardada, resultado);
+        var c = await AlMotorAsync(() => _conciliador.ConciliarAsync(organizacionId, anio, mes));
+        return Describir(c.Guardada, c.Resultado);
     }
 
     /// <summary>Meses anteriores que se mandan al diagnóstico de facturas: ahí suelen estar las PPD que se pagan en el mes.</summary>

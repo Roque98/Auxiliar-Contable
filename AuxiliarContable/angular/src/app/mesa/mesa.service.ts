@@ -85,6 +85,17 @@ export interface PolizasDelMesDto {
   };
 }
 
+/** La contabilidad al día del mes: se pone al día sola un momento después de que entra o cambia algo. */
+export interface ContabilidadAlDiaDto {
+  anio: number;
+  mes: number;
+  actualizando: boolean;
+  seActualizaUtc: string | null;
+  actualizadaUtc: string | null;
+  resumen: string | null;
+  error: string | null;
+}
+
 export interface SaldoDeAperturaDto {
   cuenta: string;
   deudor: number;
@@ -132,6 +143,16 @@ export class MesaService {
   generarPolizas(organizacionId: string, anio: number, mes: number, cierre: DatosDeCierreDto): Observable<PolizasDelMesDto> {
     return this.rest.request<DatosDeCierreDto, PolizasDelMesDto>(
       { method: 'POST', url: `${this.base}/generar-polizas/${organizacionId}`, params: { anio, mes }, body: cierre }, this.opciones);
+  }
+
+  contabilidadAlDia(organizacionId: string, anio: number, mes: number): Observable<ContabilidadAlDiaDto> {
+    return this.rest.request<void, ContabilidadAlDiaDto>(
+      { method: 'GET', url: `${this.base}/contabilidad-al-dia/${organizacionId}`, params: { anio, mes } }, this.opciones);
+  }
+
+  actualizarContabilidad(organizacionId: string, anio: number, mes: number): Observable<ContabilidadAlDiaDto> {
+    return this.rest.request<void, ContabilidadAlDiaDto>(
+      { method: 'POST', url: `${this.base}/actualizar-contabilidad/${organizacionId}`, params: { anio, mes } }, this.opciones);
   }
 
   apertura(organizacionId: string): Observable<SaldosDeAperturaDto | null> {
