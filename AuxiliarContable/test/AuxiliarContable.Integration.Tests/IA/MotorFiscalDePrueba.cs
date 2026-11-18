@@ -234,15 +234,19 @@ public class MotorFiscalDePrueba : IMotorFiscal
         });
     }
 
+    public (string? Pago, string? Actividad) PlataformasRecibidas { get; private set; }
+
     public Task<PagosProvisionales> PagosProvisionalesAsync(
         string rfc, IReadOnlyList<string> regimenes, string periodo, string? nombre, IReadOnlyList<ArchivoParaElMotor> facturas,
-        IReadOnlyList<string> cancelados, decimal? coeficienteDeUtilidad, bool conExcel, CancellationToken cancellationToken = default)
+        IReadOnlyList<string> cancelados, decimal? coeficienteDeUtilidad, bool conExcel, string? plataformas = null,
+        string? actividadDePlataformas = null, CancellationToken cancellationToken = default)
     {
         if (Caido)
         {
             throw new MotorFiscalNoDisponibleException("El motor fiscal no responde.");
         }
 
+        PlataformasRecibidas = (plataformas, actividadDePlataformas);
         Provisionales = (rfc, regimenes, periodo, facturas.Select(f => f.Nombre).ToList(), cancelados);
         CoeficienteRecibido = coeficienteDeUtilidad;
         LlamadasDeProvisionales++;

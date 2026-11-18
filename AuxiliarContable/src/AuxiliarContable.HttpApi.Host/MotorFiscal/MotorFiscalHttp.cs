@@ -197,7 +197,8 @@ public class MotorFiscalHttp : IMotorFiscal, ITransientDependency
 
     public async Task<PagosProvisionales> PagosProvisionalesAsync(
         string rfc, IReadOnlyList<string> regimenes, string periodo, string? nombre, IReadOnlyList<ArchivoParaElMotor> facturas,
-        IReadOnlyList<string> cancelados, decimal? coeficienteDeUtilidad, bool conExcel, CancellationToken cancellationToken = default)
+        IReadOnlyList<string> cancelados, decimal? coeficienteDeUtilidad, bool conExcel, string? plataformas = null,
+        string? actividadDePlataformas = null, CancellationToken cancellationToken = default)
     {
         using var tope = CancelationConTope(_opciones.TimeoutDeBancosSegundos, cancellationToken);
         var peticion = new HttpRequestMessage(HttpMethod.Post, "impuestos/provisionales")
@@ -206,7 +207,8 @@ public class MotorFiscalHttp : IMotorFiscal, ITransientDependency
                 new
                 {
                     rfc, regimenes, periodo, nombre = nombre ?? "", cfdis = facturas.Select(Base64), cancelados,
-                    coeficiente = coeficienteDeUtilidad, con_excel = conExcel,
+                    coeficiente = coeficienteDeUtilidad, con_excel = conExcel, plataformas,
+                    actividad_plataformas = actividadDePlataformas,
                 }, options: Json),
         };
         return await EnviarAsync<PagosProvisionales>(peticion, tope.Token, cancellationToken);

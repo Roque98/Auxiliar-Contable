@@ -79,10 +79,13 @@ public interface IMotorFiscal
     /// Pago provisional de ISR e IVA del <paramref name="periodo"/> (AAAA-MM) solo con los CFDI del ejercicio: el papel de
     /// trabajo de impuestos (Excel) y lo que mueve el impuesto mes por mes. <paramref name="cancelados"/>: UUID que el SAT
     /// dio por cancelados; <paramref name="regimenes"/>: los del perfil fiscal (nombres o claves).
+    /// <paramref name="plataformas"/> y <paramref name="actividadDePlataformas"/>: régimen 625, «definitivo» o «provisional»
+    /// (art. 113-B LISR) y qué hace por la plataforma (la tasa del 113-A); null si no se ha contestado.
     /// </summary>
     Task<PagosProvisionales> PagosProvisionalesAsync(
         string rfc, IReadOnlyList<string> regimenes, string periodo, string? nombre, IReadOnlyList<ArchivoParaElMotor> facturas,
-        IReadOnlyList<string> cancelados, decimal? coeficienteDeUtilidad, bool conExcel, CancellationToken cancellationToken = default);
+        IReadOnlyList<string> cancelados, decimal? coeficienteDeUtilidad, bool conExcel, string? plataformas = null,
+        string? actividadDePlataformas = null, CancellationToken cancellationToken = default);
 
     /// <summary>Movimientos del banco sin amarrar + operaciones sin pago -> parejas propuestas por Claude, con su porqué.</summary>
     Task<SugerenciasDeAmarre> SugerirAmarresAsync(
@@ -195,7 +198,8 @@ public class MotorFiscalSinConfigurar : IMotorFiscal, ISingletonDependency
 
     public Task<PagosProvisionales> PagosProvisionalesAsync(
         string rfc, IReadOnlyList<string> regimenes, string periodo, string? nombre, IReadOnlyList<ArchivoParaElMotor> facturas,
-        IReadOnlyList<string> cancelados, decimal? coeficienteDeUtilidad, bool conExcel, CancellationToken cancellationToken = default) =>
+        IReadOnlyList<string> cancelados, decimal? coeficienteDeUtilidad, bool conExcel, string? plataformas = null,
+        string? actividadDePlataformas = null, CancellationToken cancellationToken = default) =>
         throw new MotorFiscalNoDisponibleException("No hay motor fiscal en este proceso.");
 
     public Task<IReadOnlyList<SentenciaDelMotor>> BuscarSentenciasAsync(

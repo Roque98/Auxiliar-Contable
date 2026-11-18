@@ -84,6 +84,15 @@ public static class CamposDelPerfil
     /// </summary>
     public const string CoeficienteDeUtilidad = "coeficiente_utilidad";
 
+    /// <summary>
+    /// Plataformas tecnológicas (régimen 625): si optó por que las retenciones de la plataforma sean pago definitivo
+    /// (art. 113-B LISR, 18-M LIVA) o hace pagos provisionales. Cambia el IVA del mes y la anual; hay que preguntarlo.
+    /// </summary>
+    public const string PagoDePlataformas = "plataformas_pago";
+
+    /// <summary>Qué hace por la plataforma: decide la tasa del art. 113-A LISR (25-VI LIF).</summary>
+    public const string ActividadEnPlataformas = "plataformas_actividad";
+
     public const int MaxValorLength = 8000;
 
     public static readonly IReadOnlyList<CampoDelPerfil> Todos =
@@ -126,6 +135,17 @@ public static class CamposDelPerfil
             new("analitico", "Analítico: por compras e inventario final"),
         ]),
         new(CoeficienteDeUtilidad, "Coeficiente de utilidad (personas morales)", TipoDeCampo.Texto, GrupoDeCampos.Fiscal, false),
+        new(PagoDePlataformas, "Plataformas tecnológicas (625): ¿pago definitivo o provisional?", TipoDeCampo.Opcion, GrupoDeCampos.Fiscal, false,
+        [
+            new("definitivo", "Pago definitivo: las retenciones de la plataforma son el pago (art. 113-B)"),
+            new("provisional", "Pagos provisionales: en la anual acumula todo y deduce"),
+        ]),
+        new(ActividadEnPlataformas, "Plataformas tecnológicas (625): ¿qué hace por la plataforma?", TipoDeCampo.Opcion, GrupoDeCampos.Fiscal, false,
+        [
+            new("transporte", "Transporte de pasajeros o entrega de bienes (2.1 %)"),
+            new("hospedaje", "Hospedaje (4 %)"),
+            new("bienes_servicios", "Venta de bienes u otros servicios (2.5 %)"),
+        ]),
     ];
 
     public static CampoDelPerfil? Buscar(string clave) => Todos.FirstOrDefault(c => c.Clave == clave);
