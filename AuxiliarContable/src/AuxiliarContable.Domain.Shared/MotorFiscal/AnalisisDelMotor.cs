@@ -290,6 +290,26 @@ public class EstadosFinancieros
 
     public List<string> Advertencias { get; set; } = [];
     public List<RazonFinanciera> Razones { get; set; } = [];
+
+    /// <summary>Borrador de notas (NIF B-6, B-3 y particulares) con las cifras del cliente.</summary>
+    public List<NotaDeLosEstados> Notas { get; set; } = [];
+
+    /// <summary>Revelaciones obligatorias de las NIF que aplican por los rubros con saldo (lista de verificación).</summary>
+    public List<RevelacionNif> Revelaciones { get; set; } = [];
+}
+
+public class NotaDeLosEstados
+{
+    public string Titulo { get; set; } = "";
+    public string Texto { get; set; } = "";
+}
+
+public class RevelacionNif
+{
+    public string Norma { get; set; } = "";
+    public string Titulo { get; set; } = "";
+    public string Parrafo { get; set; } = "";
+    public string Texto { get; set; } = "";
 }
 
 public class RenglonDeEstado

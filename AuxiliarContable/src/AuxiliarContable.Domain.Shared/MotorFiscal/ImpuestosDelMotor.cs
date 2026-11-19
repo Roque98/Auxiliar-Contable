@@ -5,6 +5,24 @@ namespace AuxiliarContable.MotorFiscal;
 // Pago provisional de ISR e IVA solo con los CFDI (/impuestos/provisionales en motores-fiscales): el papel de trabajo de
 // impuestos del Armador (Excel con fórmulas, tarifa del Anexo 8) y, por mes del ejercicio, lo que mueve el impuesto.
 
+/// <summary>
+/// Una factura PPD que la conciliación del banco muestra cobrada (o pagada) sin su complemento de pago: entra al
+/// cálculo por flujo en la fecha del banco (arts. 102 y 113-E LISR, 1-B LIVA) y se avisa que falta el complemento.
+/// </summary>
+public class CobroDelBanco
+{
+    public string Uuid { get; set; } = "";
+
+    /// <summary>AAAA-MM-DD del movimiento del banco.</summary>
+    public string Fecha { get; set; } = "";
+
+    /// <summary>En la moneda de la factura.</summary>
+    public decimal Importe { get; set; }
+
+    /// <summary>emitida (cobro) o recibida (pago).</summary>
+    public string Lado { get; set; } = "emitida";
+}
+
 public class PagosProvisionales
 {
     public RegimenDelCalculo Regimen { get; set; } = new();

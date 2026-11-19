@@ -85,7 +85,8 @@ public interface IMotorFiscal
     Task<PagosProvisionales> PagosProvisionalesAsync(
         string rfc, IReadOnlyList<string> regimenes, string periodo, string? nombre, IReadOnlyList<ArchivoParaElMotor> facturas,
         IReadOnlyList<string> cancelados, decimal? coeficienteDeUtilidad, bool conExcel, string? plataformas = null,
-        string? actividadDePlataformas = null, CancellationToken cancellationToken = default);
+        string? actividadDePlataformas = null, IReadOnlyList<CobroDelBanco>? cobrosDelBanco = null,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// DIOT del <paramref name="periodo"/> (AAAA-MM) con los CFDI del ejercicio y del anterior: un renglón por proveedor y
@@ -116,6 +117,13 @@ public interface IMotorFiscal
     /// fundamento por capa, chispazos, excepciones, condiciones, pendientes) y «expediente». Tarda minutos.
     /// </summary>
     Task<string> AnalizarNormativaAsync(PerfilParaNormativa perfil, OperacionParaNormativa operacion,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// El expediente de hipótesis normativa sin Claude (motor: <c>/normativa/expediente</c>): leyes que activa el perfil,
+    /// chispazos (preguntas obligatorias con sus fuentes), cadena de cada artículo. El JSON del motor. Es rápido.
+    /// </summary>
+    Task<string> ExpedienteNormativoAsync(PerfilParaNormativa perfil, OperacionParaNormativa operacion,
         CancellationToken cancellationToken = default);
 
     /// <summary>Nómina de un periodo: percepciones, ISR con subsidio, IMSS, INFONAVIT, FONACOT, ISN, neto y póliza.</summary>
@@ -254,7 +262,8 @@ public class MotorFiscalSinConfigurar : IMotorFiscal, ISingletonDependency
     public Task<PagosProvisionales> PagosProvisionalesAsync(
         string rfc, IReadOnlyList<string> regimenes, string periodo, string? nombre, IReadOnlyList<ArchivoParaElMotor> facturas,
         IReadOnlyList<string> cancelados, decimal? coeficienteDeUtilidad, bool conExcel, string? plataformas = null,
-        string? actividadDePlataformas = null, CancellationToken cancellationToken = default) =>
+        string? actividadDePlataformas = null, IReadOnlyList<CobroDelBanco>? cobrosDelBanco = null,
+        CancellationToken cancellationToken = default) =>
         throw new MotorFiscalNoDisponibleException("No hay motor fiscal en este proceso.");
 
     public Task<AnualDelMotor> AnualAsync(
@@ -269,6 +278,10 @@ public class MotorFiscalSinConfigurar : IMotorFiscal, ISingletonDependency
         throw new MotorFiscalNoDisponibleException("No hay motor fiscal en este proceso.");
 
     public Task<string> AnalizarNormativaAsync(PerfilParaNormativa perfil, OperacionParaNormativa operacion,
+        CancellationToken cancellationToken = default) =>
+        throw new MotorFiscalNoDisponibleException("No hay motor fiscal en este proceso.");
+
+    public Task<string> ExpedienteNormativoAsync(PerfilParaNormativa perfil, OperacionParaNormativa operacion,
         CancellationToken cancellationToken = default) =>
         throw new MotorFiscalNoDisponibleException("No hay motor fiscal en este proceso.");
 

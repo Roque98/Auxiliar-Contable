@@ -236,6 +236,18 @@ public class MotorFiscalHttp : IMotorFiscal, ITransientDependency
         return await EnviarAsync<InterpretacionDelMotor>(peticion, tope.Token, cancellationToken);
     }
 
+    public async Task<string> ExpedienteNormativoAsync(PerfilParaNormativa perfil, OperacionParaNormativa operacion,
+        CancellationToken cancellationToken = default)
+    {
+        using var tope = CancelationConTope(_opciones.TimeoutDeBancosSegundos, cancellationToken);
+        var peticion = new HttpRequestMessage(HttpMethod.Post, "normativa/expediente")
+        {
+            Content = JsonContent.Create(new { perfil, operacion }, options: Json),
+        };
+        var r = await EnviarAsync<System.Text.Json.JsonElement>(peticion, tope.Token, cancellationToken);
+        return r.GetRawText();
+    }
+
     public async Task<string> AnalizarNormativaAsync(PerfilParaNormativa perfil, OperacionParaNormativa operacion,
         CancellationToken cancellationToken = default)
     {
@@ -343,7 +355,8 @@ public class MotorFiscalHttp : IMotorFiscal, ITransientDependency
     public async Task<PagosProvisionales> PagosProvisionalesAsync(
         string rfc, IReadOnlyList<string> regimenes, string periodo, string? nombre, IReadOnlyList<ArchivoParaElMotor> facturas,
         IReadOnlyList<string> cancelados, decimal? coeficienteDeUtilidad, bool conExcel, string? plataformas = null,
-        string? actividadDePlataformas = null, CancellationToken cancellationToken = default)
+        string? actividadDePlataformas = null, IReadOnlyList<CobroDelBanco>? cobrosDelBanco = null,
+        CancellationToken cancellationToken = default)
     {
         using var tope = CancelationConTope(_opciones.TimeoutDeBancosSegundos, cancellationToken);
         var peticion = new HttpRequestMessage(HttpMethod.Post, "impuestos/provisionales")
@@ -354,6 +367,7 @@ public class MotorFiscalHttp : IMotorFiscal, ITransientDependency
                     rfc, regimenes, periodo, nombre = nombre ?? "", cfdis = facturas.Select(Base64), cancelados,
                     coeficiente = coeficienteDeUtilidad, con_excel = conExcel, plataformas,
                     actividad_plataformas = actividadDePlataformas,
+                    cobros_del_banco = cobrosDelBanco ?? [],
                 }, options: Json),
         };
         return await EnviarAsync<PagosProvisionales>(peticion, tope.Token, cancellationToken);

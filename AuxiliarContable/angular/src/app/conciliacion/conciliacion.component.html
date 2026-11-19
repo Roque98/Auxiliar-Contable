@@ -36,11 +36,11 @@
     <button
       type="button"
       class="btn btn-primary cc-conciliar"
-      [disabled]="!clienteId() || ocupado() || cierre()?.etapa === Etapa.Cerrado"
+      [disabled]="!clienteId() || ocupado() || integralEnCurso() || cierre()?.etapa === Etapa.Cerrado"
       (click)="conciliar()"
       data-testid="conciliar"
     >
-      @if (ocupado()) {
+      @if (ocupado() || integralEnCurso()) {
         <span class="ig-girando" aria-hidden="true"></span> Trabajando…
       } @else {
         <i class="bi bi-arrow-left-right" aria-hidden="true"></i> {{ datos() ? 'Volver a conciliar' : 'Conciliar' }}
@@ -49,11 +49,78 @@
   </div>
 </header>
 
-@if (ocupado()) {
-  <p class="cc-nota" role="status">
-    Si hay estados de cuenta escaneados o en foto, Claude los lee y puede tardar varios minutos la primera vez.
-    No cierres esta pantalla.
-  </p>
+@if (integral(); as v) {
+  <section class="cc-cierre" aria-labelledby="cc-integral" data-testid="integral">
+    <header class="cc-cierre-cabecera">
+      <h2 id="cc-integral"><i class="bi bi-magic" aria-hidden="true"></i> Conciliación de todo hasta {{ meses[v.mes - 1] }} {{ v.anio }}</h2>
+      <span class="cc-etapa">
+        @switch (v.estado) {
+          @case ('Pendiente') { En la fila… }
+          @case ('Trabajando') { Trabajando: {{ avanceIntegral() }} % }
+          @case ('Lista') { Lista {{ v.terminadaUtc | date: 'short' }} }
+          @default { No terminó }
+        }
+      </span>
+    </header>
+    @if (integralEnCurso()) {
+      <p class="cc-nota" role="status">
+        Se están juntando las facturas, los tickets, el banco, la nómina, las pólizas, los impuestos, los estados financieros y la
+        normativa de los meses abiertos. Claude y el SAT pueden tardar varios minutos; puedes salir de esta pantalla y volver.
+      </p>
+      <div class="progress mb-2" role="progressbar" [attr.aria-valuenow]="avanceIntegral()" aria-valuemin="0" aria-valuemax="100">
+        <div class="progress-bar" [style.width.%]="avanceIntegral()"></div>
+      </div>
+    }
+    @if (v.error) { <div class="ig-alerta ig-alerta-error" role="alert">{{ v.error }}</div> }
+
+    @for (m of v.meses; track m.mes) {
+      <div class="cc-integral-mes">
+        <h3>{{ meses[m.mes - 1] }} {{ m.anio }}</h3>
+        <p>
+          ISR a pagar <strong>{{ m.isrAPagar ?? null | currency: 'MXN' : 'symbol-narrow' }}</strong> ·
+          IVA a pagar <strong>{{ m.ivaAPagar ?? null | currency: 'MXN' : 'symbol-narrow' }}</strong>
+          @if (m.ivaAFavor) { (a favor {{ m.ivaAFavor | currency: 'MXN' : 'symbol-narrow' }}) }
+          · Utilidad del ejercicio {{ m.utilidadDelEjercicio ?? null | currency: 'MXN' : 'symbol-narrow' }}
+          @if (m.estadosPreliminares) { (preliminar) }
+          · {{ m.polizas }} pólizas
+          @if (m.detenidas) { · <strong>{{ m.detenidas }} detenidas por revisar</strong> }
+          @if (m.notas) { · {{ m.notas }} notas en borrador }
+        </p>
+        @if (m.avisos.length) {
+          <ul class="cc-nota">@for (a of m.avisos; track $index) { <li>{{ a }}</li> }</ul>
+        }
+        @if (m.alertasNormativas.length) {
+          <details>
+            <summary>{{ m.alertasNormativas.length }} pregunta(s) normativa(s) que el mes enciende</summary>
+            <ul>
+              @for (a of m.alertasNormativas; track $index) {
+                <li><strong>[{{ a.disparador }}]</strong> {{ a.pregunta }} @if (a.fuentes.length) { <span class="cc-nota">→ {{ a.fuentes.join(', ') }}</span> }</li>
+              }
+            </ul>
+            @if (cliente(); as c) {
+              <a [routerLink]="['/normativa']" [queryParams]="{ cliente: c.id }">Razonarlas en «Análisis normativo»</a>
+            }
+          </details>
+        }
+      </div>
+    }
+
+    <details [open]="integralEnCurso()">
+      <summary>Qué se hizo, paso por paso</summary>
+      @for (g of gruposDePasos(); track g.periodo) {
+        <h4 class="mt-2">{{ g.periodo || 'Toda la vuelta' }} <span class="cc-nota">({{ g.hechos }}/{{ g.pasos.length }})</span></h4>
+        <ul class="list-unstyled">
+          @for (p of g.pasos; track p.clave) {
+            <li [attr.data-estado]="p.estado">
+              <i class="bi" [class]="'bi ' + iconoDePaso[p.estado]" aria-hidden="true"></i>
+              <strong>{{ p.titulo }}</strong>
+              @if (p.resumen) { — {{ p.resumen }} }
+            </li>
+          }
+        </ul>
+      }
+    </details>
+  </section>
 }
 
 @if (error(); as e) {

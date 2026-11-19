@@ -336,6 +336,25 @@
             </div>
           </details>
         }
+        @if (ef.notas?.length) {
+          <details>
+            <summary class="ms-nota">Notas a los estados financieros, borrador ({{ ef.notas.length }})</summary>
+            @for (n of ef.notas; track $index) {
+              <h4 class="ms-subtitulo">{{ n.titulo }}</h4>
+              <p style="white-space: pre-line">{{ n.texto }}</p>
+            }
+          </details>
+        }
+        @if (ef.revelaciones?.length) {
+          <details>
+            <summary class="ms-nota">Revelaciones obligatorias por verificar ({{ ef.revelaciones.length }})</summary>
+            <ul>
+              @for (r of ef.revelaciones; track $index) {
+                <li><strong>{{ r.parrafo || r.norma }}</strong> {{ r.titulo }}: <span class="ms-nota">{{ r.texto }}</span></li>
+              }
+            </ul>
+          </details>
+        }
         <h3 class="ms-subtitulo">Balanza de comprobación</h3>
       }
       <div class="ms-tabla-caja">
