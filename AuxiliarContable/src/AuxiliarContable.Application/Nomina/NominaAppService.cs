@@ -127,7 +127,7 @@ public class NominaAppService : AuxiliarContableAppService, INominaAppService
         return Describir(t);
     }
 
-    public async Task<ArchivosDeIdse> ArchivosIdseAsync(Guid organizacionId, List<Guid>? ids)
+    public async Task<ArchivosDeIdse> ArchivosIdseAsync(Guid organizacionId, List<Guid>? ids = null)
     {
         await ExigirEquipoAsync(organizacionId, AccionEnOrganizacion.Ver);
         var perfil = await _perfiles.FirstOrDefaultAsync(p => p.OrganizacionId == organizacionId);

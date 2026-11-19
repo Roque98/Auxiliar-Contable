@@ -156,7 +156,7 @@ export class NominaComponent implements OnInit {
     if (!id) {
       return;
     }
-    this.hacer(this.api.archivosIdse(id, null), r => {
+    this.hacer(this.api.archivosIdse(id, []), r => {
       this.idse.set(r);
       for (const a of r.archivos) {
         descargarBase64(a.nombre, a.contenidoB64, 'text/plain');

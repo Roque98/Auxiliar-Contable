@@ -20,7 +20,7 @@ public interface INominaAppService : IApplicationService
     Task<TrabajadorDto> DarDeBajaAsync(Guid organizacionId, Guid trabajadorId, DateTime? fecha, string? causa);
 
     /// <summary>Los archivos del IDSE con los movimientos que faltan de presentar (o solo los de <paramref name="ids"/>).</summary>
-    Task<ArchivosDeIdse> ArchivosIdseAsync(Guid organizacionId, List<Guid>? ids);
+    Task<ArchivosDeIdse> ArchivosIdseAsync(Guid organizacionId, List<Guid>? ids = null);
 
     /// <summary>Ya se presentaron en el IDSE: dejan de salir en los archivos.</summary>
     Task MarcarPresentadosAsync(Guid organizacionId, List<Guid> ids);

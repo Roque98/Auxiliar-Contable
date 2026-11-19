@@ -110,11 +110,11 @@ public class NominaIntegrationTests : ConJerarquiaTestBase
         await ComoAsync(Administrador, () => _nomina.GuardarTrabajadorAsync(_cliente, conCambio));
         var movs = (await ComoAsync(Administrador, () => _nomina.GetDelClienteAsync(_cliente, 2026))).Movimientos;
         movs.Count(m => m.Tipo == "modificacion" && m.SalarioDiario == 550).ShouldBe(1);
-        var archivos = await ComoAsync(Administrador, () => _nomina.ArchivosIdseAsync(_cliente, null));
+        var archivos = await ComoAsync(Administrador, () => _nomina.ArchivosIdseAsync(_cliente, []));
         archivos.Archivos.Sum(a => a.Renglones).ShouldBe(4);
         _motor.IdseRecibido!.Single(m => m.Tipo == "modificacion").PrimerApellido.ShouldBe("Herrera");
         await ComoAsync(Administrador, () => _nomina.MarcarPresentadosAsync(_cliente, [.. movs.Select(m => m.Id)]));
-        await Should.ThrowAsync<UserFriendlyException>(() => ComoAsync(Administrador, () => _nomina.ArchivosIdseAsync(_cliente, null)));
+        await Should.ThrowAsync<UserFriendlyException>(() => ComoAsync(Administrador, () => _nomina.ArchivosIdseAsync(_cliente, [])));
 
         // Recibos (sin CURP lo dice el motor) y cuotas del mes con el periodo calculado.
         await ComoAsync(Administrador, () => _nomina.CalcularAsync(_cliente, p.Id));
