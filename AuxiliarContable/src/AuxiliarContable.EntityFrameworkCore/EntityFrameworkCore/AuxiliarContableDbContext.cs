@@ -78,6 +78,7 @@ public class AuxiliarContableDbContext :
     public DbSet<Contabilidad.PolizasDelMes> PolizasDeMeses { get; set; }
 
     public DbSet<Contabilidad.ContabilidadDelMes> ContabilidadesDeMeses { get; set; }
+    public DbSet<Contabilidad.OperacionInterpretada> OperacionesInterpretadas { get; set; }
 
     public DbSet<Contabilidad.SaldosDeApertura> SaldosDeAperturas { get; set; }
 
@@ -404,6 +405,19 @@ public class AuxiliarContableDbContext :
             b.Property(x => x.Resultado).IsRequired().HasColumnType("text");
             b.Property(x => x.DatosDeCierre).HasColumnType("text");
             b.HasIndex(x => new { x.OrganizacionId, x.Anio, x.Mes }).IsUnique();
+        });
+
+        // AppOperacionesInterpretadas: lo que Claude interpretó de cada operación (una por operación).
+        builder.Entity<Contabilidad.OperacionInterpretada>(b =>
+        {
+            b.ToTable(AuxiliarContableConsts.DbTablePrefix + "OperacionesInterpretadas", AuxiliarContableConsts.DbSchema);
+            b.ConfigureByConvention();
+            b.Property(x => x.Huella).HasMaxLength(Contabilidad.OperacionInterpretada.HuellaLength);
+            b.Property(x => x.Resultado).HasColumnType("text");
+            b.Property(x => x.Error).HasMaxLength(Contabilidad.OperacionInterpretada.MaxErrorLength);
+            b.HasIndex(x => x.OperacionId).IsUnique();
+            b.HasIndex(x => new { x.OrganizacionId, x.Anio, x.Mes });
+            b.HasIndex(x => new { x.Pedida, x.PedidaUtc });
         });
 
         // AppContabilidadesDeMeses: la contabilidad al día de cada mes (por actualizar, qué se hizo la última vez).

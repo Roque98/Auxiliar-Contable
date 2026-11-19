@@ -22,6 +22,7 @@ public class MarcadorDeContabilidad :
     ILocalEventHandler<EntityChangedEventData<Operacion>>,
     ILocalEventHandler<EntityChangedEventData<MovimientoFueraDelBanco>>,
     ILocalEventHandler<EntityChangedEventData<ConciliacionBancaria>>,
+    ILocalEventHandler<EntityChangedEventData<OperacionInterpretada>>,
     ITransientDependency
 {
     private static readonly AsyncLocal<bool> Callado = new();
@@ -65,6 +66,12 @@ public class MarcadorDeContabilidad :
 
     public Task HandleEventAsync(EntityChangedEventData<ConciliacionBancaria> evento) =>
         MarcarAsync(evento.Entity.OrganizacionId, evento.Entity.Anio, evento.Entity.Mes);
+
+    /// <summary>Claude terminó de interpretar una operación: las pólizas se rehacen con lo que dijo (pedirla no cuenta).</summary>
+    public Task HandleEventAsync(EntityChangedEventData<OperacionInterpretada> evento) =>
+        evento.Entity.Pedida || evento.Entity.Resultado == null
+            ? Task.CompletedTask
+            : MarcarAsync(evento.Entity.OrganizacionId, evento.Entity.Anio, evento.Entity.Mes);
 
     public async Task MarcarAsync(Guid organizacionId, int anio, int mes)
     {

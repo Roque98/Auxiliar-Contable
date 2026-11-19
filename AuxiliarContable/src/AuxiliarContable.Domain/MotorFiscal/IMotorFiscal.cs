@@ -104,6 +104,13 @@ public interface IMotorFiscal
         IReadOnlyList<string> cancelados, decimal? coeficienteDeUtilidad, string? plataformas, string? actividadDePlataformas,
         IReadOnlyDictionary<string, decimal> captura, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Qué es de verdad una operación (factura, ticket y banco juntos) y qué es para el cliente, con claude -p.
+    /// </summary>
+    Task<InterpretacionDelMotor> InterpretarOperacionAsync(
+        PerfilParaInterpretar perfil, OperacionParaInterpretar operacion, ArchivoParaElMotor? factura, AnalisisDeDocumento? control,
+        BancoParaInterpretar? banco, CancellationToken cancellationToken = default);
+
     /// <summary>Movimientos del banco sin amarrar + operaciones sin pago -> parejas propuestas por Claude, con su porqué.</summary>
     Task<SugerenciasDeAmarre> SugerirAmarresAsync(
         IReadOnlyList<MovimientoParaAmarrar> movimientos, IReadOnlyList<CandidataParaAmarrar> candidatas, string? giro,
@@ -223,6 +230,11 @@ public class MotorFiscalSinConfigurar : IMotorFiscal, ISingletonDependency
         string rfc, IReadOnlyList<string> regimenes, int anio, IReadOnlyList<ArchivoParaElMotor> facturas,
         IReadOnlyList<string> cancelados, decimal? coeficienteDeUtilidad, string? plataformas, string? actividadDePlataformas,
         IReadOnlyDictionary<string, decimal> captura, CancellationToken cancellationToken = default) =>
+        throw new MotorFiscalNoDisponibleException("No hay motor fiscal en este proceso.");
+
+    public Task<InterpretacionDelMotor> InterpretarOperacionAsync(
+        PerfilParaInterpretar perfil, OperacionParaInterpretar operacion, ArchivoParaElMotor? factura, AnalisisDeDocumento? control,
+        BancoParaInterpretar? banco, CancellationToken cancellationToken = default) =>
         throw new MotorFiscalNoDisponibleException("No hay motor fiscal en este proceso.");
 
     public Task<DiotDelMotor> DiotAsync(

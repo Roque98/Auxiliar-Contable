@@ -88,6 +88,8 @@ public class MotorFiscalDePrueba : IMotorFiscal
         Provisionales = null;
         CoeficienteRecibido = null;
         LlamadasDeProvisionales = 0;
+        Interpretaciones = 0;
+        InterpretacionRecibida = null;
         EstaConfigurado = true;
         Caido = false;
         Resultados.Clear();
@@ -235,6 +237,33 @@ public class MotorFiscalDePrueba : IMotorFiscal
     }
 
     public (string? Pago, string? Actividad) PlataformasRecibidas { get; private set; }
+
+    /// <summary>Cuántas veces se pidió una interpretación, y lo último que recibió.</summary>
+    public int Interpretaciones { get; private set; }
+
+    public (OperacionParaInterpretar Operacion, bool ConFactura, AnalisisDeDocumento? Control, BancoParaInterpretar? Banco)? InterpretacionRecibida { get; private set; }
+
+    /// <summary>Lo que contesta «Claude» en las pruebas.</summary>
+    public InterpretacionDeOperacion InterpretacionQueContesta { get; set; } = new()
+    {
+        Objeto = "Compresor de aire", Categoria = "inversion", Confianza = "alta",
+        Conceptos = [new ConceptoInterpretado { Indice = 0, Categoria = "inversion", Isr = "inversion", Iva = "acreditable", Cuenta = "155.01" }],
+        Alertas = [new AlertaDeInterpretacion { Tipo = "otra_interpretacion", Mensaje = "Es maquinaria", Fundamento = "art. 34 LISR" }],
+    };
+
+    public Task<InterpretacionDelMotor> InterpretarOperacionAsync(
+        PerfilParaInterpretar perfil, OperacionParaInterpretar operacion, ArchivoParaElMotor? factura, AnalisisDeDocumento? control,
+        BancoParaInterpretar? banco, CancellationToken cancellationToken = default)
+    {
+        if (Caido)
+        {
+            throw new MotorFiscalNoDisponibleException("El motor fiscal no responde.");
+        }
+
+        Interpretaciones++;
+        InterpretacionRecibida = (operacion, factura != null, control, banco);
+        return Task.FromResult(new InterpretacionDelMotor { Version = "prueba", Huella = "h", Fuentes = ["factura"], Interpretacion = InterpretacionQueContesta });
+    }
 
     /// <summary>Lo que recibió la última anual: ejercicio, archivos y lo capturado.</summary>
     public (int Anio, List<string> Facturas, IReadOnlyDictionary<string, decimal> Captura)? AnualRecibida { get; private set; }

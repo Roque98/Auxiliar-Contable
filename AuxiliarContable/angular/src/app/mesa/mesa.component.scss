@@ -257,3 +257,7 @@ h2 {
 .ms-cuenta:hover, .ms-cuenta:focus-visible { text-decoration: underline; }
 .ms-auxiliar-fila > td { padding-inline-start: 1.5rem; }
 .ms-auxiliar caption { caption-side: top; text-align: left; font-weight: var(--ig-peso-semi); padding-block: 0.25rem; }
+
+// Interpretación de Claude dentro del detalle de una operación
+.ms-interpretacion { border-top: 1px dashed currentColor; margin-top: 0.75rem; padding-top: 0.5rem; display: grid; gap: 0.35rem; }
+.ms-interpretacion p { margin: 0; }

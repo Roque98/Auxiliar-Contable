@@ -18,6 +18,8 @@ import { DescargaSatComponent } from './descarga-sat.component';
 import { ImpuestosAlDiaComponent } from './impuestos-al-dia.component';
 import { DiotComponent } from './diot.component';
 import { AnualComponent } from './anual.component';
+import { InterpretacionComponent } from './interpretacion.component';
+import { InterpretacionDeOperacionDto, InterpretacionesDelMesDto, InterpretacionesService } from './interpretaciones.service';
 import { RenglonesComponent } from './renglones.component';
 import { mesLargo, renglonesDeResultado, renglonesDeSituacion } from './estados';
 import { Auxiliar, RenglonDeBalanzaDto, auxiliarDe } from './auxiliar';
@@ -44,13 +46,14 @@ type Filtro = 'todas' | 'sin-factura' | 'sin-transaccion' | 'sin-control' | 'com
 @Component({
   selector: 'app-mesa',
   standalone: true,
-  imports: [FormsModule, CurrencyPipe, DatePipe, DecimalPipe, PercentPipe, RouterLink, PatasComponent, DescargaSatComponent, ImpuestosAlDiaComponent, DiotComponent, AnualComponent, RenglonesComponent],
+  imports: [FormsModule, CurrencyPipe, DatePipe, DecimalPipe, PercentPipe, RouterLink, PatasComponent, DescargaSatComponent, ImpuestosAlDiaComponent, DiotComponent, AnualComponent, RenglonesComponent, InterpretacionComponent],
   templateUrl: './mesa.component.html',
   styleUrls: ['./mesa.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class MesaComponent implements OnInit {
   private readonly api = inject(MesaService);
+  private readonly apiInterpretaciones = inject(InterpretacionesService);
   private readonly operacionesApi = inject(OperacionesService);
   private readonly perfiles = inject(PerfilFiscalService);
   private readonly ruta = inject(ActivatedRoute);
@@ -88,6 +91,11 @@ export class MesaComponent implements OnInit {
   readonly alDia = signal<ContabilidadAlDiaDto | null>(null);
   haceCuanto = haceCuanto;
   private relojAlDia: ReturnType<typeof setTimeout> | null = null;
+  private relojInterpretaciones: ReturnType<typeof setTimeout> | null = null;
+  /** Lo que Claude interpretó de las operaciones del mes. */
+  readonly interpretaciones = signal<InterpretacionesDelMesDto | null>(null);
+  readonly pidiendo = signal(false);
+  readonly porOperacion = computed(() => new Map((this.interpretaciones()?.operaciones ?? []).map(x => [x.operacionId, x] as const)));
 
   // Saldos de apertura y contabilidad electrónica
   readonly apertura = signal<SaldosDeAperturaDto | null>(null);
@@ -159,7 +167,10 @@ export class MesaComponent implements OnInit {
   });
 
   constructor() {
-    inject(DestroyRef).onDestroy(() => this.pararAlDia());
+    inject(DestroyRef).onDestroy(() => {
+      this.pararAlDia();
+      this.pararInterpretaciones();
+    });
   }
 
   ngOnInit(): void {
@@ -204,6 +215,7 @@ export class MesaComponent implements OnInit {
     });
     this.api.polizas(id, this.anio, this.mes).subscribe({ next: p => this.ponerPolizas(p), error: () => this.ponerPolizas(null) });
     this.cargarAlDia();
+    this.cargarInterpretaciones();
     this.electronica.set(null);
     this.api.apertura(id).subscribe({ next: a => this.apertura.set(a), error: () => this.apertura.set(null) });
   }
@@ -232,6 +244,63 @@ export class MesaComponent implements OnInit {
    * Cómo va la contabilidad al día. Mientras está por actualizar se vuelve a preguntar poco después de la hora en que
    * toca; cuando termina, se recargan la mesa y las pólizas (pudo conciliar, amarrar y generar).
    */
+  interpretacionDe(id: string): InterpretacionDeOperacionDto | undefined {
+    return this.porOperacion().get(id);
+  }
+
+  /** Lo interpretado del mes; mientras haya algo en la fila, se vuelve a ver cada 30 s. */
+  cargarInterpretaciones(): void {
+    this.pararInterpretaciones();
+    const [id, anio, mes] = [this.clienteId(), this.anio, this.mes];
+    if (!id) {
+      this.interpretaciones.set(null);
+      return;
+    }
+    this.apiInterpretaciones.delMes(id, anio, mes).subscribe({
+      next: r => {
+        if (id !== this.clienteId() || anio !== this.anio || mes !== this.mes) {
+          return;
+        }
+        const antes = this.interpretaciones();
+        this.interpretaciones.set(r);
+        if (antes && antes.enLaFila > r.enLaFila) {
+          this.cargarAlDia(); // lo interpretado vuelve a dejar el mes por actualizar
+        }
+        if (r.enLaFila > 0) {
+          this.relojInterpretaciones = setTimeout(() => this.cargarInterpretaciones(), 30_000);
+        }
+      },
+      error: () => this.interpretaciones.set(null),
+    });
+  }
+
+  /** Pide a Claude las del mes que no están al día, o una sola (aunque lo esté). */
+  interpretar(operacionId?: string): void {
+    const id = this.clienteId();
+    if (!id) {
+      return;
+    }
+    this.pidiendo.set(true);
+    this.apiInterpretaciones.pedir(id, this.anio, this.mes, operacionId).subscribe({
+      next: r => {
+        this.pidiendo.set(false);
+        this.interpretaciones.set(r);
+        this.cargarInterpretaciones();
+      },
+      error: e => {
+        this.pidiendo.set(false);
+        this.error.set(mensajeDeError(e, 'No se pudo pedir la interpretación.'));
+      },
+    });
+  }
+
+  private pararInterpretaciones(): void {
+    if (this.relojInterpretaciones) {
+      clearTimeout(this.relojInterpretaciones);
+      this.relojInterpretaciones = null;
+    }
+  }
+
   cargarAlDia(): void {
     this.pararAlDia();
     const id = this.clienteId();

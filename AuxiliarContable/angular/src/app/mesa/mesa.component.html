@@ -406,7 +406,23 @@
   </section>
 
   <section class="ms-tarjeta" aria-labelledby="ms-operaciones">
-    <h2 id="ms-operaciones">Operaciones de {{ meses[mes - 1] }} {{ anio }}</h2>
+    <div class="ms-cabecera-fila">
+      <h2 id="ms-operaciones">Operaciones de {{ meses[mes - 1] }} {{ anio }}</h2>
+      @if (interpretaciones(); as it) {
+        @if (m.operaciones.puedeEditar && it.pendientes > 0) {
+          <button type="button" class="btn btn-outline-primary ms-boton" (click)="interpretar()" [disabled]="pidiendo()">
+            <i class="bi bi-stars" aria-hidden="true"></i> Interpretar con Claude ({{ it.pendientes }})
+          </button>
+        }
+      }
+    </div>
+    @if (interpretaciones(); as it) {
+      <p class="ms-nota" aria-live="polite">
+        Claude lee juntos la factura (concepto, clave SAT y unidad), el ticket y el estado de cuenta: qué es el objeto y qué es para el giro (deducible,
+        inversión, cuenta, requisitos que faltan). Sus alertas entran a la revisión de las pólizas.
+        @if (it.enLaFila) { <span class="ig-girando" aria-hidden="true"></span> {{ it.enLaFila }} en la fila (unas dos por minuto). }
+      </p>
+    }
     <div class="ms-filtros" role="tablist">
       <button type="button" role="tab" class="ms-chip" [class.ms-chip-activo]="filtro() === 'todas'" (click)="filtro.set('todas')">Todas ({{ cuentas().todas }})</button>
       <button type="button" role="tab" class="ms-chip" [class.ms-chip-activo]="filtro() === 'sin-factura'" (click)="filtro.set('sin-factura')">Sin factura ({{ cuentas().sinFactura }})</button>
@@ -429,7 +445,10 @@
               <small>
                 {{ o.descripcion }}
                 @if (o.transaccion.delBanco) { · <i class="bi bi-bank" aria-hidden="true"></i> banco }
-                @if (categoria(o); as c) { · <i class="bi bi-stars" aria-hidden="true"></i> {{ c }} }
+                @if (interpretacionDe(o.id)?.interpretacion; as i) {
+                  · <i class="bi bi-stars" aria-hidden="true"></i> {{ i.objeto }}
+                  @if (i.alertas.length) { · <span class="ms-aviso">{{ i.alertas.length }} {{ i.alertas.length === 1 ? 'alerta' : 'alertas' }}</span> }
+                } @else if (categoria(o); as c) { · <i class="bi bi-stars" aria-hidden="true"></i> {{ c }} }
               </small>
             </span>
             <span class="ms-importe" [class.ms-entrada]="o.sentido === Sentido.Entrada">
@@ -439,6 +458,7 @@
           @if (abierta() === o.id) {
             <div class="ms-detalle">
               <app-patas [organizacionId]="clienteId()!" [operacion]="o" [otras]="operaciones()" [puedeEditar]="m.operaciones.puedeEditar" (cambio)="cambio($event)" />
+              <app-interpretacion [dato]="interpretacionDe(o.id)" [puedeEditar]="m.operaciones.puedeEditar" (interpretar)="interpretar(o.id)" />
             </div>
           }
         </li>
