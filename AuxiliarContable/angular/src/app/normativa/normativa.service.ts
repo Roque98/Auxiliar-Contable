@@ -48,12 +48,12 @@ export class NormativaService {
   }
 
   lista(organizacionId: string): Observable<AnalisisNormativoDto[]> {
-    return this.rest.request<void, AnalisisNormativoDto[]>({ method: 'GET', url: `${this.base}/lista/${organizacionId}` }, this.opciones);
+    return this.rest.request<void, AnalisisNormativoDto[]>({ method: 'GET', url: `${this.base}/consultas/${organizacionId}` }, this.opciones);
   }
 
   analisis(organizacionId: string, id: string): Observable<AnalisisNormativoDto> {
     return this.rest.request<void, AnalisisNormativoDto>(
-      { method: 'GET', url: `${this.base}/analisis`, params: { organizacionId, id } }, this.opciones);
+      { method: 'GET', url: `${this.base}/${id}/analisis/${organizacionId}` }, this.opciones);
   }
 
   disparadores(): Observable<DisparadorDto[]> {

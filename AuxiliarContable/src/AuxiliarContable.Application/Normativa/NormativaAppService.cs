@@ -95,7 +95,7 @@ public class NormativaAppService : AuxiliarContableAppService, INormativaAppServ
         return Dto(fila, conResultado: false);
     }
 
-    public async Task<List<AnalisisNormativoDto>> GetListaAsync(Guid organizacionId)
+    public async Task<List<AnalisisNormativoDto>> GetConsultasAsync(Guid organizacionId)
     {
         await ExigirEquipoAsync(organizacionId, AccionEnOrganizacion.Ver);
         var filas = await AsyncExecuter.ToListAsync((await _analisis.GetQueryableAsync())

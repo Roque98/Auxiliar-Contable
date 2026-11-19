@@ -16,7 +16,7 @@ public interface INormativaAppService : IApplicationService
     Task<AnalisisNormativoDto> PedirAsync(Guid organizacionId, PedirAnalisisNormativoDto input);
 
     /// <summary>Los análisis del cliente, del más reciente al más viejo (sin el resultado completo).</summary>
-    Task<List<AnalisisNormativoDto>> GetListaAsync(Guid organizacionId);
+    Task<List<AnalisisNormativoDto>> GetConsultasAsync(Guid organizacionId);
 
     /// <summary>Un análisis con el resultado completo (JSON del motor).</summary>
     Task<AnalisisNormativoDto> GetAnalisisAsync(Guid organizacionId, Guid id);
