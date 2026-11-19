@@ -111,6 +111,11 @@ public interface IMotorFiscal
         PerfilParaInterpretar perfil, OperacionParaInterpretar operacion, ArchivoParaElMotor? factura, AnalisisDeDocumento? control,
         BancoParaInterpretar? banco, CancellationToken cancellationToken = default);
 
+    /// <summary>Nómina de un periodo: percepciones, ISR con subsidio, IMSS, INFONAVIT, FONACOT, ISN, neto y póliza.</summary>
+    Task<NominaDelMotor> CalcularNominaAsync(
+        PatronParaNomina patron, PeriodoParaNomina periodo, IReadOnlyList<TrabajadorParaNomina> trabajadores,
+        CancellationToken cancellationToken = default);
+
     /// <summary>Movimientos del banco sin amarrar + operaciones sin pago -> parejas propuestas por Claude, con su porqué.</summary>
     Task<SugerenciasDeAmarre> SugerirAmarresAsync(
         IReadOnlyList<MovimientoParaAmarrar> movimientos, IReadOnlyList<CandidataParaAmarrar> candidatas, string? giro,
@@ -235,6 +240,11 @@ public class MotorFiscalSinConfigurar : IMotorFiscal, ISingletonDependency
     public Task<InterpretacionDelMotor> InterpretarOperacionAsync(
         PerfilParaInterpretar perfil, OperacionParaInterpretar operacion, ArchivoParaElMotor? factura, AnalisisDeDocumento? control,
         BancoParaInterpretar? banco, CancellationToken cancellationToken = default) =>
+        throw new MotorFiscalNoDisponibleException("No hay motor fiscal en este proceso.");
+
+    public Task<NominaDelMotor> CalcularNominaAsync(
+        PatronParaNomina patron, PeriodoParaNomina periodo, IReadOnlyList<TrabajadorParaNomina> trabajadores,
+        CancellationToken cancellationToken = default) =>
         throw new MotorFiscalNoDisponibleException("No hay motor fiscal en este proceso.");
 
     public Task<DiotDelMotor> DiotAsync(

@@ -1,0 +1,236 @@
+<header class="ms-cabecera">
+  <h1>Nómina</h1>
+  <p class="ms-nota">
+    Los trabajadores de cada cliente y cada periodo: el cliente reporta las incidencias (faltas, horas extra, incapacidades…) y aquí se calcula el
+    ISR con subsidio, las cuotas del IMSS, INFONAVIT y FONACOT, el impuesto sobre nóminas, el neto y la póliza.
+  </p>
+  <div class="ms-barra">
+    @if (clientes(); as lista) {
+      <label class="ms-campo">
+        <span>Cliente</span>
+        <select class="ig-control" [ngModel]="clienteId()" (ngModelChange)="elegir($event)">
+          <option [ngValue]="null" disabled>Elige un cliente…</option>
+          @for (c of lista; track c.id) { <option [ngValue]="c.id">{{ c.nombre }}</option> }
+        </select>
+      </label>
+    }
+    @if (clienteId()) {
+      <label class="ms-campo">
+        <span>Año</span>
+        <select class="ig-control" [(ngModel)]="anio" (ngModelChange)="cargar()">
+          @for (a of anios; track a) { <option [ngValue]="a">{{ a }}</option> }
+        </select>
+      </label>
+    }
+  </div>
+</header>
+
+@if (error(); as e) { <div class="ig-alerta ig-alerta-error" role="alert">{{ e }}</div> }
+
+@if (nomina(); as n) {
+  @if (n.faltaEnElPerfil.length) {
+    <p class="ms-aviso">Falta en el perfil fiscal del cliente: {{ n.faltaEnElPerfil.join(', ') }}.</p>
+  }
+
+  <section class="ms-tarjeta" aria-labelledby="nm-trabajadores" data-testid="trabajadores">
+    <div class="ms-cabecera-fila">
+      <h2 id="nm-trabajadores"><i class="bi bi-person-badge" aria-hidden="true"></i> Trabajadores ({{ activos().length }} activos)</h2>
+      @if (n.puedeEditar) { <button type="button" class="btn btn-outline-primary ms-boton" (click)="nuevo()">Dar de alta</button> }
+    </div>
+    @if (editando(); as t) {
+      <div class="ms-cierre">
+        <label class="ms-campo ms-ancho"><span>Nombre</span><input class="ig-control" [(ngModel)]="t.nombre" name="nombre" /></label>
+        <label class="ms-campo"><span>RFC</span><input class="ig-control" [(ngModel)]="t.rfc" name="rfc" maxlength="13" /></label>
+        <label class="ms-campo"><span>CURP</span><input class="ig-control" [(ngModel)]="t.curp" name="curp" maxlength="18" /></label>
+        <label class="ms-campo"><span>NSS</span><input class="ig-control" [(ngModel)]="t.nss" name="nss" maxlength="11" /></label>
+        <label class="ms-campo"><span>Fecha de ingreso</span><input class="ig-control" type="date" [(ngModel)]="t.fechaIngreso" name="ingreso" /></label>
+        <label class="ms-campo"><span>Salario diario</span><input class="ig-control" type="number" step="0.01" [(ngModel)]="t.salarioDiario" name="sd" /></label>
+        <label class="ms-campo"><span>SDI (si ya lo tienes)</span><input class="ig-control" type="number" step="0.01" [(ngModel)]="t.salarioDiarioIntegrado" name="sdi" placeholder="se calcula" /></label>
+        <label class="ms-campo"><span>Días de aguinaldo</span><input class="ig-control" type="number" [(ngModel)]="t.diasAguinaldo" name="ag" /></label>
+        <label class="ms-campo"><span>Prima vacacional %</span><input class="ig-control" type="number" [(ngModel)]="t.primaVacacionalPct" name="pv" /></label>
+        <label class="ms-campo"><span>Crédito INFONAVIT</span>
+          <select class="ig-control" [(ngModel)]="t.creditoInfonavitTipo" name="cit">
+            <option [ngValue]="null">No tiene</option>
+            <option value="porcentaje">Porcentaje del SBC</option>
+            <option value="cuota_fija">Cuota fija mensual</option>
+            <option value="veces">Factor en veces (UMA)</option>
+          </select>
+        </label>
+        @if (t.creditoInfonavitTipo) {
+          <label class="ms-campo"><span>Valor del crédito</span><input class="ig-control" type="number" step="0.0001" [(ngModel)]="t.creditoInfonavitValor" name="civ" /></label>
+        }
+        <label class="ms-campo"><span>FONACOT por periodo</span><input class="ig-control" type="number" step="0.01" [(ngModel)]="t.fonacot" name="fon" /></label>
+        <div class="ms-acciones">
+          <button type="button" class="btn btn-primary ms-boton" (click)="guardarTrabajador()" [disabled]="trabajando() || !t.nombre || !t.salarioDiario">Guardar</button>
+          <button type="button" class="btn btn-outline-secondary ms-boton" (click)="editando.set(null)">Cancelar</button>
+        </div>
+      </div>
+    }
+    <div class="ms-tabla-caja">
+      <table class="ms-tabla">
+        <thead><tr><th scope="col">Nombre</th><th scope="col">NSS</th><th scope="col">Ingreso</th><th scope="col" class="ms-num">Salario diario</th><th scope="col">Créditos</th><th scope="col"></th></tr></thead>
+        <tbody>
+          @for (t of n.trabajadores; track t.id) {
+            <tr [class.ms-nota]="t.fechaBaja">
+              <td>{{ t.nombre }} @if (t.fechaBaja) { <span class="ms-nota">· baja {{ t.fechaBaja | date: 'd MMM y' : 'UTC' }}</span> }</td>
+              <td>{{ t.nss }}</td>
+              <td>{{ t.fechaIngreso | date: 'd MMM y' : 'UTC' }}</td>
+              <td class="ms-num">{{ t.salarioDiario | currency: 'MXN' : 'symbol-narrow' }}</td>
+              <td class="ms-nota">@if (t.creditoInfonavitTipo) { INFONAVIT } @if (t.fonacot) { FONACOT }</td>
+              <td>
+                @if (n.puedeEditar) {
+                  <button type="button" class="btn btn-link ms-rev-op" (click)="editar(t)">Editar</button>
+                  <button type="button" class="btn btn-link ms-rev-op" (click)="baja(t, !t.fechaBaja)">{{ t.fechaBaja ? 'Reingresar' : 'Dar de baja' }}</button>
+                }
+              </td>
+            </tr>
+          } @empty {
+            <tr><td colspan="6" class="ms-nota">Sin trabajadores todavía: da de alta al primero.</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="ms-tarjeta" aria-labelledby="nm-periodos" data-testid="periodos">
+    <div class="ms-cabecera-fila">
+      <h2 id="nm-periodos"><i class="bi bi-calendar3" aria-hidden="true"></i> Periodos de {{ anio }}</h2>
+    </div>
+    @if (n.puedeEditar) {
+      <div class="ms-acciones">
+        <label class="ms-campo"><span>Periodicidad</span>
+          <select class="ig-control" [(ngModel)]="periodicidad" name="per">
+            <option value="semanal">Semanal</option><option value="catorcenal">Catorcenal</option>
+            <option value="quincenal">Quincenal</option><option value="mensual">Mensual</option>
+          </select>
+        </label>
+        <label class="ms-campo"><span>Del</span><input class="ig-control" type="date" [(ngModel)]="nuevoInicio" name="ini" /></label>
+        <span class="ms-nota">al {{ finNuevo() }}</span>
+        <button type="button" class="btn btn-outline-primary ms-boton" (click)="crearPeriodo()" [disabled]="trabajando() || !activos().length">Nuevo periodo</button>
+      </div>
+    }
+    <ul class="ms-lista">
+      @for (p of n.periodos; track p.id) {
+        <li>
+          <button type="button" class="ms-fila" (click)="abrirPeriodo(p)" [attr.aria-expanded]="periodo()?.id === p.id">
+            <span class="ms-fecha">{{ p.inicio | date: 'dd/MM' : 'UTC' }}–{{ p.fin | date: 'dd/MM' : 'UTC' }}</span>
+            <span class="ms-desc"><strong class="ms-capital">{{ p.periodicidad }}</strong> <small>{{ p.dias }} días · {{ p.calculadoUtc ? 'calculado' : 'sin calcular' }}</small></span>
+            <span class="ms-importe">@if (p.neto !== null) { {{ p.neto | currency: 'MXN' : 'symbol-narrow' }} }</span>
+          </button>
+        </li>
+      } @empty {
+        <li class="ms-nota">Sin periodos en {{ anio }}.</li>
+      }
+    </ul>
+  </section>
+
+  @if (periodo(); as p) {
+    <section class="ms-tarjeta" aria-labelledby="nm-periodo" data-testid="periodo">
+      <div class="ms-cabecera-fila">
+        <h2 id="nm-periodo">Periodo {{ p.periodicidad }} del {{ p.inicio | date: 'd MMM' : 'UTC' }} al {{ p.fin | date: 'd MMM y' : 'UTC' }}</h2>
+        @if (n.puedeEditar) {
+          <span class="ms-acciones">
+            <button type="button" class="btn btn-outline-secondary ms-boton" (click)="guardarIncidencias()" [disabled]="trabajando()">Guardar incidencias</button>
+            <button type="button" class="btn btn-primary ms-boton" (click)="calcular()" [disabled]="trabajando()">
+              @if (trabajando()) { <span class="ig-girando" aria-hidden="true"></span> } Calcular la nómina
+            </button>
+          </span>
+        }
+      </div>
+      <h3 class="ms-subtitulo">Incidencias</h3>
+      <div class="ms-tabla-caja">
+        <table class="ms-tabla">
+          <thead><tr><th scope="col">Trabajador</th>@for (c of columnas; track c.clave) { <th scope="col" class="ms-num">{{ c.titulo }}</th> }</tr></thead>
+          <tbody>
+            @for (i of p.incidencias; track i.trabajadorId) {
+              <tr>
+                <td>{{ i.nombre }}</td>
+                @for (c of columnas; track c.clave) {
+                  <td class="ms-num"><input class="ig-control nm-celda" type="number" min="0" step="any" [(ngModel)]="i.incidencias[c.clave]" [name]="i.trabajadorId + c.clave" [disabled]="!n.puedeEditar" [attr.aria-label]="c.titulo + ' de ' + i.nombre" /></td>
+                }
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      @if (p.resultado; as r) {
+        @for (a of r.avisos; track $index) { <p class="ms-aviso">{{ a }}</p> }
+        <div class="ms-cifras">
+          <div class="ms-cifra-grande"><span>Neto a pagar</span><strong>{{ r.totales.neto | currency: 'MXN' : 'symbol-narrow' }}</strong><small>percepciones {{ r.totales.totalPercepciones | currency: 'MXN' : 'symbol-narrow' }}</small></div>
+          <div class="ms-cifra-grande"><span>ISR retenido</span><strong>{{ r.totales.isrRetenido | currency: 'MXN' : 'symbol-narrow' }}</strong><small>subsidio aplicado {{ r.totales.subsidio | currency: 'MXN' : 'symbol-narrow' }}</small></div>
+          <div class="ms-cifra-grande"><span>IMSS</span><strong>{{ (r.totales.imssObrero + r.totales.imssPatron) | currency: 'MXN' : 'symbol-narrow' }}</strong><small>obrero {{ r.totales.imssObrero | currency: 'MXN' : 'symbol-narrow' }} · patrón {{ r.totales.imssPatron | currency: 'MXN' : 'symbol-narrow' }} (incluye RCV e INFONAVIT {{ r.totales.infonavitPatron | currency: 'MXN' : 'symbol-narrow' }})</small></div>
+          <div class="ms-cifra-grande"><span>Impuesto sobre nóminas</span><strong>{{ r.isn.importe | currency: 'MXN' : 'symbol-narrow' }}</strong><small>{{ r.isn.estado }} @if (r.isn.tasa) { · {{ r.isn.tasa * 100 | number: '1.0-2' }} % } @if (!r.isn.verificado) { · tasa sin cotejar }</small></div>
+        </div>
+        <div class="ms-tabla-caja">
+          <table class="ms-tabla">
+            <thead><tr><th scope="col">Trabajador</th><th scope="col" class="ms-num">Percepciones</th><th scope="col" class="ms-num">Gravado</th><th scope="col" class="ms-num">ISR</th><th scope="col" class="ms-num">IMSS</th><th scope="col" class="ms-num">Otras ded.</th><th scope="col" class="ms-num">Neto</th><th scope="col" class="ms-num">SBC</th></tr></thead>
+            <tbody>
+              @for (w of r.trabajadores; track w.id) {
+                <tr>
+                  <td><button type="button" class="btn btn-link ms-cuenta" (click)="abierto.set(abierto() === w.id ? null : w.id)" [attr.aria-expanded]="abierto() === w.id"><strong>{{ w.nombre }}</strong></button></td>
+                  <td class="ms-num">{{ w.totalPercepciones | currency: 'MXN' : 'symbol-narrow' }}</td>
+                  <td class="ms-num">{{ w.gravado | currency: 'MXN' : 'symbol-narrow' }}</td>
+                  <td class="ms-num">{{ w.isrRetenido | currency: 'MXN' : 'symbol-narrow' }}</td>
+                  <td class="ms-num">{{ w.imssObrero | currency: 'MXN' : 'symbol-narrow' }}</td>
+                  <td class="ms-num">{{ (w.totalDeducciones - w.isrRetenido - w.imssObrero) | currency: 'MXN' : 'symbol-narrow' }}</td>
+                  <td class="ms-num"><strong>{{ w.neto | currency: 'MXN' : 'symbol-narrow' }}</strong></td>
+                  <td class="ms-num">{{ w.sbc | currency: 'MXN' : 'symbol-narrow' }}</td>
+                </tr>
+                @if (abierto() === w.id) {
+                  <tr class="ms-auxiliar-fila">
+                    <td colspan="8">
+                      @for (a of w.avisos; track $index) { <p class="ms-aviso">{{ a }}</p> }
+                      <div class="ms-papeles">
+                        <app-renglones [titulo]="'Cálculo de ' + w.nombre" [renglones]="w.renglones" />
+                        <div class="ms-tabla-caja">
+                          <table class="ms-tabla ms-auxiliar">
+                            <caption>Percepciones</caption>
+                            <thead><tr><th scope="col">Concepto</th><th scope="col">Clave SAT</th><th scope="col" class="ms-num">Importe</th><th scope="col" class="ms-num">Gravado</th><th scope="col" class="ms-num">Exento</th></tr></thead>
+                            <tbody>
+                              @for (x of w.percepciones; track $index) {
+                                <tr><td>{{ x.concepto }} @if (x.integraSbc) { <span class="ms-nota">· integra SBC</span> }</td><td>{{ x.claveSat }}</td><td class="ms-num">{{ x.importe | currency: 'MXN' : 'symbol-narrow' }}</td><td class="ms-num">{{ x.gravado | currency: 'MXN' : 'symbol-narrow' }}</td><td class="ms-num">{{ x.exento | currency: 'MXN' : 'symbol-narrow' }}</td></tr>
+                              }
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                      <div class="ms-tabla-caja">
+                        <table class="ms-tabla ms-auxiliar">
+                          <caption>Cuotas IMSS e INFONAVIT (SBC {{ w.sbc | currency: 'MXN' : 'symbol-narrow' }}, factor {{ w.factorIntegracion | number: '1.4-4' }})</caption>
+                          <thead><tr><th scope="col">Ramo</th><th scope="col" class="ms-num">Base</th><th scope="col" class="ms-num">Patrón</th><th scope="col" class="ms-num">Trabajador</th></tr></thead>
+                          <tbody>
+                            @for (c of w.cuotas; track c.ramo) {
+                              <tr><td>{{ c.ramo }}</td><td class="ms-num">{{ c.base | currency: 'MXN' : 'symbol-narrow' }}</td><td class="ms-num">{{ c.patron | currency: 'MXN' : 'symbol-narrow' }}</td><td class="ms-num">{{ c.obrero | currency: 'MXN' : 'symbol-narrow' }}</td></tr>
+                            }
+                          </tbody>
+                        </table>
+                      </div>
+                      @for (s of w.supuestos; track $index) { <p class="ms-nota">{{ s }}</p> }
+                    </td>
+                  </tr>
+                }
+              }
+            </tbody>
+          </table>
+        </div>
+        <details>
+          <summary class="ms-nota">Póliza de la nómina</summary>
+          <div class="ms-tabla-caja">
+            <table class="ms-tabla">
+              <thead><tr><th scope="col">Cuenta</th><th scope="col" class="ms-num">Debe</th><th scope="col" class="ms-num">Haber</th></tr></thead>
+              <tbody>
+                @for (m of r.poliza; track m.cuenta) {
+                  <tr><td>{{ m.cuenta }}</td><td class="ms-num">{{ m.debe ? (m.debe | currency: 'MXN' : 'symbol-narrow') : '' }}</td><td class="ms-num">{{ m.haber ? (m.haber | currency: 'MXN' : 'symbol-narrow') : '' }}</td></tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </details>
+        @if (n.puedeEditar) { <button type="button" class="btn btn-link ms-rev-op" (click)="borrar()">Borrar este periodo</button> }
+      } @else {
+        <p class="ms-nota">Captura las incidencias (si no hubo, déjalas en cero) y pulsa «Calcular la nómina».</p>
+      }
+    </section>
+  }
+}

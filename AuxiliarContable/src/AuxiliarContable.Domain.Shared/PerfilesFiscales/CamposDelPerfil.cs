@@ -93,6 +93,15 @@ public static class CamposDelPerfil
     /// <summary>Qué hace por la plataforma: decide la tasa del art. 113-A LISR (25-VI LIF).</summary>
     public const string ActividadEnPlataformas = "plataformas_actividad";
 
+    /// <summary>Patrón: su registro patronal ante el IMSS (11 caracteres).</summary>
+    public const string RegistroPatronal = "registro_patronal";
+
+    /// <summary>Patrón: prima de riesgo de trabajo vigente, en % (de 0.5 a 15; art. 72 LSS).</summary>
+    public const string PrimaDeRiesgo = "prima_riesgo";
+
+    /// <summary>Patrón: zona del salario mínimo (general o frontera norte).</summary>
+    public const string ZonaSalarioMinimo = "zona_salario_minimo";
+
     public const int MaxValorLength = 8000;
 
     public static readonly IReadOnlyList<CampoDelPerfil> Todos =
@@ -135,6 +144,13 @@ public static class CamposDelPerfil
             new("analitico", "Analítico: por compras e inventario final"),
         ]),
         new(CoeficienteDeUtilidad, "Coeficiente de utilidad (personas morales)", TipoDeCampo.Texto, GrupoDeCampos.Fiscal, false),
+        new(RegistroPatronal, "Registro patronal (IMSS)", TipoDeCampo.Texto, GrupoDeCampos.Fiscal, false),
+        new(PrimaDeRiesgo, "Prima de riesgo de trabajo (%)", TipoDeCampo.Texto, GrupoDeCampos.Fiscal, false),
+        new(ZonaSalarioMinimo, "Zona del salario mínimo", TipoDeCampo.Opcion, GrupoDeCampos.Fiscal, false,
+        [
+            new("general", "Resto del país"),
+            new("frontera", "Zona libre de la frontera norte"),
+        ]),
         new(PagoDePlataformas, "Plataformas tecnológicas (625): ¿pago definitivo o provisional?", TipoDeCampo.Opcion, GrupoDeCampos.Fiscal, false,
         [
             new("definitivo", "Pago definitivo: las retenciones de la plataforma son el pago (art. 113-B)"),

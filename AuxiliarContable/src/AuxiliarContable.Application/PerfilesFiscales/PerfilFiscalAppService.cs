@@ -212,6 +212,14 @@ public class PerfilFiscalAppService : AuxiliarContableAppService, IPerfilFiscalA
                 return decimal.TryParse(v.Replace(",", "."), NumberStyles.Number, CultureInfo.InvariantCulture, out var cu) && cu is >= 0 and <= 1
                     ? cu.ToString("0.####", CultureInfo.InvariantCulture)
                     : throw Invalido(campo, "es un número entre 0 y 1, p. ej. 0.1834");
+            case CamposDelPerfil.PrimaDeRiesgo:
+                return decimal.TryParse(v.Replace(",", ".").TrimEnd('%').Trim(), NumberStyles.Number, CultureInfo.InvariantCulture, out var pr)
+                       && pr is >= 0.5m and <= 15m
+                    ? pr.ToString("0.#####", CultureInfo.InvariantCulture)
+                    : throw Invalido(campo, "es un porcentaje entre 0.5 y 15, p. ej. 0.54355");
+            case CamposDelPerfil.RegistroPatronal:
+                v = v.ToUpperInvariant().Replace(" ", string.Empty).Replace("-", string.Empty);
+                return v.Length == 11 && v.All(char.IsLetterOrDigit) ? v : throw Invalido(campo, "son 11 letras y números");
             case CamposDelPerfil.Rfc:
                 v = v.ToUpperInvariant().Replace(" ", string.Empty).Replace("-", string.Empty);
                 return Sat.EsRfc(v) ? v : throw Invalido(campo, "no tiene formato de RFC (12 o 13 caracteres)");
