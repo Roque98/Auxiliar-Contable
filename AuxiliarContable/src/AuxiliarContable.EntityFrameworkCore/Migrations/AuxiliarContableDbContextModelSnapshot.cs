@@ -1880,6 +1880,13 @@ namespace AuxiliarContable.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("CreatorId");
 
+                    b.Property<DateTime?>("CreditoInfonavitInicio")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreditoInfonavitNumero")
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
                     b.Property<string>("CreditoInfonavitTipo")
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");

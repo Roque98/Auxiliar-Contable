@@ -63,6 +63,8 @@
         </label>
         @if (t.creditoInfonavitTipo) {
           <label class="ms-campo"><span>Valor del crédito</span><input class="ig-control" type="number" step="0.0001" [(ngModel)]="t.creditoInfonavitValor" name="civ" /></label>
+          <label class="ms-campo"><span>Número de crédito (10 dígitos)</span><input class="ig-control" inputmode="numeric" maxlength="12" [(ngModel)]="t.creditoInfonavitNumero" name="cin" /></label>
+          <label class="ms-campo"><span>Inicio del descuento</span><input class="ig-control" type="date" [(ngModel)]="t.creditoInfonavitInicio" name="cii" /></label>
         }
         <label class="ms-campo"><span>FONACOT por periodo</span><input class="ig-control" type="number" step="0.01" [(ngModel)]="t.fonacot" name="fon" /></label>
         <div class="ms-acciones">
@@ -148,8 +150,20 @@
           @for (m of meses; track $index) { <option [ngValue]="$index + 1">{{ m }}</option> }
         </select>
         <button type="button" class="btn btn-outline-primary ms-boton" (click)="verCuotas()" [disabled]="trabajando()">Sumar</button>
+        <button type="button" class="btn btn-outline-secondary ms-boton" (click)="archivosSua()" [disabled]="trabajando()" data-testid="archivos-sua">
+          <i class="bi bi-file-earmark-zip" aria-hidden="true"></i> Archivos para el SUA (.zip)
+        </button>
       </span>
     </div>
+    @if (sua(); as s) {
+      @if (s.archivos.length) {
+        <p class="ms-nota">Se descargó el .zip con {{ s.archivos.length }} archivos. Impórtalos en el SUA en el orden del LEEME: trabajadores, datos afiliatorios y movimientos.
+          Luego calcula el mes en el SUA, compara el total con esta suma y sube el archivo de pago al SIPARE.</p>
+        <ul class="ms-nota">@for (a of s.archivos; track a.nombre) { <li>{{ a.nombre }}: {{ a.renglones }} renglones</li> }</ul>
+      } @else { <p class="ms-aviso">No salió ningún archivo: revisa los datos que faltan.</p> }
+      @for (e of s.errores; track $index) { <p class="ms-aviso">No va {{ e.nombre }}: falta {{ e.errores.join(', ') }}.</p> }
+      @for (a of s.avisos; track $index) { <p class="ms-nota">{{ a }}</p> }
+    }
     <p class="ms-nota">Suma de los periodos calculados que terminan en el mes. Compárala con la propuesta de cédula o la línea de captura del SIPARE: las mensuales con la EMA y las bimestrales (retiro, cesantía y vejez, INFONAVIT) con la EBA del bimestre.</p>
     @if (cuotas(); as c) {
       @if (c.sinCalcular) { <p class="ms-aviso">{{ c.sinCalcular }} periodos del mes sin calcular: no entran en la suma.</p> }
@@ -233,6 +247,25 @@
           </tbody>
         </table>
       </div>
+      @if (conFaltasOIncapacidad(p).length) {
+        <h3 class="ms-subtitulo">Para el SUA: faltas e incapacidades</h3>
+        <p class="ms-nota">El SUA pide la fecha de las faltas (si no la pones, va la de inicio del periodo) y el folio del certificado de incapacidad del IMSS.</p>
+        <div class="ms-tabla-caja">
+          <table class="ms-tabla">
+            <thead><tr><th scope="col">Trabajador</th><th scope="col">Primer día de faltas</th><th scope="col">Folio de incapacidad</th><th scope="col">Inicio de la incapacidad</th></tr></thead>
+            <tbody>
+              @for (i of conFaltasOIncapacidad(p); track i.trabajadorId) {
+                <tr>
+                  <td>{{ i.nombre }}</td>
+                  <td>@if (numero(i.incidencias.faltas)) { <input class="ig-control" type="date" [min]="p.inicio.slice(0, 10)" [max]="p.fin.slice(0, 10)" [(ngModel)]="i.incidencias.inicioFaltas" [name]="i.trabajadorId + 'if'" [disabled]="!n.puedeEditar" [attr.aria-label]="'Primer día de faltas de ' + i.nombre" /> }</td>
+                  <td>@if (numero(i.incidencias.incapacidad)) { <input class="ig-control" maxlength="8" placeholder="AB123456" [(ngModel)]="i.incidencias.folioIncapacidad" [name]="i.trabajadorId + 'fi'" [disabled]="!n.puedeEditar" [attr.aria-label]="'Folio de incapacidad de ' + i.nombre" /> }</td>
+                  <td>@if (numero(i.incidencias.incapacidad)) { <input class="ig-control" type="date" [max]="p.fin.slice(0, 10)" [(ngModel)]="i.incidencias.inicioIncapacidad" [name]="i.trabajadorId + 'ii'" [disabled]="!n.puedeEditar" [attr.aria-label]="'Inicio de la incapacidad de ' + i.nombre" /> }</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
 
       @if (p.resultado; as r) {
         @for (a of r.avisos; track $index) { <p class="ms-aviso">{{ a }}</p> }

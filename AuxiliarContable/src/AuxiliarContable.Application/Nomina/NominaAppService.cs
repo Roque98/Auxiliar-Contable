@@ -84,6 +84,7 @@ public class NominaAppService : AuxiliarContableAppService, INominaAppService
         t.Describir(dto.Nombre, dto.Rfc, dto.Curp, dto.Nss, dto.FechaIngreso, dto.SalarioDiario, dto.SalarioDiarioIntegrado,
             dto.DiasAguinaldo, dto.PrimaVacacionalPct, dto.CreditoInfonavitTipo, dto.CreditoInfonavitValor, dto.Fonacot);
         t.Identificar(dto.PrimerApellido, dto.SegundoApellido, dto.CodigoPostal, dto.NumeroEmpleado, dto.Umf);
+        t.RegistrarCredito(dto.CreditoInfonavitNumero, dto.CreditoInfonavitInicio);
         if (dto.Id == null)
         {
             await _trabajadores.InsertAsync(t, autoSave: true);
@@ -244,6 +245,68 @@ public class NominaAppService : AuxiliarContableAppService, INominaAppService
         return dto;
     }
 
+    public async Task<ArchivosDeSua> ArchivosSuaAsync(Guid organizacionId, int anio, int mes)
+    {
+        await ExigirEquipoAsync(organizacionId, AccionEnOrganizacion.Ver);
+        if (mes is < 1 or > 12 || anio is < 2000 or > 2100)
+        {
+            throw new UserFriendlyException("Mes no válido.");
+        }
+
+        var perfil = await _perfiles.FirstOrDefaultAsync(p => p.OrganizacionId == organizacionId);
+        string? Campo(string clave) => perfil?.Dato(clave)?.Valor?.Trim();
+        var rp = Campo(CamposDelPerfil.RegistroPatronal)
+                 ?? throw new UserFriendlyException("Falta el registro patronal en el perfil fiscal del cliente.");
+        var desde = new DateTime(anio, mes, 1);
+        var hasta = desde.AddMonths(1);
+        var ts = (await _trabajadores.GetListAsync(t => t.OrganizacionId == organizacionId))
+            .Where(t => t.ActivoEn(desde, hasta.AddDays(-1))).OrderBy(t => t.PrimerApellido).ThenBy(t => t.Nombre).ToList();
+        if (ts.Count == 0)
+        {
+            throw new UserFriendlyException("No hay trabajadores activos en ese mes.");
+        }
+
+        var ids = ts.Select(t => t.Id).ToHashSet();
+        var porId = ts.ToDictionary(t => t.Id);
+        var ms = await _movimientos.GetListAsync(m => m.OrganizacionId == organizacionId && m.Fecha >= desde && m.Fecha < hasta);
+        var ps = await _periodos.GetListAsync(p => p.OrganizacionId == organizacionId && p.Fin >= desde && p.Fin < hasta);
+        static string Dia(DateTime d) => d.ToString("yyyy-MM-dd");
+        var trabajadores = ts.Select(t => new TrabajadorParaSua
+        {
+            Id = t.Id.ToString(), Nss = t.Nss, Rfc = t.Rfc, Curp = t.Curp, PrimerApellido = t.PrimerApellido,
+            SegundoApellido = t.SegundoApellido, Nombres = t.Nombre, FechaIngreso = Dia(t.FechaIngreso), SalarioDiario = t.SalarioDiario,
+            Sdi = t.SalarioDiarioIntegrado, DiasAguinaldo = t.DiasAguinaldo, PrimaVacacionalPct = t.PrimaVacacionalPct,
+            Clave = t.NumeroEmpleado, Cp = t.CodigoPostal, Umf = t.Umf,
+            Credito = t.CreditoInfonavitTipo == null ? null : new CreditoParaSua
+            {
+                Numero = t.CreditoInfonavitNumero, Inicio = t.CreditoInfonavitInicio is { } i ? Dia(i) : null,
+                Tipo = t.CreditoInfonavitTipo, Valor = t.CreditoInfonavitValor ?? 0,
+            },
+        }).ToList();
+        var movimientos = ms.Where(m => ids.Contains(m.TrabajadorId)).Select(m => new MovimientoParaSua
+        {
+            TrabajadorId = m.TrabajadorId.ToString(), Tipo = m.Tipo, Fecha = Dia(m.Fecha), SalarioDiario = m.SalarioDiario,
+            Sdi = m.SalarioDiarioIntegrado, FechaIngreso = Dia(porId[m.TrabajadorId].FechaIngreso),
+            DiasAguinaldo = porId[m.TrabajadorId].DiasAguinaldo, PrimaVacacionalPct = porId[m.TrabajadorId].PrimaVacacionalPct,
+        }).ToList();
+        var incidencias = ps.SelectMany(p => Incidencias(p).Where(x => ids.Contains(x.Key) && (x.Value.Faltas > 0 || x.Value.Incapacidad > 0))
+            .Select(x => new IncidenciaParaSua
+            {
+                TrabajadorId = x.Key.ToString(), PeriodoInicio = Dia(p.Inicio), Faltas = x.Value.Faltas,
+                InicioFaltas = x.Value.InicioFaltas is { } f ? Dia(f) : null, Incapacidad = x.Value.Incapacidad,
+                InicioIncapacidad = x.Value.InicioIncapacidad is { } g ? Dia(g) : null, FolioIncapacidad = x.Value.FolioIncapacidad,
+            })).ToList();
+        try
+        {
+            return await _motor.ArchivosSuaAsync(rp, Campo(CamposDelPerfil.ZonaSalarioMinimo), anio, mes, trabajadores, movimientos, incidencias);
+        }
+        catch (MotorFiscalNoDisponibleException ex)
+        {
+            Logger.LogWarning(ex, "El motor no pudo armar los archivos del SUA");
+            throw new UserFriendlyException("El motor fiscal no está disponible en este momento. Intenta de nuevo en unos minutos.");
+        }
+    }
+
     private async Task AvisarAsync(Trabajador t, string tipo, DateTime fecha, string? causa) =>
         await _movimientos.InsertAsync(new MovimientoAfiliatorio(GuidGenerator.Create(), t.OrganizacionId, t.Id, tipo, fecha,
             t.SalarioDiario, t.SalarioDiarioIntegrado, causa), autoSave: true);
@@ -302,6 +365,18 @@ public class NominaAppService : AuxiliarContableAppService, INominaAppService
                 || x.HorasJornada is <= 0 or > 24)
             {
                 throw new UserFriendlyException($"Incidencias de {i.Nombre ?? "un trabajador"}: faltas e incapacidad no pasan de los días del periodo y las horas no son negativas.");
+            }
+
+            x.FolioIncapacidad = string.IsNullOrWhiteSpace(x.FolioIncapacidad) ? null : x.FolioIncapacidad.Trim().ToUpperInvariant();
+            if (x.FolioIncapacidad != null && !System.Text.RegularExpressions.Regex.IsMatch(x.FolioIncapacidad, "^[A-Z]{2}[0-9]{6}$"))
+            {
+                throw new UserFriendlyException($"Incidencias de {i.Nombre ?? "un trabajador"}: el folio de la incapacidad lleva 2 letras y 6 números (como viene en el certificado del IMSS).");
+            }
+
+            if (x.InicioFaltas is { } f1 && (f1.Date < p.Inicio.Date || f1.Date > p.Fin.Date)
+                || x.InicioIncapacidad is { } f2 && f2.Date > p.Fin.Date)
+            {
+                throw new UserFriendlyException($"Incidencias de {i.Nombre ?? "un trabajador"}: la fecha de las faltas cae dentro del periodo y la de la incapacidad no después de su fin.");
             }
         }
 
@@ -402,7 +477,7 @@ public class NominaAppService : AuxiliarContableAppService, INominaAppService
         CodigoPostal = t.CodigoPostal, NumeroEmpleado = t.NumeroEmpleado, Umf = t.Umf, Rfc = t.Rfc, Curp = t.Curp, Nss = t.Nss, FechaIngreso = t.FechaIngreso, FechaBaja = t.FechaBaja,
         SalarioDiario = t.SalarioDiario, SalarioDiarioIntegrado = t.SalarioDiarioIntegrado, DiasAguinaldo = t.DiasAguinaldo,
         PrimaVacacionalPct = t.PrimaVacacionalPct, CreditoInfonavitTipo = t.CreditoInfonavitTipo, CreditoInfonavitValor = t.CreditoInfonavitValor,
-        Fonacot = t.Fonacot,
+        CreditoInfonavitNumero = t.CreditoInfonavitNumero, CreditoInfonavitInicio = t.CreditoInfonavitInicio, Fonacot = t.Fonacot,
     };
 
     /// <summary>Lo del patrón para el cálculo, y lo que le falta a su perfil.</summary>

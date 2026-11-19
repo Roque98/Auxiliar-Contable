@@ -300,6 +300,22 @@ public class MotorFiscalHttp : IMotorFiscal, ITransientDependency
         return await EnviarAsync<CuotasDeNomina>(peticion, tope.Token, cancellationToken);
     }
 
+    public async Task<ArchivosDeSua> ArchivosSuaAsync(
+        string registroPatronal, string? zona, int anio, int mes, IReadOnlyList<TrabajadorParaSua> trabajadores,
+        IReadOnlyList<MovimientoParaSua> movimientos, IReadOnlyList<IncidenciaParaSua> incidencias,
+        CancellationToken cancellationToken = default)
+    {
+        using var tope = CancelationConTope(_opciones.TimeoutDeBancosSegundos, cancellationToken);
+        var peticion = new HttpRequestMessage(HttpMethod.Post, "nomina/sua")
+        {
+            Content = JsonContent.Create(new
+            {
+                patron = new { registro_patronal = registroPatronal, zona }, anio, mes, trabajadores, movimientos, incidencias,
+            }, options: Json),
+        };
+        return await EnviarAsync<ArchivosDeSua>(peticion, tope.Token, cancellationToken);
+    }
+
     public async Task<DiotDelMotor> DiotAsync(
         string rfc, string periodo, IReadOnlyList<ArchivoParaElMotor> facturas, IReadOnlyList<string> cancelados,
         IReadOnlyList<string> regimenes, CancellationToken cancellationToken = default)

@@ -31,6 +31,10 @@ public interface INominaAppService : IApplicationService
     /// <summary>Cuotas IMSS e INFONAVIT de los periodos calculados que terminan en el mes, para cotejar con el SUA o el SIPARE.</summary>
     Task<CuotasDelMesDto> CuotasDelMesAsync(Guid organizacionId, int anio, int mes);
 
+    /// <summary>Archivos para importar en el SUA del mes: trabajadores activos, datos afiliatorios y movimientos
+    /// (reingresos, modificaciones, bajas, faltas e incapacidades de los periodos que terminan en el mes), en un .zip.</summary>
+    Task<ArchivosDeSua> ArchivosSuaAsync(Guid organizacionId, int anio, int mes);
+
     Task<PeriodoDeNominaDto> CrearPeriodoAsync(Guid organizacionId, CrearPeriodoDto dto);
 
     Task<PeriodoDeNominaDto> GetPeriodoAsync(Guid organizacionId, Guid periodoId);
@@ -114,6 +118,11 @@ public class GuardarTrabajadorDto
     public decimal PrimaVacacionalPct { get; set; } = 25;
     public string? CreditoInfonavitTipo { get; set; }
     public decimal? CreditoInfonavitValor { get; set; }
+
+    /// <summary>Número de crédito (10 dígitos) y fecha de inicio del descuento: los pide el SUA.</summary>
+    public string? CreditoInfonavitNumero { get; set; }
+
+    public DateTime? CreditoInfonavitInicio { get; set; }
     public decimal? Fonacot { get; set; }
 }
 

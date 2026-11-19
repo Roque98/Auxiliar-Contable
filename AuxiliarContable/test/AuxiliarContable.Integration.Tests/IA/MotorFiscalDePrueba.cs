@@ -313,6 +313,21 @@ public class MotorFiscalDePrueba : IMotorFiscal
     public Task<CuotasDeNomina> CuotasDeNominaAsync(IReadOnlyList<NominaDelMotor> calculos, CancellationToken cancellationToken = default) =>
         Task.FromResult(new CuotasDeNomina { TotalMensual = 100 * calculos.Count, Mensuales = [new CuotaDelMes { Ramo = "Invalidez y vida", Total = 100 * calculos.Count }] });
 
+    public (IReadOnlyList<TrabajadorParaSua> Trabajadores, IReadOnlyList<MovimientoParaSua> Movimientos, IReadOnlyList<IncidenciaParaSua> Incidencias)? SuaRecibido { get; private set; }
+
+    public Task<ArchivosDeSua> ArchivosSuaAsync(
+        string registroPatronal, string? zona, int anio, int mes, IReadOnlyList<TrabajadorParaSua> trabajadores,
+        IReadOnlyList<MovimientoParaSua> movimientos, IReadOnlyList<IncidenciaParaSua> incidencias,
+        CancellationToken cancellationToken = default)
+    {
+        SuaRecibido = (trabajadores, movimientos, incidencias);
+        return Task.FromResult(new ArchivosDeSua
+        {
+            ZipB64 = "UEs=",
+            Archivos = [new ArchivoDeSua { Nombre = "1 SUA trabajadores.txt", Renglones = trabajadores.Count }],
+        });
+    }
+
     /// <summary>Lo que recibió la última anual: ejercicio, archivos y lo capturado.</summary>
     public (int Anio, List<string> Facturas, IReadOnlyDictionary<string, decimal> Captura)? AnualRecibida { get; private set; }
 

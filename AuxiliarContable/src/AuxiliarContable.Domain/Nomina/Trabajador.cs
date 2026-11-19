@@ -47,6 +47,12 @@ public class Trabajador : FullAuditedAggregateRoot<Guid>
 
     public decimal? CreditoInfonavitValor { get; protected set; }
 
+    /// <summary>Número de crédito del INFONAVIT (10 dígitos), para el SUA.</summary>
+    public string? CreditoInfonavitNumero { get; protected set; }
+
+    /// <summary>Fecha de inicio del descuento (aviso de retención), para el SUA.</summary>
+    public DateTime? CreditoInfonavitInicio { get; protected set; }
+
     /// <summary>Descuento FONACOT por periodo.</summary>
     public decimal? Fonacot { get; protected set; }
 
@@ -92,6 +98,14 @@ public class Trabajador : FullAuditedAggregateRoot<Guid>
         CreditoInfonavitTipo = creditoTipo is "porcentaje" or "cuota_fija" or "veces" && creditoValor is > 0 ? creditoTipo : null;
         CreditoInfonavitValor = CreditoInfonavitTipo == null ? null : creditoValor;
         Fonacot = fonacot is > 0 ? fonacot : null;
+    }
+
+    /// <summary>Número y fecha de inicio del crédito INFONAVIT; solo si tiene crédito.</summary>
+    public void RegistrarCredito(string? numero, DateTime? inicio)
+    {
+        var n = new string((numero ?? "").Where(char.IsDigit).ToArray());
+        CreditoInfonavitNumero = CreditoInfonavitTipo != null && n.Length == 10 ? n : null;
+        CreditoInfonavitInicio = CreditoInfonavitTipo != null ? inicio?.Date : null;
     }
 
     public void DarDeBaja(DateTime fecha) => FechaBaja = fecha.Date;
