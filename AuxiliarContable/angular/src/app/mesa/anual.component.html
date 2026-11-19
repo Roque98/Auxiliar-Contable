@@ -72,6 +72,28 @@
         </div>
       </details>
     }
+    @if (r.retenciones?.length) {
+      <details>
+        <summary class="ms-nota">CFDI de retenciones que usó ({{ r.retenciones?.length }})</summary>
+        <div class="ms-tabla-caja">
+          <table class="ms-tabla">
+            <thead><tr><th scope="col">Periodo</th><th scope="col">Tipo</th><th scope="col">Quién retuvo</th><th scope="col" class="ms-num">Monto</th><th scope="col" class="ms-num">ISR retenido</th><th scope="col" class="ms-num">IVA retenido</th></tr></thead>
+            <tbody>
+              @for (x of r.retenciones ?? []; track $index) {
+                <tr>
+                  <td>{{ x.periodo }}</td>
+                  <td>{{ x.tipo }} @if (x.descripcion) { <span class="ms-nota">· {{ x.descripcion }}</span> }</td>
+                  <td><strong>{{ x.rfcEmisor }}</strong> {{ x.nombreEmisor }}</td>
+                  <td class="ms-num">{{ x.montoOperacion | currency: 'MXN' : 'symbol-narrow' }}</td>
+                  <td class="ms-num">{{ x.isrRetenido | currency: 'MXN' : 'symbol-narrow' }}</td>
+                  <td class="ms-num">{{ x.ivaRetenido | currency: 'MXN' : 'symbol-narrow' }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </details>
+    }
     @if (r.supuestos.length) {
       <details>
         <summary class="ms-nota">Qué supone el cálculo</summary>

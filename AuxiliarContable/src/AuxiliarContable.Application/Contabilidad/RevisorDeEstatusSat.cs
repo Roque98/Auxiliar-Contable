@@ -139,6 +139,13 @@ public class RevisorDeEstatusSat : ITransientDependency
                 var d = await _documentos.GetAsync(ids[i]);
                 var xml = await _almacen.LeerAsync(d);
                 var datos = DatosDelCfdi.Leer(xml);
+                if (datos is { EsRetencion: true })
+                {
+                    // Los CFDI de retenciones no se consultan en la verificación de facturas: ni falla ni cuenta.
+                    await uow.CompleteAsync();
+                    continue;
+                }
+
                 var total = DatosDelCfdi.TotalTalCual(xml);
                 if (datos?.EmisorRfc is not { } emisor || datos.ReceptorRfc is not { } receptor || total == null || d.Uuid == null)
                 {

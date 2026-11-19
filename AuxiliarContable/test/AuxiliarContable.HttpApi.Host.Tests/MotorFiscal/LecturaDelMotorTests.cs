@@ -103,12 +103,17 @@ public class LecturaDelMotorTests
              "isr_del_ejercicio": 45000.0, "a_cargo": 36000.0, "a_favor": 0.0, "coeficiente_siguiente": 1.0,
              "deducciones_personales": [{"uso": "D01", "concepto": "Honorarios médicos", "rfc": "PRO030303CCC", "nombre": "X",
                                          "fecha": "2026-05-10", "importe": 1160.0, "uuid": "U", "efectivo": false}],
-             "avisos": ["a"], "supuestos": [], "vence": "2027-03-31", "captura": {}, "errores": []}
+             "avisos": ["a"], "supuestos": [], "vence": "2027-03-31", "captura": {}, "errores": [],
+             "retenciones": [{"uuid": "R1", "tipo": "intereses", "descripcion": "Intereses", "rfc_emisor": "BAN010101AAA",
+                              "nombre_emisor": "BANCO", "periodo": "2026-12", "monto_operacion": 5000.0, "isr_retenido": 450.0,
+                              "iva_retenido": 0.0}]}
             """;
         var a = await Motor(json).AnualAsync("AAA010101AAA", [], 2026, [], [], null, null, null, new Dictionary<string, decimal>());
         (a.IsrDelEjercicio, a.ACargo, a.AFavor, a.CoeficienteSiguiente, a.Vence).ShouldBe((45000m, 36000m, 0m, (decimal?)1.0m, "2027-03-31"));
         a.Renglones.ShouldHaveSingleItem().Tipo.ShouldBe("resultado");
         a.DeduccionesPersonales.ShouldHaveSingleItem().Importe.ShouldBe(1160);
+        var r = a.Retenciones.ShouldHaveSingleItem();
+        (r.Tipo, r.RfcEmisor, r.Periodo, r.IsrRetenido).ShouldBe(("intereses", "BAN010101AAA", "2026-12", 450m));
     }
 
     private sealed class Respuesta(string json) : HttpMessageHandler

@@ -41,8 +41,8 @@ export class AnualComponent {
     { clave: 'umaAnual', etiqueta: 'UMA anual', ayuda: 'Para el tope de deducciones personales: 5 UMA anuales (art. 151).' },
     { clave: 'inventarioInicial', etiqueta: 'Inventario inicial', ayuda: 'Personas morales que venden mercancía: costo de lo vendido (art. 39).' },
     { clave: 'inventarioFinal', etiqueta: 'Inventario final', ayuda: 'Al 31 de diciembre.' },
-    { clave: 'sueldosGravados', etiqueta: 'Sueldos gravados de otro patrón', ayuda: 'Personas físicas: de la constancia de sueldos (art. 152).' },
-    { clave: 'isrRetenidoSueldos', etiqueta: 'ISR retenido por sueldos', ayuda: 'De la misma constancia.' },
+    { clave: 'sueldosGravados', etiqueta: 'Sueldos gravados (si no están sus recibos de nómina)', ayuda: 'Vacío: se suman los recibos de nómina timbrados del año. Lo que captures manda (art. 152).' },
+    { clave: 'isrRetenidoSueldos', etiqueta: 'ISR retenido por sueldos', ayuda: 'Vacío: el de los recibos de nómina.' },
     { clave: 'pagosProvisionales', etiqueta: 'Pagos provisionales realmente pagados', ayuda: 'Vacío: los que salen del cálculo de cada mes.' },
   ];
   texto: Record<string, string> = {};

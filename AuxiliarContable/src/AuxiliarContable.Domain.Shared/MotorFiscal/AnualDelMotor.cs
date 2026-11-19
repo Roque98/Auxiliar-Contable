@@ -30,6 +30,25 @@ public class AnualDelMotor
     public string Vence { get; set; } = "";
 
     public List<ErrorDeArchivo> Errores { get; set; } = [];
+
+    /// <summary>Los CFDI de retenciones del ejercicio que usó (plataformas, intereses, dividendos…).</summary>
+    public List<RetencionDeAnual> Retenciones { get; set; } = [];
+}
+
+public class RetencionDeAnual
+{
+    public string? Uuid { get; set; }
+
+    /// <summary>plataformas, intereses, dividendos u otra.</summary>
+    public string Tipo { get; set; } = "";
+
+    public string Descripcion { get; set; } = "";
+    public string RfcEmisor { get; set; } = "";
+    public string NombreEmisor { get; set; } = "";
+    public string? Periodo { get; set; }
+    public decimal MontoOperacion { get; set; }
+    public decimal IsrRetenido { get; set; }
+    public decimal IvaRetenido { get; set; }
 }
 
 /// <summary>Un CFDI con uso D01-D10 pagado en el año (art. 151).</summary>
