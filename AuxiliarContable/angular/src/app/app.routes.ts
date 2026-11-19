@@ -63,6 +63,13 @@ export const APP_ROUTES: Routes = [
     canActivate: [authGuard, permissionGuard],
     data: { requiredPolicy: 'AuxiliarContable.Organizaciones' },
   },
+  {
+    // La nómina del despacho: trabajadores y periodos de cada cliente (el servidor la niega a quien no es del equipo).
+    path: 'nomina',
+    loadComponent: () => import('./nomina/nomina.component').then(c => c.NominaComponent),
+    canActivate: [authGuard, permissionGuard],
+    data: { requiredPolicy: 'AuxiliarContable.Organizaciones' },
+  },
   // Las pantallas de antes viven ahora en «Mi información» (las ligas viejas siguen sirviendo; ?cliente= se conserva).
   { path: 'documentos', redirectTo: 'mi-informacion/facturas' },
   { path: 'facturar', redirectTo: 'mi-informacion/facturas/pedir' },

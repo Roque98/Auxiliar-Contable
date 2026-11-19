@@ -265,6 +265,27 @@ public class MotorFiscalDePrueba : IMotorFiscal
         return Task.FromResult(new InterpretacionDelMotor { Version = "prueba", Huella = "h", Fuentes = ["factura"], Interpretacion = InterpretacionQueContesta });
     }
 
+    /// <summary>Lo que recibió el último cálculo de nómina.</summary>
+    public (PatronParaNomina Patron, PeriodoParaNomina Periodo, IReadOnlyList<TrabajadorParaNomina> Trabajadores)? NominaRecibida { get; private set; }
+
+    public Task<NominaDelMotor> CalcularNominaAsync(
+        PatronParaNomina patron, PeriodoParaNomina periodo, IReadOnlyList<TrabajadorParaNomina> trabajadores,
+        CancellationToken cancellationToken = default)
+    {
+        if (Caido)
+        {
+            throw new MotorFiscalNoDisponibleException("El motor fiscal no responde.");
+        }
+
+        NominaRecibida = (patron, periodo, trabajadores);
+        return Task.FromResult(new NominaDelMotor
+        {
+            Version = "prueba",
+            Trabajadores = [.. trabajadores.Select(t => new NominaDeTrabajador { Id = t.Id, Nombre = t.Nombre, Neto = t.SalarioDiario * periodo.Dias })],
+            Totales = new TotalesDeNomina { Neto = trabajadores.Sum(t => t.SalarioDiario * periodo.Dias) },
+        });
+    }
+
     /// <summary>Lo que recibió la última anual: ejercicio, archivos y lo capturado.</summary>
     public (int Anio, List<string> Facturas, IReadOnlyDictionary<string, decimal> Captura)? AnualRecibida { get; private set; }
 

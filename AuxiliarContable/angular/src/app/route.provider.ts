@@ -164,6 +164,16 @@ function configureRoutes() {
       requiredPolicy: 'AuxiliarContable.Organizaciones',
     },
 
+    // Nómina del despacho: trabajadores y periodos de cada cliente. Solo el equipo.
+    {
+      path: '/nomina',
+      name: '::Menu:Nomina',
+      iconClass: 'bi bi-person-badge',
+      order: 1.46,
+      layout: eLayoutType.application,
+      requiredPolicy: 'AuxiliarContable.Organizaciones',
+    },
+
     // Mi información: facturas, dinero, control interno y todo (cada operación con sus tres patas). Mismo criterio.
     {
       path: '/mi-informacion',

@@ -79,6 +79,8 @@ public class AuxiliarContableDbContext :
 
     public DbSet<Contabilidad.ContabilidadDelMes> ContabilidadesDeMeses { get; set; }
     public DbSet<Contabilidad.OperacionInterpretada> OperacionesInterpretadas { get; set; }
+    public DbSet<Nomina.Trabajador> Trabajadores { get; set; }
+    public DbSet<Nomina.PeriodoDeNomina> PeriodosDeNomina { get; set; }
 
     public DbSet<Contabilidad.SaldosDeApertura> SaldosDeAperturas { get; set; }
 
@@ -405,6 +407,33 @@ public class AuxiliarContableDbContext :
             b.Property(x => x.Resultado).IsRequired().HasColumnType("text");
             b.Property(x => x.DatosDeCierre).HasColumnType("text");
             b.HasIndex(x => new { x.OrganizacionId, x.Anio, x.Mes }).IsUnique();
+        });
+
+        // Nómina: los trabajadores de cada cliente y sus periodos (incidencias y cálculo del motor).
+        builder.Entity<Nomina.Trabajador>(b =>
+        {
+            b.ToTable(AuxiliarContableConsts.DbTablePrefix + "Trabajadores", AuxiliarContableConsts.DbSchema);
+            b.ConfigureByConvention();
+            b.Property(x => x.Nombre).IsRequired().HasMaxLength(Nomina.Trabajador.MaxNombreLength);
+            b.Property(x => x.Rfc).HasMaxLength(13);
+            b.Property(x => x.Curp).HasMaxLength(18);
+            b.Property(x => x.Nss).HasMaxLength(11);
+            b.Property(x => x.SalarioDiario).HasPrecision(18, 2);
+            b.Property(x => x.SalarioDiarioIntegrado).HasPrecision(18, 2);
+            b.Property(x => x.PrimaVacacionalPct).HasPrecision(6, 2);
+            b.Property(x => x.CreditoInfonavitTipo).HasMaxLength(20);
+            b.Property(x => x.CreditoInfonavitValor).HasPrecision(18, 4);
+            b.Property(x => x.Fonacot).HasPrecision(18, 2);
+            b.HasIndex(x => x.OrganizacionId);
+        });
+        builder.Entity<Nomina.PeriodoDeNomina>(b =>
+        {
+            b.ToTable(AuxiliarContableConsts.DbTablePrefix + "PeriodosDeNomina", AuxiliarContableConsts.DbSchema);
+            b.ConfigureByConvention();
+            b.Property(x => x.Periodicidad).IsRequired().HasMaxLength(20);
+            b.Property(x => x.Incidencias).HasColumnType("text");
+            b.Property(x => x.Resultado).HasColumnType("text");
+            b.HasIndex(x => new { x.OrganizacionId, x.Inicio });
         });
 
         // AppOperacionesInterpretadas: lo que Claude interpretó de cada operación (una por operación).

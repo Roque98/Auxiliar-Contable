@@ -236,6 +236,30 @@ public class MotorFiscalHttp : IMotorFiscal, ITransientDependency
         return await EnviarAsync<InterpretacionDelMotor>(peticion, tope.Token, cancellationToken);
     }
 
+    public async Task<NominaDelMotor> CalcularNominaAsync(
+        PatronParaNomina patron, PeriodoParaNomina periodo, IReadOnlyList<TrabajadorParaNomina> trabajadores,
+        CancellationToken cancellationToken = default)
+    {
+        using var tope = CancelationConTope(_opciones.TimeoutDeBancosSegundos, cancellationToken);
+        var peticion = new HttpRequestMessage(HttpMethod.Post, "nomina/calcular")
+        {
+            Content = JsonContent.Create(new
+            {
+                patron = new { rfc = patron.Rfc, estado = patron.Estado, cp = patron.CodigoPostal, zona = patron.Zona, prima_riesgo = patron.PrimaRiesgo },
+                periodo,
+                trabajadores = trabajadores.Select(t => new
+                {
+                    id = t.Id, nombre = t.Nombre, rfc = t.Rfc, nss = t.Nss, fecha_ingreso = t.FechaIngreso,
+                    salario_diario = t.SalarioDiario, sdi = t.Sdi, dias_aguinaldo = t.DiasAguinaldo,
+                    prima_vacacional_pct = t.PrimaVacacionalPct, incidencias = t.Incidencias,
+                    otras_percepciones = t.OtrasPercepciones, otras_deducciones = t.OtrasDeducciones,
+                    credito_infonavit = t.CreditoInfonavit, fonacot = t.Fonacot,
+                }),
+            }, options: Json),
+        };
+        return await EnviarAsync<NominaDelMotor>(peticion, tope.Token, cancellationToken);
+    }
+
     public async Task<DiotDelMotor> DiotAsync(
         string rfc, string periodo, IReadOnlyList<ArchivoParaElMotor> facturas, IReadOnlyList<string> cancelados,
         IReadOnlyList<string> regimenes, CancellationToken cancellationToken = default)
