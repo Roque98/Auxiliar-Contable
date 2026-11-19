@@ -251,6 +251,21 @@ public class MotorFiscalDePrueba : IMotorFiscal
         Alertas = [new AlertaDeInterpretacion { Tipo = "otra_interpretacion", Mensaje = "Es maquinaria", Fundamento = "art. 34 LISR" }],
     };
 
+    public List<(PerfilParaNormativa Perfil, OperacionParaNormativa Operacion)> NormativaRecibida { get; } = [];
+
+    public Task<string> AnalizarNormativaAsync(PerfilParaNormativa perfil, OperacionParaNormativa operacion,
+        CancellationToken cancellationToken = default)
+    {
+        if (Caido)
+        {
+            throw new MotorFiscalNoDisponibleException("El motor fiscal no responde.");
+        }
+
+        NormativaRecibida.Add((perfil, operacion));
+        return Task.FromResult(
+            "{\"analisis\":{\"conclusion\":\"Tasa 0% si se cumplen los requisitos.\",\"confianza\":\"media\"},\"expediente\":{}}");
+    }
+
     public Task<InterpretacionDelMotor> InterpretarOperacionAsync(
         PerfilParaInterpretar perfil, OperacionParaInterpretar operacion, ArchivoParaElMotor? factura, AnalisisDeDocumento? control,
         BancoParaInterpretar? banco, CancellationToken cancellationToken = default)

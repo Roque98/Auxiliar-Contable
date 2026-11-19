@@ -174,6 +174,16 @@ function configureRoutes() {
       requiredPolicy: 'AuxiliarContable.Organizaciones',
     },
 
+    // Análisis normativo del despacho: núcleo fiscal + leyes que activa el perfil del cliente. Solo el equipo.
+    {
+      path: '/normativa',
+      name: '::Menu:Normativa',
+      iconClass: 'bi bi-journal-check',
+      order: 1.47,
+      layout: eLayoutType.application,
+      requiredPolicy: 'AuxiliarContable.Organizaciones',
+    },
+
     // Mi información: facturas, dinero, control interno y todo (cada operación con sus tres patas). Mismo criterio.
     {
       path: '/mi-informacion',
