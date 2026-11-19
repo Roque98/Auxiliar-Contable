@@ -251,8 +251,32 @@ public class AnalizadorNormativo : ITransientDependency
         var p = await _perfiles.FirstOrDefaultAsync(x => x.OrganizacionId == organizacionId)
                 ?? throw new UserFriendlyException("El cliente no tiene perfil fiscal: súbele su constancia de situación fiscal.");
         string? Campo(string clave) => p.Dato(clave)?.Valor?.Trim();
-        static List<string> Lista(string? v) =>
-            [.. (v ?? "").Split(['\n', ';'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)];
+        // Las listas del perfil se guardan como arreglo JSON; un texto suelto se parte por renglón o «;».
+        static List<string> Lista(string? v)
+        {
+            if (string.IsNullOrWhiteSpace(v))
+            {
+                return [];
+            }
+
+            try
+            {
+                using var json = JsonDocument.Parse(v);
+                if (json.RootElement.ValueKind == JsonValueKind.Array)
+                {
+                    return [.. json.RootElement.EnumerateArray()
+                        .Select(e => e.ValueKind == JsonValueKind.String ? e.GetString() : e.ToString())
+                        .Where(t => !string.IsNullOrWhiteSpace(t)).Select(t => t!.Trim())];
+                }
+            }
+            catch (JsonException)
+            {
+                // texto suelto
+            }
+
+            return [.. v.Split(['\n', ';'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)];
+        }
+
         var giro = Campo(CamposDelPerfil.Giro);
         var actividades = Lista(Campo(CamposDelPerfil.ActividadesEconomicas));
         if (actividades.Count == 0 && !string.IsNullOrWhiteSpace(giro))

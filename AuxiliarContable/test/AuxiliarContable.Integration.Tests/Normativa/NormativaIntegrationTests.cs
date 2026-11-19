@@ -35,7 +35,9 @@ public class NormativaIntegrationTests : ConJerarquiaTestBase
         _cliente = await CrearOrganizacionAsync("Consultorio de prueba");
         await WithUnitOfWorkAsync(() => GetRequiredService<MembresiasDeOrganizacion>().AgregarAsync(_cliente, Usuario.Id, RolEnOrganizacion.Miembro));
         await PonerAsync(CamposDelPerfil.Rfc, "GODE561231GR8");
-        await PonerAsync(CamposDelPerfil.TipoDePersona, "Persona física");
+        await PonerAsync(CamposDelPerfil.TipoDePersona, "fisica");
+        await PonerAsync(CamposDelPerfil.Regimenes, "[\"612 · Personas Físicas con Actividades Empresariales y Profesionales\"]");
+        await PonerAsync(CamposDelPerfil.ActividadesEconomicas, "[\"Consultorios de nutriólogos y dietistas del sector privado (100 %)\"]");
         await PonerAsync(CamposDelPerfil.CodigoPostal, "06000");
     }
 
@@ -69,7 +71,9 @@ public class NormativaIntegrationTests : ConJerarquiaTestBase
 
         (await WithUnitOfWorkAsync(() => GetRequiredService<AnalizadorNormativo>().ProcesarAsync())).ShouldBe(1);
         var (perfil, operacion) = _motor.NormativaRecibida.ShouldHaveSingleItem();
-        perfil.TipoPersona.ShouldBe("Persona física");
+        perfil.TipoPersona.ShouldBe("fisica");
+        perfil.Regimenes.ShouldHaveSingleItem().ShouldStartWith("612");
+        perfil.Actividades.ShouldHaveSingleItem().ShouldContain("nutriólogos");
         perfil.CodigoPostal.ShouldBe("06000");
         perfil.Ejercicio.ShouldBe(2025);
         System.Text.Json.JsonSerializer.Serialize(perfil).ShouldNotContain("GODE561231GR8");
