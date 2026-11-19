@@ -60,10 +60,13 @@ public class NominaIntegrationTests : ConJerarquiaTestBase
             Nombre = "Lupita Ejemplo", FechaIngreso = new DateTime(2025, 6, 1), SalarioDiario = 500, Fonacot = 300,
             CreditoInfonavitTipo = "porcentaje", CreditoInfonavitValor = 20,
         }));
-        await ComoAsync(Administrador, () => _nomina.GuardarTrabajadorAsync(_cliente, new GuardarTrabajadorDto
+        var sefue = await ComoAsync(Administrador, () => _nomina.GuardarTrabajadorAsync(_cliente, new GuardarTrabajadorDto
         {
             Nombre = "Ya se fue", FechaIngreso = new DateTime(2024, 1, 1), SalarioDiario = 400,
-        }).ContinueWith(t => _nomina.DarDeBajaAsync(_cliente, t.Result.Id!.Value, new DateTime(2026, 1, 31))).Unwrap());
+        }));
+        await ComoAsync(Administrador, () => _nomina.DarDeBajaAsync(_cliente, sefue.Id!.Value, new DateTime(2026, 1, 31), "2"));
+        await Should.ThrowAsync<UserFriendlyException>(() => ComoAsync(Administrador, () =>
+            _nomina.DarDeBajaAsync(_cliente, sefue.Id!.Value, new DateTime(2026, 1, 31), "Z")));
         await Should.ThrowAsync<UserFriendlyException>(() => ComoAsync(Administrador, () =>
             _nomina.GuardarTrabajadorAsync(_cliente, new GuardarTrabajadorDto { Nombre = "Sin sueldo", FechaIngreso = DateTime.Today })));
 
@@ -98,5 +101,27 @@ public class NominaIntegrationTests : ConJerarquiaTestBase
         lista.Trabajadores.Count.ShouldBe(2);
         lista.Periodos.ShouldHaveSingleItem();
         lista.FaltaEnElPerfil.ShouldNotContain("registro patronal");
+
+        // Avisos al IMSS: las dos altas y la baja quedaron pendientes; cambiar el salario agrega una modificación.
+        lista.Movimientos.Select(m => m.Tipo).OrderBy(x => x).ShouldBe(["alta", "alta", "baja"]);
+        var conCambio = lupe;
+        conCambio.SalarioDiario = 550;
+        conCambio.PrimerApellido = "Herrera";
+        await ComoAsync(Administrador, () => _nomina.GuardarTrabajadorAsync(_cliente, conCambio));
+        var movs = (await ComoAsync(Administrador, () => _nomina.GetDelClienteAsync(_cliente, 2026))).Movimientos;
+        movs.Count(m => m.Tipo == "modificacion" && m.SalarioDiario == 550).ShouldBe(1);
+        var archivos = await ComoAsync(Administrador, () => _nomina.ArchivosIdseAsync(_cliente, []));
+        archivos.Archivos.Sum(a => a.Renglones).ShouldBe(4);
+        _motor.IdseRecibido!.Single(m => m.Tipo == "modificacion").PrimerApellido.ShouldBe("HERRERA");
+        await ComoAsync(Administrador, () => _nomina.MarcarPresentadosAsync(_cliente, [.. movs.Select(m => m.Id)]));
+        await Should.ThrowAsync<UserFriendlyException>(() => ComoAsync(Administrador, () => _nomina.ArchivosIdseAsync(_cliente, [])));
+
+        // Recibos (sin CURP lo dice el motor) y cuotas del mes con el periodo calculado.
+        await ComoAsync(Administrador, () => _nomina.CalcularAsync(_cliente, p.Id));
+        var recibos = await ComoAsync(Administrador, () => _nomina.RecibosAsync(_cliente, p.Id));
+        recibos.Recibos.ShouldHaveSingleItem().Faltan.ShouldContain("CURP");
+        var cuotas = await ComoAsync(Administrador, () => _nomina.CuotasDelMesAsync(_cliente, 2026, 3));
+        (cuotas.Periodos, cuotas.SinCalcular, cuotas.Cuotas.TotalMensual).ShouldBe((1, 0, 100m));
+        await Should.ThrowAsync<AbpAuthorizationException>(() => ComoAsync(Usuario, () => _nomina.RecibosAsync(_cliente, p.Id)));
     }
 }

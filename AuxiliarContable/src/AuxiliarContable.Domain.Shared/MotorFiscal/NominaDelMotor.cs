@@ -54,6 +54,11 @@ public class PercepcionDeNomina
     public decimal Gravado { get; set; }
     public decimal Exento { get; set; }
     public bool IntegraSbc { get; set; }
+
+    /// <summary>Solo horas extra: [c_TipoHoras, horas, importe] para el nodo HorasExtra del CFDI.</summary>
+    public List<List<System.Text.Json.JsonElement>>? Horas { get; set; }
+
+    public int? DiasConHoras { get; set; }
 }
 
 public class DeduccionDeNomina
@@ -181,4 +186,107 @@ public class CreditoInfonavitParaNomina
 {
     public string Tipo { get; set; } = "";
     public decimal Valor { get; set; }
+}
+
+/// <summary>Un movimiento afiliatorio como se le manda al motor (/nomina/idse).</summary>
+public class MovimientoParaIdse
+{
+    public string Id { get; set; } = "";
+
+    /// <summary>alta, modificacion, baja.</summary>
+    public string Tipo { get; set; } = "";
+
+    public string Fecha { get; set; } = "";
+    public string? Nss { get; set; }
+    public string? Curp { get; set; }
+    public string? PrimerApellido { get; set; }
+    public string? SegundoApellido { get; set; }
+    public string? Nombres { get; set; }
+    public decimal SalarioDiario { get; set; }
+    public decimal? Sdi { get; set; }
+    public string? FechaIngreso { get; set; }
+    public int DiasAguinaldo { get; set; } = 15;
+    public decimal PrimaVacacionalPct { get; set; } = 25;
+    public string? Umf { get; set; }
+    public string? Clave { get; set; }
+    public string? CausaBaja { get; set; }
+}
+
+public class ArchivosDeIdse
+{
+    public List<ArchivoDeIdse> Archivos { get; set; } = [];
+    public List<ErrorDeMovimiento> Errores { get; set; } = [];
+}
+
+public class ArchivoDeIdse
+{
+    public string Nombre { get; set; } = "";
+
+    /// <summary>08 reingreso, 07 modificación de salario, 02 baja.</summary>
+    public string Tipo { get; set; } = "";
+
+    public int Renglones { get; set; }
+    public string ContenidoB64 { get; set; } = "";
+}
+
+public class ErrorDeMovimiento
+{
+    public string? Id { get; set; }
+    public string? Nombre { get; set; }
+    public List<string> Errores { get; set; } = [];
+}
+
+/// <summary>Lo del patrón para los recibos (CFDI de nómina).</summary>
+public class PatronParaRecibos
+{
+    public string Rfc { get; set; } = "";
+    public string? Nombre { get; set; }
+    public string? Regimen { get; set; }
+    public string? Cp { get; set; }
+    public string? RegistroPatronal { get; set; }
+}
+
+public class TrabajadorParaRecibo
+{
+    public string Id { get; set; } = "";
+    public string Nombre { get; set; } = "";
+    public string? Rfc { get; set; }
+    public string? Curp { get; set; }
+    public string? Nss { get; set; }
+    public string? Cp { get; set; }
+    public string? FechaIngreso { get; set; }
+    public string? NumEmpleado { get; set; }
+}
+
+public class RecibosDeNomina
+{
+    public List<ReciboDeNomina> Recibos { get; set; } = [];
+    public string ZipB64 { get; set; } = "";
+    public int Validos { get; set; }
+    public int ConErrores { get; set; }
+}
+
+public class ReciboDeNomina
+{
+    public string? Id { get; set; }
+    public string? Nombre { get; set; }
+    public string Archivo { get; set; } = "";
+    public List<string> Errores { get; set; } = [];
+    public List<string> Faltan { get; set; } = [];
+}
+
+public class CuotasDeNomina
+{
+    public List<CuotaDelMes> Mensuales { get; set; } = [];
+    public List<CuotaDelMes> Bimestrales { get; set; } = [];
+    public decimal TotalMensual { get; set; }
+    public decimal TotalBimestral { get; set; }
+}
+
+public class CuotaDelMes
+{
+    public string Ramo { get; set; } = "";
+    public decimal Patron { get; set; }
+    public decimal Obrero { get; set; }
+    public decimal Total { get; set; }
 }

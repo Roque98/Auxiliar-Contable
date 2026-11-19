@@ -20,7 +20,13 @@ export interface IncidenciasDeNominaDto {
 
 export interface TrabajadorDto {
   id?: string | null;
+  /** Nombre(s), sin apellidos. */
   nombre: string;
+  primerApellido?: string | null;
+  segundoApellido?: string | null;
+  codigoPostal?: string | null;
+  numeroEmpleado?: string | null;
+  umf?: string | null;
   rfc?: string | null;
   curp?: string | null;
   nss?: string | null;
@@ -87,11 +93,45 @@ export interface PeriodoDeNominaDto {
   neto: number | null;
 }
 
+export interface MovimientoAfiliatorioDto {
+  id: string;
+  trabajadorId: string;
+  nombre: string;
+  tipo: 'alta' | 'modificacion' | 'baja';
+  fecha: string;
+  salarioDiario: number;
+  causaBaja: string | null;
+  presentadoUtc: string | null;
+}
+
 export interface NominaDelClienteDto {
   puedeEditar: boolean;
   faltaEnElPerfil: string[];
   trabajadores: TrabajadorDto[];
   periodos: PeriodoDeNominaDto[];
+  movimientos: MovimientoAfiliatorioDto[];
+}
+
+export interface ArchivosDeIdseDto {
+  archivos: { nombre: string; tipo: string; renglones: number; contenidoB64: string }[];
+  errores: { id: string | null; nombre: string | null; errores: string[] }[];
+}
+
+export interface RecibosDeNominaDto {
+  recibos: { id: string | null; nombre: string | null; archivo: string; errores: string[]; faltan: string[] }[];
+  zipB64: string;
+  validos: number;
+  conErrores: number;
+}
+
+export interface CuotaDelMesDto { ramo: string; patron: number; obrero: number; total: number }
+
+export interface CuotasDelMesDto {
+  anio: number;
+  mes: number;
+  periodos: number;
+  sinCalcular: number;
+  cuotas: { mensuales: CuotaDelMesDto[]; bimestrales: CuotaDelMesDto[]; totalMensual: number; totalBimestral: number };
 }
 
 /** `NominaAppService` (`/api/app/nomina`): trabajadores y periodos de nómina de un cliente. Solo el despacho. */
@@ -109,10 +149,11 @@ export class NominaService {
     return this.rest.request<TrabajadorDto, TrabajadorDto>({ method: 'POST', url: `${this.base}/guardar-trabajador/${organizacionId}`, body: t }, this.opciones);
   }
 
-  darDeBaja(organizacionId: string, trabajadorId: string, fecha: string | null): Observable<TrabajadorDto> {
+  darDeBaja(organizacionId: string, trabajadorId: string, fecha: string | null, causa?: string): Observable<TrabajadorDto> {
     const params: Record<string, string> = { organizacionId, trabajadorId };
     if (fecha) {
       params['fecha'] = fecha;
+      params['causa'] = causa ?? '2';
     }
     return this.rest.request<void, TrabajadorDto>({ method: 'POST', url: `${this.base}/dar-de-baja`, params }, this.opciones);
   }
@@ -133,6 +174,24 @@ export class NominaService {
 
   calcular(organizacionId: string, periodoId: string): Observable<PeriodoDeNominaDto> {
     return this.rest.request<void, PeriodoDeNominaDto>({ method: 'POST', url: `${this.base}/calcular`, params: { organizacionId, periodoId } }, this.opciones);
+  }
+
+  archivosIdse(organizacionId: string, ids: string[] | null): Observable<ArchivosDeIdseDto> {
+    return this.rest.request<string[] | null, ArchivosDeIdseDto>(
+      { method: 'POST', url: `${this.base}/archivos-idse/${organizacionId}`, body: ids }, this.opciones);
+  }
+
+  marcarPresentados(organizacionId: string, ids: string[]): Observable<void> {
+    return this.rest.request<string[], void>({ method: 'POST', url: `${this.base}/marcar-presentados/${organizacionId}`, body: ids }, this.opciones);
+  }
+
+  recibos(organizacionId: string, periodoId: string): Observable<RecibosDeNominaDto> {
+    return this.rest.request<void, RecibosDeNominaDto>({ method: 'POST', url: `${this.base}/recibos`, params: { organizacionId, periodoId } }, this.opciones);
+  }
+
+  cuotasDelMes(organizacionId: string, anio: number, mes: number): Observable<CuotasDelMesDto> {
+    return this.rest.request<void, CuotasDelMesDto>(
+      { method: 'POST', url: `${this.base}/cuotas-del-mes/${organizacionId}`, params: { anio, mes } }, this.opciones);
   }
 
   borrarPeriodo(organizacionId: string, periodoId: string): Observable<void> {

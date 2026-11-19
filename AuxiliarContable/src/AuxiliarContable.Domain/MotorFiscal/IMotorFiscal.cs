@@ -116,6 +116,19 @@ public interface IMotorFiscal
         PatronParaNomina patron, PeriodoParaNomina periodo, IReadOnlyList<TrabajadorParaNomina> trabajadores,
         CancellationToken cancellationToken = default);
 
+    /// <summary>Archivos del IDSE (168 posiciones, uno por tipo de movimiento) y los movimientos que no pasan.</summary>
+    Task<ArchivosDeIdse> ArchivosIdseAsync(
+        string registroPatronal, string? guia, string? zona, IReadOnlyList<MovimientoParaIdse> movimientos,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>Recibos de nómina (CFDI 4.0 + Nómina 1.2) sin sello, validados contra el XSD del SAT, en un .zip.</summary>
+    Task<RecibosDeNomina> RecibosDeNominaAsync(
+        PatronParaRecibos patron, PeriodoParaNomina periodo, string periodicidad, NominaDelMotor calculo,
+        IReadOnlyList<TrabajadorParaRecibo> trabajadores, CancellationToken cancellationToken = default);
+
+    /// <summary>Cuotas IMSS e INFONAVIT de varios periodos: mensuales y bimestrales.</summary>
+    Task<CuotasDeNomina> CuotasDeNominaAsync(IReadOnlyList<NominaDelMotor> calculos, CancellationToken cancellationToken = default);
+
     /// <summary>Movimientos del banco sin amarrar + operaciones sin pago -> parejas propuestas por Claude, con su porqué.</summary>
     Task<SugerenciasDeAmarre> SugerirAmarresAsync(
         IReadOnlyList<MovimientoParaAmarrar> movimientos, IReadOnlyList<CandidataParaAmarrar> candidatas, string? giro,
@@ -245,6 +258,19 @@ public class MotorFiscalSinConfigurar : IMotorFiscal, ISingletonDependency
     public Task<NominaDelMotor> CalcularNominaAsync(
         PatronParaNomina patron, PeriodoParaNomina periodo, IReadOnlyList<TrabajadorParaNomina> trabajadores,
         CancellationToken cancellationToken = default) =>
+        throw new MotorFiscalNoDisponibleException("No hay motor fiscal en este proceso.");
+
+    public Task<ArchivosDeIdse> ArchivosIdseAsync(
+        string registroPatronal, string? guia, string? zona, IReadOnlyList<MovimientoParaIdse> movimientos,
+        CancellationToken cancellationToken = default) =>
+        throw new MotorFiscalNoDisponibleException("No hay motor fiscal en este proceso.");
+
+    public Task<RecibosDeNomina> RecibosDeNominaAsync(
+        PatronParaRecibos patron, PeriodoParaNomina periodo, string periodicidad, NominaDelMotor calculo,
+        IReadOnlyList<TrabajadorParaRecibo> trabajadores, CancellationToken cancellationToken = default) =>
+        throw new MotorFiscalNoDisponibleException("No hay motor fiscal en este proceso.");
+
+    public Task<CuotasDeNomina> CuotasDeNominaAsync(IReadOnlyList<NominaDelMotor> calculos, CancellationToken cancellationToken = default) =>
         throw new MotorFiscalNoDisponibleException("No hay motor fiscal en este proceso.");
 
     public Task<DiotDelMotor> DiotAsync(
