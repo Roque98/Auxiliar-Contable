@@ -10,6 +10,10 @@ export interface EstadosFinancierosDto {
   preliminar: boolean;
   advertencias: string[];
   razones: { clave: string; nombre: string; valor: number | null; unidad: string; lectura: string }[];
+  /** Borrador de notas (NIF B-6, B-3 y particulares). */
+  notas?: { titulo: string; texto: string }[];
+  /** Revelaciones obligatorias de las NIF que aplican (lista de verificación). */
+  revelaciones?: { norma: string; titulo: string; parrafo: string; texto: string }[];
 }
 
 export interface RenglonDeEstadoDto {

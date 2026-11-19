@@ -31,6 +31,7 @@ public class CalculadoraDeImpuestos : ITransientDependency
     private readonly IRepository<Documento, Guid> _documentos;
     private readonly IRepository<PerfilFiscal, Guid> _perfiles;
     private readonly IRepository<ImpuestosDelMes, Guid> _impuestos;
+    private readonly IRepository<PolizasDelMes, Guid> _polizas;
     private readonly AlmacenDeDocumentos _almacen;
     private readonly IMotorFiscal _motor;
     private readonly IGuidGenerator _guids;
@@ -40,6 +41,7 @@ public class CalculadoraDeImpuestos : ITransientDependency
         IRepository<Documento, Guid> documentos,
         IRepository<PerfilFiscal, Guid> perfiles,
         IRepository<ImpuestosDelMes, Guid> impuestos,
+        IRepository<PolizasDelMes, Guid> polizas,
         AlmacenDeDocumentos almacen,
         IMotorFiscal motor,
         IGuidGenerator guids,
@@ -48,6 +50,7 @@ public class CalculadoraDeImpuestos : ITransientDependency
         _documentos = documentos;
         _perfiles = perfiles;
         _impuestos = impuestos;
+        _polizas = polizas;
         _almacen = almacen;
         _motor = motor;
         _guids = guids;
@@ -102,7 +105,7 @@ public class CalculadoraDeImpuestos : ITransientDependency
         var (archivos, canceladas) = await ParaElMotorAsync(buenas);
         var resultado = await _motor.PagosProvisionalesAsync(
             perfil.Rfc, perfil.Regimenes, $"{anio:0000}-{mes:00}", perfil.Nombre, archivos, canceladas, perfil.Coeficiente, conExcel,
-            perfil.Plataformas, perfil.ActividadDePlataformas);
+            perfil.Plataformas, perfil.ActividadDePlataformas, await CobrosDelBancoAsync(organizacionId, anio, mes));
 
         var sinEstatus = delEjercicio.Count(d => d.Uuid != null && d.EstatusSat == null);
         if (sinEstatus > 0)
@@ -233,6 +236,54 @@ public class CalculadoraDeImpuestos : ITransientDependency
         }
 
         return await _impuestos.InsertAsync(new ImpuestosDelMes(_guids.Create(), organizacionId, anio, mes, pedidoUtc), autoSave: true);
+    }
+
+    /// <summary>
+    /// Facturas PPD que la contabilidad del ejercicio (hasta el mes) muestra cobradas o pagadas por el banco y sin
+    /// complemento de pago (revisión «PPD_SIN_COMPLEMENTO» con su póliza): el motor las toma por flujo en la fecha del
+    /// banco. Pedido 19-nov-2026: «el día 07 ya la pagaron… ahora sí se tomaría para el cálculo de impuestos».
+    /// </summary>
+    public async Task<List<CobroDelBanco>> CobrosDelBancoAsync(Guid organizacionId, int anio, int mes)
+    {
+        var meses = await _polizas.GetListAsync(p => p.OrganizacionId == organizacionId && p.Anio == anio && p.Mes <= mes);
+        var cobros = new List<CobroDelBanco>();
+        foreach (var m in meses)
+        {
+            ResultadoContable? r;
+            try
+            {
+                r = JsonSerializer.Deserialize<ResultadoContable>(m.Resultado);
+            }
+            catch (JsonException)
+            {
+                continue;
+            }
+
+            if (r == null)
+            {
+                continue;
+            }
+
+            var ops = r.Revision.Where(x => x.Codigo == "PPD_SIN_COMPLEMENTO" && x.Operacion != null).Select(x => x.Operacion!).ToHashSet();
+            foreach (var p in r.Polizas.Where(p => ops.Contains(p.Operacion) && !string.IsNullOrWhiteSpace(p.Uuid) && p.Total is > 0))
+            {
+                // Cobro: abona clientes (105); pago: carga proveedores (201).
+                var cobro = p.Movimientos.Any(x => x.Cuenta.StartsWith("105") && x.Haber > 0);
+                var pago = p.Movimientos.Any(x => x.Cuenta.StartsWith("201") && x.Debe > 0);
+                if (!cobro && !pago)
+                {
+                    continue;
+                }
+
+                cobros.Add(new CobroDelBanco
+                {
+                    Uuid = p.Uuid!, Fecha = p.Fecha.Length >= 10 ? p.Fecha[..10] : p.Fecha, Importe = p.Total!.Value,
+                    Lado = cobro ? "emitida" : "recibida",
+                });
+            }
+        }
+
+        return [.. cobros.DistinctBy(c => (c.Uuid.ToUpperInvariant(), c.Fecha))];
     }
 
     public async Task GuardarAsync(ImpuestosDelMes fila, Calculo c, DateTime pedidoLeido)

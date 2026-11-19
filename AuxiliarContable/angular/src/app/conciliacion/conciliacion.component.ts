@@ -1,8 +1,11 @@
 import { CurrencyPipe, DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { interval } from 'rxjs';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MESES } from '../documentos/documentos.service';
+import { ConciliacionIntegralDto, ICONO_DE_PASO, agrupar, avance, enCurso } from './integral';
 import { mensajeDeError } from '../invitaciones/invitaciones.service';
 import { ClienteVisibleDto, PerfilFiscalService } from '../perfil-fiscal/perfil-fiscal.service';
 import {
@@ -42,6 +45,14 @@ export class ConciliacionComponent implements OnInit {
   private readonly perfiles = inject(PerfilFiscalService);
   private readonly ruta = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly destruir = inject(DestroyRef);
+
+  /** La conciliación integral (botón «Conciliar»): la última vuelta del cliente y su avance. */
+  readonly integral = signal<ConciliacionIntegralDto | null>(null);
+  readonly gruposDePasos = computed(() => agrupar(this.integral()?.pasos ?? []));
+  readonly avanceIntegral = computed(() => avance(this.integral()));
+  readonly integralEnCurso = computed(() => enCurso(this.integral()));
+  readonly iconoDePaso = ICONO_DE_PASO;
 
   readonly meses = MESES;
   readonly nombreDeEstado = NOMBRE_DE_ESTADO;
@@ -124,6 +135,12 @@ export class ConciliacionComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    // Mientras corre la conciliación integral, el avance se consulta cada 4 s; al terminar se recarga el cierre.
+    interval(4000).pipe(takeUntilDestroyed(this.destruir)).subscribe(() => {
+      if (this.integralEnCurso()) {
+        this.consultarIntegral();
+      }
+    });
     const q = this.ruta.snapshot.queryParamMap;
     this.anio = Number(q.get('anio')) || this.anio;
     this.mes = Number(q.get('mes')) || this.mes;
@@ -140,12 +157,38 @@ export class ConciliacionComponent implements OnInit {
 
   elegir(id: string | null): void {
     this.clienteId.set(id);
+    this.integral.set(null);
     this.cargar();
+  }
+
+  /** La última vuelta del botón «Conciliar»; si acaba de terminar, recarga el cierre con lo nuevo. */
+  consultarIntegral(): void {
+    const id = this.clienteId();
+    if (!id) {
+      this.integral.set(null);
+      return;
+    }
+    const antes = this.integralEnCurso();
+    this.api.ultimaConciliacion(id).subscribe({
+      next: v => {
+        if (this.clienteId() !== id) {
+          return;
+        }
+        this.integral.set(v);
+        if (antes && !enCurso(v)) {
+          this.ocupado.set(false);
+          this.cargar();
+        }
+      },
+    });
   }
 
   /** Trae cómo va el cierre del mes elegido (con su última conciliación, si la hay). */
   cargar(): void {
     const id = this.clienteId();
+    if (id && this.integral()?.id === undefined) {
+      this.consultarIntegral();
+    }
     this.cierre.set(null);
     this.diagnostico.set(null);
     this.errorDeDiagnostico.set(null);
@@ -301,11 +344,10 @@ export class ConciliacionComponent implements OnInit {
     this.ocupado.set(true);
     this.error.set(null);
     this.filtro.set('todos');
-    this.api.conciliar(id, this.anio, this.mes).subscribe({
-      next: () => {
-        this.ocupado.set(false);
-        this.cargar();
-      },
+    // Todo en una vuelta de fondo: facturas del SAT, tickets, banco, amarre, interpretación, nómina, pólizas,
+    // impuestos, estados financieros con notas y alertas normativas, de los meses abiertos hasta el elegido.
+    this.api.conciliarTodo(id, this.anio, this.mes).subscribe({
+      next: v => this.integral.set(v),
       error: e => {
         this.error.set(mensajeDeError(e, 'No se pudo conciliar.'));
         this.ocupado.set(false);

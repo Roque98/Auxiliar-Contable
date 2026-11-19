@@ -80,6 +80,7 @@ public class AuxiliarContableDbContext :
     public DbSet<Contabilidad.ContabilidadDelMes> ContabilidadesDeMeses { get; set; }
     public DbSet<Contabilidad.OperacionInterpretada> OperacionesInterpretadas { get; set; }
     public DbSet<Normativa.AnalisisNormativo> AnalisisNormativos { get; set; }
+    public DbSet<Contabilidad.ConciliacionIntegral> ConciliacionesIntegrales { get; set; }
     public DbSet<Nomina.Trabajador> Trabajadores { get; set; }
     public DbSet<Nomina.PeriodoDeNomina> PeriodosDeNomina { get; set; }
     public DbSet<Nomina.MovimientoAfiliatorio> MovimientosAfiliatorios { get; set; }
@@ -465,6 +466,18 @@ public class AuxiliarContableDbContext :
             b.HasIndex(x => x.OperacionId).IsUnique();
             b.HasIndex(x => new { x.OrganizacionId, x.Anio, x.Mes });
             b.HasIndex(x => new { x.Pedida, x.PedidaUtc });
+        });
+
+        // AppConciliacionesIntegrales: cada vuelta del botón «Conciliar» (pasos y resultado por mes, en JSON).
+        builder.Entity<Contabilidad.ConciliacionIntegral>(b =>
+        {
+            b.ToTable(AuxiliarContableConsts.DbTablePrefix + "ConciliacionesIntegrales", AuxiliarContableConsts.DbSchema);
+            b.ConfigureByConvention();
+            b.Property(x => x.Pasos).IsRequired().HasColumnType("text");
+            b.Property(x => x.Resultado).HasColumnType("text");
+            b.Property(x => x.Error).HasMaxLength(Contabilidad.ConciliacionIntegral.MaxErrorLength);
+            b.HasIndex(x => new { x.OrganizacionId, x.PedidaUtc });
+            b.HasIndex(x => new { x.Estado, x.PedidaUtc });
         });
 
         // AppAnalisisNormativos: hipótesis normativa de cada cliente (pregunta, conclusión y el JSON del motor).

@@ -253,6 +253,22 @@ public class MotorFiscalDePrueba : IMotorFiscal
 
     public List<(PerfilParaNormativa Perfil, OperacionParaNormativa Operacion)> NormativaRecibida { get; } = [];
 
+    public List<OperacionParaNormativa> ExpedientesPedidos { get; } = [];
+
+    public Task<string> ExpedienteNormativoAsync(PerfilParaNormativa perfil, OperacionParaNormativa operacion,
+        CancellationToken cancellationToken = default)
+    {
+        if (Caido)
+        {
+            throw new MotorFiscalNoDisponibleException("El motor fiscal no responde.");
+        }
+
+        ExpedientesPedidos.Add(operacion);
+        return Task.FromResult(
+            "{\"chispazos\":[{\"disparador\":\"extranjero\",\"pregunta\":\"¿Califica como exportación?\","
+            + "\"fuentes\":[{\"clave\":\"LIVA\",\"articulo\":\"29\",\"url\":\"\"}]}],\"avisos\":[]}");
+    }
+
     public Task<string> AnalizarNormativaAsync(PerfilParaNormativa perfil, OperacionParaNormativa operacion,
         CancellationToken cancellationToken = default)
     {
@@ -392,16 +408,20 @@ public class MotorFiscalDePrueba : IMotorFiscal
     }
 
 
+    public List<CobroDelBanco> CobrosDelBancoRecibidos { get; private set; } = [];
+
     public Task<PagosProvisionales> PagosProvisionalesAsync(
         string rfc, IReadOnlyList<string> regimenes, string periodo, string? nombre, IReadOnlyList<ArchivoParaElMotor> facturas,
         IReadOnlyList<string> cancelados, decimal? coeficienteDeUtilidad, bool conExcel, string? plataformas = null,
-        string? actividadDePlataformas = null, CancellationToken cancellationToken = default)
+        string? actividadDePlataformas = null, IReadOnlyList<CobroDelBanco>? cobrosDelBanco = null,
+        CancellationToken cancellationToken = default)
     {
         if (Caido)
         {
             throw new MotorFiscalNoDisponibleException("El motor fiscal no responde.");
         }
 
+        CobrosDelBancoRecibidos = cobrosDelBanco?.ToList() ?? [];
         PlataformasRecibidas = (plataformas, actividadDePlataformas);
         Provisionales = (rfc, regimenes, periodo, facturas.Select(f => f.Nombre).ToList(), cancelados);
         CoeficienteRecibido = coeficienteDeUtilidad;

@@ -1,6 +1,7 @@
 import { RestService } from '@abp/ng.core';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
+import { ConciliacionIntegralDto } from './integral';
 
 /** Lo que devuelve el motor fiscal (motores-fiscales), tal cual: ver ResultadosDelMotor.cs. */
 export interface RenglonDeCuadre {
@@ -195,6 +196,18 @@ export class ConciliacionService {
   private readonly rest = inject(RestService);
   private readonly base = '/api/app/bancos';
   private readonly opciones = { apiName: 'Default', skipHandleError: true };
+
+  /** El botón «Conciliar»: todo en una vuelta de fondo (facturas, banco, pólizas, impuestos, estados, normativa). */
+  conciliarTodo(organizacionId: string, anio: number, mes: number): Observable<ConciliacionIntegralDto> {
+    return this.rest.request<void, ConciliacionIntegralDto>(
+      { method: 'POST', url: `/api/app/conciliacion-integral/pedir/${organizacionId}`, params: { anio, mes } }, this.opciones);
+  }
+
+  /** La última vuelta del cliente (null si nunca se ha pedido). */
+  ultimaConciliacion(organizacionId: string): Observable<ConciliacionIntegralDto | null> {
+    return this.rest.request<void, ConciliacionIntegralDto | null>(
+      { method: 'GET', url: `/api/app/conciliacion-integral/ultima/${organizacionId}` }, this.opciones);
+  }
 
   conciliar(organizacionId: string, anio: number, mes: number): Observable<ConciliacionDelMesDto> {
     return this.rest.request<void, ConciliacionDelMesDto>(

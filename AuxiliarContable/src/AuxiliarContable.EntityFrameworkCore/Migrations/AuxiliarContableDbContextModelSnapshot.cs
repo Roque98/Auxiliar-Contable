@@ -150,6 +150,75 @@ namespace AuxiliarContable.Migrations
                     b.ToTable("AppConciliacionesBancarias", (string)null);
                 });
 
+            modelBuilder.Entity("AuxiliarContable.Contabilidad.ConciliacionIntegral", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Anio")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("ConcurrencyStamp");
+
+                    b.Property<DateTime>("CreationTime")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("CreationTime");
+
+                    b.Property<Guid?>("CreatorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("CreatorId");
+
+                    b.Property<string>("Error")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<int>("Estado")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ExtraProperties")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("ExtraProperties");
+
+                    b.Property<DateTime?>("IniciadaUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Mes")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("OrganizacionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Pasos")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("PedidaUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Resultado")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("TerminadaUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UsuarioId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Estado", "PedidaUtc");
+
+                    b.HasIndex("OrganizacionId", "PedidaUtc");
+
+                    b.ToTable("AppConciliacionesIntegrales", (string)null);
+                });
+
             modelBuilder.Entity("AuxiliarContable.Contabilidad.ContabilidadDelMes", b =>
                 {
                     b.Property<Guid>("Id")
