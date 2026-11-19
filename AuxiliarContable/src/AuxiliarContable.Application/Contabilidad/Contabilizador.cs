@@ -37,6 +37,7 @@ public class Contabilizador : ITransientDependency
     private readonly GestorDePeriodos _periodos;
     private readonly IGuidGenerator _guids;
     private readonly IAsyncQueryableExecuter _consultas;
+    private readonly InterpretadorDeOperaciones _interpretador;
 
     public ILogger<Contabilizador> Logger { get; set; } = NullLogger<Contabilizador>.Instance;
 
@@ -52,8 +53,10 @@ public class Contabilizador : ITransientDependency
         RegistroDeOperaciones registro,
         GestorDePeriodos periodos,
         IGuidGenerator guids,
-        IAsyncQueryableExecuter consultas)
+        IAsyncQueryableExecuter consultas,
+        InterpretadorDeOperaciones interpretador)
     {
+        _interpretador = interpretador;
         _operaciones = operaciones;
         _documentos = documentos;
         _conciliaciones = conciliaciones;
@@ -282,6 +285,9 @@ public class Contabilizador : ITransientDependency
             id is { } x && docs.TryGetValue(x, out var d) && d.Analisis != null ? JsonSerializer.Deserialize<AnalisisDeDocumento>(d.Analisis) : null;
         static string Estado(EstadoDePata e) => e switch { EstadoDePata.Ligada => "ligada", EstadoDePata.NoHay => "no_hay", _ => "pendiente" };
 
+        // Lo que interpretó Claude y sigue al día con sus fuentes (no se le vuelve a preguntar aquí).
+        var interpretadas = await _interpretador.VigentesAsync(await _interpretador.EntradasAsync(organizacionId, ops));
+
         var paraMotor = ops.Select(o =>
         {
             var banco = o.ClaveDeMovimiento != null && delBanco.TryGetValue(o.ClaveDeMovimiento, out var m) ? m : null;
@@ -314,6 +320,7 @@ public class Contabilizador : ITransientDependency
                 },
                 Control = new PataParaContabilizar { Estado = Estado(o.ControlEstado), Analisis = Analisis(o.ControlDocumentoId) },
                 Aceptados = o.CodigosAceptados.ToList(),
+                Interpretacion = interpretadas.GetValueOrDefault(o.Id)?.Interpretacion,
             };
         }).ToList();
 

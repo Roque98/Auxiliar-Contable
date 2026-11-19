@@ -105,6 +105,9 @@ public class OperacionParaContabilizar
 
     /// <summary>Lo de la revisión que el despacho ya aceptó (códigos).</summary>
     public List<string> Aceptados { get; set; } = [];
+
+    /// <summary>Lo que interpretó Claude, si está al día con sus fuentes (las pólizas lo usan con cuidado).</summary>
+    public InterpretacionDeOperacion? Interpretacion { get; set; }
 }
 
 public class PataParaContabilizar

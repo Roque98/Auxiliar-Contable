@@ -618,6 +618,7 @@ public class AuxiliarContableHttpApiHostModule : AbpModule
         await context.AddBackgroundWorkerAsync<RevisorDeEstatusSatWorker>();
         await context.AddBackgroundWorkerAsync<DescargaMasivaWorker>();
         await context.AddBackgroundWorkerAsync<ContabilidadAlDiaWorker>();
+        await context.AddBackgroundWorkerAsync<InterpretacionesWorker>();
 
         await FecharFacturasSinFechaAsync(context.ServiceProvider);
     }

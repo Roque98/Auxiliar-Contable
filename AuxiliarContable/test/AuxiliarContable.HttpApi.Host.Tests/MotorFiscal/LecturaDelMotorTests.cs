@@ -116,6 +116,30 @@ public class LecturaDelMotorTests
         (r.Tipo, r.RfcEmisor, r.Periodo, r.IsrRetenido).ShouldBe(("intereses", "BAN010101AAA", "2026-12", 450m));
     }
 
+    [Fact]
+    public async Task La_interpretacion_de_claude_se_lee_completa()
+    {
+        const string json = """
+            {"version": "2026-11-18", "huella": "abc", "fuentes": ["factura", "ticket_o_nota", "movimiento_del_banco"],
+             "interpretacion": {"objeto": "Laptop", "coinciden_las_fuentes": "si", "diferencias": ["x"], "categoria": "inversion",
+               "juicio_contable": "Activo fijo (NIF C-6)", "tratamiento_fiscal": "Inversión al 30 %", "confianza": "alta",
+               "proveedor": {"que_vende": "Equipo de cómputo", "lo_conozco": false},
+               "conceptos": [{"indice": 0, "que_es": "Laptop", "clave_coincide": true, "categoria": "inversion", "cuenta": "156.01",
+                              "isr": "inversion", "iva": "acreditable", "porcentaje_inversion": 30, "fundamento": "art. 34-VII LISR"}],
+               "alertas": [{"tipo": "requisito_fiscal", "mensaje": "m", "fundamento": "art. 27 LISR"}],
+               "preguntas_al_cliente": ["¿Quién la usa?"]}}
+            """;
+        var r = await Motor(json).InterpretarOperacionAsync(new PerfilParaInterpretar(), new OperacionParaInterpretar(), null, null, null);
+        r.Fuentes.Count.ShouldBe(3);
+        var i = r.Interpretacion;
+        (i.Objeto, i.CoincidenLasFuentes, i.JuicioContable, i.Confianza).ShouldBe(("Laptop", "si", "Activo fijo (NIF C-6)", "alta"));
+        (i.Proveedor.QueVende, i.Proveedor.LoConozco).ShouldBe(("Equipo de cómputo", false));
+        var c = i.Conceptos.ShouldHaveSingleItem();
+        (c.ClaveCoincide, c.Cuenta, c.PorcentajeInversion, c.Fundamento).ShouldBe(((bool?)true, "156.01", (decimal?)30m, "art. 34-VII LISR"));
+        i.Alertas.ShouldHaveSingleItem().Tipo.ShouldBe("requisito_fiscal");
+        i.PreguntasAlCliente.ShouldHaveSingleItem();
+    }
+
     private sealed class Respuesta(string json) : HttpMessageHandler
     {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
