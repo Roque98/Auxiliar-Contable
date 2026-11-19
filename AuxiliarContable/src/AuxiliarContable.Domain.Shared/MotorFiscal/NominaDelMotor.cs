@@ -138,7 +138,16 @@ public class PeriodoParaNomina
 public class IncidenciasDeNomina
 {
     public int Faltas { get; set; }
+
+    /// <summary>Primer día de las faltas (para el ausentismo del SUA); sin él va la fecha de inicio del periodo.</summary>
+    public System.DateTime? InicioFaltas { get; set; }
+
     public int Incapacidad { get; set; }
+
+    /// <summary>Del certificado de incapacidad del IMSS: folio (2 letras y 6 números) y fecha de inicio.</summary>
+    public string? FolioIncapacidad { get; set; }
+
+    public System.DateTime? InicioIncapacidad { get; set; }
     public decimal HorasJornada { get; set; } = 8;
     public decimal HorasExtraDobles { get; set; }
     public decimal HorasExtraTriples { get; set; }
@@ -289,4 +298,76 @@ public class CuotaDelMes
     public decimal Patron { get; set; }
     public decimal Obrero { get; set; }
     public decimal Total { get; set; }
+}
+
+/// <summary>Un trabajador como se le manda al motor para el SUA (/nomina/sua).</summary>
+public class TrabajadorParaSua
+{
+    public string Id { get; set; } = "";
+    public string? Nss { get; set; }
+    public string? Rfc { get; set; }
+    public string? Curp { get; set; }
+    public string? PrimerApellido { get; set; }
+    public string? SegundoApellido { get; set; }
+    public string? Nombres { get; set; }
+    public string FechaIngreso { get; set; } = "";
+    public decimal SalarioDiario { get; set; }
+    public decimal? Sdi { get; set; }
+    public int DiasAguinaldo { get; set; } = 15;
+    public decimal PrimaVacacionalPct { get; set; } = 25;
+    public string? Clave { get; set; }
+    public string? Cp { get; set; }
+    public string? Umf { get; set; }
+    public CreditoParaSua? Credito { get; set; }
+}
+
+public class CreditoParaSua
+{
+    public string? Numero { get; set; }
+    public string? Inicio { get; set; }
+
+    /// <summary>porcentaje, cuota_fija o veces.</summary>
+    public string Tipo { get; set; } = "";
+
+    public decimal Valor { get; set; }
+}
+
+public class MovimientoParaSua
+{
+    public string TrabajadorId { get; set; } = "";
+
+    /// <summary>alta, modificacion, baja.</summary>
+    public string Tipo { get; set; } = "";
+
+    public string Fecha { get; set; } = "";
+    public decimal SalarioDiario { get; set; }
+    public decimal? Sdi { get; set; }
+    public string? FechaIngreso { get; set; }
+    public int DiasAguinaldo { get; set; } = 15;
+    public decimal PrimaVacacionalPct { get; set; } = 25;
+}
+
+public class IncidenciaParaSua
+{
+    public string TrabajadorId { get; set; } = "";
+    public string PeriodoInicio { get; set; } = "";
+    public int Faltas { get; set; }
+    public string? InicioFaltas { get; set; }
+    public int Incapacidad { get; set; }
+    public string? InicioIncapacidad { get; set; }
+    public string? FolioIncapacidad { get; set; }
+}
+
+public class ArchivosDeSua
+{
+    public string ZipB64 { get; set; } = "";
+    public List<ArchivoDeSua> Archivos { get; set; } = [];
+    public List<ErrorDeMovimiento> Errores { get; set; } = [];
+    public List<string> Avisos { get; set; } = [];
+}
+
+public class ArchivoDeSua
+{
+    public string Nombre { get; set; } = "";
+    public int Renglones { get; set; }
 }

@@ -5,8 +5,8 @@ import { ActivatedRoute } from '@angular/router';
 import { mensajeDeError } from '../invitaciones/invitaciones.service';
 import { RenglonesComponent } from '../mesa/renglones.component';
 import { ClienteVisibleDto, PerfilFiscalService } from '../perfil-fiscal/perfil-fiscal.service';
-import { Periodicidad, finDelPeriodo, siguienteInicio } from './fechas';
-import { ArchivosDeIdseDto, CuotasDelMesDto, MovimientoAfiliatorioDto, NominaDelClienteDto, NominaService, PeriodoDeNominaDto, RecibosDeNominaDto, TrabajadorDto } from './nomina.service';
+import { Periodicidad, finDelPeriodo, siguienteInicio, soloDia } from './fechas';
+import { ArchivosDeIdseDto, ArchivosDeSuaDto, CuotasDelMesDto, MovimientoAfiliatorioDto, NominaDelClienteDto, NominaService, PeriodoDeNominaDto, RecibosDeNominaDto, TrabajadorDto } from './nomina.service';
 import { descargarBase64 } from '../mesa/descarga';
 import { MESES } from '../documentos/documentos.service';
 
@@ -57,6 +57,7 @@ export class NominaComponent implements OnInit {
   readonly idse = signal<ArchivosDeIdseDto | null>(null);
   readonly recibos = signal<RecibosDeNominaDto | null>(null);
   readonly cuotas = signal<CuotasDelMesDto | null>(null);
+  readonly sua = signal<ArchivosDeSuaDto | null>(null);
   mesCuotas = new Date().getMonth() + 1;
   causaBaja = '2';
   readonly causas = [
@@ -118,7 +119,7 @@ export class NominaComponent implements OnInit {
   }
 
   editar(t: TrabajadorDto): void {
-    this.editando.set({ ...t, fechaIngreso: t.fechaIngreso.slice(0, 10) });
+    this.editando.set({ ...t, fechaIngreso: t.fechaIngreso.slice(0, 10), creditoInfonavitInicio: soloDia(t.creditoInfonavitInicio) });
   }
 
   guardarTrabajador(): void {
@@ -127,7 +128,7 @@ export class NominaComponent implements OnInit {
     if (!t || !id) {
       return;
     }
-    this.hacer(this.api.guardarTrabajador(id, t), () => {
+    this.hacer(this.api.guardarTrabajador(id, { ...t, creditoInfonavitInicio: soloDia(t.creditoInfonavitInicio) }), () => {
       this.editando.set(null);
       this.cargar();
     }, 'No se pudo guardar el trabajador.');
@@ -198,6 +199,21 @@ export class NominaComponent implements OnInit {
     this.hacer(this.api.cuotasDelMes(id, this.anio, this.mesCuotas), r => this.cuotas.set(r), 'No se pudieron sumar las cuotas.');
   }
 
+  /** Archivos para importar en el SUA del mes elegido, en un .zip. */
+  archivosSua(): void {
+    const id = this.clienteId();
+    if (!id) {
+      return;
+    }
+    const mes = this.mesCuotas;
+    this.hacer(this.api.archivosSua(id, this.anio, mes), r => {
+      this.sua.set(r);
+      if (r.archivos.length) {
+        descargarBase64(`SUA ${this.anio}-${String(mes).padStart(2, '0')}.zip`, r.zipB64, 'application/zip');
+      }
+    }, 'No se pudieron armar los archivos del SUA.');
+  }
+
   // ---------------------------------------------------------------- periodos
   crearPeriodo(): void {
     const id = this.clienteId();
@@ -205,7 +221,7 @@ export class NominaComponent implements OnInit {
       return;
     }
     this.hacer(this.api.crearPeriodo(id, this.nuevoInicio, this.finNuevo(), this.periodicidad), p => {
-      this.periodo.set(p);
+      this.ponerPeriodo(p);
       this.cargar();
     }, 'No se pudo crear el periodo.');
   }
@@ -216,7 +232,7 @@ export class NominaComponent implements OnInit {
     if (!id) {
       return;
     }
-    this.hacer(this.api.periodo(id, p.id), r => this.periodo.set(r), 'No se pudo abrir el periodo.');
+    this.hacer(this.api.periodo(id, p.id), r => this.ponerPeriodo(r), 'No se pudo abrir el periodo.');
   }
 
   guardarIncidencias(): void {
@@ -225,7 +241,7 @@ export class NominaComponent implements OnInit {
     if (!id || !p) {
       return;
     }
-    this.hacer(this.api.guardarIncidencias(id, p.id, p.incidencias), r => this.periodo.set(r), 'No se pudieron guardar las incidencias.');
+    this.hacer(this.api.guardarIncidencias(id, p.id, this.paraEnviar(p.incidencias)), r => this.ponerPeriodo(r), 'No se pudieron guardar las incidencias.');
   }
 
   calcular(): void {
@@ -235,9 +251,9 @@ export class NominaComponent implements OnInit {
       return;
     }
     // Lo capturado se guarda antes de calcular.
-    this.hacer(this.api.guardarIncidencias(id, p.id, p.incidencias), () =>
+    this.hacer(this.api.guardarIncidencias(id, p.id, this.paraEnviar(p.incidencias)), () =>
       this.hacer(this.api.calcular(id, p.id), r => {
-        this.periodo.set(r);
+        this.ponerPeriodo(r);
         this.cargar();
       }, 'No se pudo calcular la nómina.'), 'No se pudieron guardar las incidencias.');
   }
@@ -252,6 +268,29 @@ export class NominaComponent implements OnInit {
       this.periodo.set(null);
       this.cargar();
     }, 'No se pudo borrar el periodo.');
+  }
+
+  /** Las fechas de las incidencias, en AAAA-MM-DD para los campos de fecha. */
+  private ponerPeriodo(p: PeriodoDeNominaDto): void {
+    this.periodo.set({ ...p, incidencias: this.paraEnviar(p.incidencias) });
+  }
+
+  /** Fechas vacías como null (el servidor no acepta "" como fecha). */
+  private paraEnviar(lista: PeriodoDeNominaDto['incidencias']): PeriodoDeNominaDto['incidencias'] {
+    return lista.map(i => ({
+      ...i,
+      incidencias: {
+        ...i.incidencias,
+        inicioFaltas: soloDia(i.incidencias.inicioFaltas),
+        inicioIncapacidad: soloDia(i.incidencias.inicioIncapacidad),
+        folioIncapacidad: i.incidencias.folioIncapacidad?.trim() || null,
+      },
+    }));
+  }
+
+  /** Los trabajadores del periodo con faltas o incapacidad: el SUA pide su fecha y folio. */
+  conFaltasOIncapacidad(p: PeriodoDeNominaDto): PeriodoDeNominaDto['incidencias'] {
+    return p.incidencias.filter(i => this.numero(i.incidencias.faltas) || this.numero(i.incidencias.incapacidad));
   }
 
   /** Para la tabla de incidencias: el valor de una columna como número (vacío = 0). */

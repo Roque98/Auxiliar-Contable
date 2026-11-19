@@ -5,7 +5,12 @@ import { RenglonDto } from '../mesa/renglones.component';
 
 export interface IncidenciasDeNominaDto {
   faltas: number;
+  /** Primer día de las faltas (ausentismo del SUA). */
+  inicioFaltas?: string | null;
   incapacidad: number;
+  /** Del certificado del IMSS: folio (2 letras y 6 números) y fecha de inicio. */
+  folioIncapacidad?: string | null;
+  inicioIncapacidad?: string | null;
   horasJornada: number;
   horasExtraDobles: number;
   horasExtraTriples: number;
@@ -38,6 +43,9 @@ export interface TrabajadorDto {
   primaVacacionalPct: number;
   creditoInfonavitTipo?: string | null;
   creditoInfonavitValor?: number | null;
+  /** Número de crédito (10 dígitos) y fecha de inicio del descuento: los pide el SUA. */
+  creditoInfonavitNumero?: string | null;
+  creditoInfonavitInicio?: string | null;
   fonacot?: number | null;
 }
 
@@ -124,6 +132,13 @@ export interface RecibosDeNominaDto {
   conErrores: number;
 }
 
+export interface ArchivosDeSuaDto {
+  zipB64: string;
+  archivos: { nombre: string; renglones: number }[];
+  errores: { id: string | null; nombre: string | null; errores: string[] }[];
+  avisos: string[];
+}
+
 export interface CuotaDelMesDto { ramo: string; patron: number; obrero: number; total: number }
 
 export interface CuotasDelMesDto {
@@ -192,6 +207,11 @@ export class NominaService {
   cuotasDelMes(organizacionId: string, anio: number, mes: number): Observable<CuotasDelMesDto> {
     return this.rest.request<void, CuotasDelMesDto>(
       { method: 'POST', url: `${this.base}/cuotas-del-mes/${organizacionId}`, params: { anio, mes } }, this.opciones);
+  }
+
+  archivosSua(organizacionId: string, anio: number, mes: number): Observable<ArchivosDeSuaDto> {
+    return this.rest.request<void, ArchivosDeSuaDto>(
+      { method: 'POST', url: `${this.base}/archivos-sua/${organizacionId}`, params: { anio, mes } }, this.opciones);
   }
 
   borrarPeriodo(organizacionId: string, periodoId: string): Observable<void> {

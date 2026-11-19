@@ -424,6 +424,7 @@ public class AuxiliarContableDbContext :
             b.Property(x => x.PrimaVacacionalPct).HasPrecision(6, 2);
             b.Property(x => x.CreditoInfonavitTipo).HasMaxLength(20);
             b.Property(x => x.CreditoInfonavitValor).HasPrecision(18, 4);
+            b.Property(x => x.CreditoInfonavitNumero).HasMaxLength(10);
             b.Property(x => x.Fonacot).HasPrecision(18, 2);
             b.Property(x => x.PrimerApellido).HasMaxLength(Nomina.Trabajador.MaxNombreLength);
             b.Property(x => x.SegundoApellido).HasMaxLength(Nomina.Trabajador.MaxNombreLength);

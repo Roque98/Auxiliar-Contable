@@ -26,3 +26,8 @@ export function siguienteInicio(fin: string): string {
   const [a, m, d] = fin.split('-').map(Number);
   return iso(new Date(a, m - 1, d + 1));
 }
+
+/** Para un `<input type="date">`: la fecha del servidor (con hora) queda en AAAA-MM-DD; vacío o null queda null. */
+export function soloDia(v: string | null | undefined): string | null {
+  return v ? v.slice(0, 10) : null;
+}
