@@ -112,7 +112,7 @@ public class NominaIntegrationTests : ConJerarquiaTestBase
         movs.Count(m => m.Tipo == "modificacion" && m.SalarioDiario == 550).ShouldBe(1);
         var archivos = await ComoAsync(Administrador, () => _nomina.ArchivosIdseAsync(_cliente, []));
         archivos.Archivos.Sum(a => a.Renglones).ShouldBe(4);
-        _motor.IdseRecibido!.Single(m => m.Tipo == "modificacion").PrimerApellido.ShouldBe("Herrera");
+        _motor.IdseRecibido!.Single(m => m.Tipo == "modificacion").PrimerApellido.ShouldBe("HERRERA");
         await ComoAsync(Administrador, () => _nomina.MarcarPresentadosAsync(_cliente, [.. movs.Select(m => m.Id)]));
         await Should.ThrowAsync<UserFriendlyException>(() => ComoAsync(Administrador, () => _nomina.ArchivosIdseAsync(_cliente, [])));
 
