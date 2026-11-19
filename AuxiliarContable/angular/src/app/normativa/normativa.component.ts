@@ -10,7 +10,7 @@ import { AnalisisNormativoDto, DisparadorDto, NormativaService } from './normati
 import { ResultadoNormativo, leerResultado } from './resultado';
 
 const CAPAS: Record<string, string> = {
-  ley: 'Ley', reglamento: 'Reglamento', rmf: 'Resolución Miscelánea', criterio: 'Criterio del SAT',
+  ley: 'Ley', reglamento: 'Reglamento', rmf: 'Resolución Miscelánea', criterio: 'Criterio del SAT', jurisprudencia: 'Tesis o jurisprudencia',
   otra_ley: 'Otra ley', estatal: 'Estatal o municipal',
 };
 
