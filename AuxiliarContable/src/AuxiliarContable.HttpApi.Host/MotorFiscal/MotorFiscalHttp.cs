@@ -260,6 +260,46 @@ public class MotorFiscalHttp : IMotorFiscal, ITransientDependency
         return await EnviarAsync<NominaDelMotor>(peticion, tope.Token, cancellationToken);
     }
 
+    public async Task<ArchivosDeIdse> ArchivosIdseAsync(
+        string registroPatronal, string? guia, string? zona, IReadOnlyList<MovimientoParaIdse> movimientos,
+        CancellationToken cancellationToken = default)
+    {
+        using var tope = CancelationConTope(_opciones.TimeoutDeBancosSegundos, cancellationToken);
+        var peticion = new HttpRequestMessage(HttpMethod.Post, "nomina/idse")
+        {
+            Content = JsonContent.Create(new { patron = new { registro_patronal = registroPatronal, guia, zona }, movimientos }, options: Json),
+        };
+        return await EnviarAsync<ArchivosDeIdse>(peticion, tope.Token, cancellationToken);
+    }
+
+    public async Task<RecibosDeNomina> RecibosDeNominaAsync(
+        PatronParaRecibos patron, PeriodoParaNomina periodo, string periodicidad, NominaDelMotor calculo,
+        IReadOnlyList<TrabajadorParaRecibo> trabajadores, CancellationToken cancellationToken = default)
+    {
+        using var tope = CancelationConTope(_opciones.TimeoutDeBancosSegundos, cancellationToken);
+        var peticion = new HttpRequestMessage(HttpMethod.Post, "nomina/recibos")
+        {
+            Content = JsonContent.Create(new
+            {
+                patron,
+                periodo = new { inicio = periodo.Inicio, fin = periodo.Fin, fecha_pago = periodo.Fin, periodicidad },
+                calculo,
+                trabajadores,
+            }, options: Json),
+        };
+        return await EnviarAsync<RecibosDeNomina>(peticion, tope.Token, cancellationToken);
+    }
+
+    public async Task<CuotasDeNomina> CuotasDeNominaAsync(IReadOnlyList<NominaDelMotor> calculos, CancellationToken cancellationToken = default)
+    {
+        using var tope = CancelationConTope(_opciones.TimeoutSegundos, cancellationToken);
+        var peticion = new HttpRequestMessage(HttpMethod.Post, "nomina/cuotas")
+        {
+            Content = JsonContent.Create(new { calculos }, options: Json),
+        };
+        return await EnviarAsync<CuotasDeNomina>(peticion, tope.Token, cancellationToken);
+    }
+
     public async Task<DiotDelMotor> DiotAsync(
         string rfc, string periodo, IReadOnlyList<ArchivoParaElMotor> facturas, IReadOnlyList<string> cancelados,
         IReadOnlyList<string> regimenes, CancellationToken cancellationToken = default)

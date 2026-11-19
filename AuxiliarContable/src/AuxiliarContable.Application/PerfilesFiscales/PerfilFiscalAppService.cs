@@ -217,6 +217,8 @@ public class PerfilFiscalAppService : AuxiliarContableAppService, IPerfilFiscalA
                        && pr is >= 0.5m and <= 15m
                     ? pr.ToString("0.#####", CultureInfo.InvariantCulture)
                     : throw Invalido(campo, "es un porcentaje entre 0.5 y 15, p. ej. 0.54355");
+            case CamposDelPerfil.GuiaImss:
+                return v.Length == 5 && v.All(char.IsDigit) ? v : throw Invalido(campo, "son 5 dígitos");
             case CamposDelPerfil.RegistroPatronal:
                 v = v.ToUpperInvariant().Replace(" ", string.Empty).Replace("-", string.Empty);
                 return v.Length == 11 && v.All(char.IsLetterOrDigit) ? v : throw Invalido(campo, "son 11 letras y números");

@@ -99,6 +99,9 @@ public static class CamposDelPerfil
     /// <summary>Patrón: prima de riesgo de trabajo vigente, en % (de 0.5 a 15; art. 72 LSS).</summary>
     public const string PrimaDeRiesgo = "prima_riesgo";
 
+    /// <summary>Patrón: guía de la subdelegación del IMSS (5 dígitos), para los archivos del IDSE.</summary>
+    public const string GuiaImss = "guia_imss";
+
     /// <summary>Patrón: zona del salario mínimo (general o frontera norte).</summary>
     public const string ZonaSalarioMinimo = "zona_salario_minimo";
 
@@ -146,6 +149,7 @@ public static class CamposDelPerfil
         new(CoeficienteDeUtilidad, "Coeficiente de utilidad (personas morales)", TipoDeCampo.Texto, GrupoDeCampos.Fiscal, false),
         new(RegistroPatronal, "Registro patronal (IMSS)", TipoDeCampo.Texto, GrupoDeCampos.Fiscal, false),
         new(PrimaDeRiesgo, "Prima de riesgo de trabajo (%)", TipoDeCampo.Texto, GrupoDeCampos.Fiscal, false),
+        new(GuiaImss, "Guía de la subdelegación del IMSS", TipoDeCampo.Texto, GrupoDeCampos.Fiscal, false),
         new(ZonaSalarioMinimo, "Zona del salario mínimo", TipoDeCampo.Opcion, GrupoDeCampos.Fiscal, false,
         [
             new("general", "Resto del país"),

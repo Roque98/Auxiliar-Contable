@@ -286,6 +286,33 @@ public class MotorFiscalDePrueba : IMotorFiscal
         });
     }
 
+    public IReadOnlyList<MovimientoParaIdse>? IdseRecibido { get; private set; }
+
+    public Task<ArchivosDeIdse> ArchivosIdseAsync(
+        string registroPatronal, string? guia, string? zona, IReadOnlyList<MovimientoParaIdse> movimientos,
+        CancellationToken cancellationToken = default)
+    {
+        IdseRecibido = movimientos;
+        return Task.FromResult(new ArchivosDeIdse
+        {
+            Archivos = [.. movimientos.GroupBy(m => m.Tipo).Select(g => new ArchivoDeIdse { Nombre = g.Key + ".txt", Tipo = g.Key, Renglones = g.Count(), ContenidoB64 = "QQ==" })],
+        });
+    }
+
+    public Task<RecibosDeNomina> RecibosDeNominaAsync(
+        PatronParaRecibos patron, PeriodoParaNomina periodo, string periodicidad, NominaDelMotor calculo,
+        IReadOnlyList<TrabajadorParaRecibo> trabajadores, CancellationToken cancellationToken = default) =>
+        Task.FromResult(new RecibosDeNomina
+        {
+            Recibos = [.. trabajadores.Select(t => new ReciboDeNomina { Id = t.Id, Nombre = t.Nombre, Archivo = t.Id + ".xml", Faltan = t.Curp == null ? ["CURP"] : [] })],
+            ZipB64 = "UEs=",
+            Validos = trabajadores.Count(t => t.Curp != null),
+            ConErrores = trabajadores.Count(t => t.Curp == null),
+        });
+
+    public Task<CuotasDeNomina> CuotasDeNominaAsync(IReadOnlyList<NominaDelMotor> calculos, CancellationToken cancellationToken = default) =>
+        Task.FromResult(new CuotasDeNomina { TotalMensual = 100 * calculos.Count, Mensuales = [new CuotaDelMes { Ramo = "Invalidez y vida", Total = 100 * calculos.Count }] });
+
     /// <summary>Lo que recibió la última anual: ejercicio, archivos y lo capturado.</summary>
     public (int Anio, List<string> Facturas, IReadOnlyDictionary<string, decimal> Captura)? AnualRecibida { get; private set; }
 

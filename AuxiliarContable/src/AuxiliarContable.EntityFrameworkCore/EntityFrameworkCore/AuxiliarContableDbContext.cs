@@ -81,6 +81,7 @@ public class AuxiliarContableDbContext :
     public DbSet<Contabilidad.OperacionInterpretada> OperacionesInterpretadas { get; set; }
     public DbSet<Nomina.Trabajador> Trabajadores { get; set; }
     public DbSet<Nomina.PeriodoDeNomina> PeriodosDeNomina { get; set; }
+    public DbSet<Nomina.MovimientoAfiliatorio> MovimientosAfiliatorios { get; set; }
 
     public DbSet<Contabilidad.SaldosDeApertura> SaldosDeAperturas { get; set; }
 
@@ -424,7 +425,22 @@ public class AuxiliarContableDbContext :
             b.Property(x => x.CreditoInfonavitTipo).HasMaxLength(20);
             b.Property(x => x.CreditoInfonavitValor).HasPrecision(18, 4);
             b.Property(x => x.Fonacot).HasPrecision(18, 2);
+            b.Property(x => x.PrimerApellido).HasMaxLength(Nomina.Trabajador.MaxNombreLength);
+            b.Property(x => x.SegundoApellido).HasMaxLength(Nomina.Trabajador.MaxNombreLength);
+            b.Property(x => x.CodigoPostal).HasMaxLength(5);
+            b.Property(x => x.NumeroEmpleado).HasMaxLength(10);
+            b.Property(x => x.Umf).HasMaxLength(3);
             b.HasIndex(x => x.OrganizacionId);
+        });
+        builder.Entity<Nomina.MovimientoAfiliatorio>(b =>
+        {
+            b.ToTable(AuxiliarContableConsts.DbTablePrefix + "MovimientosAfiliatorios", AuxiliarContableConsts.DbSchema);
+            b.ConfigureByConvention();
+            b.Property(x => x.Tipo).IsRequired().HasMaxLength(20);
+            b.Property(x => x.SalarioDiario).HasPrecision(18, 2);
+            b.Property(x => x.SalarioDiarioIntegrado).HasPrecision(18, 2);
+            b.Property(x => x.CausaBaja).HasMaxLength(1);
+            b.HasIndex(x => new { x.OrganizacionId, x.PresentadoUtc });
         });
         builder.Entity<Nomina.PeriodoDeNomina>(b =>
         {

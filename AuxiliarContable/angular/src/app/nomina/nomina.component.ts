@@ -6,7 +6,9 @@ import { mensajeDeError } from '../invitaciones/invitaciones.service';
 import { RenglonesComponent } from '../mesa/renglones.component';
 import { ClienteVisibleDto, PerfilFiscalService } from '../perfil-fiscal/perfil-fiscal.service';
 import { Periodicidad, finDelPeriodo, siguienteInicio } from './fechas';
-import { NominaDelClienteDto, NominaService, PeriodoDeNominaDto, TrabajadorDto } from './nomina.service';
+import { ArchivosDeIdseDto, CuotasDelMesDto, MovimientoAfiliatorioDto, NominaDelClienteDto, NominaService, PeriodoDeNominaDto, RecibosDeNominaDto, TrabajadorDto } from './nomina.service';
+import { descargarBase64 } from '../mesa/descarga';
+import { MESES } from '../documentos/documentos.service';
 
 /** Columnas de incidencias que se capturan por trabajador. */
 const COLUMNAS: { clave: 'faltas' | 'incapacidad' | 'horasExtraDobles' | 'horasExtraTriples' | 'domingosTrabajados' | 'diasDescansoTrabajados' | 'festivosTrabajados' | 'aguinaldo' | 'primaVacacional'; titulo: string }[] = [
@@ -51,6 +53,17 @@ export class NominaComponent implements OnInit {
   readonly abierto = signal<string | null>(null);
   nuevoInicio = '';
   periodicidad: Periodicidad = 'quincenal';
+  readonly meses = MESES;
+  readonly idse = signal<ArchivosDeIdseDto | null>(null);
+  readonly recibos = signal<RecibosDeNominaDto | null>(null);
+  readonly cuotas = signal<CuotasDelMesDto | null>(null);
+  mesCuotas = new Date().getMonth() + 1;
+  causaBaja = '2';
+  readonly causas = [
+    ['1', 'Término de contrato'], ['2', 'Separación voluntaria'], ['3', 'Abandono de empleo'], ['4', 'Defunción'], ['5', 'Clausura'],
+    ['6', 'Otras'], ['7', 'Ausentismo'], ['8', 'Rescisión de contrato'], ['9', 'Jubilación'], ['A', 'Pensión'],
+  ];
+  readonly textoTipo: Record<string, string> = { alta: 'Alta o reingreso (08)', modificacion: 'Modificación de salario (07)', baja: 'Baja (02)' };
 
   ngOnInit(): void {
     this.perfiles.clientes().subscribe({
@@ -125,7 +138,64 @@ export class NominaComponent implements OnInit {
     if (!id || !t.id) {
       return;
     }
-    this.hacer(this.api.darDeBaja(id, t.id, darDeBaja ? new Date().toISOString().slice(0, 10) : null), () => this.cargar(), 'No se pudo cambiar el estado.');
+    this.hacer(this.api.darDeBaja(id, t.id, darDeBaja ? new Date().toISOString().slice(0, 10) : null, this.causaBaja), () => this.cargar(),
+      'No se pudo cambiar el estado.');
+  }
+
+  nombreCompleto(t: TrabajadorDto): string {
+    return [t.nombre, t.primerApellido, t.segundoApellido].filter(x => !!x).join(' ');
+  }
+
+  pendientes(): MovimientoAfiliatorioDto[] {
+    return (this.nomina()?.movimientos ?? []).filter(m => !m.presentadoUtc);
+  }
+
+  /** Arma los archivos del IDSE con lo pendiente y los descarga. */
+  archivosIdse(): void {
+    const id = this.clienteId();
+    if (!id) {
+      return;
+    }
+    this.hacer(this.api.archivosIdse(id, null), r => {
+      this.idse.set(r);
+      for (const a of r.archivos) {
+        descargarBase64(a.nombre, a.contenidoB64, 'text/plain');
+      }
+    }, 'No se pudieron armar los archivos del IDSE.');
+  }
+
+  marcarPresentados(): void {
+    const id = this.clienteId();
+    const r = this.idse();
+    if (!id || !r) {
+      return;
+    }
+    const conError = new Set(r.errores.map(e => e.id));
+    const ids = this.pendientes().map(m => m.id).filter(x => !conError.has(x));
+    this.hacer(this.api.marcarPresentados(id, ids), () => {
+      this.idse.set(null);
+      this.cargar();
+    }, 'No se pudieron marcar.');
+  }
+
+  descargarRecibos(): void {
+    const id = this.clienteId();
+    const p = this.periodo();
+    if (!id || !p) {
+      return;
+    }
+    this.hacer(this.api.recibos(id, p.id), r => {
+      this.recibos.set(r);
+      descargarBase64(`recibos de nomina ${p.inicio.slice(0, 10)} al ${p.fin.slice(0, 10)}.zip`, r.zipB64, 'application/zip');
+    }, 'No se pudieron armar los recibos.');
+  }
+
+  verCuotas(): void {
+    const id = this.clienteId();
+    if (!id) {
+      return;
+    }
+    this.hacer(this.api.cuotasDelMes(id, this.anio, this.mesCuotas), r => this.cuotas.set(r), 'No se pudieron sumar las cuotas.');
   }
 
   // ---------------------------------------------------------------- periodos
@@ -141,6 +211,7 @@ export class NominaComponent implements OnInit {
   }
 
   abrirPeriodo(p: PeriodoDeNominaDto): void {
+    this.recibos.set(null);
     const id = this.clienteId();
     if (!id) {
       return;

@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using Volo.Abp;
 using Volo.Abp.Domain.Entities.Auditing;
 
@@ -13,7 +14,21 @@ public class Trabajador : FullAuditedAggregateRoot<Guid>
     public const int MaxNombreLength = 200;
 
     public Guid OrganizacionId { get; protected set; }
+
+    /// <summary>Nombre(s), sin apellidos (el IDSE y el CFDI los piden por separado).</summary>
     public string Nombre { get; protected set; } = "";
+
+    public string? PrimerApellido { get; protected set; }
+    public string? SegundoApellido { get; protected set; }
+
+    /// <summary>Código postal de su domicilio fiscal (lo pide el CFDI 4.0).</summary>
+    public string? CodigoPostal { get; protected set; }
+
+    /// <summary>Número de empleado: la «clave del trabajador» del IDSE y NumEmpleado del recibo.</summary>
+    public string? NumeroEmpleado { get; protected set; }
+
+    /// <summary>Unidad de medicina familiar (3 dígitos), para el alta en el IDSE.</summary>
+    public string? Umf { get; protected set; }
     public string? Rfc { get; protected set; }
     public string? Curp { get; protected set; }
     public string? Nss { get; protected set; }
@@ -42,6 +57,19 @@ public class Trabajador : FullAuditedAggregateRoot<Guid>
     public Trabajador(Guid id, Guid organizacionId) : base(id)
     {
         OrganizacionId = organizacionId;
+    }
+
+    public string NombreCompleto => string.Join(" ", new[] { Nombre, PrimerApellido, SegundoApellido }.Where(x => !string.IsNullOrWhiteSpace(x)));
+
+    public void Identificar(string? primerApellido, string? segundoApellido, string? codigoPostal, string? numeroEmpleado, string? umf)
+    {
+        PrimerApellido = Limpio(primerApellido, MaxNombreLength);
+        SegundoApellido = Limpio(segundoApellido, MaxNombreLength);
+        var cp = codigoPostal?.Trim();
+        CodigoPostal = cp is { Length: 5 } && cp.All(char.IsDigit) ? cp : null;
+        NumeroEmpleado = Limpio(numeroEmpleado, 10);
+        var u = umf?.Trim();
+        Umf = u is { Length: > 0 and <= 3 } && u.All(char.IsDigit) ? u : null;
     }
 
     public void Describir(string nombre, string? rfc, string? curp, string? nss, DateTime fechaIngreso, decimal salarioDiario,

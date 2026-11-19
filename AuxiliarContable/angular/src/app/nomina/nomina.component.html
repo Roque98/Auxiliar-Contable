@@ -39,7 +39,12 @@
     </div>
     @if (editando(); as t) {
       <div class="ms-cierre">
-        <label class="ms-campo ms-ancho"><span>Nombre</span><input class="ig-control" [(ngModel)]="t.nombre" name="nombre" /></label>
+        <label class="ms-campo"><span>Nombre(s)</span><input class="ig-control" [(ngModel)]="t.nombre" name="nombre" /></label>
+        <label class="ms-campo"><span>Primer apellido</span><input class="ig-control" [(ngModel)]="t.primerApellido" name="ap1" /></label>
+        <label class="ms-campo"><span>Segundo apellido</span><input class="ig-control" [(ngModel)]="t.segundoApellido" name="ap2" /></label>
+        <label class="ms-campo"><span>Código postal (CFDI)</span><input class="ig-control" [(ngModel)]="t.codigoPostal" name="cp" maxlength="5" /></label>
+        <label class="ms-campo"><span>Número de empleado</span><input class="ig-control" [(ngModel)]="t.numeroEmpleado" name="num" maxlength="10" /></label>
+        <label class="ms-campo"><span>UMF (clínica)</span><input class="ig-control" [(ngModel)]="t.umf" name="umf" maxlength="3" /></label>
         <label class="ms-campo"><span>RFC</span><input class="ig-control" [(ngModel)]="t.rfc" name="rfc" maxlength="13" /></label>
         <label class="ms-campo"><span>CURP</span><input class="ig-control" [(ngModel)]="t.curp" name="curp" maxlength="18" /></label>
         <label class="ms-campo"><span>NSS</span><input class="ig-control" [(ngModel)]="t.nss" name="nss" maxlength="11" /></label>
@@ -72,7 +77,7 @@
         <tbody>
           @for (t of n.trabajadores; track t.id) {
             <tr [class.ms-nota]="t.fechaBaja">
-              <td>{{ t.nombre }} @if (t.fechaBaja) { <span class="ms-nota">· baja {{ t.fechaBaja | date: 'd MMM y' : 'UTC' }}</span> }</td>
+              <td>{{ nombreCompleto(t) }} @if (t.fechaBaja) { <span class="ms-nota">· baja {{ t.fechaBaja | date: 'd MMM y' : 'UTC' }}</span> }</td>
               <td>{{ t.nss }}</td>
               <td>{{ t.fechaIngreso | date: 'd MMM y' : 'UTC' }}</td>
               <td class="ms-num">{{ t.salarioDiario | currency: 'MXN' : 'symbol-narrow' }}</td>
@@ -80,7 +85,7 @@
               <td>
                 @if (n.puedeEditar) {
                   <button type="button" class="btn btn-link ms-rev-op" (click)="editar(t)">Editar</button>
-                  <button type="button" class="btn btn-link ms-rev-op" (click)="baja(t, !t.fechaBaja)">{{ t.fechaBaja ? 'Reingresar' : 'Dar de baja' }}</button>
+                  <button type="button" class="btn btn-link ms-rev-op" (click)="baja(t, !t.fechaBaja)">{{ t.fechaBaja ? 'Reingresar' : 'Dar de baja hoy' }}</button>
                 }
               </td>
             </tr>
@@ -90,6 +95,81 @@
         </tbody>
       </table>
     </div>
+  </section>
+
+  <section class="ms-tarjeta" aria-labelledby="nm-imss" data-testid="movimientos">
+    <div class="ms-cabecera-fila">
+      <h2 id="nm-imss"><i class="bi bi-shield-plus" aria-hidden="true"></i> Avisos al IMSS (IDSE)</h2>
+      <span class="ms-acciones">
+        @if (pendientes().length) {
+          <button type="button" class="btn btn-outline-primary ms-boton" (click)="archivosIdse()" [disabled]="trabajando()">Descargar archivos del IDSE ({{ pendientes().length }})</button>
+        }
+        @if (idse() && n.puedeEditar) {
+          <button type="button" class="btn btn-outline-secondary ms-boton" (click)="marcarPresentados()" [disabled]="trabajando()">Ya los presenté</button>
+        }
+      </span>
+    </div>
+    <p class="ms-nota">
+      Se registran solos al dar de alta, cambiar el salario o dar de baja. Los archivos llevan el formato del IMSS (168 posiciones, uno por tipo); súbelos en el
+      IDSE y marca «Ya los presenté». La causa de la baja que se usa:
+      <select class="ig-control nm-causa" [(ngModel)]="causaBaja" name="causa" aria-label="Causa de la baja">
+        @for (c of causas; track c[0]) { <option [value]="c[0]">{{ c[0] }} · {{ c[1] }}</option> }
+      </select>
+    </p>
+    @if (idse(); as r) {
+      @for (e of r.errores; track $index) { <p class="ms-aviso">{{ e.nombre }}: falta {{ e.errores.join(', ') }} (no entró al archivo).</p> }
+      <p class="ms-nota">@for (a of r.archivos; track a.nombre) { {{ a.nombre }}: {{ a.renglones }} movimientos. }</p>
+    }
+    <div class="ms-tabla-caja">
+      <table class="ms-tabla">
+        <thead><tr><th scope="col">Fecha</th><th scope="col">Trabajador</th><th scope="col">Movimiento</th><th scope="col" class="ms-num">Salario diario</th><th scope="col">Estado</th></tr></thead>
+        <tbody>
+          @for (m of n.movimientos; track m.id) {
+            <tr [class.ms-nota]="m.presentadoUtc">
+              <td>{{ m.fecha | date: 'd MMM y' : 'UTC' }}</td>
+              <td>{{ m.nombre }}</td>
+              <td>{{ textoTipo[m.tipo] }} @if (m.causaBaja) { · causa {{ m.causaBaja }} }</td>
+              <td class="ms-num">{{ m.salarioDiario | currency: 'MXN' : 'symbol-narrow' }}</td>
+              <td>{{ m.presentadoUtc ? 'presentado' : 'pendiente' }}</td>
+            </tr>
+          } @empty {
+            <tr><td colspan="5" class="ms-nota">Sin avisos todavía.</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="ms-tarjeta" aria-labelledby="nm-cuotas" data-testid="cuotas">
+    <div class="ms-cabecera-fila">
+      <h2 id="nm-cuotas"><i class="bi bi-cash-stack" aria-hidden="true"></i> Cuotas del mes para cotejar (SUA / SIPARE)</h2>
+      <span class="ms-acciones">
+        <select class="ig-control ms-capital" [(ngModel)]="mesCuotas" name="mesc" aria-label="Mes">
+          @for (m of meses; track $index) { <option [ngValue]="$index + 1">{{ m }}</option> }
+        </select>
+        <button type="button" class="btn btn-outline-primary ms-boton" (click)="verCuotas()" [disabled]="trabajando()">Sumar</button>
+      </span>
+    </div>
+    <p class="ms-nota">Suma de los periodos calculados que terminan en el mes. Compárala con la propuesta de cédula o la línea de captura del SIPARE: las mensuales con la EMA y las bimestrales (retiro, cesantía y vejez, INFONAVIT) con la EBA del bimestre.</p>
+    @if (cuotas(); as c) {
+      @if (c.sinCalcular) { <p class="ms-aviso">{{ c.sinCalcular }} periodos del mes sin calcular: no entran en la suma.</p> }
+      @if (!c.periodos) { <p class="ms-nota">Sin periodos calculados que terminen en ese mes.</p> }
+      @else {
+        <div class="ms-tabla-caja">
+          <table class="ms-tabla">
+            <thead><tr><th scope="col">Ramo</th><th scope="col" class="ms-num">Patrón</th><th scope="col" class="ms-num">Trabajador</th><th scope="col" class="ms-num">Total</th></tr></thead>
+            <tbody>
+              <tr class="ms-papel-titulo"><th scope="rowgroup" colspan="4">Mensuales (EMA)</th></tr>
+              @for (x of c.cuotas.mensuales; track x.ramo) { <tr><td>{{ x.ramo }}</td><td class="ms-num">{{ x.patron | currency: 'MXN' : 'symbol-narrow' }}</td><td class="ms-num">{{ x.obrero | currency: 'MXN' : 'symbol-narrow' }}</td><td class="ms-num">{{ x.total | currency: 'MXN' : 'symbol-narrow' }}</td></tr> }
+              <tr class="ms-total"><td colspan="3">Total mensual</td><td class="ms-num">{{ c.cuotas.totalMensual | currency: 'MXN' : 'symbol-narrow' }}</td></tr>
+              <tr class="ms-papel-titulo"><th scope="rowgroup" colspan="4">Bimestrales (EBA): lo de este mes</th></tr>
+              @for (x of c.cuotas.bimestrales; track x.ramo) { <tr><td>{{ x.ramo }}</td><td class="ms-num">{{ x.patron | currency: 'MXN' : 'symbol-narrow' }}</td><td class="ms-num">{{ x.obrero | currency: 'MXN' : 'symbol-narrow' }}</td><td class="ms-num">{{ x.total | currency: 'MXN' : 'symbol-narrow' }}</td></tr> }
+              <tr class="ms-total"><td colspan="3">Total bimestral del mes</td><td class="ms-num">{{ c.cuotas.totalBimestral | currency: 'MXN' : 'symbol-narrow' }}</td></tr>
+            </tbody>
+          </table>
+        </div>
+      }
+    }
   </section>
 
   <section class="ms-tarjeta" aria-labelledby="nm-periodos" data-testid="periodos">
@@ -227,7 +307,19 @@
             </table>
           </div>
         </details>
-        @if (n.puedeEditar) { <button type="button" class="btn btn-link ms-rev-op" (click)="borrar()">Borrar este periodo</button> }
+        <div class="ms-acciones">
+          <button type="button" class="btn btn-outline-primary ms-boton" (click)="descargarRecibos()" [disabled]="trabajando()">
+            <i class="bi bi-file-earmark-zip" aria-hidden="true"></i> Recibos para timbrar (.zip)
+          </button>
+          @if (n.puedeEditar) { <button type="button" class="btn btn-link ms-rev-op" (click)="borrar()">Borrar este periodo</button> }
+        </div>
+        @if (recibos(); as rc) {
+          <p class="ms-nota">{{ rc.validos }} recibos listos (CFDI 4.0 con Nómina 1.2, sin sello: los sella tu PAC con el CSD del patrón al timbrarlos) @if (rc.conErrores) { · {{ rc.conErrores }} con algo que corregir }.</p>
+          @for (x of rc.recibos; track x.archivo) {
+            @if (x.faltan.length) { <p class="ms-aviso">{{ x.nombre }}: falta {{ x.faltan.join(', ') }}.</p> }
+            @for (e of x.errores; track $index) { <p class="ms-aviso">{{ x.nombre }}: {{ e }}</p> }
+          }
+        }
       } @else {
         <p class="ms-nota">Captura las incidencias (si no hubo, déjalas en cero) y pulsa «Calcular la nómina».</p>
       }
