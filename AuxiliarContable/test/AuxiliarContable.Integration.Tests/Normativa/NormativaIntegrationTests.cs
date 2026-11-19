@@ -48,7 +48,7 @@ public class NormativaIntegrationTests : ConJerarquiaTestBase
     [Fact]
     public async Task Pedir_hacer_y_consultar()
     {
-        await Should.ThrowAsync<AbpAuthorizationException>(() => ComoAsync(Usuario, () => _normativa.GetListaAsync(_cliente)));
+        await Should.ThrowAsync<AbpAuthorizationException>(() => ComoAsync(Usuario, () => _normativa.GetConsultasAsync(_cliente)));
         await Should.ThrowAsync<UserFriendlyException>(() => ComoAsync(Administrador, () =>
             _normativa.PedirAsync(_cliente, new PedirAnalisisNormativoDto { Pregunta = "¿IVA?" })));
         await Should.ThrowAsync<UserFriendlyException>(() => ComoAsync(Administrador, () =>
@@ -80,7 +80,7 @@ public class NormativaIntegrationTests : ConJerarquiaTestBase
         operacion.Fecha.ShouldBe("2025-06-15");
         operacion.Contraparte!.Residencia.ShouldBe("US");
 
-        var lista = await ComoAsync(Administrador, () => _normativa.GetListaAsync(_cliente));
+        var lista = await ComoAsync(Administrador, () => _normativa.GetConsultasAsync(_cliente));
         var hecho = lista.ShouldHaveSingleItem();
         hecho.Estado.ShouldBe("Listo");
         hecho.Conclusion.ShouldBe("Tasa 0% si se cumplen los requisitos.");
@@ -95,7 +95,7 @@ public class NormativaIntegrationTests : ConJerarquiaTestBase
             Pregunta = "Renta de una casa habitación a una familia, ¿cobra IVA?",
         }));
         (await WithUnitOfWorkAsync(() => GetRequiredService<AnalizadorNormativo>().ProcesarAsync())).ShouldBe(0);
-        var otra = (await ComoAsync(Administrador, () => _normativa.GetListaAsync(_cliente))).First();
+        var otra = (await ComoAsync(Administrador, () => _normativa.GetConsultasAsync(_cliente))).First();
         otra.Estado.ShouldBe("Pendiente");
         otra.Error!.ShouldContain("no respondieron");
     }
