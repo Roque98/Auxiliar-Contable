@@ -70,6 +70,13 @@ export const APP_ROUTES: Routes = [
     canActivate: [authGuard, permissionGuard],
     data: { requiredPolicy: 'AuxiliarContable.Organizaciones' },
   },
+  {
+    // Análisis normativo del despacho (hipótesis normativa con el índice de leyes y Claude). El servidor lo niega fuera del equipo.
+    path: 'normativa',
+    loadComponent: () => import('./normativa/normativa.component').then(c => c.NormativaComponent),
+    canActivate: [authGuard, permissionGuard],
+    data: { requiredPolicy: 'AuxiliarContable.Organizaciones' },
+  },
   // Las pantallas de antes viven ahora en «Mi información» (las ligas viejas siguen sirviendo; ?cliente= se conserva).
   { path: 'documentos', redirectTo: 'mi-informacion/facturas' },
   { path: 'facturar', redirectTo: 'mi-informacion/facturas/pedir' },

@@ -1,0 +1,149 @@
+<header class="ms-cabecera">
+  <h1>Análisis normativo</h1>
+  <p class="ms-nota">
+    Describe una operación o una pregunta de un cliente. Se revisan siempre la LISR, la LIVA, el CFF, el IEPS, la Ley de Ingresos, la
+    Miscelánea y sus reglamentos, y además las leyes que activa su perfil (forma jurídica, giro, trabajadores, extranjero…). Los datos de la
+    operación encienden preguntas que hay que contestar, y si la operación es de otro año se usa la normativa de ese ejercicio. Tarda unos minutos.
+  </p>
+  <div class="ms-barra">
+    @if (clientes(); as lista) {
+      <label class="ms-campo">
+        <span>Cliente</span>
+        <select class="ig-control" [ngModel]="clienteId()" (ngModelChange)="elegir($event)" data-testid="cliente">
+          <option [ngValue]="null" disabled>Elige un cliente…</option>
+          @for (c of lista; track c.id) { <option [ngValue]="c.id">{{ c.nombre }}</option> }
+        </select>
+      </label>
+    }
+  </div>
+</header>
+
+@if (error(); as e) { <div class="ig-alerta ig-alerta-error" role="alert">{{ e }}</div> }
+
+@if (clienteId()) {
+  <section class="ms-tarjeta" aria-labelledby="nv-pedir" data-testid="pedir">
+    <h2 id="nv-pedir"><i class="bi bi-journal-check" aria-hidden="true"></i> Nueva consulta</h2>
+    <label class="ms-campo" style="width: 100%">
+      <span>Operación o pregunta</span>
+      <textarea class="ig-control" rows="3" [(ngModel)]="pregunta" name="pregunta" maxlength="2000"
+        placeholder="Ej.: factura de consulta de nutrición en línea a un paciente que vive en Estados Unidos y paga en dólares"></textarea>
+    </label>
+    <div class="ms-cierre">
+      <label class="ms-campo"><span>Fecha de la operación</span><input class="ig-control" type="date" [(ngModel)]="fecha" name="fecha" /></label>
+      <label class="ms-campo"><span>La contraparte es</span>
+        <select class="ig-control" [(ngModel)]="contraparteTipo" name="cpt">
+          <option value="">Sin dato</option>
+          <option value="fisica">Persona física</option>
+          <option value="moral">Persona moral</option>
+        </select>
+      </label>
+      <label class="ms-campo"><span>País de residencia de la contraparte</span>
+        <input class="ig-control" [(ngModel)]="contraparteResidencia" name="cpr" maxlength="60" placeholder="MX, US…" />
+      </label>
+    </div>
+    <details>
+      <summary>Marcar situaciones a mano (el motor también las detecta en el texto)</summary>
+      <div class="ms-cierre">
+        @for (d of disparadores(); track d.clave) {
+          <label class="form-check">
+            <input type="checkbox" class="form-check-input" [checked]="marcados.has(d.clave)" (change)="alternar(d.clave)" />
+            <span class="form-check-label">{{ d.descripcion }}</span>
+          </label>
+        }
+      </div>
+    </details>
+    <button type="button" class="btn btn-primary ms-boton" (click)="pedir()" [disabled]="trabajando()">
+      <i class="bi bi-search" aria-hidden="true"></i> Analizar
+    </button>
+  </section>
+
+  @if (abierto(); as a) {
+    <section class="ms-tarjeta" aria-labelledby="nv-resultado" data-testid="resultado">
+      <div class="ms-cabecera-fila">
+        <h2 id="nv-resultado"><i class="bi bi-file-earmark-text" aria-hidden="true"></i> {{ a.fila.pregunta }}</h2>
+        <button type="button" class="btn btn-outline-secondary ms-boton" (click)="cerrar()">Cerrar</button>
+      </div>
+      @if (a.resultado; as r) {
+        <p class="ms-aviso"><strong>Conclusión</strong> (confianza {{ r.analisis.confianza }}): {{ r.analisis.conclusion }}</p>
+        @for (av of r.expediente.avisos; track $index) { <p class="ms-nota"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i> {{ av }}</p> }
+
+        @if (r.analisis.tratamiento.length) {
+          <h3>Tratamiento</h3>
+          <ul>@for (t of r.analisis.tratamiento; track $index) { <li><strong>{{ t.impuesto }}:</strong> {{ t.resultado }}</li> }</ul>
+        }
+        @if (r.analisis.condiciones.length) {
+          <h3>Condiciones para que valga</h3>
+          <ul>@for (c of r.analisis.condiciones; track $index) { <li>{{ c }}</li> }</ul>
+        }
+        @if (r.analisis.datos_que_faltan.length) {
+          <h3>Datos que faltan</h3>
+          <ul>@for (c of r.analisis.datos_que_faltan; track $index) { <li>{{ c }}</li> }</ul>
+        }
+
+        <h3>Fundamento</h3>
+        <div class="table-responsive">
+          <table class="table table-sm">
+            <thead><tr><th>Capa</th><th>Ordenamiento</th><th>Artículo</th><th>DOF</th><th>Qué dispone</th></tr></thead>
+            <tbody>
+              @for (f of r.analisis.fundamento; track $index) {
+                <tr><td>{{ capas[f.capa] || f.capa }}</td><td>{{ f.ordenamiento }}</td><td>{{ f.articulo }}</td><td>{{ f.dof }}</td><td>{{ f.dice }}</td></tr>
+              }
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Chispazos (preguntas que encendió la operación)</h3>
+        <ul>@for (c of r.analisis.chispazos; track $index) { <li><strong>{{ c.pregunta }}</strong><br />{{ c.respuesta }}</li> }</ul>
+
+        @if (r.analisis.excepciones_revisadas.length) {
+          <h3>Excepciones revisadas</h3>
+          <ul>@for (x of r.analisis.excepciones_revisadas; track $index) { <li><strong>{{ x.excepcion }}:</strong> {{ x.resultado }}</li> }</ul>
+        }
+        @if (r.analisis.pendientes.length || r.expediente.locales_por_revisar.length) {
+          <h3>Pendientes</h3>
+          <ul>
+            @for (p of r.analisis.pendientes; track $index) { <li>{{ p }}</li> }
+            @for (p of r.expediente.locales_por_revisar; track $index) { <li>{{ p }}</li> }
+          </ul>
+        }
+
+        <details>
+          <summary>Qué se revisó (ejercicio {{ r.expediente.ejercicio }})</summary>
+          <p><strong>Perfil:</strong> {{ r.expediente.perfil.forma_juridica || 'forma jurídica no detectada' }}
+            @for (g of r.expediente.perfil.giros; track $index) { · {{ g.titulo }} }</p>
+          <p><strong>Situaciones detectadas:</strong>
+            @for (d of claves(r.expediente.perfil.disparadores); track d) { <span class="badge text-bg-light me-1">{{ d }}</span> }</p>
+          <p><strong>Núcleo:</strong> @for (n of r.expediente.nucleo; track $index) { {{ n.clave }}{{ $last ? '' : ', ' }} }</p>
+          <p><strong>Leyes que activó el perfil:</strong></p>
+          <ul>@for (k of claves(r.expediente.leyes_activadas); track k) { <li>{{ k }}: {{ r.expediente.leyes_activadas[k].join('; ') }}</li> }</ul>
+          <p><strong>Descartadas</strong> (ningún rasgo las activa): {{ r.expediente.leyes_descartadas.join(', ') }}</p>
+        </details>
+        <p class="ms-nota">Análisis técnico para que el contador del despacho lo valide.</p>
+      } @else {
+        <p>No se pudo leer el resultado.</p>
+      }
+    </section>
+  }
+
+  <section class="ms-tarjeta" aria-labelledby="nv-lista" data-testid="lista">
+    <h2 id="nv-lista"><i class="bi bi-clock-history" aria-hidden="true"></i> Consultas del cliente</h2>
+    @if (lista(); as l) {
+      @if (!l.length) { <p class="ms-nota">Todavía no hay consultas.</p> }
+      <ul class="list-unstyled">
+        @for (a of l; track a.id) {
+          <li class="mb-2">
+            <div><strong>{{ a.pregunta }}</strong> <span class="ms-nota">· {{ a.creationTime | date: 'short' }}</span></div>
+            @switch (a.estado) {
+              @case ('Pendiente') { <span class="badge text-bg-warning">Analizando…</span> @if (a.error) { <span class="ms-nota"> {{ a.error }}</span> } }
+              @case ('Error') { <span class="badge text-bg-danger">No se pudo</span> <span class="ms-nota"> {{ a.error }}</span> }
+              @default {
+                <span class="badge text-bg-success">Listo</span> {{ a.conclusion }}
+                <button type="button" class="btn btn-link btn-sm" (click)="abrir(a)">Ver análisis</button>
+              }
+            }
+          </li>
+        }
+      </ul>
+    } @else { <p class="ms-nota">Cargando…</p> }
+  </section>
+}

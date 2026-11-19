@@ -236,6 +236,18 @@ public class MotorFiscalHttp : IMotorFiscal, ITransientDependency
         return await EnviarAsync<InterpretacionDelMotor>(peticion, tope.Token, cancellationToken);
     }
 
+    public async Task<string> AnalizarNormativaAsync(PerfilParaNormativa perfil, OperacionParaNormativa operacion,
+        CancellationToken cancellationToken = default)
+    {
+        using var tope = CancelationConTope(_opciones.TimeoutDeBancosSegundos, cancellationToken);
+        var peticion = new HttpRequestMessage(HttpMethod.Post, "normativa/analizar")
+        {
+            Content = JsonContent.Create(new { perfil, operacion }, options: Json),
+        };
+        var r = await EnviarAsync<System.Text.Json.JsonElement>(peticion, tope.Token, cancellationToken);
+        return r.GetRawText();
+    }
+
     public async Task<NominaDelMotor> CalcularNominaAsync(
         PatronParaNomina patron, PeriodoParaNomina periodo, IReadOnlyList<TrabajadorParaNomina> trabajadores,
         CancellationToken cancellationToken = default)

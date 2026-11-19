@@ -79,6 +79,7 @@ public class AuxiliarContableDbContext :
 
     public DbSet<Contabilidad.ContabilidadDelMes> ContabilidadesDeMeses { get; set; }
     public DbSet<Contabilidad.OperacionInterpretada> OperacionesInterpretadas { get; set; }
+    public DbSet<Normativa.AnalisisNormativo> AnalisisNormativos { get; set; }
     public DbSet<Nomina.Trabajador> Trabajadores { get; set; }
     public DbSet<Nomina.PeriodoDeNomina> PeriodosDeNomina { get; set; }
     public DbSet<Nomina.MovimientoAfiliatorio> MovimientosAfiliatorios { get; set; }
@@ -464,6 +465,23 @@ public class AuxiliarContableDbContext :
             b.HasIndex(x => x.OperacionId).IsUnique();
             b.HasIndex(x => new { x.OrganizacionId, x.Anio, x.Mes });
             b.HasIndex(x => new { x.Pedida, x.PedidaUtc });
+        });
+
+        // AppAnalisisNormativos: hipótesis normativa de cada cliente (pregunta, conclusión y el JSON del motor).
+        builder.Entity<Normativa.AnalisisNormativo>(b =>
+        {
+            b.ToTable(AuxiliarContableConsts.DbTablePrefix + "AnalisisNormativos", AuxiliarContableConsts.DbSchema);
+            b.ConfigureByConvention();
+            b.Property(x => x.Pregunta).IsRequired().HasMaxLength(Normativa.AnalisisNormativo.MaxPreguntaLength);
+            b.Property(x => x.ContraparteTipoDePersona).HasMaxLength(Normativa.AnalisisNormativo.MaxCortoLength);
+            b.Property(x => x.ContraparteResidencia).HasMaxLength(Normativa.AnalisisNormativo.MaxCortoLength);
+            b.Property(x => x.Disparadores).HasMaxLength(Normativa.AnalisisNormativo.MaxDisparadoresLength);
+            b.Property(x => x.Resultado).HasColumnType("text");
+            b.Property(x => x.Conclusion).HasMaxLength(Normativa.AnalisisNormativo.MaxConclusionLength);
+            b.Property(x => x.Confianza).HasMaxLength(Normativa.AnalisisNormativo.MaxCortoLength);
+            b.Property(x => x.Error).HasMaxLength(Normativa.AnalisisNormativo.MaxErrorLength);
+            b.HasIndex(x => new { x.OrganizacionId, x.CreationTime });
+            b.HasIndex(x => new { x.Estado, x.PedidoUtc });
         });
 
         // AppContabilidadesDeMeses: la contabilidad al día de cada mes (por actualizar, qué se hizo la última vez).

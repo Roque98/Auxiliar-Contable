@@ -111,6 +111,13 @@ public interface IMotorFiscal
         PerfilParaInterpretar perfil, OperacionParaInterpretar operacion, ArchivoParaElMotor? factura, AnalisisDeDocumento? control,
         BancoParaInterpretar? banco, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Análisis de hipótesis normativa (índice de leyes + Claude): el JSON del motor con «analisis» (conclusión,
+    /// fundamento por capa, chispazos, excepciones, condiciones, pendientes) y «expediente». Tarda minutos.
+    /// </summary>
+    Task<string> AnalizarNormativaAsync(PerfilParaNormativa perfil, OperacionParaNormativa operacion,
+        CancellationToken cancellationToken = default);
+
     /// <summary>Nómina de un periodo: percepciones, ISR con subsidio, IMSS, INFONAVIT, FONACOT, ISN, neto y póliza.</summary>
     Task<NominaDelMotor> CalcularNominaAsync(
         PatronParaNomina patron, PeriodoParaNomina periodo, IReadOnlyList<TrabajadorParaNomina> trabajadores,
@@ -259,6 +266,10 @@ public class MotorFiscalSinConfigurar : IMotorFiscal, ISingletonDependency
     public Task<InterpretacionDelMotor> InterpretarOperacionAsync(
         PerfilParaInterpretar perfil, OperacionParaInterpretar operacion, ArchivoParaElMotor? factura, AnalisisDeDocumento? control,
         BancoParaInterpretar? banco, CancellationToken cancellationToken = default) =>
+        throw new MotorFiscalNoDisponibleException("No hay motor fiscal en este proceso.");
+
+    public Task<string> AnalizarNormativaAsync(PerfilParaNormativa perfil, OperacionParaNormativa operacion,
+        CancellationToken cancellationToken = default) =>
         throw new MotorFiscalNoDisponibleException("No hay motor fiscal en este proceso.");
 
     public Task<NominaDelMotor> CalcularNominaAsync(
