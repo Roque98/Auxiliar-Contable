@@ -1,6 +1,7 @@
 import { inject, Injectable } from '@angular/core';
 import { RestService } from '@abp/ng.core';
-import { Observable } from 'rxjs';
+import { from, Observable, switchMap, throwError } from 'rxjs';
+import { revisarFoto } from '../shared/calidad-foto';
 import { EstadoDeDocumento } from '../perfil-fiscal/perfil-fiscal.service';
 import { TipoDeDocumento } from './tipos';
 
@@ -76,11 +77,20 @@ export class DocumentosService {
 
   /** `anio`/`mes`: a qué mes corresponde; sin ellos, al de hoy. Una factura va siempre al de su XML. */
   subir(organizacionId: string, tipo: TipoDeDocumento, archivo: File, anio?: number, mes?: number): Observable<ResultadoDeSubidaDto> {
-    const datos = new FormData();
-    datos.append('archivo', archivo, archivo.name);
-    return this.rest.request<FormData, ResultadoDeSubidaDto>(
-      { method: 'POST', url: `${this.base}/subir/${organizacionId}`, params: anio && mes ? { tipo, anio, mes } : { tipo }, body: datos },
-      this.opciones,
+    // Una foto que no se va a poder leer se rechaza aquí, antes de subirla, con el porqué (en el formato de error
+    // de ABP, para que cada pantalla lo enseñe con `mensajeDeError`).
+    return from(revisarFoto(archivo)).pipe(
+      switchMap(dictamen => {
+        if (!dictamen.ok) {
+          return throwError(() => ({ error: { error: { message: dictamen.mensaje } } }));
+        }
+        const datos = new FormData();
+        datos.append('archivo', archivo, archivo.name);
+        return this.rest.request<FormData, ResultadoDeSubidaDto>(
+          { method: 'POST', url: `${this.base}/subir/${organizacionId}`, params: anio && mes ? { tipo, anio, mes } : { tipo }, body: datos },
+          this.opciones,
+        );
+      }),
     );
   }
 
