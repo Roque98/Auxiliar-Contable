@@ -60,6 +60,24 @@ export interface FacturaDeLaOperacion {
   /** 01 nota de crédito, 03 devolución, 07 aplicación de anticipo… */
   tipoRelacion: string | null;
   uuidRelacionado: string | null;
+  /** presta o recibe: la otra parte es la de un contrato de servicios especializados (REPSE) vigente del cliente. */
+  servicioEspecializado?: string | null;
+}
+
+/** Lo que hay que juntar o entregar cuando la factura es de un servicio especializado (art. 27-V LISR y 5-II LIVA). */
+export function notaRepse(rol: string | null | undefined): string | null {
+  if (rol === 'recibe') {
+    return 'Es un servicio especializado (REPSE). Al pagarlo, pide al prestador copia de los CFDI de nómina de los trabajadores que ' +
+      'dieron el servicio, del entero de sus retenciones de ISR, del pago al IMSS y al INFONAVIT, y de su declaración de IVA con el ' +
+      'acuse, a más tardar el último día del mes siguiente al pago: sin ellos no se deduce el gasto (art. 27-V LISR) ni se acredita ' +
+      'el IVA (art. 5-II LIVA). Verifica también que su registro REPSE esté vigente.';
+  }
+  if (rol === 'presta') {
+    return 'Es un servicio especializado (REPSE) que prestas: entrega a tu cliente copia de los CFDI de nómina de los trabajadores ' +
+      'asignados, del entero de las retenciones de ISR, del pago al IMSS y al INFONAVIT, y de tu declaración de IVA con el acuse, a ' +
+      'más tardar el último día del mes siguiente a que te pague (art. 27-V LISR y 5-II LIVA).';
+  }
+  return null;
 }
 
 /** Lo que guarda una respuesta (igual que `GuardarPataDto`). */
@@ -134,7 +152,9 @@ export function siguientePregunta(op: OperacionMinima, f: FacturaDeLaOperacion |
     return preguntaDeFactura(op);
   }
   if (!contestada(op.transaccion)) {
-    return preguntaDeTransaccion(op, op.factura.estado === EstadoDePata.Ligada ? f : null);
+    const p = preguntaDeTransaccion(op, op.factura.estado === EstadoDePata.Ligada ? f : null);
+    const repse = op.factura.estado === EstadoDePata.Ligada ? notaRepse(f?.servicioEspecializado) : null;
+    return repse ? { ...p, nota: p.nota ? `${p.nota} ${repse}` : repse } : p;
   }
   if (!contestada(op.controlInterno)) {
     return preguntaDeControl(op, op.factura.estado === EstadoDePata.Ligada ? f : null);

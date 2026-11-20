@@ -108,6 +108,16 @@ describe('guía del trabajo diario', () => {
     expect(p.opciones.at(-1)!.advertencia).toContain('art. 7 LIVA');
   });
 
+  it('factura de un servicio especializado: al pedir el pago avisa qué documentos juntar o entregar', () => {
+    const recibe = siguientePregunta(op(), factura({ servicioEspecializado: 'recibe' }))!;
+    expect(recibe.pata).toBe('transaccion');
+    expect(recibe.nota).toContain('art. 27-V LISR');
+    expect(recibe.nota).toContain('art. 5-II LIVA');
+    expect(recibe.nota).toContain('pide al prestador');
+    expect(siguientePregunta(op(), factura({ servicioEspecializado: 'presta' }))!.nota).toContain('entrega a tu cliente');
+    expect(siguientePregunta(op(), factura())!.nota ?? '').not.toContain('REPSE');
+  });
+
   it('todo contestado: no hay más preguntas; lo prometido se recuerda', () => {
     const lista = op({ transaccion: ligada, controlInterno: { estado: EstadoDePata.Pendiente, motivo: 'Lo subiré después' } });
     expect(siguientePregunta(lista, factura())).toBeNull();

@@ -1,0 +1,121 @@
+<section class="ms-tarjeta" aria-labelledby="nm-repse" data-testid="repse" id="repse">
+  <div class="ms-cabecera-fila">
+    <h2 id="nm-repse"><i class="bi bi-briefcase" aria-hidden="true"></i> Servicios especializados (REPSE)</h2>
+    <span class="ms-acciones">
+      <select class="ig-control ms-capital" [(ngModel)]="mes" (ngModelChange)="cargar()" name="repse-mes" aria-label="Mes">
+        @for (m of meses; track $index) { <option [ngValue]="$index + 1">{{ m }}</option> }
+      </select>
+      <select class="ig-control" [(ngModel)]="anio" (ngModelChange)="cargar()" name="repse-anio" aria-label="Año">
+        @for (a of anios; track a) { <option [ngValue]="a">{{ a }}</option> }
+      </select>
+      @if (datos()?.puedeEditar) { <button type="button" class="btn btn-outline-primary ms-boton" (click)="nuevo()">Agregar contrato</button> }
+    </span>
+  </div>
+  <p class="ms-nota">
+    Contratos de servicios u obras especializadas del cliente, como prestador o como beneficiario. Cada mes: los documentos que
+    hay que juntar del contratista o entregar al beneficiario (art. 27-V LISR y 5-II LIVA). Cada cuatro meses, si presta: el
+    informe al IMSS (ICSOE, art. 15-A LSS) y al INFONAVIT (SISUB, art. 29 Bis LINFONAVIT), a más tardar el 17 de enero, mayo
+    y septiembre. El despacho recibe un aviso en la campana cuando se acerca cada plazo.
+  </p>
+  @if (error(); as e) { <div class="ig-alerta ig-alerta-error" role="alert">{{ e }}</div> }
+
+  @if (editando(); as c) {
+    <div class="ms-cierre" data-testid="repse-contrato">
+      <label class="ms-campo"><span>El cliente</span>
+        <select class="ig-control" [(ngModel)]="c.rol" name="repse-rol">
+          <option value="recibe">Recibe el servicio (beneficiario)</option>
+          <option value="presta">Presta el servicio (contratista)</option>
+        </select>
+      </label>
+      <label class="ms-campo"><span>{{ c.rol === 'presta' ? 'RFC del beneficiario' : 'RFC del contratista' }}</span>
+        <input class="ig-control" [(ngModel)]="c.contraparteRfc" name="repse-rfc" maxlength="13" /></label>
+      <label class="ms-campo"><span>Nombre o razón social</span><input class="ig-control" [(ngModel)]="c.contraparteNombre" name="repse-nombre" /></label>
+      <label class="ms-campo"><span>Objeto del contrato</span><input class="ig-control" [(ngModel)]="c.objeto" name="repse-objeto" maxlength="1000" /></label>
+      <label class="ms-campo"><span>Inicio</span><input class="ig-control" type="date" [(ngModel)]="c.inicio" name="repse-inicio" /></label>
+      <label class="ms-campo"><span>Fin (si tiene)</span><input class="ig-control" type="date" [(ngModel)]="c.fin" name="repse-fin" /></label>
+      <label class="ms-campo"><span>Trabajadores aproximados</span><input class="ig-control" type="number" min="0" [(ngModel)]="c.trabajadoresAproximados" name="repse-aprox" /></label>
+      <label class="ms-campo"><span>{{ c.rol === 'presta' ? 'Folio REPSE del cliente' : 'Folio REPSE del contratista' }}</span>
+        <input class="ig-control" [(ngModel)]="c.registroRepse" name="repse-folio" maxlength="30" /></label>
+      <label class="ms-campo"><span>El registro vence (cada 3 años)</span><input class="ig-control" type="date" [(ngModel)]="c.registroVigenteHasta" name="repse-vence" /></label>
+      @if (c.rol === 'presta') {
+        <fieldset class="ms-campo">
+          <legend>Trabajadores asignados (van en el informe)</legend>
+          @for (t of trabajadores(); track t.id) {
+            @if (!t.fechaBaja || asignado(c, t.id!)) {
+              <label class="ms-check"><input type="checkbox" [checked]="asignado(c, t.id!)" (change)="asignar(c, t.id!, $any($event.target).checked)" />
+                <span>{{ nombreDeTrabajador(t.id!) }}</span></label>
+            }
+          } @empty { <p class="ms-nota">Da de alta a los trabajadores arriba para asignarlos.</p> }
+        </fieldset>
+      }
+      <div class="ms-acciones">
+        <button type="button" class="btn btn-primary ms-boton" (click)="guardar()"
+          [disabled]="trabajando() || !rfcValido(c.contraparteRfc) || !c.contraparteNombre || !c.objeto || !c.inicio">Guardar</button>
+        <button type="button" class="btn btn-outline-secondary ms-boton" (click)="editando.set(null)">Cancelar</button>
+        @if (c.id) { <button type="button" class="btn btn-link ms-rev-op" (click)="borrar(c)" [disabled]="trabajando()">Borrar el contrato</button> }
+      </div>
+    </div>
+  }
+
+  @if (datos(); as d) {
+    @for (a of d.avisos; track $index) { <p class="ms-aviso">{{ a }}</p> }
+
+    @if (!d.contratos.length) {
+      <p class="ms-nota">El cliente no tiene contratos de servicios especializados registrados.</p>
+    } @else {
+      <div class="ms-tabla-caja">
+        <table class="ms-tabla">
+          <thead><tr><th scope="col">Contrato</th><th scope="col">El cliente</th><th scope="col">Vigencia</th><th scope="col">Registro REPSE</th><th scope="col"></th></tr></thead>
+          <tbody>
+            @for (c of d.contratos; track c.id) {
+              <tr>
+                <td>{{ nombreDe(c) }}<br /><span class="ms-nota">{{ c.objeto }}</span>
+                  @if (c.rol === 'presta' && c.trabajadores.length) { <br /><span class="ms-nota">{{ c.trabajadores.length }} trabajador(es) asignado(s)</span> }</td>
+                <td>{{ c.rol === 'presta' ? 'Presta' : 'Recibe' }}</td>
+                <td>{{ c.inicio | date: 'd MMM y' : 'UTC' }} – {{ c.fin ? (c.fin | date: 'd MMM y' : 'UTC') : 'sin fin' }}</td>
+                <td>{{ c.registroRepse ?? '—' }} @if (c.registroVigenteHasta) { <span class="ms-nota">· vence {{ c.registroVigenteHasta | date: 'd MMM y' : 'UTC' }}</span> }</td>
+                <td>@if (d.puedeEditar) { <button type="button" class="btn btn-link ms-rev-op" (click)="editar(c)">Editar</button> }</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <h3 class="ms-subtitulo">Revisión de {{ meses[d.mes - 1] }} de {{ d.anio }}</h3>
+      @for (x of d.delMes; track x.contratoId) {
+        <div class="ms-cierre" [attr.data-estado]="estadoDelContrato(x)">
+          <p class="ms-campo">
+            <strong>{{ x.rol === 'presta' ? 'Entregar a' : 'Recabar de' }} {{ x.contraparte }}</strong>
+            · {{ x.facturas }} factura(s) {{ x.rol === 'presta' ? 'emitida(s)' : 'recibida(s)' }} por {{ x.importe | currency: 'MXN' : 'symbol-narrow' }}
+            · a más tardar el {{ x.limite | date: 'd MMM y' : 'UTC' }}
+            · <span [class.ms-aviso]="estadoDelContrato(x) === 'vencido'">{{ textoDelEstado[estadoDelContrato(x)] }}</span>
+          </p>
+          @for (k of x.casillas; track k.clave) {
+            <label class="ms-check">
+              <input type="checkbox" [checked]="k.cumplida" [disabled]="!d.puedeEditar" (change)="marcar(k, $any($event.target).checked, x)" />
+              <span>{{ k.texto }} <span class="ms-nota">({{ k.fundamento }})</span></span>
+            </label>
+          }
+        </div>
+      } @empty { <p class="ms-nota">Ningún contrato vigente en el mes.</p> }
+
+      @if (d.informe; as inf) {
+        <h3 class="ms-subtitulo">Informe cuatrimestral de {{ inf.meses }} · vence el {{ inf.limite | date: 'd MMM y' : 'UTC' }}</h3>
+        @for (k of inf.casillas; track k.clave) {
+          <label class="ms-check">
+            <input type="checkbox" [checked]="k.cumplida" [disabled]="!d.puedeEditar" (change)="marcar(k, $any($event.target).checked, null)" />
+            <span>{{ k.texto }} <span class="ms-nota">({{ k.fundamento }})</span></span>
+          </label>
+        }
+        <div class="ms-acciones">
+          <button type="button" class="btn btn-outline-primary ms-boton" (click)="descargarHoja()" [disabled]="trabajando()" data-testid="repse-hoja">
+            <i class="bi bi-file-earmark-spreadsheet" aria-hidden="true"></i> Hoja con los datos del informe (CSV)
+          </button>
+        </div>
+        <p class="ms-nota">La hoja junta lo que pide la ley (partes, contratos, trabajadores con CURP, NSS y salario base de cotización)
+          para capturarlo en el ICSOE del IMSS y el SISUB del INFONAVIT; no es el archivo de carga de esos portales.</p>
+        @if (hoja(); as h) { @for (a of h.avisos; track $index) { <p class="ms-aviso">{{ a }}</p> } }
+      }
+    }
+  }
+</section>

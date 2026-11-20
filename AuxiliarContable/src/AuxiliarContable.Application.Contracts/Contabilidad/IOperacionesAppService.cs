@@ -58,6 +58,10 @@ public class FacturaDeLaOperacionDto
     public string? Moneda { get; set; }
     public string? TipoRelacion { get; set; }
     public string? UuidRelacionado { get; set; }
+
+    /// <summary>presta o recibe si la otra parte es la de un contrato de servicios especializados (REPSE) vigente del
+    /// cliente; null si no.</summary>
+    public string? ServicioEspecializado { get; set; }
 }
 
 public class PorSubirDto
