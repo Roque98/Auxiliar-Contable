@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using AuxiliarContable.Autorizacion;
 using AuxiliarContable.Documentos;
 using AuxiliarContable.Facturacion;
+using AuxiliarContable.Nomina;
 using AuxiliarContable.Organizaciones;
 using AuxiliarContable.PerfilesFiscales;
 using Microsoft.AspNetCore.Authorization;
@@ -28,6 +29,7 @@ public class OperacionesAppService : AuxiliarContableAppService, IOperacionesApp
     private readonly RegistroDeOperaciones _registro;
     private readonly GestorDePeriodos _periodos;
     private readonly Autorizador _autorizador;
+    private readonly IRepository<ContratoEspecializado, Guid> _contratos;
 
     public OperacionesAppService(
         IRepository<Operacion, Guid> operaciones,
@@ -37,8 +39,10 @@ public class OperacionesAppService : AuxiliarContableAppService, IOperacionesApp
         AlmacenDeDocumentos almacen,
         RegistroDeOperaciones registro,
         GestorDePeriodos periodos,
-        Autorizador autorizador)
+        Autorizador autorizador,
+        IRepository<ContratoEspecializado, Guid> contratos)
     {
+        _contratos = contratos;
         _operaciones = operaciones;
         _documentos = documentos;
         _movimientos = movimientos;
@@ -93,13 +97,24 @@ public class OperacionesAppService : AuxiliarContableAppService, IOperacionesApp
         }
 
         var c = DatosDelCfdi.Leer(await _almacen.LeerAsync(d));
-        return c == null
+        if (c == null)
+        {
+            return null;
+        }
+
+        // ¿Es con la otra parte de un contrato de servicios especializados (REPSE) del cliente? La guía lo avisa.
+        var rfcs = new[] { c.EmisorRfc?.ToUpperInvariant(), c.ReceptorRfc?.ToUpperInvariant() }.Where(x => x != null).ToList();
+        var contrato = rfcs.Count == 0
             ? null
-            : new FacturaDeLaOperacionDto
-            {
-                Tipo = c.Tipo, Metodo = c.MetodoPago, Forma = c.FormaPago, Total = c.Total, Moneda = c.Moneda,
-                TipoRelacion = c.TipoRelacion, UuidRelacionado = c.UuidRelacionado,
-            };
+            : (await _contratos.GetListAsync(x => x.OrganizacionId == organizacionId && rfcs.Contains(x.ContraparteRfc)))
+                .FirstOrDefault(x => x.VigenteEn(o.Fecha, o.Fecha)
+                                     && (x.EsPrestador ? x.ContraparteRfc == c.ReceptorRfc?.ToUpperInvariant() : x.ContraparteRfc == c.EmisorRfc?.ToUpperInvariant()));
+        return new FacturaDeLaOperacionDto
+        {
+            Tipo = c.Tipo, Metodo = c.MetodoPago, Forma = c.FormaPago, Total = c.Total, Moneda = c.Moneda,
+            TipoRelacion = c.TipoRelacion, UuidRelacionado = c.UuidRelacionado,
+            ServicioEspecializado = contrato?.Rol,
+        };
     }
 
     public async Task<List<PorSubirDto>> GetPorSubirAsync(Guid organizacionId)

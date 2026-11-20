@@ -623,6 +623,7 @@ public class AuxiliarContableHttpApiHostModule : AbpModule
         await context.AddBackgroundWorkerAsync<Normativa.AnalisisNormativoWorker>();
         await context.AddBackgroundWorkerAsync<Contabilidad.ConciliacionIntegralWorker>();
         await context.AddBackgroundWorkerAsync<Contabilidad.RecordatorioDeLoQueFaltaWorker>();
+        await context.AddBackgroundWorkerAsync<Nomina.RecordatorioRepseWorker>();
 
         await FecharFacturasSinFechaAsync(context.ServiceProvider);
     }

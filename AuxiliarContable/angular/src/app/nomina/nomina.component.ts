@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { mensajeDeError } from '../invitaciones/invitaciones.service';
 import { RenglonesComponent } from '../mesa/renglones.component';
+import { RepseComponent } from './repse.component';
 import { ClienteVisibleDto, PerfilFiscalService } from '../perfil-fiscal/perfil-fiscal.service';
 import { Periodicidad, finDelPeriodo, siguienteInicio, soloDia } from './fechas';
 import { ArchivosDeIdseDto, ArchivosDeSuaDto, CuotasDelMesDto, MovimientoAfiliatorioDto, NominaDelClienteDto, NominaService, PeriodoDeNominaDto, RecibosDeNominaDto, TrabajadorDto } from './nomina.service';
@@ -31,7 +32,7 @@ function nuevoTrabajador(): TrabajadorDto {
 /** Nómina del despacho: trabajadores de un cliente y cada periodo con incidencias y su cálculo. */
 @Component({
   selector: 'app-nomina',
-  imports: [FormsModule, CurrencyPipe, DatePipe, DecimalPipe, RenglonesComponent],
+  imports: [FormsModule, CurrencyPipe, DatePipe, DecimalPipe, RenglonesComponent, RepseComponent],
   templateUrl: './nomina.component.html',
   styleUrls: ['../mesa/mesa.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,

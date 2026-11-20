@@ -186,6 +186,8 @@
     }
   </section>
 
+  @if (clienteId(); as cid) { <app-repse [organizacionId]="cid" [trabajadores]="n.trabajadores" /> }
+
   <section class="ms-tarjeta" aria-labelledby="nm-periodos" data-testid="periodos">
     <div class="ms-cabecera-fila">
       <h2 id="nm-periodos"><i class="bi bi-calendar3" aria-hidden="true"></i> Periodos de {{ anio }}</h2>

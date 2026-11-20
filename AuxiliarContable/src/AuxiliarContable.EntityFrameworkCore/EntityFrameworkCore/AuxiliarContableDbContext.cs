@@ -84,6 +84,8 @@ public class AuxiliarContableDbContext :
     public DbSet<Nomina.Trabajador> Trabajadores { get; set; }
     public DbSet<Nomina.PeriodoDeNomina> PeriodosDeNomina { get; set; }
     public DbSet<Nomina.MovimientoAfiliatorio> MovimientosAfiliatorios { get; set; }
+    public DbSet<Nomina.ContratoEspecializado> ContratosEspecializados { get; set; }
+    public DbSet<Nomina.CumplimientoRepse> CumplimientosRepse { get; set; }
 
     public DbSet<Contabilidad.SaldosDeApertura> SaldosDeAperturas { get; set; }
 
@@ -444,6 +446,25 @@ public class AuxiliarContableDbContext :
             b.Property(x => x.SalarioDiarioIntegrado).HasPrecision(18, 2);
             b.Property(x => x.CausaBaja).HasMaxLength(1);
             b.HasIndex(x => new { x.OrganizacionId, x.PresentadoUtc });
+        });
+        builder.Entity<Nomina.ContratoEspecializado>(b =>
+        {
+            b.ToTable(AuxiliarContableConsts.DbTablePrefix + "ContratosEspecializados", AuxiliarContableConsts.DbSchema);
+            b.ConfigureByConvention();
+            b.Property(x => x.Rol).IsRequired().HasMaxLength(10);
+            b.Property(x => x.ContraparteRfc).IsRequired().HasMaxLength(13);
+            b.Property(x => x.ContraparteNombre).IsRequired().HasMaxLength(Nomina.ContratoEspecializado.MaxNombreLength);
+            b.Property(x => x.Objeto).IsRequired().HasMaxLength(Nomina.ContratoEspecializado.MaxObjetoLength);
+            b.Property(x => x.RegistroRepse).HasMaxLength(30);
+            b.Property(x => x.Trabajadores).HasColumnType("text");
+            b.HasIndex(x => x.OrganizacionId);
+        });
+        builder.Entity<Nomina.CumplimientoRepse>(b =>
+        {
+            b.ToTable(AuxiliarContableConsts.DbTablePrefix + "CumplimientosRepse", AuxiliarContableConsts.DbSchema);
+            b.ConfigureByConvention();
+            b.Property(x => x.Clave).IsRequired().HasMaxLength(20);
+            b.HasIndex(x => new { x.OrganizacionId, x.Anio, x.Periodo });
         });
         builder.Entity<Nomina.PeriodoDeNomina>(b =>
         {
