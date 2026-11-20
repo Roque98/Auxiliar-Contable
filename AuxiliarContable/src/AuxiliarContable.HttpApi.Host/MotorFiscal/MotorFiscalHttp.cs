@@ -173,12 +173,12 @@ public class MotorFiscalHttp : IMotorFiscal, ITransientDependency
 
     public async Task<ResultadoContable> ContabilizarAsync(
         PerfilParaContabilizar perfil, IReadOnlyList<OperacionParaContabilizar> operaciones, IReadOnlyList<ArchivoParaElMotor> facturas,
-        string periodo, DatosDeCierre? cierre, CancellationToken cancellationToken = default)
+        string periodo, DatosDeCierre? cierre, IReadOnlyList<NominaParaContabilizar>? nomina = null, CancellationToken cancellationToken = default)
     {
         using var tope = CancelationConTope(_opciones.TimeoutDeBancosSegundos, cancellationToken);
         var peticion = new HttpRequestMessage(HttpMethod.Post, "contabilidad/polizas")
         {
-            Content = JsonContent.Create(new { perfil, operaciones, cfdis = facturas.Select(Base64), periodo, cierre }, options: Json),
+            Content = JsonContent.Create(new { perfil, operaciones, cfdis = facturas.Select(Base64), periodo, cierre, nomina = nomina ?? [] }, options: Json),
         };
         return await EnviarAsync<ResultadoContable>(peticion, tope.Token, cancellationToken);
     }
@@ -193,6 +193,36 @@ public class MotorFiscalHttp : IMotorFiscal, ITransientDependency
             Content = JsonContent.Create(new { rfc, anio, mes, apertura, meses, con_polizas = true, catalogo = catalogo == null ? null : Base64(catalogo) }, options: Json),
         };
         return await EnviarAsync<ContabilidadElectronica>(peticion, tope.Token, cancellationToken);
+    }
+
+    public async Task<List<GastoDeClaude>> GastoDeClaudeAsync(DateTime desde, DateTime hasta, CancellationToken cancellationToken = default)
+    {
+        using var tope = CancelationConTope(_opciones.TimeoutSegundos, cancellationToken);
+        var peticion = new HttpRequestMessage(HttpMethod.Get, $"gasto/claude?desde={desde:yyyy-MM-dd}&hasta={hasta:yyyy-MM-dd}");
+        return (await EnviarAsync<RespuestaDeGasto>(peticion, tope.Token, cancellationToken)).Renglones;
+    }
+
+    public async Task<IncidenciasLeidas> LeerIncidenciasAsync(IReadOnlyList<ArchivoParaElMotor> archivos,
+        IReadOnlyList<(string Id, string Nombre)> trabajadores, DateTime inicio, DateTime fin, CancellationToken cancellationToken = default)
+    {
+        // Claude lee: el tope de las lecturas largas (el mismo que los estados de cuenta).
+        using var tope = CancelationConTope(_opciones.TimeoutDeBancosSegundos, cancellationToken);
+        var peticion = new HttpRequestMessage(HttpMethod.Post, "nomina/incidencias/leer")
+        {
+            Content = JsonContent.Create(new
+            {
+                archivos = archivos.Select(Base64),
+                trabajadores = trabajadores.Select(t => new { id = t.Id, nombre = t.Nombre }),
+                inicio = inicio.ToString("yyyy-MM-dd"),
+                fin = fin.ToString("yyyy-MM-dd"),
+            }, options: Json),
+        };
+        return await EnviarAsync<IncidenciasLeidas>(peticion, tope.Token, cancellationToken);
+    }
+
+    private sealed class RespuestaDeGasto
+    {
+        public List<GastoDeClaude> Renglones { get; set; } = [];
     }
 
     public async Task<AnualDelMotor> AnualAsync(

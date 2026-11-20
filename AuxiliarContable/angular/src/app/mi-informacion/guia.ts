@@ -27,6 +27,16 @@ export interface PataMinima {
   estado: EstadoDePata;
   motivo?: string | null;
   documentoId?: string | null;
+  /** Lo que leyó Claude del documento de la pata: si es devolución, descuento o bonificación. */
+  analisis?: { ajuste?: string | null } | null;
+}
+
+const NOMBRES_DE_AJUSTE: Record<string, string> = { devolucion: 'una devolución', descuento: 'un descuento', bonificacion: 'una bonificación' };
+
+/** Devolución, descuento o bonificación que se ve en el comprobante o el ticket ya subidos (null si no). */
+export function ajusteDe(op: OperacionMinima): string | null {
+  const a = op.transaccion.analisis?.ajuste ?? op.controlInterno.analisis?.ajuste;
+  return a && a in NOMBRES_DE_AJUSTE ? a : null;
 }
 
 export interface OperacionMinima {
@@ -134,6 +144,28 @@ export function siguientePregunta(op: OperacionMinima, f: FacturaDeLaOperacion |
 
 export function preguntaDeFactura(op: OperacionMinima): Pregunta {
   const venta = op.sentido === SentidoDeOperacion.Entrada;
+  const ajuste = ajusteDe(op);
+  if (ajuste) {
+    // El dinero va al revés: si al cliente le devuelven (entrada), la nota la emite el proveedor; si él devuelve, la emite él.
+    const laEmiteElCliente = op.sentido === SentidoDeOperacion.Salida;
+    return {
+      pata: 'factura',
+      titulo: 'Nota de crédito',
+      texto: `Esto es ${NOMBRES_DE_AJUSTE[ajuste]}. ¿Hay nota de crédito (CFDI de egreso) relacionada con la factura original?`,
+      nota: laEmiteElCliente ? 'La nota de crédito la emites tú a tu cliente.' : 'La nota de crédito te la tiene que dar tu proveedor.',
+      opciones: [
+        { texto: 'Sí, la subo ahora (XML)', principal: true, accion: { tipo: 'subir', pata: 'factura', documento: TipoDeDocumento.Cfdi, acepta: XML } },
+        { texto: laEmiteElCliente ? 'Ya le pedí al contador que la hiciera' : 'Ya se la pedí al proveedor', accion: despues('factura', laEmiteElCliente ? 'Ya le pedí al contador la nota de crédito' : 'Ya pidió la nota de crédito al proveedor') },
+        { texto: 'La subiré después', accion: despues('factura', 'Subirá la nota de crédito después') },
+        {
+          texto: 'No habrá nota de crédito',
+          accion: noHay('factura', 'No habrá nota de crédito'),
+          advertencia: 'Sin nota de crédito no se puede ajustar el IVA (art. 7 LIVA): '
+            + (laEmiteElCliente ? 'seguirás pagando el IVA de la venta original.' : 'tendrías que disminuir tu IVA acreditable de todos modos.'),
+        },
+      ],
+    };
+  }
   return {
     pata: 'factura',
     titulo: 'Factura',

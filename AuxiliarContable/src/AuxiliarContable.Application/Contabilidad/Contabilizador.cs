@@ -6,6 +6,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using AuxiliarContable.Documentos;
 using AuxiliarContable.MotorFiscal;
+using AuxiliarContable.Nomina;
 using AuxiliarContable.PerfilesFiscales;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -38,6 +39,7 @@ public class Contabilizador : ITransientDependency
     private readonly IGuidGenerator _guids;
     private readonly IAsyncQueryableExecuter _consultas;
     private readonly InterpretadorDeOperaciones _interpretador;
+    private readonly IRepository<PeriodoDeNomina, Guid> _nominas;
 
     public ILogger<Contabilizador> Logger { get; set; } = NullLogger<Contabilizador>.Instance;
 
@@ -54,8 +56,10 @@ public class Contabilizador : ITransientDependency
         GestorDePeriodos periodos,
         IGuidGenerator guids,
         IAsyncQueryableExecuter consultas,
-        InterpretadorDeOperaciones interpretador)
+        InterpretadorDeOperaciones interpretador,
+        IRepository<PeriodoDeNomina, Guid> nominas)
     {
+        _nominas = nominas;
         _interpretador = interpretador;
         _operaciones = operaciones;
         _documentos = documentos;
@@ -178,6 +182,7 @@ public class Contabilizador : ITransientDependency
             var candidatasPorId = candidatas.Take(600).ToDictionary(o => o.Id.ToString("N"));
             try
             {
+                using var alMotor = ClienteDelMotor.Para(organizacionId);
                 var sugerencias = await _motor.SugerirAmarresAsync(
                     porId.Select(x => new MovimientoParaAmarrar
                     {
@@ -331,6 +336,20 @@ public class Contabilizador : ITransientDependency
             facturas.Add(new ArchivoParaElMotor(d.NombreOriginal, await _almacen.LeerAsync(d)));
         }
 
+        // La nómina calculada que termina en el mes: su provisión y sus netos (para reconocer los pagos del banco).
+        var nominas = (await _nominas.GetListAsync(pn => pn.OrganizacionId == organizacionId && pn.Fin >= desde && pn.Fin < hasta && pn.Resultado != null))
+            .OrderBy(pn => pn.Fin)
+            .Select(pn => (Periodo: pn, Calculo: JsonSerializer.Deserialize<NominaDelMotor>(pn.Resultado!)))
+            .Where(xn => xn.Calculo != null)
+            .Select(xn => new NominaParaContabilizar
+            {
+                Periodo = $"{xn.Periodo.Inicio:yyyy-MM-dd} al {xn.Periodo.Fin:yyyy-MM-dd}",
+                Fin = xn.Periodo.Fin.ToString("yyyy-MM-dd"),
+                Poliza = xn.Calculo!.Poliza,
+                Trabajadores = xn.Calculo.Trabajadores.Select(tn => new NetoDeTrabajador { Nombre = tn.Nombre, Rfc = tn.Rfc, Neto = tn.Neto }).ToList(),
+            })
+            .ToList();
+
         var resultado = await _motor.ContabilizarAsync(new PerfilParaContabilizar
         {
             Rfc = rfc,
@@ -338,7 +357,7 @@ public class Contabilizador : ITransientDependency
             SistemaCostos = Campo(CamposDelPerfil.SistemaDeCostos),
             SistemaInventarios = Campo(CamposDelPerfil.SistemaDeInventarios),
             Giro = giro,
-        }, paraMotor, facturas, $"{anio:0000}-{mes:00}", cierre);
+        }, paraMotor, facturas, $"{anio:0000}-{mes:00}", cierre, nominas);
 
         var nueva = guardadas == null;
         guardadas ??= new PolizasDelMes(_guids.Create(), organizacionId, anio, mes);

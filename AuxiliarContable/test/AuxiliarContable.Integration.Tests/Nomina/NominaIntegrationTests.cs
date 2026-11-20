@@ -122,6 +122,31 @@ public class NominaIntegrationTests : ConJerarquiaTestBase
         recibos.Recibos.ShouldHaveSingleItem().Faltan.ShouldContain("CURP");
         var cuotas = await ComoAsync(Administrador, () => _nomina.CuotasDelMesAsync(_cliente, 2026, 3));
         (cuotas.Periodos, cuotas.SinCalcular, cuotas.Cuotas.TotalMensual).ShouldBe((1, 0, 100m));
+
+        // La lista de raya del mes la lee Claude: propone las incidencias (sin guardarlas) y dice sus dudas.
+        await Should.ThrowAsync<UserFriendlyException>(() => ComoAsync(Administrador, () => _nomina.LeerIncidenciasAsync(_cliente, p.Id)));
+        await ComoAsync(Administrador, () => GetRequiredService<AuxiliarContable.Boveda.IBovedaAppService>().SubirAsync(_cliente, AuxiliarContable.Documentos.TipoDeDocumento.Nomina,
+            new Volo.Abp.Content.RemoteStreamContent(new System.IO.MemoryStream(System.Text.Encoding.UTF8.GetBytes("%PDF-1.4 lista de raya")), "raya.pdf", "application/pdf"), 2026, 3));
+        _motor.Incidencias = new IncidenciasLeidas
+        {
+            Legible = true, Dudas = ["«Pancho» no se parece a ningún trabajador del despacho: ¿es alta nueva?"],
+            Trabajadores = [new IncidenciaLeida { Nombre = "Lupita", TrabajadorId = lupe.Id!.Value.ToString(), Faltas = 2, HorasExtraDobles = 3, Nota = "vacaciones 1 día" }],
+        };
+        var propuestas = await ComoAsync(Administrador, () => _nomina.LeerIncidenciasAsync(_cliente, p.Id));
+        propuestas.Documentos.ShouldBe(["raya.pdf"]);
+        propuestas.Leidos.ShouldBe([lupe.Id!.Value]);
+        var leida = propuestas.Incidencias.Single(i => i.TrabajadorId == lupe.Id).Incidencias;
+        (leida.Faltas, leida.HorasExtraDobles).ShouldBe((2, 3m));
+        propuestas.Notas.ShouldHaveSingleItem().ShouldContain("vacaciones");
+        propuestas.Dudas.ShouldContain(d => d.Contains("Pancho"));
+        _motor.IncidenciasPedidas!.Value.Trabajadores.ShouldContain(t => t.Id == lupe.Id!.Value.ToString());
+        (await ComoAsync(Administrador, () => _nomina.GetPeriodoAsync(_cliente, p.Id))).Incidencias.Single(i => i.TrabajadorId == lupe.Id).Incidencias.Faltas.ShouldNotBe(2);
+
+        // La nómina calculada entra a la contabilidad del mes: su provisión y los netos para reconocer los pagos del banco.
+        await WithUnitOfWorkAsync(() => GetRequiredService<AuxiliarContable.Contabilidad.Contabilizador>().ContabilizarAsync(_cliente, 2026, 3, null, false));
+        var enLaContabilidad = _motor.NominaContabilizada.ShouldNotBeNull().ShouldHaveSingleItem();
+        enLaContabilidad.Fin.ShouldStartWith("2026-03");
+        enLaContabilidad.Trabajadores.ShouldHaveSingleItem().Neto.ShouldBeGreaterThan(0);
         await Should.ThrowAsync<AbpAuthorizationException>(() => ComoAsync(Usuario, () => _nomina.RecibosAsync(_cliente, p.Id)));
 
         // SUA del mes: el trabajador activo con su crédito, y las faltas e incapacidades del periodo con su folio.

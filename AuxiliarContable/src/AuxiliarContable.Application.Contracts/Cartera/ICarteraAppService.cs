@@ -65,4 +65,25 @@ public class MetricasDelDespachoDto
 
     /// <summary>Tokens del chat en el mes (entrada + salida): lo que se paga a Anthropic por conversar.</summary>
     public long TokensDelChat { get; set; }
+
+    /// <summary>
+    /// Lo que costó Claude en el motor (lectura de tickets, amarres, interpretación, normativa) por cliente en el mes, en
+    /// dólares equivalentes que reporta claude -p. Null si el motor no respondió.
+    /// </summary>
+    public List<GastoDeClaudePorClienteDto>? GastoDeClaude { get; set; }
+
+    public decimal? GastoDeClaudeTotalUsd { get; set; }
+}
+
+public class GastoDeClaudePorClienteDto
+{
+    /// <summary>Null: lo anotado sin cliente (antes de que el motor lo registrara).</summary>
+    public Guid? OrganizacionId { get; set; }
+
+    public string Nombre { get; set; } = "";
+    public int Llamadas { get; set; }
+    public decimal Usd { get; set; }
+
+    /// <summary>Lectura de tickets y documentos (con sus revisiones).</summary>
+    public decimal LecturaUsd { get; set; }
 }

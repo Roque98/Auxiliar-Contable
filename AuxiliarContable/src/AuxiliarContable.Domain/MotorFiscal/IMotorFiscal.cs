@@ -68,7 +68,7 @@ public interface IMotorFiscal
     /// <summary>Las operaciones del mes y sus XML -> revisión de errores, pólizas, balanza y pendientes de cierre.</summary>
     Task<ResultadoContable> ContabilizarAsync(
         PerfilParaContabilizar perfil, IReadOnlyList<OperacionParaContabilizar> operaciones, IReadOnlyList<ArchivoParaElMotor> facturas,
-        string periodo, DatosDeCierre? cierre, CancellationToken cancellationToken = default);
+        string periodo, DatosDeCierre? cierre, IReadOnlyList<NominaParaContabilizar>? nomina = null, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Saldos de apertura + pólizas de cada mes -> balanza acumulada del mes y XML del SAT (catálogo, balanza, pólizas). Con
@@ -77,6 +77,16 @@ public interface IMotorFiscal
     Task<ContabilidadElectronica> ContabilidadElectronicaAsync(
         string rfc, int anio, int mes, AperturaParaElMotor? apertura, IReadOnlyList<MesParaElMotor> meses,
         ArchivoParaElMotor? catalogo = null, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// La lista de raya o el reporte de incidencias (Excel, CSV, PDF o foto) -> incidencias propuestas por trabajador del
+    /// periodo, con Claude. <paramref name="trabajadores"/>: (id, nombre) del despacho, para emparejar los nombres leídos.
+    /// </summary>
+    Task<IncidenciasLeidas> LeerIncidenciasAsync(IReadOnlyList<ArchivoParaElMotor> archivos, IReadOnlyList<(string Id, string Nombre)> trabajadores,
+        DateTime inicio, DateTime fin, CancellationToken cancellationToken = default);
+
+    /// <summary>Lo que costó Claude por cliente (id de organización), uso y modelo entre dos fechas (incluidas).</summary>
+    Task<List<GastoDeClaude>> GastoDeClaudeAsync(DateTime desde, DateTime hasta, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Pago provisional de ISR e IVA del <paramref name="periodo"/> (AAAA-MM) solo con los CFDI del ejercicio: el papel de
@@ -178,6 +188,24 @@ public interface IMotorFiscal
 /// <summary>Un archivo de la bóveda, ya descifrado, para mandarlo al motor.</summary>
 public record ArchivoParaElMotor(string Nombre, byte[] Contenido);
 
+/// <summary>Un renglón de <c>GET /gasto/claude</c>: lo que costó Claude a un cliente en un uso y modelo.</summary>
+public class GastoDeClaude
+{
+    /// <summary>Id de la organización; null en lo anotado sin cliente.</summary>
+    public string? Cliente { get; set; }
+
+    /// <summary>documento, documento_revision, documento_ultimo, amarres, interpretacion, normativa.</summary>
+    public string Para { get; set; } = "";
+
+    public string Modelo { get; set; } = "";
+    public int Llamadas { get; set; }
+
+    /// <summary>Dólares equivalentes que reporta claude -p (con suscripción no se cobran; sirven para comparar).</summary>
+    public decimal Usd { get; set; }
+
+    public int Segundos { get; set; }
+}
+
 /// <summary>Un artículo (o fragmento) encontrado, con lo necesario para citarlo.</summary>
 public record ResultadoDeLey(
     string Clave,
@@ -249,12 +277,19 @@ public class MotorFiscalSinConfigurar : IMotorFiscal, ISingletonDependency
 
     public Task<ResultadoContable> ContabilizarAsync(
         PerfilParaContabilizar perfil, IReadOnlyList<OperacionParaContabilizar> operaciones, IReadOnlyList<ArchivoParaElMotor> facturas,
-        string periodo, DatosDeCierre? cierre, CancellationToken cancellationToken = default) =>
+        string periodo, DatosDeCierre? cierre, IReadOnlyList<NominaParaContabilizar>? nomina = null, CancellationToken cancellationToken = default) =>
         throw new MotorFiscalNoDisponibleException("No hay motor fiscal en este proceso.");
 
     public Task<ContabilidadElectronica> ContabilidadElectronicaAsync(
         string rfc, int anio, int mes, AperturaParaElMotor? apertura, IReadOnlyList<MesParaElMotor> meses,
         ArchivoParaElMotor? catalogo = null, CancellationToken cancellationToken = default) =>
+        throw new MotorFiscalNoDisponibleException("No hay motor fiscal en este proceso.");
+
+    public Task<List<GastoDeClaude>> GastoDeClaudeAsync(DateTime desde, DateTime hasta, CancellationToken cancellationToken = default) =>
+        throw new MotorFiscalNoDisponibleException("No hay motor fiscal en este proceso.");
+
+    public Task<IncidenciasLeidas> LeerIncidenciasAsync(IReadOnlyList<ArchivoParaElMotor> archivos, IReadOnlyList<(string Id, string Nombre)> trabajadores,
+        DateTime inicio, DateTime fin, CancellationToken cancellationToken = default) =>
         throw new MotorFiscalNoDisponibleException("No hay motor fiscal en este proceso.");
 
     public Task<SugerenciasDeAmarre> SugerirAmarresAsync(

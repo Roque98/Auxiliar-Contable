@@ -44,6 +44,12 @@ public interface INominaAppService : IApplicationService
     /// <summary>Calcula el periodo con el motor y lo guarda.</summary>
     Task<PeriodoDeNominaDto> CalcularAsync(Guid organizacionId, Guid periodoId);
 
+    /// <summary>
+    /// Lee con Claude los documentos de nómina del mes del periodo (lista de raya, incidencias: Excel, CSV, PDF o foto) y
+    /// devuelve las incidencias del periodo con lo leído ya puesto, SIN guardarlas: el despacho las revisa y guarda.
+    /// </summary>
+    Task<IncidenciasPropuestasDto> LeerIncidenciasAsync(Guid organizacionId, Guid periodoId);
+
     Task BorrarPeriodoAsync(Guid organizacionId, Guid periodoId);
 }
 
@@ -151,6 +157,23 @@ public class PeriodoDeNominaDto
 
     /// <summary>En la lista: el neto del periodo, si está calculado.</summary>
     public decimal? Neto { get; set; }
+}
+
+public class IncidenciasPropuestasDto
+{
+    /// <summary>Las de todos los trabajadores del periodo: lo leído encima de lo que ya estaba capturado.</summary>
+    public List<IncidenciasDeTrabajadorDto> Incidencias { get; set; } = [];
+
+    /// <summary>A quiénes se les puso algo leído.</summary>
+    public List<Guid> Leidos { get; set; } = [];
+
+    public List<string> Documentos { get; set; } = [];
+
+    /// <summary>Lo que Claude no pudo decidir y los nombres que no son de ningún trabajador.</summary>
+    public List<string> Dudas { get; set; } = [];
+
+    /// <summary>Lo que no cabe en las incidencias (vacaciones, permisos, retardos), por trabajador.</summary>
+    public List<string> Notas { get; set; } = [];
 }
 
 public class IncidenciasDeTrabajadorDto

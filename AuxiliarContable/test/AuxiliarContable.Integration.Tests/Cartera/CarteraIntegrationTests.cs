@@ -76,9 +76,22 @@ public class CarteraIntegrationTests : ConJerarquiaTestBase
         await Should.ThrowAsync<AbpAuthorizationException>(() => ComoAsync(Administrador, () => _cartera.GetMetricasAsync(2026, 9)));
 
         var owner = await CrearUsuarioAsync("duena", AuxiliarRoles.Owner);
+        var motor = (MotorFiscalDePrueba)GetRequiredService<AuxiliarContable.MotorFiscal.IMotorFiscal>();
+        motor.Reiniciar();
+        motor.Gasto =
+        [
+            new AuxiliarContable.MotorFiscal.GastoDeClaude { Cliente = _alDia.ToString(), Para = "documento", Modelo = "claude-haiku-5-5", Llamadas = 10, Usd = 0.02m },
+            new AuxiliarContable.MotorFiscal.GastoDeClaude { Cliente = _alDia.ToString(), Para = "interpretacion", Modelo = "claude-opus-5-5", Llamadas = 2, Usd = 0.10m },
+            new AuxiliarContable.MotorFiscal.GastoDeClaude { Cliente = null, Para = "documento", Modelo = "claude-haiku-5-5", Llamadas = 1, Usd = 0.001m },
+        ];
         var metricas = await ComoAsync(owner, () => _cartera.GetMetricasAsync(DateTime.Now.Year, DateTime.Now.Month));
         metricas.Clientes.ShouldBeGreaterThanOrEqualTo(2);
         metricas.FacturasDelMes.ShouldBeGreaterThanOrEqualTo(1);
+        var lupita = metricas.GastoDeClaude.ShouldNotBeNull().First();
+        (lupita.Nombre, lupita.Llamadas, lupita.Usd, lupita.LecturaUsd).ShouldBe(("Panadería Lupita", 12, 0.12m, 0.02m));
+        metricas.GastoDeClaude.ShouldContain(g => g.OrganizacionId == null && g.Nombre == "Sin cliente");
+        metricas.GastoDeClaudeTotalUsd.ShouldBe(0.121m);
+        motor.Reiniciar();
     }
 
     [Fact]

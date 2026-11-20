@@ -12,6 +12,10 @@ export interface IncidenciasDeNominaDto {
   folioIncapacidad?: string | null;
   inicioIncapacidad?: string | null;
   horasJornada: number;
+  /** Horas ordinarias a la semana (0 = no se capturaron): el motor avisa si pasan del máximo del año (LFT 59). */
+  horasSemana?: number;
+  /** diurna, nocturna o mixta (LFT 61). */
+  tipoJornada?: string | null;
   horasExtraDobles: number;
   horasExtraTriples: number;
   diasDescansoTrabajados: number;
@@ -87,6 +91,15 @@ export interface NominaDelMotorDto {
   isn: { estado: string | null; tasa: number | null; importe: number; fundamento: string; verificado: boolean };
   poliza: { cuenta: string; debe: number; haber: number }[];
   avisos: string[];
+}
+
+export interface IncidenciasPropuestasDto {
+  incidencias: PeriodoDeNominaDto['incidencias'];
+  /** Trabajadores a los que se les puso algo leído. */
+  leidos: string[];
+  documentos: string[];
+  dudas: string[];
+  notas: string[];
 }
 
 export interface PeriodoDeNominaDto {
@@ -185,6 +198,11 @@ export class NominaService {
   guardarIncidencias(organizacionId: string, periodoId: string, incidencias: PeriodoDeNominaDto['incidencias']): Observable<PeriodoDeNominaDto> {
     return this.rest.request<object, PeriodoDeNominaDto>(
       { method: 'POST', url: `${this.base}/guardar-incidencias`, params: { organizacionId, periodoId }, body: incidencias }, this.opciones);
+  }
+
+  /** Claude lee la lista de raya del mes y propone las incidencias (no las guarda). */
+  leerIncidencias(organizacionId: string, periodoId: string): Observable<IncidenciasPropuestasDto> {
+    return this.rest.request<void, IncidenciasPropuestasDto>({ method: 'POST', url: `${this.base}/leer-incidencias`, params: { organizacionId, periodoId } }, this.opciones);
   }
 
   calcular(organizacionId: string, periodoId: string): Observable<PeriodoDeNominaDto> {

@@ -20,6 +20,9 @@ public static class AuxiliarEmailTemplates
     /// <summary>Un código de un solo uso: verificar correo o entrar con verificación en dos pasos.</summary>
     public const string Codigo = "AuxiliarContable.Codigo";
 
+    /// <summary>Lo que el cliente dijo que subiría después y no ha subido.</summary>
+    public const string Recordatorio = "AuxiliarContable.Recordatorio";
+
     /// <summary>
     /// El de «olvidé mi contraseña» de ABP (<c>AccountEmailTemplates.PasswordResetLink</c>).
     /// Va como texto porque su clase vive en Account.Application, que el dominio no referencia.
@@ -38,6 +41,10 @@ public class AuxiliarEmailTemplateDefinitionProvider : TemplateDefinitionProvide
         context.Add(
             new TemplateDefinition(AuxiliarEmailTemplates.Codigo, layout: StandardEmailTemplates.Layout)
                 .WithVirtualFilePath("/Emails/Codigo.tpl", isInlineLocalized: true));
+
+        context.Add(
+            new TemplateDefinition(AuxiliarEmailTemplates.Recordatorio, layout: StandardEmailTemplates.Layout)
+                .WithVirtualFilePath("/Emails/Recordatorio.tpl", isInlineLocalized: true));
     }
 
     /// <summary>

@@ -86,6 +86,10 @@ public class MotorFiscalDePrueba : IMotorFiscal
         Contabilizadas = [];
         Electronica = null;
         CatalogoRecibido = null;
+        Gasto = [];
+        Incidencias = null;
+        IncidenciasPedidas = null;
+        NominaContabilizada = null;
         Provisionales = null;
         CoeficienteRecibido = null;
         LlamadasDeProvisionales = 0;
@@ -206,7 +210,7 @@ public class MotorFiscalDePrueba : IMotorFiscal
 
     public Task<ResultadoContable> ContabilizarAsync(
         PerfilParaContabilizar perfil, IReadOnlyList<OperacionParaContabilizar> operaciones, IReadOnlyList<ArchivoParaElMotor> facturas,
-        string periodo, DatosDeCierre? cierre, CancellationToken cancellationToken = default)
+        string periodo, DatosDeCierre? cierre, IReadOnlyList<NominaParaContabilizar>? nomina = null, CancellationToken cancellationToken = default)
     {
         if (Caido)
         {
@@ -214,6 +218,7 @@ public class MotorFiscalDePrueba : IMotorFiscal
         }
 
         Contabilizadas = operaciones;
+        NominaContabilizada = nomina;
         PeriodoRecibido = periodo;
         CierreRecibido = cierre;
         return Task.FromResult(Contabilidad?.Invoke(perfil, operaciones, facturas) ?? new ResultadoContable());
@@ -237,6 +242,27 @@ public class MotorFiscalDePrueba : IMotorFiscal
             Vencimiento = "2026-12-03",
         });
     }
+
+    /// <summary>Los periodos de nómina que llegaron a la última contabilización.</summary>
+    public IReadOnlyList<NominaParaContabilizar>? NominaContabilizada { get; private set; }
+
+    /// <summary>Lo que devuelve <see cref="LeerIncidenciasAsync"/> (null = sin nada leído) y lo que se le mandó.</summary>
+    public IncidenciasLeidas? Incidencias { get; set; }
+
+    public (IReadOnlyList<ArchivoParaElMotor> Archivos, IReadOnlyList<(string Id, string Nombre)> Trabajadores)? IncidenciasPedidas { get; private set; }
+
+    public Task<IncidenciasLeidas> LeerIncidenciasAsync(IReadOnlyList<ArchivoParaElMotor> archivos, IReadOnlyList<(string Id, string Nombre)> trabajadores,
+        DateTime inicio, DateTime fin, CancellationToken cancellationToken = default)
+    {
+        IncidenciasPedidas = (archivos, trabajadores);
+        return Task.FromResult(Incidencias ?? new IncidenciasLeidas());
+    }
+
+    /// <summary>Lo que devuelve <see cref="GastoDeClaudeAsync"/>.</summary>
+    public List<GastoDeClaude> Gasto { get; set; } = [];
+
+    public Task<List<GastoDeClaude>> GastoDeClaudeAsync(DateTime desde, DateTime hasta, CancellationToken cancellationToken = default) =>
+        Caido ? throw new MotorFiscalNoDisponibleException("El motor fiscal no responde.") : Task.FromResult(Gasto);
 
     /// <summary>El catálogo del cliente que llegó a la contabilidad electrónica (null = código agrupador).</summary>
     public ArchivoParaElMotor? CatalogoRecibido { get; private set; }

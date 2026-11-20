@@ -202,6 +202,17 @@ public class OperacionesIntegrationTests : ConJerarquiaTestBase
         uno.Pata.ShouldBe(PataDeOperacion.ControlInterno);
         uno.OperacionId.ShouldBe(o.Id);
 
+        // A los tres días se le recuerda a quien sube (campana y correo), y no más de una vez por semana.
+        var recordatorio = GetRequiredService<RecordatorioDeLoQueFalta>();
+        (await WithUnitOfWorkAsync(() => recordatorio.PrepararAsync(DateTime.UtcNow))).ShouldBeEmpty();
+        var dentro = DateTime.UtcNow.AddDays(RecordatorioDeLoQueFalta.DiasDeGracia + 1);
+        var correos = await WithUnitOfWorkAsync(() => recordatorio.PrepararAsync(dentro));
+        var correo = correos.ShouldHaveSingleItem();
+        correo.Organizacion.ShouldBe("Panadería Lupita");
+        correo.Url.ShouldBe($"/mi-informacion/todo?cliente={_cliente}");
+        correo.Pendientes.ShouldHaveSingleItem().Que.ShouldBe("el ticket o comprobante interno");
+        (await WithUnitOfWorkAsync(() => recordatorio.PrepararAsync(dentro.AddDays(1)))).ShouldBeEmpty();
+
         // Sin XML no hay datos de factura; lo ajeno no existe.
         var sinXml = await ComoAsync(Usuario, () => _operaciones.CrearAsync(_cliente, new GuardarOperacionDto
         {

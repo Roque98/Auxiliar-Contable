@@ -7,10 +7,12 @@ using AuxiliarContable.Contabilidad;
 using AuxiliarContable.Conversaciones;
 using AuxiliarContable.Documentos;
 using AuxiliarContable.Identity;
+using AuxiliarContable.MotorFiscal;
 using AuxiliarContable.Organizaciones;
 using AuxiliarContable.PerfilesFiscales;
 using AuxiliarContable.Permissions;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.Extensions.Logging;
 using Volo.Abp.Authorization;
 using Volo.Abp.Domain.Repositories;
 
@@ -34,6 +36,7 @@ public class CarteraAppService : AuxiliarContableAppService, ICarteraAppService
     private readonly IRepository<PeriodoContable, Guid> _periodos;
     private readonly IRepository<ConciliacionBancaria, Guid> _conciliaciones;
     private readonly IRepository<PartidaPendiente, Guid> _partidas;
+    private readonly IMotorFiscal _motor;
 
     public CarteraAppService(
         IRepository<Organizacion, Guid> organizaciones,
@@ -45,8 +48,10 @@ public class CarteraAppService : AuxiliarContableAppService, ICarteraAppService
         Autorizador autorizador,
         IRepository<PeriodoContable, Guid> periodos,
         IRepository<ConciliacionBancaria, Guid> conciliaciones,
-        IRepository<PartidaPendiente, Guid> partidas)
+        IRepository<PartidaPendiente, Guid> partidas,
+        IMotorFiscal motor)
     {
+        _motor = motor;
         _periodos = periodos;
         _conciliaciones = conciliaciones;
         _partidas = partidas;
@@ -181,7 +186,36 @@ public class CarteraAppService : AuxiliarContableAppService, ICarteraAppService
             MensajesDelChat = chat.Count(m => m.Rol == RolDelMensaje.Usuario),
             PersonasEnElChat = chat.Select(m => m.UsuarioId).Distinct().Count(),
             TokensDelChat = chat.Sum(m => (long)m.Tokens),
-        };
+        }.ConGasto(await GastoDeClaudeAsync(inicio, fin, clientes));
+    }
+
+    /// <summary>El gasto de Claude del mes por cliente, del registro del motor. Null si el motor no responde.</summary>
+    private async Task<List<GastoDeClaudePorClienteDto>?> GastoDeClaudeAsync(DateTime inicio, DateTime fin, List<ClienteDeCarteraDto> clientes)
+    {
+        List<GastoDeClaude> renglones;
+        try
+        {
+            renglones = await _motor.GastoDeClaudeAsync(inicio, fin.AddDays(-1));
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "No se pudo leer el gasto de Claude del motor");
+            return null;
+        }
+
+        var nombres = clientes.ToDictionary(c => c.Id, c => c.Nombre);
+        return renglones
+            .GroupBy(r => Guid.TryParse(r.Cliente, out var id) ? id : (Guid?)null)
+            .Select(g => new GastoDeClaudePorClienteDto
+            {
+                OrganizacionId = g.Key,
+                Nombre = g.Key is { } id ? nombres.GetValueOrDefault(id, "Cliente borrado") : "Sin cliente",
+                Llamadas = g.Sum(r => r.Llamadas),
+                Usd = Math.Round(g.Sum(r => r.Usd), 4),
+                LecturaUsd = Math.Round(g.Where(r => r.Para.StartsWith("documento", StringComparison.Ordinal)).Sum(r => r.Usd), 4),
+            })
+            .OrderByDescending(x => x.Usd)
+            .ToList();
     }
 
     private static (DateTime Inicio, DateTime Fin) Mes(int anio, int mes)
@@ -193,5 +227,15 @@ public class CarteraAppService : AuxiliarContableAppService, ICarteraAppService
 
         var inicio = new DateTime(anio, mes, 1);
         return (inicio, inicio.AddMonths(1));
+    }
+}
+
+internal static class MetricasConGasto
+{
+    public static MetricasDelDespachoDto ConGasto(this MetricasDelDespachoDto m, List<GastoDeClaudePorClienteDto>? gasto)
+    {
+        m.GastoDeClaude = gasto;
+        m.GastoDeClaudeTotalUsd = gasto == null ? null : Math.Round(gasto.Sum(g => g.Usd), 4);
+        return m;
     }
 }

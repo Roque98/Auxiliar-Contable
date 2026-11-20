@@ -31,6 +31,8 @@ export interface AnalisisCortoDto {
   explicacion: string;
   quePrueba: string;
   confianza: string;
+  /** devolucion, descuento o bonificacion si el documento ajusta una compra o venta anterior. */
+  ajuste?: string | null;
 }
 
 /** Cómo se dice cada categoría que da Claude (igual que «Mis facturas»). */

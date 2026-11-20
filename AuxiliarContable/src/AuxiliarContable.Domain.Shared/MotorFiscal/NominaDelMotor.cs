@@ -149,6 +149,16 @@ public class IncidenciasDeNomina
 
     public System.DateTime? InicioIncapacidad { get; set; }
     public decimal HorasJornada { get; set; } = 8;
+
+    /// <summary>
+    /// Horas ordinarias a la semana (0 = no se capturaron). El motor avisa si pasan del máximo del año: 48 en 2026, 46 en
+    /// 2027… 40 en 2030 (LFT 59, transitorio Segundo DOF 01-05-2026).
+    /// </summary>
+    public decimal HorasSemana { get; set; }
+
+    /// <summary>diurna (8 h), nocturna (7) o mixta (7.5), LFT 61. Null = diurna.</summary>
+    public string? TipoJornada { get; set; }
+
     public decimal HorasExtraDobles { get; set; }
     public decimal HorasExtraTriples { get; set; }
     public decimal DiasDescansoTrabajados { get; set; }
@@ -370,4 +380,57 @@ public class ArchivoDeSua
 {
     public string Nombre { get; set; } = "";
     public int Renglones { get; set; }
+}
+
+/// <summary>
+/// Un periodo de nómina ya calculado que termina en el mes que se contabiliza: su póliza (provisión) entra al mes y sus
+/// netos sirven para reconocer los pagos del banco y los CFDI de nómina (motor /contabilidad/polizas, «nomina»).
+/// </summary>
+public class NominaParaContabilizar
+{
+    /// <summary>«2026-10-01 al 2026-10-15».</summary>
+    public string Periodo { get; set; } = "";
+
+    /// <summary>AAAA-MM-DD.</summary>
+    public string Fin { get; set; } = "";
+
+    public List<MovimientoDePoliza> Poliza { get; set; } = [];
+    public List<NetoDeTrabajador> Trabajadores { get; set; } = [];
+}
+
+public class NetoDeTrabajador
+{
+    public string? Nombre { get; set; }
+    public string? Rfc { get; set; }
+    public decimal Neto { get; set; }
+}
+
+/// <summary>Lo que el motor leyó de la lista de raya o el reporte de incidencias (/nomina/incidencias/leer).</summary>
+public class IncidenciasLeidas
+{
+    public bool Legible { get; set; }
+    public string? PeriodoInicio { get; set; }
+    public string? PeriodoFin { get; set; }
+    public List<IncidenciaLeida> Trabajadores { get; set; } = [];
+    public List<string> Dudas { get; set; } = [];
+}
+
+public class IncidenciaLeida
+{
+    /// <summary>Como viene en el documento.</summary>
+    public string Nombre { get; set; } = "";
+
+    /// <summary>El trabajador del despacho al que se parece (el id que se le mandó); null si a ninguno.</summary>
+    public string? TrabajadorId { get; set; }
+
+    public decimal Parecido { get; set; }
+    public decimal Faltas { get; set; }
+    public decimal Incapacidad { get; set; }
+    public decimal HorasExtraDobles { get; set; }
+    public decimal HorasExtraTriples { get; set; }
+    public decimal HorasSemana { get; set; }
+    public decimal DomingosTrabajados { get; set; }
+    public decimal DiasDescansoTrabajados { get; set; }
+    public decimal FestivosTrabajados { get; set; }
+    public string Nota { get; set; } = "";
 }

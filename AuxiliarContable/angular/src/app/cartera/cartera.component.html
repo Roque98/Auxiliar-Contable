@@ -33,7 +33,26 @@
       <div><dt>Estados de cuenta</dt><dd>{{ numero(m.estadosDeCuentaDelMes) }}</dd></div>
       <div><dt>Chat</dt><dd>{{ numero(m.mensajesDelChat) }} msj · {{ m.personasEnElChat }} pers.</dd></div>
       <div><dt>Tokens del chat</dt><dd>{{ numero(m.tokensDelChat) }}</dd></div>
+      @if (m.gastoDeClaudeTotalUsd != null) {
+        <div><dt>Claude en el motor</dt><dd>US$ {{ m.gastoDeClaudeTotalUsd.toFixed(2) }}</dd></div>
+      }
     </dl>
+    @if (m.gastoDeClaude?.length) {
+      <details class="ca-gasto">
+        <summary>Cuánto costó Claude por cliente</summary>
+        <p class="ca-rfc">Dólares equivalentes que reporta claude -p (con la suscripción no se cobran aparte; sirven para comparar clientes y para el precio de cada paquete).</p>
+        <div class="ca-tabla-caja">
+          <table class="ca-tabla">
+            <thead><tr><th scope="col">Cliente</th><th scope="col" class="ca-num">Llamadas</th><th scope="col" class="ca-num">Lectura de tickets</th><th scope="col" class="ca-num">Total</th></tr></thead>
+            <tbody>
+              @for (g of m.gastoDeClaude; track g.organizacionId ?? g.nombre) {
+                <tr><td>{{ g.nombre }}</td><td class="ca-num">{{ g.llamadas }}</td><td class="ca-num">US$ {{ g.lecturaUsd.toFixed(3) }}</td><td class="ca-num"><strong>US$ {{ g.usd.toFixed(3) }}</strong></td></tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </details>
+    }
   </section>
 }
 

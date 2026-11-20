@@ -146,6 +146,9 @@ public class AnalisisCortoDto
     public string QuePrueba { get; set; } = "";
     public string Confianza { get; set; } = "";
 
+    /// <summary>devolucion, descuento o bonificacion si el documento ajusta una compra o venta anterior; si no, null.</summary>
+    public string? Ajuste { get; set; }
+
     public static AnalisisCortoDto? De(string? json)
     {
         if (string.IsNullOrWhiteSpace(json))
@@ -160,6 +163,7 @@ public class AnalisisCortoDto
             {
                 Legible = a.Legible, QueEs = a.QueEs, RelacionConGiro = a.RelacionConGiro, Explicacion = a.Explicacion,
                 QuePrueba = a.QuePrueba, Confianza = a.Confianza,
+                Ajuste = a.Ajuste is "devolucion" or "descuento" or "bonificacion" ? a.Ajuste : null,
             };
     }
 }

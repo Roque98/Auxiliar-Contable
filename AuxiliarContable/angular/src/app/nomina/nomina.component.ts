@@ -11,9 +11,10 @@ import { descargarBase64 } from '../mesa/descarga';
 import { MESES } from '../documentos/documentos.service';
 
 /** Columnas de incidencias que se capturan por trabajador. */
-const COLUMNAS: { clave: 'faltas' | 'incapacidad' | 'horasExtraDobles' | 'horasExtraTriples' | 'domingosTrabajados' | 'diasDescansoTrabajados' | 'festivosTrabajados' | 'aguinaldo' | 'primaVacacional'; titulo: string }[] = [
+const COLUMNAS: { clave: 'faltas' | 'incapacidad' | 'horasSemana' | 'horasExtraDobles' | 'horasExtraTriples' | 'domingosTrabajados' | 'diasDescansoTrabajados' | 'festivosTrabajados' | 'aguinaldo' | 'primaVacacional'; titulo: string }[] = [
   { clave: 'faltas', titulo: 'Faltas' },
   { clave: 'incapacidad', titulo: 'Incapacidad (días)' },
+  { clave: 'horasSemana', titulo: 'Horas a la semana' },
   { clave: 'horasExtraDobles', titulo: 'Horas extra dobles' },
   { clave: 'horasExtraTriples', titulo: 'Horas extra triples' },
   { clave: 'domingosTrabajados', titulo: 'Domingos trabajados' },
@@ -49,6 +50,8 @@ export class NominaComponent implements OnInit {
   readonly periodo = signal<PeriodoDeNominaDto | null>(null);
   readonly error = signal<string | null>(null);
   readonly trabajando = signal(false);
+  /** Lo que Claude leyó de la lista de raya: qué documentos, dudas y notas (las incidencias quedan en la tabla sin guardar). */
+  readonly lectura = signal<{ documentos: string[]; dudas: string[]; notas: string[]; leidos: string[] } | null>(null);
   readonly editando = signal<TrabajadorDto | null>(null);
   readonly abierto = signal<string | null>(null);
   nuevoInicio = '';
@@ -244,6 +247,19 @@ export class NominaComponent implements OnInit {
     this.hacer(this.api.guardarIncidencias(id, p.id, this.paraEnviar(p.incidencias)), r => this.ponerPeriodo(r), 'No se pudieron guardar las incidencias.');
   }
 
+  leerIncidencias(): void {
+    const id = this.clienteId();
+    const p = this.periodo();
+    if (!id || !p) {
+      return;
+    }
+    this.lectura.set(null);
+    this.hacer(this.api.leerIncidencias(id, p.id), r => {
+      this.periodo.set({ ...p, incidencias: this.paraEnviar(r.incidencias) });
+      this.lectura.set({ documentos: r.documentos, dudas: r.dudas, notas: r.notas, leidos: r.leidos });
+    }, 'No se pudieron leer las incidencias de los documentos.');
+  }
+
   calcular(): void {
     const id = this.clienteId();
     const p = this.periodo();
@@ -272,6 +288,7 @@ export class NominaComponent implements OnInit {
 
   /** Las fechas de las incidencias, en AAAA-MM-DD para los campos de fecha. */
   private ponerPeriodo(p: PeriodoDeNominaDto): void {
+    this.lectura.set(null);
     this.periodo.set({ ...p, incidencias: this.paraEnviar(p.incidencias) });
   }
 

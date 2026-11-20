@@ -97,6 +97,17 @@ describe('guía del trabajo diario', () => {
     expect(t.opciones.map(o => o.texto)).toContain('Aún no se paga (a crédito)');
   });
 
+  it('si el ticket o el comprobante es una devolución, pide la nota de crédito', () => {
+    const p = siguientePregunta(op({
+      sentido: SentidoDeOperacion.Entrada, factura: pendiente,
+      controlInterno: { ...ligada, analisis: { ajuste: 'devolucion' } },
+    }), null)!;
+    expect(p.titulo).toBe('Nota de crédito');
+    expect(p.texto).toContain('una devolución');
+    expect(p.nota).toContain('proveedor');
+    expect(p.opciones.at(-1)!.advertencia).toContain('art. 7 LIVA');
+  });
+
   it('todo contestado: no hay más preguntas; lo prometido se recuerda', () => {
     const lista = op({ transaccion: ligada, controlInterno: { estado: EstadoDePata.Pendiente, motivo: 'Lo subiré después' } });
     expect(siguientePregunta(lista, factura())).toBeNull();
