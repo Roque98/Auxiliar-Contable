@@ -78,6 +78,68 @@ public class OperacionesAppService : AuxiliarContableAppService, IOperacionesApp
         };
     }
 
+    public async Task<FacturaDeLaOperacionDto?> GetFacturaAsync(Guid organizacionId, Guid operacionId)
+    {
+        await _autorizador.ExigirAsync(organizacionId, AccionEnOrganizacion.Ver);
+        var o = await _operaciones.FindAsync(operacionId);
+        if (o == null || o.OrganizacionId != organizacionId)
+        {
+            throw new EntityNotFoundException(typeof(Operacion), operacionId);
+        }
+
+        if (o.FacturaDocumentoId is not { } docId || await _documentos.FindAsync(docId) is not { } d || d.OrganizacionId != organizacionId)
+        {
+            return null;
+        }
+
+        var c = DatosDelCfdi.Leer(await _almacen.LeerAsync(d));
+        return c == null
+            ? null
+            : new FacturaDeLaOperacionDto
+            {
+                Tipo = c.Tipo, Metodo = c.MetodoPago, Forma = c.FormaPago, Total = c.Total, Moneda = c.Moneda,
+                TipoRelacion = c.TipoRelacion, UuidRelacionado = c.UuidRelacionado,
+            };
+    }
+
+    public async Task<List<PorSubirDto>> GetPorSubirAsync(Guid organizacionId)
+    {
+        await _autorizador.ExigirAsync(organizacionId, AccionEnOrganizacion.Ver);
+        var lista = await AsyncExecuter.ToListAsync((await _operaciones.GetQueryableAsync())
+            .Where(o => o.OrganizacionId == organizacionId
+                        && ((o.FacturaEstado == EstadoDePata.Pendiente && o.FacturaMotivo != null)
+                            || (o.TransaccionEstado == EstadoDePata.Pendiente && o.TransaccionMotivo != null)
+                            || (o.ControlEstado == EstadoDePata.Pendiente && o.ControlMotivo != null)))
+            .OrderBy(o => o.Fecha)
+            .Take(200));
+        var hoy = Clock.Now.Date;
+        var r = new List<PorSubirDto>();
+        foreach (var o in lista)
+        {
+            void Agregar(PataDeOperacion pata, EstadoDePata estado, string? motivo)
+            {
+                // Lo que se amarra solo con el estado de cuenta no es algo que el cliente tenga que subir.
+                if (estado == EstadoDePata.Pendiente && !string.IsNullOrWhiteSpace(motivo) && !motivo.StartsWith(MotivoDelEstadoDeCuenta, StringComparison.Ordinal))
+                {
+                    r.Add(new PorSubirDto
+                    {
+                        OperacionId = o.Id, Fecha = o.Fecha, Descripcion = o.Descripcion, Importe = o.Importe, Pata = pata,
+                        Motivo = motivo, Dias = Math.Max(0, (int)(hoy - (o.LastModificationTime ?? o.CreationTime).Date).TotalDays),
+                    });
+                }
+            }
+
+            Agregar(PataDeOperacion.Factura, o.FacturaEstado, o.FacturaMotivo);
+            Agregar(PataDeOperacion.Transaccion, o.TransaccionEstado, o.TransaccionMotivo);
+            Agregar(PataDeOperacion.ControlInterno, o.ControlEstado, o.ControlMotivo);
+        }
+
+        return r;
+    }
+
+    /// <summary>El motivo con el que la guía deja una transacción para el amarre con el estado de cuenta.</summary>
+    public const string MotivoDelEstadoDeCuenta = "Se amarra con el estado de cuenta";
+
     public async Task<OperacionDelClienteDto> DeDocumentoAsync(Guid organizacionId, Guid documentoId)
     {
         await _autorizador.ExigirAsync(organizacionId, AccionEnOrganizacion.Subir);
@@ -315,6 +377,11 @@ public class OperacionesAppService : AuxiliarContableAppService, IOperacionesApp
             }
 
             o.DeclararQueNoHay(pata, p.Motivo);
+        }
+        else if (!string.IsNullOrWhiteSpace(p.Motivo))
+        {
+            // Pendiente con motivo: «lo subiré después».
+            o.Posponer(pata, p.Motivo);
         }
         else
         {

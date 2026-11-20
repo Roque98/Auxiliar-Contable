@@ -16,6 +16,7 @@ import {
   SentidoDeOperacion,
   datosDe,
 } from './operaciones.service';
+import { Accion, FacturaDeLaOperacion, Opcion, Pregunta, siguientePregunta } from './guia';
 
 type Pata = 'factura' | 'transaccion' | 'controlInterno';
 
@@ -41,6 +42,8 @@ export class PatasComponent {
   /** Otras operaciones del mes, para juntarla con una. */
   readonly otras = input<OperacionDto[]>([]);
   readonly puedeEditar = input(true);
+  /** La guía del trabajo diario (preguntas para completar las tres patas). En la conciliación mensual no se usa. */
+  readonly guiar = input(true);
   /** La operación como quedó (puede ser otra si se juntó), o null si se borró. */
   readonly cambio = output<OperacionDto | null>();
 
@@ -54,6 +57,22 @@ export class PatasComponent {
   readonly ocupado = signal(false);
   readonly error = signal<string | null>(null);
   readonly borrando = signal(false);
+
+  // La guía: lo que dice el XML de la factura, una pregunta de seguimiento elegida y una advertencia por confirmar.
+  readonly factura = signal<FacturaDeLaOperacion | null>(null);
+  private facturaDe: string | null = null;
+  readonly preguntaExtra = signal<Pregunta | null>(null);
+  readonly porConfirmar = signal<Opcion | null>(null);
+  private subidaPendiente: Extract<Accion, { tipo: 'subir' }> | null = null;
+  readonly aceptaSubida = signal('');
+
+  readonly pregunta = computed<Pregunta | null>(() => {
+    const o = this.o();
+    if (!o || !this.guiar() || !this.puedeEditar()) {
+      return null;
+    }
+    return this.preguntaExtra() ?? siguientePregunta(o, this.factura());
+  });
 
   // Lo que se va escribiendo.
   descripcion = '';
@@ -84,6 +103,17 @@ export class PatasComponent {
 
   private poner(o: OperacionDto): void {
     this.o.set(o);
+    this.preguntaExtra.set(null);
+    this.porConfirmar.set(null);
+    // El XML de la factura se lee una vez por documento (tipo, método y forma de pago).
+    const doc = o.factura.estado === EstadoDePata.Ligada ? o.factura.documentoId : null;
+    if (doc !== this.facturaDe) {
+      this.facturaDe = doc;
+      this.factura.set(null);
+      if (doc && this.guiar()) {
+        this.api.factura(this.organizacionId(), o.id).subscribe({ next: f => this.facturaDe === doc && this.factura.set(f), error: () => undefined });
+      }
+    }
     this.descripcion = o.descripcion;
     this.importe = o.importe;
     this.sentido = o.sentido;
@@ -186,6 +216,80 @@ export class PatasComponent {
         this.ocupado.set(false);
         this.borrando.set(false);
         this.error.set(mensajeDeError(e, 'No se pudo borrar.'));
+      },
+    });
+  }
+
+  /** Una opción de la guía: si trae advertencia, primero se enseña y se confirma. */
+  elegirOpcion(op: Opcion, entrada: HTMLInputElement): void {
+    if (op.advertencia && this.porConfirmar() !== op) {
+      this.porConfirmar.set(op);
+      return;
+    }
+    this.porConfirmar.set(null);
+    const a = op.accion;
+    switch (a.tipo) {
+      case 'preguntar':
+        this.preguntaExtra.set(a.pregunta);
+        return;
+      case 'guardar':
+        this.preguntaExtra.set(null);
+        this.guardar({ [a.pata]: { estado: a.respuesta.estado, motivo: a.respuesta.motivo ?? null, forma: a.respuesta.forma ?? null } });
+        return;
+      case 'subir':
+        this.subidaPendiente = a;
+        this.aceptaSubida.set(a.acepta);
+        // El input se abre con el clic del usuario (mismo gesto).
+        entrada.accept = a.acepta;
+        entrada.click();
+        return;
+    }
+  }
+
+  cancelarConfirmacion(): void {
+    this.porConfirmar.set(null);
+  }
+
+  volverAPreguntar(): void {
+    this.preguntaExtra.set(null);
+    this.porConfirmar.set(null);
+  }
+
+  /** Lo que se subió desde la guía: va a la bóveda (al mes de la operación) y se amarra a su pata. */
+  subirDeLaGuia(evento: Event): void {
+    const entrada = evento.target as HTMLInputElement;
+    const archivo = entrada.files?.[0];
+    entrada.value = '';
+    const a = this.subidaPendiente;
+    const o = this.o();
+    this.subidaPendiente = null;
+    if (!archivo || !a || !o) {
+      return;
+    }
+    const fecha = new Date(o.fecha);
+    this.ocupado.set(true);
+    this.error.set(null);
+    this.documentos.subir(this.organizacionId(), a.documento, archivo, fecha.getUTCFullYear(), fecha.getUTCMonth() + 1).subscribe({
+      next: r => {
+        this.ocupado.set(false);
+        const id = r.documento.id;
+        let pata: GuardarPataDto;
+        if (a.pata === 'factura') {
+          pata = { estado: EstadoDePata.Ligada, documentoId: id };
+        } else if (a.pata === 'transaccion' && a.documento === TipoDeDocumento.Cfdi) {
+          // El complemento de pago queda en la bóveda; el pago se amarra con el estado de cuenta.
+          pata = { estado: EstadoDePata.Pendiente, motivo: 'Se amarra con el estado de cuenta al conciliar (complemento de pago subido).' };
+        } else if (a.pata === 'transaccion') {
+          pata = { estado: EstadoDePata.Ligada, forma: FormaDeTransaccion.Banco, documentoId: id };
+        } else {
+          pata = { estado: EstadoDePata.Ligada, documentoId: id };
+        }
+        this.preguntaExtra.set(null);
+        this.guardar({ [a.pata]: pata });
+      },
+      error: e => {
+        this.ocupado.set(false);
+        this.error.set(mensajeDeError(e, 'No se pudo subir.'));
       },
     });
   }

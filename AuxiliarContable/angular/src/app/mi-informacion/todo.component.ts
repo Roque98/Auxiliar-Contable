@@ -5,7 +5,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { MESES } from '../documentos/documentos.service';
 import { mensajeDeError } from '../invitaciones/invitaciones.service';
 import { ClienteVisibleDto, PerfilFiscalService } from '../perfil-fiscal/perfil-fiscal.service';
-import { EstadoDePata, OperacionDto, OperacionesDelMesDto, OperacionesService, SentidoDeOperacion } from './operaciones.service';
+import { EstadoDePata, OperacionDto, OperacionesDelMesDto, OperacionesService, PorSubirDto, SentidoDeOperacion } from './operaciones.service';
 import { PatasComponent } from './patas.component';
 
 type Filtro = 'todas' | 'faltan' | 'completas';
@@ -32,6 +32,10 @@ export class TodoComponent implements OnInit {
   readonly Estado = EstadoDePata;
   readonly Sentido = SentidoDeOperacion;
   readonly anios = Array.from({ length: 4 }, (_, i) => new Date().getFullYear() - i);
+  readonly nombreDePata = ['Factura', 'Comprobante de la transacción', 'Ticket o control interno'];
+
+  /** Lo que el cliente dijo que subiría después (recordatorio arriba de la lista). */
+  readonly porSubir = signal<PorSubirDto[]>([]);
 
   readonly clientes = signal<ClienteVisibleDto[] | null>(null);
   readonly clienteId = signal<string | null>(null);
@@ -90,6 +94,7 @@ export class TodoComponent implements OnInit {
   elegir(id: string | null): void {
     this.clienteId.set(id);
     this.datos.set(null);
+    this.porSubir.set([]);
     this.router.navigate([], { queryParams: { cliente: id }, queryParamsHandling: 'merge', replaceUrl: true });
     this.cargar();
   }
@@ -99,6 +104,7 @@ export class TodoComponent implements OnInit {
     if (!id) {
       return;
     }
+    this.api.porSubir(id).subscribe({ next: l => this.clienteId() === id && this.porSubir.set(l), error: () => this.porSubir.set([]) });
     this.cargando.set(true);
     this.error.set(null);
     this.api.delMes(id, this.anio, this.mes).subscribe({
@@ -111,6 +117,15 @@ export class TodoComponent implements OnInit {
         this.cargando.set(false);
       },
     });
+  }
+
+  /** Del recordatorio: va al mes de la operación y la abre. */
+  irA(p: PorSubirDto): void {
+    const f = new Date(p.fecha);
+    this.anio = f.getUTCFullYear();
+    this.mes = f.getUTCMonth() + 1;
+    this.abierta.set(p.operacionId);
+    this.cargar();
   }
 
   abrir(o: OperacionDto): void {

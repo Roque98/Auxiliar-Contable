@@ -1,26 +1,11 @@
 import { RestService } from '@abp/ng.core';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
+import type { FacturaDeLaOperacion } from './guia';
 
-/** Igual que `EstadoDePata` en el backend. */
-export enum EstadoDePata {
-  Pendiente = 0,
-  Ligada = 1,
-  NoHay = 2,
-}
-
-/** Igual que `FormaDeTransaccion`. */
-export enum FormaDeTransaccion {
-  Banco = 0,
-  Efectivo = 1,
-  Credito = 2,
-}
-
-/** Igual que `SentidoDeOperacion`. */
-export enum SentidoDeOperacion {
-  Salida = 0,
-  Entrada = 1,
-}
+// Los enums viven en guia.ts (sin Angular, para las pruebas); iguales que en el backend.
+import { EstadoDePata, FormaDeTransaccion, SentidoDeOperacion } from './guia';
+export { EstadoDePata, FormaDeTransaccion, SentidoDeOperacion };
 
 export interface PataDto {
   estado: EstadoDePata;
@@ -81,6 +66,20 @@ export interface OperacionesDelMesDto {
   operaciones: OperacionDto[];
   puedeEditar: boolean;
   cerrado: boolean;
+}
+
+export type { FacturaDeLaOperacion };
+
+/** Lo que el cliente dijo que subiría después (`GetPorSubir`). */
+export interface PorSubirDto {
+  operacionId: string;
+  fecha: string;
+  descripcion: string;
+  importe: number | null;
+  /** 0 factura, 1 transacción, 2 control interno. */
+  pata: number;
+  motivo: string;
+  dias: number;
 }
 
 export interface GuardarPataDto {
@@ -148,6 +147,17 @@ export class OperacionesService {
 
   borrar(organizacionId: string, operacionId: string): Observable<void> {
     return this.rest.request<void, void>({ method: 'POST', url: `${this.base}/borrar`, params: { organizacionId, operacionId } }, this.opciones);
+  }
+
+  /** Lo que dice el XML de la factura de la operación (para la guía); null si no tiene XML. */
+  factura(organizacionId: string, operacionId: string): Observable<FacturaDeLaOperacion | null> {
+    return this.rest.request<void, FacturaDeLaOperacion | null>(
+      { method: 'GET', url: `${this.base}/factura`, params: { organizacionId, operacionId } }, this.opciones);
+  }
+
+  /** Lo que el cliente dijo que subiría después, para recordárselo. */
+  porSubir(organizacionId: string): Observable<PorSubirDto[]> {
+    return this.rest.request<void, PorSubirDto[]>({ method: 'GET', url: `${this.base}/por-subir/${organizacionId}` }, this.opciones);
   }
 }
 
