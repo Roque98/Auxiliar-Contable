@@ -65,9 +65,15 @@ public class LecturaDelMotorTests
                          "razones": [{"clave": "razon_circulante", "nombre": "Razón circulante", "valor": 69.75,
                                       "unidad": "veces", "lectura": "..."}]},
              "movimientos": [{"cuenta": "102.01", "fecha": "2026-10-05", "poliza": "I-2026-10-0001", "tipo": "Ingresos",
-                              "concepto": "Venta", "texto": "", "debe": 5800.0, "haber": 0.0, "uuid": null, "rfc": "CLI010101AA1"}]}
+                              "concepto": "Venta", "texto": "", "debe": 5800.0, "haber": 0.0, "uuid": null, "rfc": "CLI010101AA1",
+                              "agrupador": "102.01", "mayores": ["1100"]}],
+             "catalogo_cliente": {"fuente": "catalogo.xml", "cuentas": 40,
+                                  "equivalencias": [{"agrupador": "102.01", "cuenta": "1100-001", "nombre": "Bancos", "estado": "existente", "nota": ""}],
+                                  "nuevas": [{"cuenta": "2080-001", "nombre": "IVA trasladado cobrado", "agrupador": "208.01", "padre": "2080", "motivo": "x"}]}}
             """;
         var e = await Motor(json).ContabilidadElectronicaAsync("AAA010101AAA", 2026, 10, null, []);
+        var cc = e.CatalogoCliente.ShouldNotBeNull();
+        (cc.Fuente, cc.Cuentas, cc.Equivalencias.Single().Cuenta, cc.Nuevas.Single().Agrupador).ShouldBe(("catalogo.xml", 40, "1100-001", "208.01"));
         e.Balanza.ShouldHaveSingleItem().SaldoFinal.ShouldBe(3);
         var ef = e.Estados.ShouldNotBeNull();
         (ef.Desde, ef.Preliminar, ef.Cuadre).ShouldBe(("2026-01", true, 0m));
@@ -76,6 +82,7 @@ public class LecturaDelMotorTests
         ef.Razones.ShouldHaveSingleItem().Valor.ShouldBe(69.75m);
         var m = e.Movimientos.ShouldHaveSingleItem();
         (m.Poliza, m.Debe, m.Rfc).ShouldBe(("I-2026-10-0001", 5800m, "CLI010101AA1"));
+        (m.Agrupador, m.Mayores.Single()).ShouldBe(("102.01", "1100"));
     }
 
     [Fact]

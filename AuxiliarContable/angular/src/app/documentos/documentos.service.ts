@@ -158,6 +158,8 @@ export const NOMBRES_DE_TIPO: Record<TipoDeDocumento, string> = {
   [TipoDeDocumento.ComprobanteDePago]: 'Comprobante de pago',
   [TipoDeDocumento.ControlInterno]: 'Control interno',
   [TipoDeDocumento.Nomina]: 'Nómina',
+  [TipoDeDocumento.CatalogoDeCuentas]: 'Catálogo de cuentas',
+  [TipoDeDocumento.BalanzaDeComprobacion]: 'Balanza de comprobación',
 };
 
 export const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];

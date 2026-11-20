@@ -110,6 +110,13 @@ export interface SaldosDeAperturaDto {
   saldos: SaldoDeAperturaDto[];
 }
 
+export interface CatalogoDelClienteDto {
+  fuente: string;
+  cuentas: number;
+  equivalencias: { agrupador: string; cuenta: string; nombre: string; estado: string; nota: string }[];
+  nuevas: { cuenta: string; nombre: string; agrupador: string; padre: string; motivo: string }[];
+}
+
 export interface ContabilidadElectronicaDto {
   anio: number;
   mes: number;
@@ -122,6 +129,8 @@ export interface ContabilidadElectronicaDto {
     estados?: EstadosFinancierosDto | null;
     /** Cargos y abonos del mes por cuenta: el auxiliar de cada una. */
     movimientos?: MovimientoDeAuxiliarDto[];
+    /** Con el catálogo propio del cliente: equivalencias y cuentas que le faltan. Null con el código agrupador. */
+    catalogoCliente?: CatalogoDelClienteDto | null;
   };
 }
 

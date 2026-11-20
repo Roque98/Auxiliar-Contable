@@ -41,6 +41,15 @@ public enum TipoDeDocumento
 
     /// <summary>Información de nómina que trae el auxiliar: lista de raya, incidencias, SUA, cédulas del IMSS.</summary>
     Nomina = 7,
+
+    /// <summary>
+    /// Catálogo de cuentas propio del cliente (XML del Anexo 24 de la RMF). El más reciente es el que se usa para presentar
+    /// la balanza, el auxiliar y la contabilidad electrónica con sus números de cuenta.
+    /// </summary>
+    CatalogoDeCuentas = 8,
+
+    /// <summary>Balanza de comprobación con la que llega el cliente (XML del Anexo 24): respaldo de sus saldos de apertura.</summary>
+    BalanzaDeComprobacion = 9,
 }
 
 /// <summary>En qué punto del proceso está.</summary>

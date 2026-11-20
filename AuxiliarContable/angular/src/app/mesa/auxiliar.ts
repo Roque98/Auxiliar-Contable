@@ -1,6 +1,10 @@
 /** Un cargo o abono del mes en una cuenta, como lo manda el motor (los mismos que suman en la balanza). */
 export interface MovimientoDeAuxiliarDto {
   cuenta: string;
+  /** Código agrupador del SAT (igual a `cuenta` si no hay catálogo del cliente). */
+  agrupador?: string | null;
+  /** Cuentas de mayor de las que es subcuenta (con el catálogo del cliente, que no siempre numera con puntos). */
+  mayores?: string[];
   fecha: string;
   poliza: string;
   tipo: string;
@@ -17,6 +21,8 @@ export interface RenglonDeBalanzaDto {
   nombre: string;
   nivel: number;
   naturaleza: string;
+  /** Código agrupador del SAT (igual a `cuenta` si no hay catálogo del cliente). */
+  agrupador?: string | null;
   saldoInicial: number;
   debe: number;
   haber: number;
@@ -44,7 +50,7 @@ export function auxiliarDe(cuenta: RenglonDeBalanzaDto, movimientos: MovimientoD
   let cargos = 0;
   let abonos = 0;
   const renglones = movimientos
-    .filter(m => m.cuenta === cuenta.cuenta || m.cuenta.startsWith(cuenta.cuenta + '.'))
+    .filter(m => m.cuenta === cuenta.cuenta || (m.mayores?.length ? m.mayores.includes(cuenta.cuenta) : m.cuenta.startsWith(cuenta.cuenta + '.')))
     .map(m => {
       cargos += m.debe;
       abonos += m.haber;

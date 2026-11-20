@@ -88,15 +88,22 @@ public class BovedaAppService : AuxiliarContableAppService, IBovedaAppService
             throw new UserFriendlyException("De una factura se sube el XML: el PDF es solo su representación impresa.");
         }
 
-        // Un XML es una factura aunque la persona haya elegido otro tipo; lo demás nunca es XML.
-        var tipoReal = esXml ? TipoDeDocumento.Cfdi : tipo;
+        // El catálogo de cuentas y la balanza de comprobación son XML de la contabilidad electrónica, no facturas.
+        var contabilidadElectronica = tipo is TipoDeDocumento.CatalogoDeCuentas or TipoDeDocumento.BalanzaDeComprobacion;
+        if (contabilidadElectronica && !esXml)
+        {
+            throw new UserFriendlyException("Del catálogo de cuentas y de la balanza se sube el XML de la contabilidad electrónica (Anexo 24).");
+        }
+
+        // Un XML es una factura aunque la persona haya elegido otro tipo (salvo esos dos); lo demás nunca es XML.
+        var tipoReal = esXml && !contabilidadElectronica ? TipoDeDocumento.Cfdi : tipo;
 
         // Una factura va al mes de su XML, diga lo que diga quien la sube: es lo que vale ante el SAT.
-        var diaDeLaFactura = esXml ? FechaDelCfdi.Leer(bytes) : null;
+        var diaDeLaFactura = tipoReal == TipoDeDocumento.Cfdi ? FechaDelCfdi.Leer(bytes) : null;
         var fecha = diaDeLaFactura is { } dia ? FechaDelCfdi.ComoFecha(dia) : delMes;
         await _periodos.ExigirAbiertoAsync(organizacionId, fecha ?? Clock.Now);
         var (documento, duplicado) = await _gestor.RecibirAsync(organizacionId, tipoReal, nombre, bytes,
-            mime => tipoReal == TipoDeDocumento.Cfdi ? mime == DetectorDeDocumento.Xml : mime != DetectorDeDocumento.Xml,
+            mime => tipoReal == TipoDeDocumento.Cfdi || contabilidadElectronica ? mime == DetectorDeDocumento.Xml : mime != DetectorDeDocumento.Xml,
             fecha);
 
         // Un estado de cuenta sin mes: lo pone en su mes el motor, leyendo su periodo.
@@ -110,7 +117,7 @@ public class BovedaAppService : AuxiliarContableAppService, IBovedaAppService
         {
             Documento = Describir(documento),
             EsDuplicado = duplicado,
-            Aviso = esXml && diaDeLaFactura == null && !duplicado
+            Aviso = tipoReal == TipoDeDocumento.Cfdi && diaDeLaFactura == null && !duplicado
                 ? "No trae la fecha de una factura (¿es un CFDI?): quedó en el mes que elegiste."
                 : porFechar
                     ? "Se está leyendo de qué periodo es: en un momento se acomoda solo en su mes."
