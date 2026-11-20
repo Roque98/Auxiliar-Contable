@@ -122,6 +122,12 @@ public class NominaIntegrationTests : ConJerarquiaTestBase
         recibos.Recibos.ShouldHaveSingleItem().Faltan.ShouldContain("CURP");
         var cuotas = await ComoAsync(Administrador, () => _nomina.CuotasDelMesAsync(_cliente, 2026, 3));
         (cuotas.Periodos, cuotas.SinCalcular, cuotas.Cuotas.TotalMensual).ShouldBe((1, 0, 100m));
+
+        // La nómina calculada entra a la contabilidad del mes: su provisión y los netos para reconocer los pagos del banco.
+        await WithUnitOfWorkAsync(() => GetRequiredService<AuxiliarContable.Contabilidad.Contabilizador>().ContabilizarAsync(_cliente, 2026, 3, null, false));
+        var enLaContabilidad = _motor.NominaContabilizada.ShouldNotBeNull().ShouldHaveSingleItem();
+        enLaContabilidad.Fin.ShouldStartWith("2026-03");
+        enLaContabilidad.Trabajadores.ShouldHaveSingleItem().Neto.ShouldBeGreaterThan(0);
         await Should.ThrowAsync<AbpAuthorizationException>(() => ComoAsync(Usuario, () => _nomina.RecibosAsync(_cliente, p.Id)));
 
         // SUA del mes: el trabajador activo con su crédito, y las faltas e incapacidades del periodo con su folio.

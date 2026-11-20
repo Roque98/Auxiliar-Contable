@@ -173,12 +173,12 @@ public class MotorFiscalHttp : IMotorFiscal, ITransientDependency
 
     public async Task<ResultadoContable> ContabilizarAsync(
         PerfilParaContabilizar perfil, IReadOnlyList<OperacionParaContabilizar> operaciones, IReadOnlyList<ArchivoParaElMotor> facturas,
-        string periodo, DatosDeCierre? cierre, CancellationToken cancellationToken = default)
+        string periodo, DatosDeCierre? cierre, IReadOnlyList<NominaParaContabilizar>? nomina = null, CancellationToken cancellationToken = default)
     {
         using var tope = CancelationConTope(_opciones.TimeoutDeBancosSegundos, cancellationToken);
         var peticion = new HttpRequestMessage(HttpMethod.Post, "contabilidad/polizas")
         {
-            Content = JsonContent.Create(new { perfil, operaciones, cfdis = facturas.Select(Base64), periodo, cierre }, options: Json),
+            Content = JsonContent.Create(new { perfil, operaciones, cfdis = facturas.Select(Base64), periodo, cierre, nomina = nomina ?? [] }, options: Json),
         };
         return await EnviarAsync<ResultadoContable>(peticion, tope.Token, cancellationToken);
     }

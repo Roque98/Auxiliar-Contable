@@ -68,7 +68,7 @@ public interface IMotorFiscal
     /// <summary>Las operaciones del mes y sus XML -> revisión de errores, pólizas, balanza y pendientes de cierre.</summary>
     Task<ResultadoContable> ContabilizarAsync(
         PerfilParaContabilizar perfil, IReadOnlyList<OperacionParaContabilizar> operaciones, IReadOnlyList<ArchivoParaElMotor> facturas,
-        string periodo, DatosDeCierre? cierre, CancellationToken cancellationToken = default);
+        string periodo, DatosDeCierre? cierre, IReadOnlyList<NominaParaContabilizar>? nomina = null, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Saldos de apertura + pólizas de cada mes -> balanza acumulada del mes y XML del SAT (catálogo, balanza, pólizas). Con
@@ -270,7 +270,7 @@ public class MotorFiscalSinConfigurar : IMotorFiscal, ISingletonDependency
 
     public Task<ResultadoContable> ContabilizarAsync(
         PerfilParaContabilizar perfil, IReadOnlyList<OperacionParaContabilizar> operaciones, IReadOnlyList<ArchivoParaElMotor> facturas,
-        string periodo, DatosDeCierre? cierre, CancellationToken cancellationToken = default) =>
+        string periodo, DatosDeCierre? cierre, IReadOnlyList<NominaParaContabilizar>? nomina = null, CancellationToken cancellationToken = default) =>
         throw new MotorFiscalNoDisponibleException("No hay motor fiscal en este proceso.");
 
     public Task<ContabilidadElectronica> ContabilidadElectronicaAsync(

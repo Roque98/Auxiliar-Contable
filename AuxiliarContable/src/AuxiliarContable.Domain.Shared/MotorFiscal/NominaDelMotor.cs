@@ -371,3 +371,26 @@ public class ArchivoDeSua
     public string Nombre { get; set; } = "";
     public int Renglones { get; set; }
 }
+
+/// <summary>
+/// Un periodo de nómina ya calculado que termina en el mes que se contabiliza: su póliza (provisión) entra al mes y sus
+/// netos sirven para reconocer los pagos del banco y los CFDI de nómina (motor /contabilidad/polizas, «nomina»).
+/// </summary>
+public class NominaParaContabilizar
+{
+    /// <summary>«2026-10-01 al 2026-10-15».</summary>
+    public string Periodo { get; set; } = "";
+
+    /// <summary>AAAA-MM-DD.</summary>
+    public string Fin { get; set; } = "";
+
+    public List<MovimientoDePoliza> Poliza { get; set; } = [];
+    public List<NetoDeTrabajador> Trabajadores { get; set; } = [];
+}
+
+public class NetoDeTrabajador
+{
+    public string? Nombre { get; set; }
+    public string? Rfc { get; set; }
+    public decimal Neto { get; set; }
+}
