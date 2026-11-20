@@ -9,7 +9,8 @@ import { TipoDeDocumento } from '../documentos/tipos';
 import { mensajeDeError } from '../invitaciones/invitaciones.service';
 import { MesaService, SaldosDeAperturaDto } from '../mesa/mesa.service';
 import { ClienteVisibleDto, PerfilFiscalService } from '../perfil-fiscal/perfil-fiscal.service';
-import { Apertura, CuentaDelCatalogo, aApertura, leerBalanzaCsv, leerBalanzaXml, leerCatalogo, mesSiguiente } from './balanza';
+import { Apertura, CuentaDelCatalogo, aApertura, catalogoAXml, leerBalanzaTabla, leerBalanzaXml, leerCatalogo, leerCatalogoTabla, mesSiguiente, partirCsv } from './balanza';
+import { ES_EXCEL, filasDeExcel } from './excel';
 
 type Zona = 'facturas' | 'estados' | 'control' | 'nomina';
 
@@ -102,7 +103,7 @@ export class ConciliacionMensualComponent implements OnInit {
   /** El catálogo propio que ya está en la bóveda del cliente: es el que usa la contabilidad electrónica. */
   readonly catalogoGuardado = signal<{ nombre: string; fecha: string } | null>(null);
   balanzaOpcion: 'existente' | 'subir' | 'ceros' | null = null;
-  readonly balanzaArchivo = signal<{ nombre: string; texto: string; esXml: boolean } | null>(null);
+  readonly balanzaArchivo = signal<{ nombre: string; texto: string; esXml: boolean; filas?: string[][] } | null>(null);
   /** Mes al que corresponde la balanza (sus saldos finales); el XML lo trae, en CSV se elige. */
   balanzaAnio = this.anio;
   balanzaMes = this.mes === 1 ? 12 : this.mes - 1;
@@ -126,7 +127,7 @@ export class ConciliacionMensualComponent implements OnInit {
       return null;
     }
     try {
-      const leida = b.esXml ? leerBalanzaXml(b.texto) : leerBalanzaCsv(b.texto);
+      const leida = b.esXml ? leerBalanzaXml(b.texto) : leerBalanzaTabla(b.filas ?? partirCsv(b.texto));
       if (!leida.renglones.length) {
         return { error: 'No encontré cuentas en el archivo de la balanza.' };
       }
@@ -310,18 +311,36 @@ export class ConciliacionMensualComponent implements OnInit {
 
   async elegirCatalogo(evento: Event): Promise<void> {
     const entrada = evento.target as HTMLInputElement;
-    const archivo = entrada.files?.[0];
+    let archivo = entrada.files?.[0];
     entrada.value = '';
     if (!archivo) {
       return;
     }
     this.error.set(null);
-    const cuentas = leerCatalogo(await archivo.text());
+    const esXml = /\.xml$/i.test(archivo.name) || archivo.type.includes('xml');
+    let cuentas: CuentaDelCatalogo[] = [];
+    try {
+      cuentas = esXml
+        ? leerCatalogo(await archivo.text())
+        : leerCatalogoTabla(ES_EXCEL(archivo.name) ? await filasDeExcel(await archivo.arrayBuffer()) : partirCsv(await archivo.text()));
+    } catch {
+      cuentas = [];
+    }
     if (!cuentas.length) {
       this.catalogo.set(null);
       this.catalogoNombre.set(null);
-      this.error.set('Ese archivo no parece el catálogo de cuentas del SAT (XML con nodos «Ctas»).');
+      this.error.set(esXml
+        ? 'Ese archivo no parece el catálogo de cuentas del SAT (XML con nodos «Ctas»).'
+        : 'No encontré el catálogo en ese archivo: necesita columnas «cuenta» y «nombre» (y de preferencia «código agrupador»).');
     } else {
+      if (!esXml) {
+        // Del Excel o CSV se guarda su equivalente en XML del Anexo 24: la bóveda y el motor lo leen igual que el del SAT.
+        const base = archivo.name.replace(/\.[^.]+$/, '');
+        archivo = new File([catalogoAXml(cuentas, '', this.anio, this.mes)], `${base}.xml`, { type: 'application/xml' });
+        if (!cuentas.some(x => x.codAgrup)) {
+          this.error.set('El catálogo no trae código agrupador: las cuentas se relacionarán por nombre y conviene revisar las equivalencias en la mesa.');
+        }
+      }
       this.catalogo.set(cuentas);
       this.catalogoNombre.set(archivo.name);
       // Queda en la bóveda: el más reciente es el que usan la balanza, el auxiliar y la contabilidad electrónica.
@@ -343,13 +362,18 @@ export class ConciliacionMensualComponent implements OnInit {
     if (!archivo) {
       return;
     }
-    if (/\.xlsx?$/i.test(archivo.name)) {
-      this.error.set('Guarda la balanza de Excel como CSV (Archivo → Guardar como → CSV) o sube el XML del SAT.');
-      return;
-    }
     this.error.set(null);
     const esXml = /\.xml$/i.test(archivo.name) || archivo.type.includes('xml');
-    this.balanzaArchivo.set({ nombre: archivo.name, texto: await archivo.text(), esXml });
+    if (ES_EXCEL(archivo.name)) {
+      try {
+        this.balanzaArchivo.set({ nombre: archivo.name, texto: '', esXml: false, filas: await filasDeExcel(await archivo.arrayBuffer()) });
+      } catch {
+        this.balanzaArchivo.set(null);
+        this.error.set('No pude abrir ese Excel. Revisa que no tenga contraseña o guárdalo como CSV.');
+      }
+    } else {
+      this.balanzaArchivo.set({ nombre: archivo.name, texto: await archivo.text(), esXml });
+    }
     // El XML queda en la bóveda como respaldo de los saldos (un CSV no se guarda: la bóveda solo admite PDF, XML e imágenes).
     const id = this.clienteId();
     if (id && esXml) {

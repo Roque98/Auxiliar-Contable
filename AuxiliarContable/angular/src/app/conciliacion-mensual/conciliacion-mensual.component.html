@@ -89,14 +89,14 @@
         @if (catalogoGuardado(); as g) {
           <span>Con el catálogo propio del cliente <small>(ya está cargado: {{ g.nombre }}, subido el {{ g.fecha | date: 'd/M/yyyy' }}; súbelo otra vez solo si cambió)</small></span>
         } @else {
-          <span>Subiré el catálogo más reciente del cliente <small>(XML del SAT, el de la contabilidad electrónica)</small></span>
+          <span>Subiré el catálogo más reciente del cliente <small>(XML de la contabilidad electrónica, o Excel/CSV de su sistema)</small></span>
         }
       </label>
       @if (catalogoOpcion === 'propio') {
         <div class="cm-archivo">
           <label class="btn btn-outline-primary cm-boton">
-            <i class="bi bi-paperclip" aria-hidden="true"></i> {{ catalogoGuardado() ? 'Cambiar catálogo (XML)' : 'Elegir catálogo (XML)' }}
-            <input type="file" accept=".xml,application/xml,text/xml" (change)="elegirCatalogo($event)" hidden />
+            <i class="bi bi-paperclip" aria-hidden="true"></i> {{ catalogoGuardado() ? 'Cambiar catálogo' : 'Elegir catálogo (XML, Excel o CSV)' }}
+            <input type="file" accept=".xml,.xlsx,.xls,.csv,application/xml,text/xml,text/csv" (change)="elegirCatalogo($event)" hidden />
           </label>
           @if (catalogo(); as c) {
             <span class="cm-ok"><i class="bi bi-check2" aria-hidden="true"></i> {{ catalogoNombre() }}: {{ c.length }} cuentas</span>
@@ -118,7 +118,7 @@
       }
       <label class="cm-opcion">
         <input type="radio" name="balanza" value="subir" [(ngModel)]="balanzaOpcion" (ngModelChange)="cambio()" />
-        <span>Subiré una balanza de comprobación <small>(XML del SAT o CSV de Excel con cuenta, deudor y acreedor)</small></span>
+        <span>Subiré una balanza de comprobación <small>(XML del SAT, Excel o CSV con cuenta, deudor y acreedor)</small></span>
       </label>
       <label class="cm-opcion">
         <input type="radio" name="balanza" value="ceros" [(ngModel)]="balanzaOpcion" (ngModelChange)="cambio()" />

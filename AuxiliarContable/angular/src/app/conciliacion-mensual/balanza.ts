@@ -1,5 +1,5 @@
 // Catálogo de cuentas y balanza de comprobación que trae el auxiliar (XML de la contabilidad electrónica del SAT o
-// CSV) -> saldos de apertura por código agrupador, que es lo que guarda la mesa (GuardarApertura). Puro: sin Angular.
+// Excel o CSV) -> saldos de apertura por código agrupador, que es lo que guarda la mesa (GuardarApertura). Puro: sin Angular.
 
 export interface CuentaDelCatalogo {
   numCta: string;
@@ -84,40 +84,62 @@ export function leerBalanzaXml(xml: string): BalanzaLeida {
   };
 }
 
-/**
- * Balanza en CSV (de Excel): una columna de cuenta y, o bien «deudor» y «acreedor», o bien «saldo final». Separador
- * coma, punto y coma o tabulador; el encabezado decide las columnas.
- */
-export function leerBalanzaCsv(texto: string): BalanzaLeida {
-  const lineas = texto.replace(/^﻿/, '').split(/\r?\n/).filter(l => l.trim());
+/** Texto CSV (coma, punto y coma o tabulador, según el primer renglón) -> filas de celdas. */
+export function partirCsv(texto: string): string[][] {
+  const lineas = texto.replace(/^\uFEFF/, '').split(/\r?\n/).filter(l => l.trim());
   if (!lineas.length) {
-    return { anio: null, mes: null, renglones: [] };
+    return [];
   }
   const sep = [';', '\t', ','].find(s => lineas[0].includes(s)) ?? ',';
-  const partir = (l: string) => l.split(sep).map(c => c.trim().replace(/^"|"$/g, ''));
-  const enc = partir(lineas[0]).map(c => c.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''));
-  // Por prioridad: «saldo final» gana a un «saldo» suelto (y nunca toma «saldo inicial»).
+  return lineas.map(l => l.split(sep).map(c => c.trim().replace(/^"|"$/g, '')));
+}
+
+const sinAcentos = (c: string) => String(c ?? '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+
+/** Busca el encabezado en los primeros renglones (los reportes de Excel traen título, RFC y fecha arriba). */
+function encabezado(filas: string[][], ...exige: ((c: string) => boolean)[]): { i: number; enc: string[] } | null {
+  for (let i = 0; i < Math.min(filas.length, 30); i++) {
+    const enc = filas[i].map(sinAcentos);
+    if (exige.every(f => enc.some(f))) {
+      return { i, enc };
+    }
+  }
+  return null;
+}
+
+const esCuenta = (c: string) => /^(cuenta|no\.? ?(de )?cuenta|num ?cta|numcta|numero|codigo)\b/.test(c) && !/agrup|sat|padre/.test(c);
+
+/**
+ * Balanza en CSV o Excel: una columna de cuenta y, o bien «deudor» y «acreedor» (los del saldo final), o bien «saldo
+ * final». El encabezado decide las columnas; renglones sin número de cuenta (títulos, totales) se saltan.
+ */
+export function leerBalanzaTabla(filas: string[][]): BalanzaLeida {
+  const h = encabezado(filas, esCuenta, c => /deudor|acreedor|saldo/.test(c));
+  if (!h) {
+    throw new Error('La balanza necesita una columna «cuenta» y «deudor» y «acreedor» (o «saldo final»).');
+  }
+  const { enc } = h;
+  // Por prioridad: «saldo final» gana a un «saldo» suelto (y nunca toma lo inicial).
   const col = (...nombres: string[]) => {
     for (const n of nombres) {
-      const i = enc.findIndex(c => c.includes(n) && !c.includes('inicial'));
+      const i = enc.findIndex(c => c.includes(n) && !c.includes('inicial') && !c.includes('anterior'));
       if (i >= 0) {
         return i;
       }
     }
     return -1;
   };
-  const iCuenta = col('cuenta', 'numcta', 'codigo');
-  const iDeudor = col('deudor');
-  const iAcreedor = col('acreedor');
+  const iCuenta = enc.findIndex(esCuenta);
+  const iDeudor = col('final deudor', 'deudor final', 'deudor');
+  const iAcreedor = col('final acreedor', 'acreedor final', 'acreedor');
   const iFinal = col('saldo final', 'saldofin', 'saldo');
-  if (iCuenta < 0 || (iFinal < 0 && (iDeudor < 0 || iAcreedor < 0))) {
-    throw new Error('El CSV necesita una columna «cuenta» y «deudor» y «acreedor» (o «saldo final»).');
+  if (iFinal < 0 && (iDeudor < 0 || iAcreedor < 0)) {
+    throw new Error('La balanza necesita una columna «cuenta» y «deudor» y «acreedor» (o «saldo final»).');
   }
   const renglones: RenglonDeBalanza[] = [];
-  for (const l of lineas.slice(1)) {
-    const c = partir(l);
-    const numCta = (c[iCuenta] ?? '').trim();
-    if (!numCta) {
+  for (const c of filas.slice(h.i + 1)) {
+    const numCta = String(c[iCuenta] ?? '').trim();
+    if (!/\d/.test(numCta)) {
       continue;
     }
     if (iDeudor >= 0 && iAcreedor >= 0) {
@@ -129,6 +151,75 @@ export function leerBalanzaCsv(texto: string): BalanzaLeida {
     }
   }
   return { anio: null, mes: null, renglones };
+}
+
+export function leerBalanzaCsv(texto: string): BalanzaLeida {
+  return leerBalanzaTabla(partirCsv(texto));
+}
+
+/**
+ * Catálogo de cuentas en Excel o CSV (exportación de CONTPAQi, Aspel COI…): cuenta y nombre; si los trae, código
+ * agrupador, naturaleza y cuenta padre. Sin columna de padre, se deduce por prefijo del número.
+ */
+export function leerCatalogoTabla(filas: string[][]): CuentaDelCatalogo[] {
+  const h = encabezado(filas, esCuenta, c => /^(nombre|descrip)/.test(c));
+  if (!h) {
+    return [];
+  }
+  const { enc } = h;
+  const iCuenta = enc.findIndex(esCuenta);
+  const iNombre = enc.findIndex(c => /^(nombre|descrip)/.test(c));
+  const iAgrup = enc.findIndex(c => /agrupador|cod\.? ?agrup|codigo sat/.test(c));
+  const iNatur = enc.findIndex(c => /^natur/.test(c));
+  const iPadre = enc.findIndex(c => /padre|subcuenta de|subctade/.test(c));
+  const cuentas: CuentaDelCatalogo[] = [];
+  for (const c of filas.slice(h.i + 1)) {
+    const numCta = String(c[iCuenta] ?? '').trim();
+    if (!/\d/.test(numCta)) {
+      continue;
+    }
+    const ag = iAgrup >= 0 ? String(c[iAgrup] ?? '').trim() : '';
+    const na = iNatur >= 0 ? sinAcentos(c[iNatur])[0] : '';
+    cuentas.push({
+      numCta,
+      codAgrup: /^\d{3}(\.\d{2,3})?$/.test(ag) ? ag : '',
+      descripcion: String(c[iNombre] ?? '').trim(),
+      subCtaDe: iPadre >= 0 ? String(c[iPadre] ?? '').trim() || null : null,
+      natur: na === 'd' ? 'D' : na === 'a' ? 'A' : null,
+    });
+  }
+  if (iPadre < 0) {
+    const nums = cuentas.map(x => x.numCta).sort((a, b) => b.length - a.length);
+    for (const x of cuentas) {
+      x.subCtaDe = nums.find(n => n !== x.numCta && n.length < x.numCta.length && x.numCta.startsWith(n)) ?? null;
+    }
+  }
+  return cuentas;
+}
+
+const escapar = (t: string) => t.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+/** El catálogo como XML del Anexo 24, para guardarlo en la bóveda y que el motor lo lea igual que el del SAT. */
+export function catalogoAXml(cuentas: CuentaDelCatalogo[], rfc = '', anio = new Date().getFullYear(), mes = new Date().getMonth() + 1): string {
+  const nivel = (c: CuentaDelCatalogo): number => {
+    let n = 1;
+    let p = c.subCtaDe;
+    const vistos = new Set<string>();
+    while (p && !vistos.has(p)) {
+      vistos.add(p);
+      n++;
+      p = cuentas.find(x => x.numCta === p)?.subCtaDe ?? null;
+    }
+    return n;
+  };
+  const ctas = cuentas.map(c =>
+    `<catalogocuentas:Ctas CodAgrup="${escapar(c.codAgrup)}" NumCta="${escapar(c.numCta)}" Desc="${escapar(c.descripcion)}"`
+    + (c.subCtaDe ? ` SubCtaDe="${escapar(c.subCtaDe)}"` : '')
+    + ` Nivel="${nivel(c)}" Natur="${c.natur ?? (c.codAgrup ? naturalezaDelCodigo(c.codAgrup) : 'D')}"/>`);
+  return '<?xml version="1.0" encoding="UTF-8"?>\n'
+    + '<catalogocuentas:Catalogo xmlns:catalogocuentas="http://www.sat.gob.mx/esquemas/ContabilidadE/1_3/CatalogoCuentas" '
+    + `Version="1.3" RFC="${escapar(rfc)}" Mes="${String(mes).padStart(2, '0')}" Anio="${anio}">\n`
+    + ctas.join('\n') + '\n</catalogocuentas:Catalogo>\n';
 }
 
 // Naturaleza por código agrupador (Anexo 24): por grupo (1, 5, 6, 7, 8 deudoras; 2, 3, 4 acreedoras) salvo estas,
