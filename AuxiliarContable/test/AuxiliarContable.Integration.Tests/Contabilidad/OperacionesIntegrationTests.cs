@@ -170,10 +170,11 @@ public class OperacionesIntegrationTests : ConJerarquiaTestBase
         var estado = await SubirAsync(_cliente, "banorte.pdf", TipoDeDocumento.EstadoDeCuenta, "%PDF-1.4 estado");
         await Should.ThrowAsync<UserFriendlyException>(() => ComoAsync(Usuario, () => _operaciones.DeDocumentoAsync(_cliente, estado)));
     }
+
     [Fact]
     public async Task La_guia_lee_la_forma_de_pago_y_recuerda_lo_que_se_subira_despues()
     {
-        const uuid = "7A9619FF-8B86-D011-B42D-00C04FC964AA";
+        const string uuid = "7A9619FF-8B86-D011-B42D-00C04FC964AA";
         var contenido = Xml(uuid)
             .Replace("TipoDeComprobante=\"I\"", "TipoDeComprobante=\"I\" MetodoPago=\"PPD\" FormaPago=\"99\" Moneda=\"MXN\"")
             .Replace("<cfdi:Emisor", "<cfdi:CfdiRelacionados TipoRelacion=\"04\"><cfdi:CfdiRelacionado UUID=\"" + Uuid.ToLowerInvariant() + "\"/></cfdi:CfdiRelacionados><cfdi:Emisor");
