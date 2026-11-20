@@ -26,6 +26,12 @@ public class AnalisisDeDocumento
     /// <summary>salida, entrada, desconocido.</summary>
     public string Sentido { get; set; } = "";
 
+    /// <summary>
+    /// ninguno, devolucion, descuento o bonificacion: si el documento ajusta una compra o venta anterior. Null en lo leído
+    /// antes de que el motor lo preguntara. Viaja con la operación al motor, que contabiliza el ajuste.
+    /// </summary>
+    public string? Ajuste { get; set; }
+
     public List<ConceptoAnalizado> Conceptos { get; set; } = [];
     public string QueEs { get; set; } = "";
 

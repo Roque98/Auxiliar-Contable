@@ -145,7 +145,8 @@
       @if (op.controlInterno.analisis; as an) {
         <div class="pt-claude">
           <p><i class="bi bi-stars" aria-hidden="true"></i> <strong>{{ an.queEs }}</strong>
-            · {{ categorias[an.relacionConGiro] ?? an.relacionConGiro }} <small>(confianza {{ an.confianza }})</small></p>
+            · {{ categorias[an.relacionConGiro] ?? an.relacionConGiro }} <small>(confianza {{ an.confianza }})</small>
+            @if (an.ajuste) { <span class="badge text-bg-warning">{{ an.ajuste === 'devolucion' ? 'Devolución' : an.ajuste === 'descuento' ? 'Descuento' : 'Bonificación' }}</span> }</p>
           <p>{{ an.explicacion }}</p>
           @if (an.quePrueba) { <p><small>Qué prueba: {{ an.quePrueba }}</small></p> }
         </div>
