@@ -39,6 +39,9 @@ export interface MetricasDelDespachoDto {
   mensajesDelChat: number;
   personasEnElChat: number;
   tokensDelChat: number;
+  /** Lo que costó Claude en el motor por cliente (dólares equivalentes de claude -p); null si el motor no respondió. */
+  gastoDeClaude?: { organizacionId: string | null; nombre: string; llamadas: number; usd: number; lecturaUsd: number }[] | null;
+  gastoDeClaudeTotalUsd?: number | null;
 }
 
 /** `CarteraAppService` (`/api/app/cartera`). */

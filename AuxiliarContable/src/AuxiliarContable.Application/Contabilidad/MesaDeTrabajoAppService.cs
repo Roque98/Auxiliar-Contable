@@ -114,7 +114,10 @@ public class MesaDeTrabajoAppService : AuxiliarContableAppService, IMesaDeTrabaj
             AnalisisDeDocumento a;
             try
             {
-                a = await _motor.AnalizarDocumentoAsync(new ArchivoParaElMotor(d.NombreOriginal, await _almacen.LeerAsync(d)), rfc, giro);
+                using (ClienteDelMotor.Para(organizacionId))
+                {
+                    a = await _motor.AnalizarDocumentoAsync(new ArchivoParaElMotor(d.NombreOriginal, await _almacen.LeerAsync(d)), rfc, giro);
+                }
             }
             catch (MotorFiscalNoDisponibleException ex)
             {

@@ -286,7 +286,11 @@ public class InterpretadorDeOperaciones : ITransientDependency
         }
 
         var factura = e.Factura == null ? null : new ArchivoParaElMotor(e.Factura.NombreOriginal, await _almacen.LeerAsync(e.Factura));
-        var r = await _motor.InterpretarOperacionAsync(e.Perfil, e.Datos, factura, e.Control, e.Banco);
+        InterpretacionDelMotor r;
+        using (ClienteDelMotor.Para(fila.OrganizacionId))
+        {
+            r = await _motor.InterpretarOperacionAsync(e.Perfil, e.Datos, factura, e.Control, e.Banco);
+        }
         fila.Guardar(e.Huella, JsonSerializer.Serialize(r), _reloj.Now.ToUniversalTime());
     }
 }

@@ -86,6 +86,7 @@ public class MotorFiscalDePrueba : IMotorFiscal
         Contabilizadas = [];
         Electronica = null;
         CatalogoRecibido = null;
+        Gasto = [];
         Provisionales = null;
         CoeficienteRecibido = null;
         LlamadasDeProvisionales = 0;
@@ -237,6 +238,12 @@ public class MotorFiscalDePrueba : IMotorFiscal
             Vencimiento = "2026-12-03",
         });
     }
+
+    /// <summary>Lo que devuelve <see cref="GastoDeClaudeAsync"/>.</summary>
+    public List<GastoDeClaude> Gasto { get; set; } = [];
+
+    public Task<List<GastoDeClaude>> GastoDeClaudeAsync(DateTime desde, DateTime hasta, CancellationToken cancellationToken = default) =>
+        Caido ? throw new MotorFiscalNoDisponibleException("El motor fiscal no responde.") : Task.FromResult(Gasto);
 
     /// <summary>El catálogo del cliente que llegó a la contabilidad electrónica (null = código agrupador).</summary>
     public ArchivoParaElMotor? CatalogoRecibido { get; private set; }

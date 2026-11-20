@@ -195,6 +195,18 @@ public class MotorFiscalHttp : IMotorFiscal, ITransientDependency
         return await EnviarAsync<ContabilidadElectronica>(peticion, tope.Token, cancellationToken);
     }
 
+    public async Task<List<GastoDeClaude>> GastoDeClaudeAsync(DateTime desde, DateTime hasta, CancellationToken cancellationToken = default)
+    {
+        using var tope = CancelationConTope(_opciones.TimeoutSegundos, cancellationToken);
+        var peticion = new HttpRequestMessage(HttpMethod.Get, $"gasto/claude?desde={desde:yyyy-MM-dd}&hasta={hasta:yyyy-MM-dd}");
+        return (await EnviarAsync<RespuestaDeGasto>(peticion, tope.Token, cancellationToken)).Renglones;
+    }
+
+    private sealed class RespuestaDeGasto
+    {
+        public List<GastoDeClaude> Renglones { get; set; } = [];
+    }
+
     public async Task<AnualDelMotor> AnualAsync(
         string rfc, IReadOnlyList<string> regimenes, int anio, IReadOnlyList<ArchivoParaElMotor> facturas,
         IReadOnlyList<string> cancelados, decimal? coeficienteDeUtilidad, string? plataformas, string? actividadDePlataformas,

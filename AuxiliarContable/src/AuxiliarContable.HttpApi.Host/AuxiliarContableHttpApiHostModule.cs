@@ -261,11 +261,12 @@ public class AuxiliarContableHttpApiHostModule : AbpModule
         // MotorFiscal:Url queda «sin configurar» y el chat dice que no pudo consultar.
         Configure<MotorFiscalOptions>(configuration.GetSection(MotorFiscalOptions.Seccion));
         var motor = configuration.GetSection(MotorFiscalOptions.Seccion).Get<MotorFiscalOptions>() ?? new MotorFiscalOptions();
+        context.Services.AddTransient<ClienteDelMotorHandler>();
         context.Services.AddHttpClient(MotorFiscalHttp.NombreHttpClient, cliente =>
         {
             // El máximo de todos: cada operación pone su propio tope (MotorFiscalHttp).
             cliente.Timeout = TimeSpan.FromSeconds(Math.Max(motor.TimeoutSegundos, motor.TimeoutDeBancosSegundos) + 5);
-        });
+        }).AddHttpMessageHandler<ClienteDelMotorHandler>();
 
         // Documentos de los clientes: AL DISCO, no a la base (decision del dueño, 2026-10-25),
         // y siempre cifrados (AlmacenDeDocumentos). Solo este contenedor: las fotos y logos

@@ -450,6 +450,7 @@ public class ConciliadorIntegral : ITransientDependency
         }
 
         var perfil = await S<AnalizadorNormativo>().PerfilAsync(org, anio);
+        using var alMotor = ClienteDelMotor.Para(org);
         var json = await S<IMotorFiscal>().ExpedienteNormativoAsync(perfil,
             new OperacionParaNormativa { Descripcion = descripcion, Fecha = $"{anio:0000}-{mes:00}-01" });
         using var doc = JsonDocument.Parse(json);

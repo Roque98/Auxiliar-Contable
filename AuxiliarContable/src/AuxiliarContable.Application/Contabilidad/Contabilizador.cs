@@ -178,6 +178,7 @@ public class Contabilizador : ITransientDependency
             var candidatasPorId = candidatas.Take(600).ToDictionary(o => o.Id.ToString("N"));
             try
             {
+                using var alMotor = ClienteDelMotor.Para(organizacionId);
                 var sugerencias = await _motor.SugerirAmarresAsync(
                     porId.Select(x => new MovimientoParaAmarrar
                     {

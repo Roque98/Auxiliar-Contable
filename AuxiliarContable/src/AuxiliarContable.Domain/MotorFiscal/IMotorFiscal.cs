@@ -78,6 +78,9 @@ public interface IMotorFiscal
         string rfc, int anio, int mes, AperturaParaElMotor? apertura, IReadOnlyList<MesParaElMotor> meses,
         ArchivoParaElMotor? catalogo = null, CancellationToken cancellationToken = default);
 
+    /// <summary>Lo que costó Claude por cliente (id de organización), uso y modelo entre dos fechas (incluidas).</summary>
+    Task<List<GastoDeClaude>> GastoDeClaudeAsync(DateTime desde, DateTime hasta, CancellationToken cancellationToken = default);
+
     /// <summary>
     /// Pago provisional de ISR e IVA del <paramref name="periodo"/> (AAAA-MM) solo con los CFDI del ejercicio: el papel de
     /// trabajo de impuestos (Excel) y lo que mueve el impuesto mes por mes. <paramref name="cancelados"/>: UUID que el SAT
@@ -178,6 +181,24 @@ public interface IMotorFiscal
 /// <summary>Un archivo de la bóveda, ya descifrado, para mandarlo al motor.</summary>
 public record ArchivoParaElMotor(string Nombre, byte[] Contenido);
 
+/// <summary>Un renglón de <c>GET /gasto/claude</c>: lo que costó Claude a un cliente en un uso y modelo.</summary>
+public class GastoDeClaude
+{
+    /// <summary>Id de la organización; null en lo anotado sin cliente.</summary>
+    public string? Cliente { get; set; }
+
+    /// <summary>documento, documento_revision, documento_ultimo, amarres, interpretacion, normativa.</summary>
+    public string Para { get; set; } = "";
+
+    public string Modelo { get; set; } = "";
+    public int Llamadas { get; set; }
+
+    /// <summary>Dólares equivalentes que reporta claude -p (con suscripción no se cobran; sirven para comparar).</summary>
+    public decimal Usd { get; set; }
+
+    public int Segundos { get; set; }
+}
+
 /// <summary>Un artículo (o fragmento) encontrado, con lo necesario para citarlo.</summary>
 public record ResultadoDeLey(
     string Clave,
@@ -255,6 +276,9 @@ public class MotorFiscalSinConfigurar : IMotorFiscal, ISingletonDependency
     public Task<ContabilidadElectronica> ContabilidadElectronicaAsync(
         string rfc, int anio, int mes, AperturaParaElMotor? apertura, IReadOnlyList<MesParaElMotor> meses,
         ArchivoParaElMotor? catalogo = null, CancellationToken cancellationToken = default) =>
+        throw new MotorFiscalNoDisponibleException("No hay motor fiscal en este proceso.");
+
+    public Task<List<GastoDeClaude>> GastoDeClaudeAsync(DateTime desde, DateTime hasta, CancellationToken cancellationToken = default) =>
         throw new MotorFiscalNoDisponibleException("No hay motor fiscal en este proceso.");
 
     public Task<SugerenciasDeAmarre> SugerirAmarresAsync(
