@@ -26,6 +26,17 @@ describe('auxiliarDe', () => {
     expect(a.cuadra).toBe(true);
   });
 
+  it('con el catálogo del cliente la cuenta de mayor junta las subcuentas que el motor le marca, aunque no numere con puntos', () => {
+    const cliente = [
+      { ...mov('1100-001', 5800, 0), agrupador: '102.01', mayores: ['1100'] },
+      { ...mov('1100-002', 100, 0), agrupador: '102.02', mayores: ['1100'] },
+      { ...mov('11000-001', 7, 0), agrupador: '102.03', mayores: ['11000'] },
+    ];
+    const a = auxiliarDe({ cuenta: '1100', nombre: 'Bancos', nivel: 1, naturaleza: 'D', saldoInicial: 0, debe: 5900, haber: 0, saldoFinal: 5900 }, cliente);
+    expect(a.renglones.map(r => r.cuenta)).toEqual(['1100-001', '1100-002']);
+    expect(a.cuadra).toBe(true);
+  });
+
   it('si no llega al saldo final de la balanza lo dice', () => {
     expect(auxiliarDe({ cuenta: '102.01', nombre: '', nivel: 2, naturaleza: 'D', saldoInicial: 0, debe: 0, haber: 0, saldoFinal: 10 }, movs).cuadra).toBe(false);
   });

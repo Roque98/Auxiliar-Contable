@@ -390,6 +390,11 @@ public class MesaDeTrabajoAppService : AuxiliarContableAppService, IMesaDeTrabaj
             }
         }
 
+        // El catálogo propio del cliente: el último que se subió.
+        var catalogo = (await _documentos.GetListAsync(d => d.OrganizacionId == organizacionId && d.Tipo == TipoDeDocumento.CatalogoDeCuentas))
+            .OrderByDescending(d => d.CreationTime).FirstOrDefault();
+        var catalogoParaElMotor = catalogo == null ? null : new ArchivoParaElMotor(catalogo.NombreOriginal, await _almacen.LeerAsync(catalogo));
+
         ContabilidadElectronica resultado;
         try
         {
@@ -405,7 +410,8 @@ public class MesaDeTrabajoAppService : AuxiliarContableAppService, IMesaDeTrabaj
                 {
                     Periodo = $"{p.Anio:0000}-{p.Mes:00}",
                     Polizas = (JsonSerializer.Deserialize<ResultadoContable>(p.Resultado) ?? new ResultadoContable()).Polizas,
-                }).ToList());
+                }).ToList(),
+                catalogoParaElMotor);
         }
         catch (MotorFiscalNoDisponibleException ex)
         {

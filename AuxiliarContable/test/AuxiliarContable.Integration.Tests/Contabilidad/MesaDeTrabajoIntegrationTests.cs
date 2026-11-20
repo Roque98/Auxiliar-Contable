@@ -290,5 +290,18 @@ public class MesaDeTrabajoIntegrationTests : ConJerarquiaTestBase
         meses.ShouldHaveSingleItem().Polizas.Single().Rfc.ShouldBe("AAA010101AAA");
         // Entre la apertura y este mes faltan dos meses de pólizas.
         r.Resultado.Avisos.Count(a => a.StartsWith("Faltan las pólizas")).ShouldBe(2);
+        _motor.CatalogoRecibido.ShouldBeNull();
+
+        // Con el catálogo propio del cliente (XML, que no por ser XML es factura), el motor lo recibe: el más reciente.
+        const string catalogo = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><catalogocuentas:Catalogo xmlns:catalogocuentas=\"http://www.sat.gob.mx/esquemas/ContabilidadE/1_3/CatalogoCuentas\" Version=\"1.3\" RFC=\"GODE561231GR8\" Mes=\"01\" Anio=\"2026\"><catalogocuentas:Ctas CodAgrup=\"102.01\" NumCta=\"1100-001\" Desc=\"Bancos\" Nivel=\"1\" Natur=\"D\"/></catalogocuentas:Catalogo>";
+        var subido = await ComoAsync(Usuario, () => GetRequiredService<IBovedaAppService>().SubirAsync(_cliente, TipoDeDocumento.CatalogoDeCuentas,
+            new RemoteStreamContent(new MemoryStream(Encoding.UTF8.GetBytes(catalogo)), "catalogo.xml", "application/xml"), Dia.Year, Dia.Month));
+        subido.Documento.Tipo.ShouldBe(TipoDeDocumento.CatalogoDeCuentas);
+        subido.Aviso.ShouldBeNull();
+        await Should.ThrowAsync<UserFriendlyException>(() => ComoAsync(Usuario, () => GetRequiredService<IBovedaAppService>().SubirAsync(_cliente,
+            TipoDeDocumento.CatalogoDeCuentas, new RemoteStreamContent(new MemoryStream(Encoding.UTF8.GetBytes("%PDF-1.4 x")), "catalogo.pdf", "application/pdf"))));
+        await ComoAsync(Administrador, () => _mesa.ContabilidadElectronicaAsync(_cliente, Dia.Year, Dia.Month));
+        _motor.CatalogoRecibido.ShouldNotBeNull().Nombre.ShouldBe("catalogo.xml");
+        Encoding.UTF8.GetString(_motor.CatalogoRecibido.Contenido).ShouldContain("1100-001");
     }
 }

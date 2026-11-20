@@ -70,10 +70,13 @@ public interface IMotorFiscal
         PerfilParaContabilizar perfil, IReadOnlyList<OperacionParaContabilizar> operaciones, IReadOnlyList<ArchivoParaElMotor> facturas,
         string periodo, DatosDeCierre? cierre, CancellationToken cancellationToken = default);
 
-    /// <summary>Saldos de apertura + pólizas de cada mes -> balanza acumulada del mes y XML del SAT (catálogo, balanza, pólizas).</summary>
+    /// <summary>
+    /// Saldos de apertura + pólizas de cada mes -> balanza acumulada del mes y XML del SAT (catálogo, balanza, pólizas). Con
+    /// <paramref name="catalogo"/> (el del cliente, XML del Anexo 24) salen con sus números de cuenta.
+    /// </summary>
     Task<ContabilidadElectronica> ContabilidadElectronicaAsync(
         string rfc, int anio, int mes, AperturaParaElMotor? apertura, IReadOnlyList<MesParaElMotor> meses,
-        CancellationToken cancellationToken = default);
+        ArchivoParaElMotor? catalogo = null, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Pago provisional de ISR e IVA del <paramref name="periodo"/> (AAAA-MM) solo con los CFDI del ejercicio: el papel de
@@ -251,7 +254,7 @@ public class MotorFiscalSinConfigurar : IMotorFiscal, ISingletonDependency
 
     public Task<ContabilidadElectronica> ContabilidadElectronicaAsync(
         string rfc, int anio, int mes, AperturaParaElMotor? apertura, IReadOnlyList<MesParaElMotor> meses,
-        CancellationToken cancellationToken = default) =>
+        ArchivoParaElMotor? catalogo = null, CancellationToken cancellationToken = default) =>
         throw new MotorFiscalNoDisponibleException("No hay motor fiscal en este proceso.");
 
     public Task<SugerenciasDeAmarre> SugerirAmarresAsync(

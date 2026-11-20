@@ -85,6 +85,7 @@ public class MotorFiscalDePrueba : IMotorFiscal
         Contabilidad = null;
         Contabilizadas = [];
         Electronica = null;
+        CatalogoRecibido = null;
         Provisionales = null;
         CoeficienteRecibido = null;
         LlamadasDeProvisionales = 0;
@@ -220,7 +221,7 @@ public class MotorFiscalDePrueba : IMotorFiscal
 
     public Task<ContabilidadElectronica> ContabilidadElectronicaAsync(
         string rfc, int anio, int mes, AperturaParaElMotor? apertura, IReadOnlyList<MesParaElMotor> meses,
-        CancellationToken cancellationToken = default)
+        ArchivoParaElMotor? catalogo = null, CancellationToken cancellationToken = default)
     {
         if (Caido)
         {
@@ -228,6 +229,7 @@ public class MotorFiscalDePrueba : IMotorFiscal
         }
 
         Electronica = (apertura, meses);
+        CatalogoRecibido = catalogo;
         return Task.FromResult(new ContabilidadElectronica
         {
             Balanza = [new RenglonDeBalanza { Cuenta = "102.01", Nivel = 2, SaldoFinal = 1 }],
@@ -235,6 +237,9 @@ public class MotorFiscalDePrueba : IMotorFiscal
             Vencimiento = "2026-12-03",
         });
     }
+
+    /// <summary>El catálogo del cliente que llegó a la contabilidad electrónica (null = código agrupador).</summary>
+    public ArchivoParaElMotor? CatalogoRecibido { get; private set; }
 
     public (string? Pago, string? Actividad) PlataformasRecibidas { get; private set; }
 

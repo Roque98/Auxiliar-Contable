@@ -10,4 +10,8 @@ export enum TipoDeDocumento {
   ComprobanteDePago = 5,
   ControlInterno = 6,
   Nomina = 7,
+  /** Catálogo de cuentas propio del cliente (XML del Anexo 24). */
+  CatalogoDeCuentas = 8,
+  /** Balanza de comprobación con la que llega el cliente (XML del Anexo 24). */
+  BalanzaDeComprobacion = 9,
 }

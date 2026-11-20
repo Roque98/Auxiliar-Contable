@@ -252,11 +252,52 @@ public class ContabilidadElectronica
 
     /// <summary>Cargos y abonos del mes por cuenta (los mismos de la balanza): el auxiliar de cada cuenta.</summary>
     public List<MovimientoDeAuxiliar> Movimientos { get; set; } = [];
+
+    /// <summary>Con el catálogo propio del cliente: cómo quedó cada código agrupador y qué cuentas le faltan. Null sin él.</summary>
+    public CatalogoDelClienteEnElMotor? CatalogoCliente { get; set; }
+}
+
+public class CatalogoDelClienteEnElMotor
+{
+    /// <summary>Nombre del archivo del catálogo.</summary>
+    public string Fuente { get; set; } = "";
+
+    public int Cuentas { get; set; }
+    public List<EquivalenciaDeCuenta> Equivalencias { get; set; } = [];
+    public List<CuentaNuevaPropuesta> Nuevas { get; set; } = [];
+}
+
+public class EquivalenciaDeCuenta
+{
+    public string Agrupador { get; set; } = "";
+    public string Cuenta { get; set; } = "";
+    public string Nombre { get; set; } = "";
+
+    /// <summary>«existente», «existente (por nombre: confirmar)» o «NUEVA».</summary>
+    public string Estado { get; set; } = "";
+
+    public string Nota { get; set; } = "";
+}
+
+public class CuentaNuevaPropuesta
+{
+    public string Cuenta { get; set; } = "";
+    public string Nombre { get; set; } = "";
+    public string Agrupador { get; set; } = "";
+    public string Padre { get; set; } = "";
+    public string Motivo { get; set; } = "";
 }
 
 public class MovimientoDeAuxiliar
 {
     public string Cuenta { get; set; } = "";
+
+    /// <summary>Código agrupador del movimiento (igual a <see cref="Cuenta"/> sin catálogo del cliente).</summary>
+    public string? Agrupador { get; set; }
+
+    /// <summary>Cuentas de mayor de las que es subcuenta, de la más cercana a la de primer nivel.</summary>
+    public List<string> Mayores { get; set; } = [];
+
     public string Fecha { get; set; } = "";
 
     /// <summary>Folio de la póliza (I-2026-10-0001).</summary>
@@ -339,6 +380,9 @@ public class RenglonDeBalanza
 
     /// <summary>D deudora, A acreedora.</summary>
     public string Naturaleza { get; set; } = "D";
+
+    /// <summary>Código agrupador del SAT de la cuenta (igual a <see cref="Cuenta"/> sin catálogo del cliente).</summary>
+    public string? Agrupador { get; set; }
 
     public decimal SaldoInicial { get; set; }
     public decimal Debe { get; set; }

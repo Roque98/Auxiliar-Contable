@@ -1,4 +1,4 @@
-import { CurrencyPipe } from '@angular/common';
+import { CurrencyPipe, DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -41,7 +41,7 @@ const ES_XML = (a: File) => /\.xml$/i.test(a.name) || a.type.includes('xml');
 @Component({
   selector: 'app-conciliacion-mensual',
   standalone: true,
-  imports: [FormsModule, CurrencyPipe],
+  imports: [FormsModule, CurrencyPipe, DatePipe],
   templateUrl: './conciliacion-mensual.component.html',
   styleUrls: ['./conciliacion-mensual.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -99,6 +99,8 @@ export class ConciliacionMensualComponent implements OnInit {
   catalogoOpcion: 'sat' | 'propio' = 'sat';
   readonly catalogo = signal<CuentaDelCatalogo[] | null>(null);
   readonly catalogoNombre = signal<string | null>(null);
+  /** El catálogo propio que ya está en la bóveda del cliente: es el que usa la contabilidad electrónica. */
+  readonly catalogoGuardado = signal<{ nombre: string; fecha: string } | null>(null);
   balanzaOpcion: 'existente' | 'subir' | 'ceros' | null = null;
   readonly balanzaArchivo = signal<{ nombre: string; texto: string; esXml: boolean } | null>(null);
   /** Mes al que corresponde la balanza (sus saldos finales); el XML lo trae, en CSV se elige. */
@@ -192,11 +194,13 @@ export class ConciliacionMensualComponent implements OnInit {
     this.balanzaArchivo.set(null);
     this.catalogo.set(null);
     this.catalogoNombre.set(null);
+    this.catalogoGuardado.set(null);
     this.catalogoOpcion = 'sat';
     this.cambio();
     if (!id) {
       return;
     }
+    void this.cargarCatalogoGuardado(id);
     this.mesa.apertura(id).subscribe({
       next: a => {
         this.apertura.set(a);
@@ -282,6 +286,28 @@ export class ConciliacionMensualComponent implements OnInit {
     this.cambio();
   }
 
+  /** Si el cliente ya tiene catálogo propio en la bóveda, se lee y queda elegido: no hay que volver a subirlo. */
+  private async cargarCatalogoGuardado(id: string): Promise<void> {
+    try {
+      const r = await firstValueFrom(this.boveda.buscar({ organizacionId: id, tipo: TipoDeDocumento.CatalogoDeCuentas, maxResultCount: 1 }));
+      const doc = r.items[0];
+      if (!doc || this.clienteId() !== id) {
+        return;
+      }
+      const cuentas = leerCatalogo(await (await firstValueFrom(this.boveda.descargar(id, doc.id))).text());
+      if (!cuentas.length || this.clienteId() !== id) {
+        return;
+      }
+      this.catalogoGuardado.set({ nombre: doc.nombre, fecha: doc.subidoUtc });
+      this.catalogo.set(cuentas);
+      this.catalogoNombre.set(doc.nombre);
+      this.catalogoOpcion = 'propio';
+      this.cambio();
+    } catch {
+      // Sin catálogo guardado (o sin poder leerlo): se pregunta como siempre.
+    }
+  }
+
   async elegirCatalogo(evento: Event): Promise<void> {
     const entrada = evento.target as HTMLInputElement;
     const archivo = entrada.files?.[0];
@@ -298,10 +324,13 @@ export class ConciliacionMensualComponent implements OnInit {
     } else {
       this.catalogo.set(cuentas);
       this.catalogoNombre.set(archivo.name);
-      // Queda en la bóveda del mes, como respaldo.
+      // Queda en la bóveda: el más reciente es el que usan la balanza, el auxiliar y la contabilidad electrónica.
       const id = this.clienteId();
       if (id) {
-        this.boveda.subir(id, TipoDeDocumento.Otro, archivo, this.anio, this.mes).subscribe({ error: () => undefined });
+        this.boveda.subir(id, TipoDeDocumento.CatalogoDeCuentas, archivo).subscribe({
+          next: r => this.catalogoGuardado.set({ nombre: r.documento.nombre, fecha: r.documento.subidoUtc }),
+          error: e => this.error.set('El catálogo no se pudo guardar: ' + mensajeDeError(e)),
+        });
       }
     }
     this.cambio();
@@ -319,10 +348,12 @@ export class ConciliacionMensualComponent implements OnInit {
       return;
     }
     this.error.set(null);
-    this.balanzaArchivo.set({ nombre: archivo.name, texto: await archivo.text(), esXml: /\.xml$/i.test(archivo.name) || archivo.type.includes('xml') });
+    const esXml = /\.xml$/i.test(archivo.name) || archivo.type.includes('xml');
+    this.balanzaArchivo.set({ nombre: archivo.name, texto: await archivo.text(), esXml });
+    // El XML queda en la bóveda como respaldo de los saldos (un CSV no se guarda: la bóveda solo admite PDF, XML e imágenes).
     const id = this.clienteId();
-    if (id) {
-      this.boveda.subir(id, TipoDeDocumento.Otro, archivo, this.anio, this.mes).subscribe({ error: () => undefined });
+    if (id && esXml) {
+      this.boveda.subir(id, TipoDeDocumento.BalanzaDeComprobacion, archivo).subscribe({ error: () => undefined });
     }
     this.cambio();
   }

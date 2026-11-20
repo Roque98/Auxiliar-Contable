@@ -294,6 +294,27 @@
     @if (electronica(); as e) {
       @for (a of e.resultado.avisos; track $index) { <p class="ms-aviso">{{ a }}</p> }
       <p class="ms-resultado">Vence el {{ e.resultado.vencimiento }} (regla 2.8.1.6 RMF).</p>
+      @if (e.resultado.catalogoCliente; as cc) {
+        <p class="ms-resultado" data-testid="catalogo-cliente">
+          <i class="bi bi-journal-bookmark" aria-hidden="true"></i>
+          Con el catálogo propio del cliente ({{ cc.fuente }}, {{ cc.cuentas }} cuentas): la balanza, los auxiliares y los XML usan sus números de cuenta.
+        </p>
+        @if (cc.nuevas.length) {
+          <details class="ms-detalle">
+            <summary>{{ cc.nuevas.length }} cuenta(s) que su catálogo no tiene: dalas de alta en su sistema</summary>
+            <div class="ms-tabla-caja">
+              <table class="ms-tabla">
+                <thead><tr><th scope="col">Cuenta propuesta</th><th scope="col">Nombre</th><th scope="col">Subcuenta de</th><th scope="col">Código agrupador</th></tr></thead>
+                <tbody>
+                  @for (n of cc.nuevas; track n.cuenta) {
+                    <tr><td><strong>{{ n.cuenta }}</strong></td><td>{{ n.nombre }}</td><td>{{ n.padre || '—' }}</td><td>{{ n.agrupador }}</td></tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          </details>
+        }
+      }
       <div class="ms-acciones">
         @for (a of e.resultado.archivos; track a.nombre) {
           <button type="button" class="btn btn-outline-primary ms-boton" (click)="descargarXml(a)">
@@ -372,6 +393,7 @@
                   } @else {
                     <strong>{{ b.cuenta }}</strong> {{ b.nombre }}
                   }
+                  @if (b.agrupador && b.agrupador !== b.cuenta) { <span class="ms-nota">· SAT {{ b.agrupador }}</span> }
                 </td>
                 <td class="ms-num">{{ b.saldoInicial | currency: 'MXN' : 'symbol-narrow' }}</td>
                 <td class="ms-num">{{ b.debe | currency: 'MXN' : 'symbol-narrow' }}</td>

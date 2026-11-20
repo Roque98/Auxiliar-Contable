@@ -86,18 +86,25 @@
       </label>
       <label class="cm-opcion">
         <input type="radio" name="catalogo" value="propio" [(ngModel)]="catalogoOpcion" (ngModelChange)="cambio()" />
-        <span>Subiré el catálogo más reciente del cliente <small>(XML del SAT, el de la contabilidad electrónica)</small></span>
+        @if (catalogoGuardado(); as g) {
+          <span>Con el catálogo propio del cliente <small>(ya está cargado: {{ g.nombre }}, subido el {{ g.fecha | date: 'd/M/yyyy' }}; súbelo otra vez solo si cambió)</small></span>
+        } @else {
+          <span>Subiré el catálogo más reciente del cliente <small>(XML del SAT, el de la contabilidad electrónica)</small></span>
+        }
       </label>
       @if (catalogoOpcion === 'propio') {
         <div class="cm-archivo">
           <label class="btn btn-outline-primary cm-boton">
-            <i class="bi bi-paperclip" aria-hidden="true"></i> Elegir catálogo (XML)
+            <i class="bi bi-paperclip" aria-hidden="true"></i> {{ catalogoGuardado() ? 'Cambiar catálogo (XML)' : 'Elegir catálogo (XML)' }}
             <input type="file" accept=".xml,application/xml,text/xml" (change)="elegirCatalogo($event)" hidden />
           </label>
           @if (catalogo(); as c) {
             <span class="cm-ok"><i class="bi bi-check2" aria-hidden="true"></i> {{ catalogoNombre() }}: {{ c.length }} cuentas</span>
           }
         </div>
+        <p class="cm-nota cm-archivo">La balanza, los auxiliares y la contabilidad electrónica (catálogo, balanza y pólizas en XML) saldrán con las cuentas del cliente. Lo que su catálogo no tenga se propondrá como cuenta nueva.</p>
+      } @else if (catalogoGuardado()) {
+        <p class="cm-aviso cm-archivo">Este cliente ya tiene un catálogo propio cargado y la contabilidad electrónica lo seguirá usando. Para volver al código agrupador, bórralo en «Documentos».</p>
       }
     </fieldset>
 
