@@ -11,9 +11,10 @@ import { descargarBase64 } from '../mesa/descarga';
 import { MESES } from '../documentos/documentos.service';
 
 /** Columnas de incidencias que se capturan por trabajador. */
-const COLUMNAS: { clave: 'faltas' | 'incapacidad' | 'horasExtraDobles' | 'horasExtraTriples' | 'domingosTrabajados' | 'diasDescansoTrabajados' | 'festivosTrabajados' | 'aguinaldo' | 'primaVacacional'; titulo: string }[] = [
+const COLUMNAS: { clave: 'faltas' | 'incapacidad' | 'horasSemana' | 'horasExtraDobles' | 'horasExtraTriples' | 'domingosTrabajados' | 'diasDescansoTrabajados' | 'festivosTrabajados' | 'aguinaldo' | 'primaVacacional'; titulo: string }[] = [
   { clave: 'faltas', titulo: 'Faltas' },
   { clave: 'incapacidad', titulo: 'Incapacidad (días)' },
+  { clave: 'horasSemana', titulo: 'Horas a la semana' },
   { clave: 'horasExtraDobles', titulo: 'Horas extra dobles' },
   { clave: 'horasExtraTriples', titulo: 'Horas extra triples' },
   { clave: 'domingosTrabajados', titulo: 'Domingos trabajados' },

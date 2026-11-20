@@ -149,6 +149,16 @@ public class IncidenciasDeNomina
 
     public System.DateTime? InicioIncapacidad { get; set; }
     public decimal HorasJornada { get; set; } = 8;
+
+    /// <summary>
+    /// Horas ordinarias a la semana (0 = no se capturaron). El motor avisa si pasan del máximo del año: 48 en 2026, 46 en
+    /// 2027… 40 en 2030 (LFT 59, transitorio Segundo DOF 01-05-2026).
+    /// </summary>
+    public decimal HorasSemana { get; set; }
+
+    /// <summary>diurna (8 h), nocturna (7) o mixta (7.5), LFT 61. Null = diurna.</summary>
+    public string? TipoJornada { get; set; }
+
     public decimal HorasExtraDobles { get; set; }
     public decimal HorasExtraTriples { get; set; }
     public decimal DiasDescansoTrabajados { get; set; }

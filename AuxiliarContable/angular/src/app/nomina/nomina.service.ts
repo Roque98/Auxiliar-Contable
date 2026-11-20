@@ -12,6 +12,10 @@ export interface IncidenciasDeNominaDto {
   folioIncapacidad?: string | null;
   inicioIncapacidad?: string | null;
   horasJornada: number;
+  /** Horas ordinarias a la semana (0 = no se capturaron): el motor avisa si pasan del máximo del año (LFT 59). */
+  horasSemana?: number;
+  /** diurna, nocturna o mixta (LFT 61). */
+  tipoJornada?: string | null;
   horasExtraDobles: number;
   horasExtraTriples: number;
   diasDescansoTrabajados: number;

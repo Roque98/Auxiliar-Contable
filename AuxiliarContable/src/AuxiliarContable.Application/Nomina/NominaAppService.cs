@@ -362,7 +362,8 @@ public class NominaAppService : AuxiliarContableAppService, INominaAppService
         {
             var x = i.Incidencias;
             if (x.Faltas < 0 || x.Incapacidad < 0 || x.Faltas + x.Incapacidad > p.Dias || x.HorasExtraDobles < 0 || x.HorasExtraTriples < 0
-                || x.HorasJornada is <= 0 or > 24)
+                || x.HorasJornada is <= 0 or > 24 || x.HorasSemana is < 0 or > 168
+                || x.TipoJornada is not (null or "" or "diurna" or "nocturna" or "mixta"))
             {
                 throw new UserFriendlyException($"Incidencias de {i.Nombre ?? "un trabajador"}: faltas e incapacidad no pasan de los días del periodo y las horas no son negativas.");
             }
