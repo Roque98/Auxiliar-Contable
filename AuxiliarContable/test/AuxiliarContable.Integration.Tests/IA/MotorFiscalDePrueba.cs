@@ -87,6 +87,8 @@ public class MotorFiscalDePrueba : IMotorFiscal
         Electronica = null;
         CatalogoRecibido = null;
         Gasto = [];
+        Incidencias = null;
+        IncidenciasPedidas = null;
         NominaContabilizada = null;
         Provisionales = null;
         CoeficienteRecibido = null;
@@ -243,6 +245,18 @@ public class MotorFiscalDePrueba : IMotorFiscal
 
     /// <summary>Los periodos de nómina que llegaron a la última contabilización.</summary>
     public IReadOnlyList<NominaParaContabilizar>? NominaContabilizada { get; private set; }
+
+    /// <summary>Lo que devuelve <see cref="LeerIncidenciasAsync"/> (null = sin nada leído) y lo que se le mandó.</summary>
+    public IncidenciasLeidas? Incidencias { get; set; }
+
+    public (IReadOnlyList<ArchivoParaElMotor> Archivos, IReadOnlyList<(string Id, string Nombre)> Trabajadores)? IncidenciasPedidas { get; private set; }
+
+    public Task<IncidenciasLeidas> LeerIncidenciasAsync(IReadOnlyList<ArchivoParaElMotor> archivos, IReadOnlyList<(string Id, string Nombre)> trabajadores,
+        DateTime inicio, DateTime fin, CancellationToken cancellationToken = default)
+    {
+        IncidenciasPedidas = (archivos, trabajadores);
+        return Task.FromResult(Incidencias ?? new IncidenciasLeidas());
+    }
 
     /// <summary>Lo que devuelve <see cref="GastoDeClaudeAsync"/>.</summary>
     public List<GastoDeClaude> Gasto { get; set; } = [];

@@ -224,6 +224,10 @@
         <h2 id="nm-periodo">Periodo {{ p.periodicidad }} del {{ p.inicio | date: 'd MMM' : 'UTC' }} al {{ p.fin | date: 'd MMM y' : 'UTC' }}</h2>
         @if (n.puedeEditar) {
           <span class="ms-acciones">
+            <button type="button" class="btn btn-outline-secondary ms-boton" (click)="leerIncidencias()" [disabled]="trabajando()"
+                    title="Claude lee la lista de raya o las incidencias que se subieron en el mes y llena la tabla; tú revisas y guardas">
+              <i class="bi bi-stars" aria-hidden="true"></i> Leer de los documentos
+            </button>
             <button type="button" class="btn btn-outline-secondary ms-boton" (click)="guardarIncidencias()" [disabled]="trabajando()">Guardar incidencias</button>
             <button type="button" class="btn btn-primary ms-boton" (click)="calcular()" [disabled]="trabajando()">
               @if (trabajando()) { <span class="ig-girando" aria-hidden="true"></span> } Calcular la nómina
@@ -232,6 +236,13 @@
         }
       </div>
       <h3 class="ms-subtitulo">Incidencias</h3>
+      @if (lectura(); as l) {
+        <div class="ms-aviso" role="status" data-testid="lectura-incidencias">
+          <p><i class="bi bi-stars" aria-hidden="true"></i> Claude leyó {{ l.documentos.join(', ') }} y puso las incidencias de {{ l.leidos.length }} trabajador(es). <strong>Revísalas y guarda</strong>: todavía no se guardan.</p>
+          @if (l.notas.length) { <ul>@for (x of l.notas; track $index) { <li>{{ x }}</li> }</ul> }
+          @if (l.dudas.length) { <p><strong>Dudas:</strong></p><ul>@for (x of l.dudas; track $index) { <li>{{ x }}</li> }</ul> }
+        </div>
+      }
       <div class="ms-tabla-caja">
         <table class="ms-tabla">
           <thead><tr><th scope="col">Trabajador</th>@for (c of columnas; track c.clave) { <th scope="col" class="ms-num">{{ c.titulo }}</th> }</tr></thead>

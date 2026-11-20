@@ -202,6 +202,24 @@ public class MotorFiscalHttp : IMotorFiscal, ITransientDependency
         return (await EnviarAsync<RespuestaDeGasto>(peticion, tope.Token, cancellationToken)).Renglones;
     }
 
+    public async Task<IncidenciasLeidas> LeerIncidenciasAsync(IReadOnlyList<ArchivoParaElMotor> archivos,
+        IReadOnlyList<(string Id, string Nombre)> trabajadores, DateTime inicio, DateTime fin, CancellationToken cancellationToken = default)
+    {
+        // Claude lee: el tope de las lecturas largas (el mismo que los estados de cuenta).
+        using var tope = CancelationConTope(_opciones.TimeoutDeBancosSegundos, cancellationToken);
+        var peticion = new HttpRequestMessage(HttpMethod.Post, "nomina/incidencias/leer")
+        {
+            Content = JsonContent.Create(new
+            {
+                archivos = archivos.Select(Base64),
+                trabajadores = trabajadores.Select(t => new { id = t.Id, nombre = t.Nombre }),
+                inicio = inicio.ToString("yyyy-MM-dd"),
+                fin = fin.ToString("yyyy-MM-dd"),
+            }, options: Json),
+        };
+        return await EnviarAsync<IncidenciasLeidas>(peticion, tope.Token, cancellationToken);
+    }
+
     private sealed class RespuestaDeGasto
     {
         public List<GastoDeClaude> Renglones { get; set; } = [];

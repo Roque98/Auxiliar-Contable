@@ -78,6 +78,13 @@ public interface IMotorFiscal
         string rfc, int anio, int mes, AperturaParaElMotor? apertura, IReadOnlyList<MesParaElMotor> meses,
         ArchivoParaElMotor? catalogo = null, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// La lista de raya o el reporte de incidencias (Excel, CSV, PDF o foto) -> incidencias propuestas por trabajador del
+    /// periodo, con Claude. <paramref name="trabajadores"/>: (id, nombre) del despacho, para emparejar los nombres leídos.
+    /// </summary>
+    Task<IncidenciasLeidas> LeerIncidenciasAsync(IReadOnlyList<ArchivoParaElMotor> archivos, IReadOnlyList<(string Id, string Nombre)> trabajadores,
+        DateTime inicio, DateTime fin, CancellationToken cancellationToken = default);
+
     /// <summary>Lo que costó Claude por cliente (id de organización), uso y modelo entre dos fechas (incluidas).</summary>
     Task<List<GastoDeClaude>> GastoDeClaudeAsync(DateTime desde, DateTime hasta, CancellationToken cancellationToken = default);
 
@@ -279,6 +286,10 @@ public class MotorFiscalSinConfigurar : IMotorFiscal, ISingletonDependency
         throw new MotorFiscalNoDisponibleException("No hay motor fiscal en este proceso.");
 
     public Task<List<GastoDeClaude>> GastoDeClaudeAsync(DateTime desde, DateTime hasta, CancellationToken cancellationToken = default) =>
+        throw new MotorFiscalNoDisponibleException("No hay motor fiscal en este proceso.");
+
+    public Task<IncidenciasLeidas> LeerIncidenciasAsync(IReadOnlyList<ArchivoParaElMotor> archivos, IReadOnlyList<(string Id, string Nombre)> trabajadores,
+        DateTime inicio, DateTime fin, CancellationToken cancellationToken = default) =>
         throw new MotorFiscalNoDisponibleException("No hay motor fiscal en este proceso.");
 
     public Task<SugerenciasDeAmarre> SugerirAmarresAsync(

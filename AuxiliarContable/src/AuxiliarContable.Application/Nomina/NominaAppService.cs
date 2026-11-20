@@ -5,6 +5,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using AuxiliarContable.Autorizacion;
 using AuxiliarContable.Contabilidad;
+using AuxiliarContable.Documentos;
 using AuxiliarContable.MotorFiscal;
 using AuxiliarContable.Organizaciones;
 using AuxiliarContable.PerfilesFiscales;
@@ -30,6 +31,8 @@ public class NominaAppService : AuxiliarContableAppService, INominaAppService
     private readonly GestorDePeriodos _cierres;
     private readonly IMotorFiscal _motor;
     private readonly Autorizador _autorizador;
+    private readonly IRepository<Documento, Guid> _documentos;
+    private readonly AlmacenDeDocumentos _almacen;
 
     public NominaAppService(
         IRepository<Trabajador, Guid> trabajadores,
@@ -38,8 +41,12 @@ public class NominaAppService : AuxiliarContableAppService, INominaAppService
         IRepository<PerfilFiscal, Guid> perfiles,
         GestorDePeriodos cierres,
         IMotorFiscal motor,
-        Autorizador autorizador)
+        Autorizador autorizador,
+        IRepository<Documento, Guid> documentos,
+        AlmacenDeDocumentos almacen)
     {
+        _documentos = documentos;
+        _almacen = almacen;
         _trabajadores = trabajadores;
         _periodos = periodos;
         _movimientos = movimientos;
@@ -449,6 +456,81 @@ public class NominaAppService : AuxiliarContableAppService, INominaAppService
 
     private static Dictionary<Guid, IncidenciasDeNomina> Incidencias(PeriodoDeNomina p) =>
         string.IsNullOrWhiteSpace(p.Incidencias) ? [] : JsonSerializer.Deserialize<Dictionary<Guid, IncidenciasDeNomina>>(p.Incidencias) ?? [];
+
+    public async Task<IncidenciasPropuestasDto> LeerIncidenciasAsync(Guid organizacionId, Guid periodoId)
+    {
+        await ExigirEquipoAsync(organizacionId, AccionEnOrganizacion.Subir);
+        var p = await PeriodoAsync(organizacionId, periodoId);
+        var desde = new DateTime(p.Inicio.Year, p.Inicio.Month, 1);
+        var hasta = new DateTime(p.Fin.Year, p.Fin.Month, 1).AddMonths(1);
+        var docs = (await _documentos.GetListAsync(d => d.OrganizacionId == organizacionId && d.Tipo == TipoDeDocumento.Nomina))
+            .Where(d => (d.FechaDelDocumento ?? d.CreationTime) >= desde && (d.FechaDelDocumento ?? d.CreationTime) < hasta)
+            .OrderByDescending(d => d.CreationTime).Take(10).ToList();
+        if (docs.Count == 0)
+        {
+            throw new UserFriendlyException(
+                $"No hay documentos de nómina de {p.Inicio:MM/yyyy}: sube la lista de raya o las incidencias en «Conciliación mensual» (apartado Nómina).");
+        }
+
+        var detalle = await DetalleAsync(p);
+        var archivos = new List<ArchivoParaElMotor>();
+        foreach (var d in docs)
+        {
+            archivos.Add(new ArchivoParaElMotor(d.NombreOriginal, await _almacen.LeerAsync(d)));
+        }
+
+        IncidenciasLeidas leidas;
+        try
+        {
+            using (ClienteDelMotor.Para(organizacionId))
+            {
+                leidas = await _motor.LeerIncidenciasAsync(archivos,
+                    detalle.Incidencias.Select(i => (i.TrabajadorId.ToString(), i.Nombre ?? "")).ToList(), p.Inicio, p.Fin);
+            }
+        }
+        catch (MotorFiscalNoDisponibleException ex)
+        {
+            Logger.LogWarning(ex, "No se pudieron leer las incidencias de nómina");
+            throw new UserFriendlyException("Claude no está disponible en este momento: intenta de nuevo en unos minutos.");
+        }
+
+        var r = new IncidenciasPropuestasDto { Incidencias = detalle.Incidencias, Documentos = [.. docs.Select(d => d.NombreOriginal)], Dudas = leidas.Dudas };
+        if (!leidas.Legible)
+        {
+            r.Dudas.Insert(0, "Claude no pudo leer los documentos: revisa que sean la lista de raya o las incidencias del periodo.");
+        }
+
+        static int Dias(decimal x) => (int)Math.Round(Math.Max(0, x), MidpointRounding.AwayFromZero);
+        foreach (var l in leidas.Trabajadores)
+        {
+            var mio = Guid.TryParse(l.TrabajadorId, out var id) ? r.Incidencias.FirstOrDefault(i => i.TrabajadorId == id) : null;
+            if (mio == null)
+            {
+                continue;
+            }
+
+            var x = mio.Incidencias;
+            x.Faltas = Math.Min(Dias(l.Faltas), p.Dias);
+            x.Incapacidad = Math.Min(Dias(l.Incapacidad), p.Dias - x.Faltas);
+            x.HorasExtraDobles = Math.Max(0, l.HorasExtraDobles);
+            x.HorasExtraTriples = Math.Max(0, l.HorasExtraTriples);
+            if (l.HorasSemana > 0)
+            {
+                x.HorasSemana = l.HorasSemana;
+            }
+
+            x.DomingosTrabajados = Math.Max(0, l.DomingosTrabajados);
+            x.DiasDescansoTrabajados = Math.Max(0, l.DiasDescansoTrabajados);
+            x.FestivosTrabajados = Math.Max(0, l.FestivosTrabajados);
+            r.Leidos.Add(id);
+            if (!string.IsNullOrWhiteSpace(l.Nota))
+            {
+                r.Notas.Add($"{mio.Nombre}: {l.Nota}");
+            }
+        }
+
+        return r;
+    }
 
     private async Task<PeriodoDeNominaDto> DetalleAsync(PeriodoDeNomina p)
     {

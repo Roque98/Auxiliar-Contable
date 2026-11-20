@@ -93,6 +93,15 @@ export interface NominaDelMotorDto {
   avisos: string[];
 }
 
+export interface IncidenciasPropuestasDto {
+  incidencias: PeriodoDeNominaDto['incidencias'];
+  /** Trabajadores a los que se les puso algo leído. */
+  leidos: string[];
+  documentos: string[];
+  dudas: string[];
+  notas: string[];
+}
+
 export interface PeriodoDeNominaDto {
   id: string;
   inicio: string;
@@ -189,6 +198,11 @@ export class NominaService {
   guardarIncidencias(organizacionId: string, periodoId: string, incidencias: PeriodoDeNominaDto['incidencias']): Observable<PeriodoDeNominaDto> {
     return this.rest.request<object, PeriodoDeNominaDto>(
       { method: 'POST', url: `${this.base}/guardar-incidencias`, params: { organizacionId, periodoId }, body: incidencias }, this.opciones);
+  }
+
+  /** Claude lee la lista de raya del mes y propone las incidencias (no las guarda). */
+  leerIncidencias(organizacionId: string, periodoId: string): Observable<IncidenciasPropuestasDto> {
+    return this.rest.request<void, IncidenciasPropuestasDto>({ method: 'POST', url: `${this.base}/leer-incidencias`, params: { organizacionId, periodoId } }, this.opciones);
   }
 
   calcular(organizacionId: string, periodoId: string): Observable<PeriodoDeNominaDto> {

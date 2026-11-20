@@ -404,3 +404,33 @@ public class NetoDeTrabajador
     public string? Rfc { get; set; }
     public decimal Neto { get; set; }
 }
+
+/// <summary>Lo que el motor leyó de la lista de raya o el reporte de incidencias (/nomina/incidencias/leer).</summary>
+public class IncidenciasLeidas
+{
+    public bool Legible { get; set; }
+    public string? PeriodoInicio { get; set; }
+    public string? PeriodoFin { get; set; }
+    public List<IncidenciaLeida> Trabajadores { get; set; } = [];
+    public List<string> Dudas { get; set; } = [];
+}
+
+public class IncidenciaLeida
+{
+    /// <summary>Como viene en el documento.</summary>
+    public string Nombre { get; set; } = "";
+
+    /// <summary>El trabajador del despacho al que se parece (el id que se le mandó); null si a ninguno.</summary>
+    public string? TrabajadorId { get; set; }
+
+    public decimal Parecido { get; set; }
+    public decimal Faltas { get; set; }
+    public decimal Incapacidad { get; set; }
+    public decimal HorasExtraDobles { get; set; }
+    public decimal HorasExtraTriples { get; set; }
+    public decimal HorasSemana { get; set; }
+    public decimal DomingosTrabajados { get; set; }
+    public decimal DiasDescansoTrabajados { get; set; }
+    public decimal FestivosTrabajados { get; set; }
+    public string Nota { get; set; } = "";
+}
