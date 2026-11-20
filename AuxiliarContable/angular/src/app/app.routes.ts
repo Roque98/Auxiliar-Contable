@@ -133,6 +133,13 @@ export const APP_ROUTES: Routes = [
     data: { requiredPolicy: 'AuxiliarContable.Organizaciones' },
   },
   {
+    // Conciliación mensual: el auxiliar carga todo el mes de un cliente y concilia (solo el despacho).
+    path: 'conciliacion-mensual',
+    loadComponent: () => import('./conciliacion-mensual/conciliacion-mensual.component').then(c => c.ConciliacionMensualComponent),
+    canActivate: [authGuard, permissionGuard],
+    data: { requiredPolicy: 'AuxiliarContable.Organizaciones' },
+  },
+  {
     // El cierre del mes. Sin permiso: el servidor decide qué clientes ve cada quien y solo el
     // despacho resuelve partidas y cierra (Autorizador).
     path: 'conciliacion',

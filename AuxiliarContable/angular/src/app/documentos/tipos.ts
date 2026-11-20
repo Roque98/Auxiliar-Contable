@@ -9,4 +9,5 @@ export enum TipoDeDocumento {
   Ticket = 4,
   ComprobanteDePago = 5,
   ControlInterno = 6,
+  Nomina = 7,
 }

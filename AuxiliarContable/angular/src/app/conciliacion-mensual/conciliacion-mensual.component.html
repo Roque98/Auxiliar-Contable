@@ -1,0 +1,201 @@
+<header class="cm-cabecera">
+  <h1>Conciliación mensual</h1>
+  <p class="cm-nota">
+    Para los clientes que se llevan por mes: carga lo que te mandaron en su apartado, contesta dos preguntas y concilia.
+    Aquí no se pregunta cómo se relaciona cada cosa: eso lo resuelve la conciliación.
+  </p>
+
+  <div class="cm-filtros">
+    @if (clientes(); as lista) {
+      <label class="cm-campo cm-campo-cliente">
+        <span>Cliente</span>
+        <select class="ig-control" [ngModel]="clienteId()" (ngModelChange)="elegir($event)" data-testid="cliente">
+          <option [ngValue]="null" disabled>Elige un cliente…</option>
+          @for (c of lista; track c.id) {
+            <option [ngValue]="c.id">{{ c.nombre }}</option>
+          }
+        </select>
+      </label>
+    }
+    <label class="cm-campo">
+      <span>Mes que se concilia</span>
+      <select class="ig-control" [(ngModel)]="mes" (ngModelChange)="cambiarPeriodo()" data-testid="mes">
+        @for (m of meses; track $index) {
+          <option [ngValue]="$index + 1">{{ m }}</option>
+        }
+      </select>
+    </label>
+    <label class="cm-campo">
+      <span>Año</span>
+      <select class="ig-control" [(ngModel)]="anio" (ngModelChange)="cambiarPeriodo()" data-testid="anio">
+        @for (a of anios; track a) {
+          <option [ngValue]="a">{{ a }}</option>
+        }
+      </select>
+    </label>
+  </div>
+</header>
+
+@if (clienteId()) {
+  <section aria-labelledby="cm-paso1">
+    <h2 id="cm-paso1"><span class="cm-numero">1</span> Carga la información de {{ meses[mes - 1] }} {{ anio }}</h2>
+    <div class="cm-zonas">
+      @for (z of zonas; track z.clave) {
+        <div class="cm-zona" [attr.data-testid]="'zona-' + z.clave">
+          <h3><i class="bi" [class]="'bi ' + z.icono" aria-hidden="true"></i> {{ z.titulo }}</h3>
+          <p class="cm-nota">{{ z.ayuda }}</p>
+          <p class="cm-cuenta">
+            <strong>{{ cargados()[z.clave] }}</strong> en el mes
+          </p>
+          <label class="btn btn-outline-primary cm-boton">
+            <i class="bi bi-upload" aria-hidden="true"></i> Subir {{ z.titulo.toLowerCase() }}
+            <input type="file" multiple [accept]="z.acepta" (change)="subir($event, z.clave)" hidden />
+          </label>
+          @if (avances()[z.clave]; as a) {
+            <p class="cm-avance" role="status">
+              @if (a.hechos < a.total) {
+                <span class="ig-girando" aria-hidden="true"></span> Subiendo {{ a.hechos }} de {{ a.total }}…
+              } @else {
+                <i class="bi bi-check2-circle" aria-hidden="true"></i>
+                {{ a.total - a.errores.length - a.duplicados }} subidos
+                @if (a.duplicados) { · {{ a.duplicados }} ya estaban }
+                @if (a.errores.length) { · {{ a.errores.length }} con problema }
+              }
+            </p>
+            @if (a.errores.length) {
+              <ul class="cm-errores">
+                @for (e of a.errores; track $index) {
+                  <li><strong>{{ e.nombre }}</strong>: {{ e.motivo }}</li>
+                }
+              </ul>
+            }
+          }
+        </div>
+      }
+    </div>
+  </section>
+
+  <section aria-labelledby="cm-paso2">
+    <h2 id="cm-paso2"><span class="cm-numero">2</span> Antes de conciliar</h2>
+
+    <fieldset class="cm-pregunta">
+      <legend>¿Con qué catálogo de cuentas?</legend>
+      <label class="cm-opcion">
+        <input type="radio" name="catalogo" value="sat" [(ngModel)]="catalogoOpcion" (ngModelChange)="cambio()" />
+        <span>Con el código agrupador del SAT <small>(si el cliente no tiene catálogo propio)</small></span>
+      </label>
+      <label class="cm-opcion">
+        <input type="radio" name="catalogo" value="propio" [(ngModel)]="catalogoOpcion" (ngModelChange)="cambio()" />
+        <span>Subiré el catálogo más reciente del cliente <small>(XML del SAT, el de la contabilidad electrónica)</small></span>
+      </label>
+      @if (catalogoOpcion === 'propio') {
+        <div class="cm-archivo">
+          <label class="btn btn-outline-primary cm-boton">
+            <i class="bi bi-paperclip" aria-hidden="true"></i> Elegir catálogo (XML)
+            <input type="file" accept=".xml,application/xml,text/xml" (change)="elegirCatalogo($event)" hidden />
+          </label>
+          @if (catalogo(); as c) {
+            <span class="cm-ok"><i class="bi bi-check2" aria-hidden="true"></i> {{ catalogoNombre() }}: {{ c.length }} cuentas</span>
+          }
+        </div>
+      }
+    </fieldset>
+
+    <fieldset class="cm-pregunta">
+      <legend>¿Con qué saldos se arranca?</legend>
+      @if (apertura(); as ap) {
+        <label class="cm-opcion">
+          <input type="radio" name="balanza" value="existente" [(ngModel)]="balanzaOpcion" (ngModelChange)="cambio()" />
+          <span>Con los saldos que ya están cargados <small>(al iniciar {{ meses[ap.mes - 1] }} {{ ap.anio }}, {{ ap.saldos.length }} cuentas)</small></span>
+        </label>
+      }
+      <label class="cm-opcion">
+        <input type="radio" name="balanza" value="subir" [(ngModel)]="balanzaOpcion" (ngModelChange)="cambio()" />
+        <span>Subiré una balanza de comprobación <small>(XML del SAT o CSV de Excel con cuenta, deudor y acreedor)</small></span>
+      </label>
+      <label class="cm-opcion">
+        <input type="radio" name="balanza" value="ceros" [(ngModel)]="balanzaOpcion" (ngModelChange)="cambio()" />
+        <span>Empezar con saldos en ceros <small>(cliente nuevo o sin contabilidad anterior)</small></span>
+      </label>
+      @if (balanzaOpcion === 'ceros' && apertura()) {
+        <p class="cm-aviso">Esto reemplaza los saldos de apertura que ya estaban cargados.</p>
+      }
+
+      @if (balanzaOpcion === 'subir') {
+        <div class="cm-archivo">
+          <label class="btn btn-outline-primary cm-boton">
+            <i class="bi bi-paperclip" aria-hidden="true"></i> Elegir balanza
+            <input type="file" accept=".xml,.csv,.txt,.xlsx,.xls,application/xml,text/xml,text/csv" (change)="elegirBalanza($event)" hidden />
+          </label>
+          @if (balanzaArchivo(); as b) {
+            <span>{{ b.nombre }}</span>
+            @if (!b.esXml) {
+              <label class="cm-campo cm-campo-chico">
+                <span>Es la balanza al cierre de</span>
+                <span class="cm-fila">
+                  <select class="ig-control" [(ngModel)]="balanzaMes" (ngModelChange)="cambio()" aria-label="Mes de la balanza">
+                    @for (m of meses; track $index) {
+                      <option [ngValue]="$index + 1">{{ m }}</option>
+                    }
+                  </select>
+                  <select class="ig-control" [(ngModel)]="balanzaAnio" (ngModelChange)="cambio()" aria-label="Año de la balanza">
+                    @for (a of anios; track a) {
+                      <option [ngValue]="a">{{ a }}</option>
+                    }
+                  </select>
+                </span>
+              </label>
+            }
+          }
+        </div>
+        @if (aperturaLeida(); as r) {
+          @if ('error' in r) {
+            <p class="cm-aviso">{{ r.error }}</p>
+          } @else {
+            <div class="cm-balanza">
+              <p>
+                Saldos de apertura al iniciar <strong>{{ meses[r.mes - 1] }} {{ r.anio }}</strong>: {{ r.apertura.saldos.length }} cuentas ·
+                deudores {{ r.apertura.deudores | currency: 'MXN' : 'symbol-narrow' }} ·
+                acreedores {{ r.apertura.acreedores | currency: 'MXN' : 'symbol-narrow' }}
+                @if (r.apertura.deudores === r.apertura.acreedores) {
+                  <span class="cm-ok"><i class="bi bi-check2" aria-hidden="true"></i> cuadra</span>
+                }
+              </p>
+              @if (r.mes !== mes || r.anio !== anio) {
+                <p class="cm-nota">Ojo: la balanza no es la del mes anterior al que concilias; la contabilidad arrancará en {{ meses[r.mes - 1] }} {{ r.anio }}.</p>
+              }
+            </div>
+          }
+        }
+      }
+    </fieldset>
+  </section>
+
+  <section aria-labelledby="cm-paso3">
+    <h2 id="cm-paso3"><span class="cm-numero">3</span> Conciliar</h2>
+    @if (faltante().length) {
+      <ul class="cm-falta">
+        @for (f of faltante(); track $index) {
+          <li>{{ f }}</li>
+        }
+      </ul>
+    }
+    <button type="button" class="btn btn-primary cm-conciliar" (click)="conciliar()" [disabled]="faltante().length > 0 || conciliando()" data-testid="conciliar-mes">
+      @if (conciliando()) {
+        <span class="ig-girando" aria-hidden="true"></span> Empezando…
+      } @else {
+        <i class="bi bi-magic" aria-hidden="true"></i> Conciliar {{ meses[mes - 1] }} {{ anio }}
+      }
+    </button>
+    <p class="cm-nota">
+      Se juntan facturas, estados de cuenta, control interno y nómina; salen las pólizas, los impuestos y los estados
+      financieros con sus notas. El avance lo ves en Cierre del mes.
+    </p>
+  </section>
+} @else {
+  <p class="cm-nota">Elige el cliente y el mes que vas a conciliar.</p>
+}
+
+@if (error(); as e) {
+  <div class="ig-alerta ig-alerta-error" role="alert">{{ e }}</div>
+}
