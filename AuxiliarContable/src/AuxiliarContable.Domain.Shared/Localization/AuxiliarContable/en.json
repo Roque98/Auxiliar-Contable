@@ -553,6 +553,7 @@
     "Menu:Normativa": "Tax law analysis",
     "Menu:MiInformacion": "My information",
     "Menu:Documentos": "Documents",
+    "Menu:ConciliacionMensual": "Monthly reconciliation",
     "Menu:Conciliacion": "Month-end close",
     "AuxiliarContable:OrganizacionObligatoria": "A client user (User role) must join an organization: choose one.",
     "AuxiliarContable:OrganizacionNoExiste": "The chosen organization no longer exists. Reload and choose another.",

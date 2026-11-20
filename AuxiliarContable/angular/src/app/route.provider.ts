@@ -195,6 +195,15 @@ function configureRoutes() {
 
     // El cierre del mes: conciliación bancaria (motor fiscal), partidas sin factura y cierre. El
     // cliente también entra (ve su mes y contesta lo que le preguntan); el servidor decide qué ve.
+    // Conciliación mensual: el auxiliar carga el mes completo del cliente y concilia (solo el equipo).
+    {
+      path: '/conciliacion-mensual',
+      name: '::Menu:ConciliacionMensual',
+      iconClass: 'bi bi-calendar2-check',
+      order: 1.75,
+      layout: eLayoutType.application,
+      requiredPolicy: 'AuxiliarContable.Organizaciones',
+    },
     {
       path: '/conciliacion',
       name: '::Menu:Conciliacion',

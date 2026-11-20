@@ -38,6 +38,9 @@ public enum TipoDeDocumento
 
     /// <summary>Control interno: nota de venta o de compra, vale, comprobante interno de la operación.</summary>
     ControlInterno = 6,
+
+    /// <summary>Información de nómina que trae el auxiliar: lista de raya, incidencias, SUA, cédulas del IMSS.</summary>
+    Nomina = 7,
 }
 
 /// <summary>En qué punto del proceso está.</summary>
