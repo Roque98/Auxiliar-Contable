@@ -1,5 +1,35 @@
 @if (o(); as op) {
   <div class="pt" [attr.aria-busy]="ocupado()">
+    @if (pregunta(); as p) {
+      <section class="pt-guia" aria-live="polite" data-testid="guia">
+        <p class="pt-guia-paso">{{ p.titulo }}</p>
+        <p class="pt-guia-texto">{{ p.texto }}</p>
+        @if (p.nota) {
+          <p class="pt-guia-nota"><i class="bi bi-lightbulb" aria-hidden="true"></i> {{ p.nota }}</p>
+        }
+        @if (porConfirmar(); as c) {
+          <div class="pt-guia-aviso" role="alert">
+            <p><i class="bi bi-exclamation-triangle" aria-hidden="true"></i> {{ c.advertencia }}</p>
+            <div class="pt-guia-opciones">
+              <button type="button" class="btn btn-warning pt-boton" (click)="elegirOpcion(c, archivoGuia)" [disabled]="ocupado()">Entendido: {{ c.texto.toLowerCase() }}</button>
+              <button type="button" class="btn btn-outline-secondary pt-boton" (click)="cancelarConfirmacion()">Regresar</button>
+            </div>
+          </div>
+        } @else {
+          <div class="pt-guia-opciones">
+            @for (opc of p.opciones; track opc.texto) {
+              <button type="button" class="btn pt-boton" [class.btn-primary]="opc.principal" [class.btn-outline-primary]="!opc.principal"
+                      (click)="elegirOpcion(opc, archivoGuia)" [disabled]="ocupado()">{{ opc.texto }}</button>
+            }
+          </div>
+        }
+        @if (preguntaExtra()) {
+          <button type="button" class="btn btn-link pt-deshacer" (click)="volverAPreguntar()">Volver a la pregunta anterior</button>
+        }
+        <input #archivoGuia type="file" hidden [accept]="aceptaSubida()" (change)="subirDeLaGuia($event)" />
+      </section>
+    }
+
     <div class="pt-datos">
       <label class="pt-campo pt-ancho">
         <span>Qué fue</span>
@@ -33,6 +63,7 @@
           </p>
         }
         @case (Estado.NoHay) { <p class="pt-dato">{{ op.factura.motivo }}</p> }
+        @default { @if (op.factura.motivo) { <p class="pt-dato pt-despues"><i class="bi bi-clock" aria-hidden="true"></i> {{ op.factura.motivo }}</p> } }
       }
       @if (puedeEditar() && op.factura.estado !== Estado.Ligada) {
         <div class="pt-acciones">
@@ -67,6 +98,7 @@
           </p>
         }
         @case (Estado.NoHay) { <p class="pt-dato">{{ op.transaccion.motivo }}</p> }
+        @default { @if (op.transaccion.motivo) { <p class="pt-dato pt-despues"><i class="bi bi-clock" aria-hidden="true"></i> {{ op.transaccion.motivo }}</p> } }
       }
       @if (op.transaccion.analisis; as an) {
         <p class="pt-claude"><i class="bi bi-stars" aria-hidden="true"></i> {{ an.queEs }}</p>
@@ -108,6 +140,7 @@
       @switch (op.controlInterno.estado) {
         @case (Estado.Ligada) { <p class="pt-dato">{{ op.controlInterno.nombreDelDocumento }}</p> }
         @case (Estado.NoHay) { <p class="pt-dato">{{ op.controlInterno.motivo }}</p> }
+        @default { @if (op.controlInterno.motivo) { <p class="pt-dato pt-despues"><i class="bi bi-clock" aria-hidden="true"></i> {{ op.controlInterno.motivo }}</p> } }
       }
       @if (op.controlInterno.analisis; as an) {
         <div class="pt-claude">

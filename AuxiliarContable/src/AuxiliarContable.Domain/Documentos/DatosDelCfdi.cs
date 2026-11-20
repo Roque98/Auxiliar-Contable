@@ -27,6 +27,20 @@ public sealed record DatosDelCfdi(
 
     public bool EsRetencion => Tipo == TipoRetenciones;
 
+    /// <summary>PUE o PPD.</summary>
+    public string? MetodoPago { get; init; }
+
+    /// <summary>Clave del catálogo c_FormaPago (01 efectivo, 03 transferencia, 12 dación en pago, 99 por definir…).</summary>
+    public string? FormaPago { get; init; }
+
+    public string? Moneda { get; init; }
+
+    /// <summary>De CfdiRelacionados: 01 nota de crédito, 03 devolución, 07 aplicación de anticipo…</summary>
+    public string? TipoRelacion { get; init; }
+
+    /// <summary>El primer CFDI relacionado (la factura a la que corresponde una nota de crédito, p. ej.).</summary>
+    public string? UuidRelacionado { get; init; }
+
     /// <summary>El atributo Total tal como viene en el XML (lo pide así la verificación del SAT); null si no lo trae.</summary>
     public static string? TotalTalCual(byte[] xml)
     {
@@ -70,6 +84,10 @@ public sealed record DatosDelCfdi(
             var fecha = FechaDelCfdi.Leer(xml);
             decimal? total = decimal.TryParse(lector.GetAttribute("Total"), NumberStyles.Number, CultureInfo.InvariantCulture, out var t) ? t : null;
             var tipo = lector.GetAttribute("TipoDeComprobante");
+            var metodo = lector.GetAttribute("MetodoPago")?.Trim().ToUpperInvariant();
+            var forma = lector.GetAttribute("FormaPago")?.Trim();
+            var moneda = lector.GetAttribute("Moneda")?.Trim().ToUpperInvariant();
+            string? tipoRelacion = null, relacionado = null;
             string? uuid = null, emisorRfc = null, emisorNombre = null, receptorRfc = null, receptorNombre = null, concepto = null;
             while (lector.Read())
             {
@@ -94,10 +112,23 @@ public sealed record DatosDelCfdi(
                     case "TimbreFiscalDigital":
                         uuid = lector.GetAttribute("UUID")?.Trim().ToUpperInvariant();
                         break;
+                    case "CfdiRelacionados" when tipoRelacion is null:
+                        tipoRelacion = lector.GetAttribute("TipoRelacion")?.Trim();
+                        break;
+                    case "CfdiRelacionado" when relacionado is null:
+                        relacionado = lector.GetAttribute("UUID")?.Trim().ToUpperInvariant();
+                        break;
                 }
             }
 
-            return new DatosDelCfdi(uuid, fecha, total, tipo, emisorRfc, emisorNombre, receptorRfc, receptorNombre, concepto);
+            return new DatosDelCfdi(uuid, fecha, total, tipo, emisorRfc, emisorNombre, receptorRfc, receptorNombre, concepto)
+            {
+                MetodoPago = string.IsNullOrWhiteSpace(metodo) ? null : metodo,
+                FormaPago = string.IsNullOrWhiteSpace(forma) ? null : forma,
+                Moneda = string.IsNullOrWhiteSpace(moneda) ? null : moneda,
+                TipoRelacion = string.IsNullOrWhiteSpace(tipoRelacion) ? null : tipoRelacion,
+                UuidRelacionado = string.IsNullOrWhiteSpace(relacionado) ? null : relacionado,
+            };
         }
         catch (XmlException)
         {

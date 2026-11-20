@@ -17,6 +17,15 @@ public interface IOperacionesAppService : IApplicationService
     /// <summary>Las del mes, las más completas primero. Las facturas y los registros de efectivo y crédito del mes que aún no tienen operación se agregan solos.</summary>
     Task<OperacionesDelMesDto> GetListAsync(Guid organizacionId, int anio, int mes);
 
+    /// <summary>
+    /// Lo que dice el XML de la factura de la operación (tipo, método y forma de pago, CFDI relacionado), para que la
+    /// guía del trabajo diario pregunte lo que corresponde. Null si la operación no tiene el XML.
+    /// </summary>
+    Task<FacturaDeLaOperacionDto?> GetFacturaAsync(Guid organizacionId, Guid operacionId);
+
+    /// <summary>Lo que el cliente dijo que subiría después (la factura, el comprobante o el ticket), para recordárselo.</summary>
+    Task<List<PorSubirDto>> GetPorSubirAsync(Guid organizacionId);
+
     /// <summary>La operación de un documento recién subido (factura, comprobante de pago o control interno): la que ya tiene, o una nueva.</summary>
     Task<OperacionDelClienteDto> DeDocumentoAsync(Guid organizacionId, Guid documentoId);
 
@@ -36,6 +45,32 @@ public interface IOperacionesAppService : IApplicationService
 
     /// <summary>Borra la operación; los documentos y los registros de efectivo y crédito se quedan.</summary>
     Task BorrarAsync(Guid organizacionId, Guid operacionId);
+}
+
+public class FacturaDeLaOperacionDto
+{
+    /// <summary>I ingreso, E egreso, P pago, N nómina, T traslado.</summary>
+    public string? Tipo { get; set; }
+
+    public string? Metodo { get; set; }
+    public string? Forma { get; set; }
+    public decimal? Total { get; set; }
+    public string? Moneda { get; set; }
+    public string? TipoRelacion { get; set; }
+    public string? UuidRelacionado { get; set; }
+}
+
+public class PorSubirDto
+{
+    public Guid OperacionId { get; set; }
+    public DateTime Fecha { get; set; }
+    public string Descripcion { get; set; } = "";
+    public decimal? Importe { get; set; }
+    public PataDeOperacion Pata { get; set; }
+    public string Motivo { get; set; } = "";
+
+    /// <summary>Días desde que se dijo «lo subiré después».</summary>
+    public int Dias { get; set; }
 }
 
 public class OperacionesDelMesDto

@@ -159,6 +159,28 @@ public class Operacion : AuditedAggregateRoot<Guid>
         }
     }
 
+    /// <summary>
+    /// «Lo subiré después» (o «ya le pedí la factura al contador»): la pata sigue pendiente, pero con lo que dijo el
+    /// cliente, para recordárselo.
+    /// </summary>
+    public void Posponer(PataDeOperacion pata, string motivo)
+    {
+        var m = Check.NotNullOrWhiteSpace(motivo, nameof(motivo), OperacionConsts.MaxMotivoLength).Trim();
+        Vaciar(pata);
+        switch (pata)
+        {
+            case PataDeOperacion.Factura:
+                FacturaMotivo = m;
+                break;
+            case PataDeOperacion.Transaccion:
+                TransaccionMotivo = m;
+                break;
+            default:
+                ControlMotivo = m;
+                break;
+        }
+    }
+
     /// <summary>Se deja para después: la pata vuelve a gris.</summary>
     public void Vaciar(PataDeOperacion pata)
     {

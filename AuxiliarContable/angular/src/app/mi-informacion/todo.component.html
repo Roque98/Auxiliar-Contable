@@ -38,6 +38,25 @@
   <div class="ig-alerta ig-alerta-error" role="alert">{{ e }}</div>
 }
 
+@if (porSubir().length) {
+  <section class="td-recordatorio" aria-labelledby="td-por-subir" data-testid="por-subir">
+    <h2 id="td-por-subir"><i class="bi bi-alarm" aria-hidden="true"></i> Dijiste que subirías esto después ({{ porSubir().length }})</h2>
+    <ul>
+      @for (p of porSubir().slice(0, 8); track p.operacionId + p.pata) {
+        <li>
+          <button type="button" class="btn btn-link td-recordar" (click)="irA(p)">
+            <strong>{{ nombreDePata[p.pata] }}</strong> de «{{ p.descripcion }}»
+            @if (p.importe) { · {{ p.importe | currency: 'MXN' : 'symbol-narrow' }} }
+            · {{ p.fecha | date: 'd MMM y' }}
+          </button>
+          <small>{{ p.motivo }}@if (p.dias >= 1) { · hace {{ p.dias }} {{ p.dias === 1 ? 'día' : 'días' }} }</small>
+        </li>
+      }
+    </ul>
+    @if (porSubir().length > 8) { <p class="td-nota">Y {{ porSubir().length - 8 }} más.</p> }
+  </section>
+}
+
 @if (datos(); as d) {
   <section class="td-tarjeta" aria-labelledby="td-titulo">
     <div class="td-cabecera">

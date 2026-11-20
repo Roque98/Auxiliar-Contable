@@ -79,3 +79,20 @@
   p { margin: 0; }
   small { color: var(--ig-texto-secundario); }
 }
+
+/* La guía del trabajo diario: una pregunta a la vez, arriba de las tres patas. */
+.pt-guia {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ig-esp-2);
+  padding: var(--ig-esp-3);
+  border: 1px solid var(--ig-primario, #2563eb);
+  border-radius: var(--ig-radio-md);
+  background: var(--ig-fondo-suave, rgba(37, 99, 235, 0.06));
+}
+.pt-guia-paso { margin: 0; font-size: var(--ig-texto-sm); font-weight: var(--ig-peso-semi); text-transform: uppercase; letter-spacing: 0.04em; color: var(--ig-texto-secundario); }
+.pt-guia-texto { margin: 0; font-weight: var(--ig-peso-semi); }
+.pt-guia-nota { margin: 0; font-size: var(--ig-texto-sm); color: var(--ig-texto-secundario); }
+.pt-guia-opciones { display: flex; flex-wrap: wrap; gap: var(--ig-esp-2); }
+.pt-guia-aviso { display: flex; flex-direction: column; gap: var(--ig-esp-2); p { margin: 0; color: var(--ig-aviso, #b45309); } }
+.pt-despues { color: var(--ig-aviso, #b45309); }

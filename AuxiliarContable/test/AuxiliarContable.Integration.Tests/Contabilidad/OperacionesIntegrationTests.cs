@@ -170,4 +170,44 @@ public class OperacionesIntegrationTests : ConJerarquiaTestBase
         var estado = await SubirAsync(_cliente, "banorte.pdf", TipoDeDocumento.EstadoDeCuenta, "%PDF-1.4 estado");
         await Should.ThrowAsync<UserFriendlyException>(() => ComoAsync(Usuario, () => _operaciones.DeDocumentoAsync(_cliente, estado)));
     }
+
+    [Fact]
+    public async Task La_guia_lee_la_forma_de_pago_y_recuerda_lo_que_se_subira_despues()
+    {
+        const string uuid = "7A9619FF-8B86-D011-B42D-00C04FC964AA";
+        var contenido = Xml(uuid)
+            .Replace("TipoDeComprobante=\"I\"", "TipoDeComprobante=\"I\" MetodoPago=\"PPD\" FormaPago=\"99\" Moneda=\"MXN\"")
+            .Replace("<cfdi:Emisor", "<cfdi:CfdiRelacionados TipoRelacion=\"04\"><cfdi:CfdiRelacionado UUID=\"" + Uuid.ToLowerInvariant() + "\"/></cfdi:CfdiRelacionados><cfdi:Emisor");
+        var xml = await SubirAsync(_cliente, "ppd.xml", TipoDeDocumento.Cfdi, contenido);
+        var o = await ComoAsync(Usuario, () => _operaciones.DeDocumentoAsync(_cliente, xml));
+
+        var f = (await ComoAsync(Usuario, () => _operaciones.GetFacturaAsync(_cliente, o.Id)))!;
+        f.Tipo.ShouldBe("I");
+        f.Metodo.ShouldBe("PPD");
+        f.Forma.ShouldBe("99");
+        f.Moneda.ShouldBe("MXN");
+        f.TipoRelacion.ShouldBe("04");
+        f.UuidRelacionado.ShouldBe(Uuid);
+
+        // «Lo subiré después»: la pata sigue pendiente, con lo que dijo, y aparece en lo por subir.
+        var datos = Datos(o);
+        datos.ControlInterno = new GuardarPataDto { Estado = EstadoDePata.Pendiente, Motivo = "Lo subiré después" };
+        datos.Transaccion = new GuardarPataDto { Estado = EstadoDePata.Pendiente, Motivo = OperacionesAppService.MotivoDelEstadoDeCuenta + " al conciliar." };
+        var r = await ComoAsync(Usuario, () => _operaciones.ActualizarAsync(_cliente, o.Id, datos));
+        r.ControlInterno.Estado.ShouldBe(EstadoDePata.Pendiente);
+        r.ControlInterno.Motivo.ShouldBe("Lo subiré después");
+
+        var porSubir = await ComoAsync(Usuario, () => _operaciones.GetPorSubirAsync(_cliente));
+        var uno = porSubir.ShouldHaveSingleItem(); // lo del estado de cuenta no se le recuerda
+        uno.Pata.ShouldBe(PataDeOperacion.ControlInterno);
+        uno.OperacionId.ShouldBe(o.Id);
+
+        // Sin XML no hay datos de factura; lo ajeno no existe.
+        var sinXml = await ComoAsync(Usuario, () => _operaciones.CrearAsync(_cliente, new GuardarOperacionDto
+        {
+            Fecha = Dia, Sentido = SentidoDeOperacion.Salida, Importe = 100m, Descripcion = "Café",
+        }));
+        (await ComoAsync(Usuario, () => _operaciones.GetFacturaAsync(_cliente, sinXml.Id))).ShouldBeNull();
+        await Should.ThrowAsync<EntityNotFoundException>(() => ComoAsync(Usuario, () => _operaciones.GetPorSubirAsync(_otroCliente)));
+    }
 }
