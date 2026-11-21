@@ -94,8 +94,8 @@ public class HojaContable : ITransientDependency
         foreach (var g in saldos.Where(s => Entra(Rubro(s.Key))).GroupBy(s => Rubro(s.Key)).OrderBy(g => g.Key, StringComparer.Ordinal))
         {
             var cat = DelCatalogo(g.Key);
-            var cuentas = g.Select(s => new SaldoDeCuentaDto { Codigo = s.Key, Nombre = DelCatalogo(s.Key)?.Nombre ?? s.Key, Saldo = Signo(s.Key, s.Value) })
-                .Where(c => c.Saldo != 0).OrderBy(c => c.Codigo, StringComparer.Ordinal).ToList();
+            var cuentas = g.Select(s => new SaldoDeCuentaDto { Clave = s.Key, Nombre = DelCatalogo(s.Key)?.Nombre ?? s.Key, Saldo = Signo(s.Key, s.Value) })
+                .Where(c => c.Saldo != 0).OrderBy(c => c.Clave, StringComparer.Ordinal).ToList();
             if (cuentas.Count == 0)
             {
                 continue;
@@ -103,7 +103,7 @@ public class HojaContable : ITransientDependency
 
             dto.Rubros.Add(new RubroContableDto
             {
-                Codigo = g.Key, Nombre = cat?.Nombre ?? $"Cuenta {g.Key}", Grupo = cat?.Seccion ?? "", Nif = cat?.Nif ?? "",
+                Clave = g.Key, Nombre = cat?.Nombre ?? $"Cuenta {g.Key}", Grupo = cat?.Seccion ?? "", Nif = cat?.Nif ?? "",
                 Saldo = Math.Round(cuentas.Sum(c => c.Saldo), 2), Cuentas = cuentas,
             });
         }
@@ -120,7 +120,7 @@ public class HojaContable : ITransientDependency
             {
                 dto.Rubros.Add(new RubroContableDto
                 {
-                    Codigo = "resultado_anterior", Nombre = "Resultados de años anteriores sin traspasar", Grupo = "Capital contable", Nif = "C-11",
+                    Clave = "resultado_anterior", Nombre = "Resultados de años anteriores sin traspasar", Grupo = "Capital contable", Nif = "C-11",
                     Saldo = anteriores, Virtual = true,
                 });
                 dto.Avisos.Add("Hay resultados de años anteriores que no se han traspasado a «Resultado de ejercicios anteriores» (304): falta la póliza de cierre.");
@@ -128,7 +128,7 @@ public class HojaContable : ITransientDependency
 
             dto.Rubros.Add(new RubroContableDto
             {
-                Codigo = "resultado_del_ejercicio", Nombre = $"Resultado del ejercicio {anio} (de enero a {mes:00})", Grupo = "Capital contable", Nif = "B-3",
+                Clave = "resultado_del_ejercicio", Nombre = $"Resultado del ejercicio {anio} (de enero a {mes:00})", Grupo = "Capital contable", Nif = "B-3",
                 Saldo = delEjercicio, Virtual = true,
             });
         }
@@ -161,7 +161,7 @@ public class HojaContable : ITransientDependency
         var movimientosDelMes = libro.Movimientos.Where(m => m.Clave == delMes && EsDeLaCuenta(m.M.Cuenta)).ToList();
         var dto = new CuentaContableDto
         {
-            Codigo = cuenta, Nombre = cat?.Nombre ?? $"Cuenta {cuenta}", Nif = cat?.Nif ?? "", Naturaleza = naturaleza,
+            Clave = cuenta, Nombre = cat?.Nombre ?? $"Cuenta {cuenta}", Nif = cat?.Nif ?? "", Naturaleza = naturaleza,
             SaldoInicial = Math.Round(saldoInicial, 2),
             Cargos = Math.Round(movimientosDelMes.Sum(m => m.M.Debe), 2),
             Abonos = Math.Round(movimientosDelMes.Sum(m => m.M.Haber), 2),
@@ -170,8 +170,8 @@ public class HojaContable : ITransientDependency
 
         var saldos = Saldos(libro, desde, conApertura: !resultados);
         dto.Subcuentas = saldos.Where(s => s.Key != cuenta && EsDeLaCuenta(s.Key))
-            .Select(s => new SaldoDeCuentaDto { Codigo = s.Key, Nombre = DelCatalogo(s.Key)?.Nombre ?? s.Key, Saldo = Math.Round(Nat(s.Value.Debe, s.Value.Haber), 2) })
-            .Where(s => s.Saldo != 0).OrderBy(s => s.Codigo, StringComparer.Ordinal).ToList();
+            .Select(s => new SaldoDeCuentaDto { Clave = s.Key, Nombre = DelCatalogo(s.Key)?.Nombre ?? s.Key, Saldo = Math.Round(Nat(s.Value.Debe, s.Value.Haber), 2) })
+            .Where(s => s.Saldo != 0).OrderBy(s => s.Clave, StringComparer.Ordinal).ToList();
 
         // De quién es el saldo: por el RFC de la póliza (proveedor, cliente, acreedor…)
         var hasta = libro.Movimientos.Where(m => (desde == null || m.Clave >= desde) && EsDeLaCuenta(m.M.Cuenta)).ToList();

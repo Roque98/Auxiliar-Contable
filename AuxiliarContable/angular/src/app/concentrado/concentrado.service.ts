@@ -160,13 +160,13 @@ export interface RegistrarPagoDto {
 }
 
 export interface SaldoDeCuentaDto {
-  codigo: string;
+  clave: string;
   nombre: string;
   saldo: number;
 }
 
 export interface RubroContableDto {
-  codigo: string;
+  clave: string;
   nombre: string;
   grupo: string;
   nif: string;
@@ -205,7 +205,7 @@ export interface MovimientoDeCuentaDto {
 }
 
 export interface CuentaContableDto {
-  codigo: string;
+  clave: string;
   nombre: string;
   nif: string;
   naturaleza: string;

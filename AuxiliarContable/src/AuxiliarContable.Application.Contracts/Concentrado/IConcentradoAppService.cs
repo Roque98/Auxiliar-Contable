@@ -273,7 +273,7 @@ public class RubrosContablesDto
 public class RubroContableDto
 {
     /// <summary>Código agrupador de primer nivel («201») o una cuenta virtual («resultado_del_ejercicio»).</summary>
-    public string Codigo { get; set; } = "";
+    public string Clave { get; set; } = "";
 
     public string Nombre { get; set; } = "";
 
@@ -290,14 +290,14 @@ public class RubroContableDto
 
 public class SaldoDeCuentaDto
 {
-    public string Codigo { get; set; } = "";
+    public string Clave { get; set; } = "";
     public string Nombre { get; set; } = "";
     public decimal Saldo { get; set; }
 }
 
 public class CuentaContableDto
 {
-    public string Codigo { get; set; } = "";
+    public string Clave { get; set; } = "";
     public string Nombre { get; set; } = "";
     public string Nif { get; set; } = "";
 

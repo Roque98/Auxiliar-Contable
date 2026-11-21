@@ -220,15 +220,15 @@ public class ConcentradoIntegrationTests : ConJerarquiaTestBase
         var deudas = await ComoAsync(Usuario, () => _concentrado.GetRubrosAsync(_cliente, Dia.Year, Dia.Month, "deudas_contables"));
         deudas.HayContabilidad.ShouldBeTrue();
         var proveedores = deudas.Rubros.ShouldHaveSingleItem();
-        (proveedores.Codigo, proveedores.Saldo, proveedores.Nif).ShouldBe(("201", 1160m, "C-19"));
+        (proveedores.Clave, proveedores.Saldo, proveedores.Nif).ShouldBe(("201", 1160m, "C-19"));
         deudas.Total.ShouldBe(1160);
 
         var activos = await ComoAsync(Usuario, () => _concentrado.GetRubrosAsync(_cliente, Dia.Year, Dia.Month, "activos"));
-        activos.Rubros.Select(r => (r.Codigo, r.Saldo)).ShouldBe([("102", 10000m), ("105", 2320m), ("118", 160m)]);
+        activos.Rubros.Select(r => (r.Clave, r.Saldo)).ShouldBe([("102", 10000m), ("105", 2320m), ("118", 160m)]);
 
         var capital = await ComoAsync(Usuario, () => _concentrado.GetRubrosAsync(_cliente, Dia.Year, Dia.Month, "capital"));
-        capital.Rubros.Single(r => r.Codigo == "301").Saldo.ShouldBe(10000);
-        capital.Rubros.Single(r => r.Codigo == "resultado_del_ejercicio").Saldo.ShouldBe(1000);
+        capital.Rubros.Single(r => r.Clave == "301").Saldo.ShouldBe(10000);
+        capital.Rubros.Single(r => r.Clave == "resultado_del_ejercicio").Saldo.ShouldBe(1000);
 
         var ingresos = await ComoAsync(Usuario, () => _concentrado.GetRubrosAsync(_cliente, Dia.Year, Dia.Month, "ingresos_contables"));
         ingresos.Rubros.ShouldHaveSingleItem().Saldo.ShouldBe(2000);
