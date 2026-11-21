@@ -140,20 +140,26 @@ public class ConcentradoAppService : AuxiliarContableAppService, IConcentradoApp
             dto.NoAplican.Add("IVA: tus obligaciones ante el SAT no lo incluyen y no hay IVA en tus facturas.");
         }
 
-        // IEPS: solo si el SAT se lo tiene como obligación (todavía no se calcula aquí)
-        if (DiceElSat("IEPS", "produccion y servicios"))
+        // IEPS: si el SAT se lo tiene como obligación o hay IEPS en sus facturas
+        var iepsPorMes = resultado?.Meses.Where(m => m.IepsAPagar != null).Select(m => (Mes(m.Periodo), m.IepsAPagar ?? 0m)).ToList() ?? [];
+        if (DiceElSat("IEPS", "produccion y servicios") || iepsPorMes.Count > 0)
         {
             obligaciones.Add((new ObligacionFiscalDto
             {
                 Clave = "ieps", Nombre = "IEPS", Nivel = "federal",
-                Descripcion = "Impuesto especial sobre producción y servicios de lo que vendes o importas.",
-                Fundamento = "Art. 5o-D LIEPS: pago mensual a más tardar el día 17 del mes siguiente.",
-                Nota = "La plataforma todavía no calcula el IEPS: tu contador lo revisa con tus facturas.",
-            }, [], false));
+                Descripcion = "Impuesto especial sobre producción y servicios de lo que vendes: el que cobraste menos el que pagaste de la misma clase de bien.",
+                Impuesto = delMes?.IepsAPagar ?? (iepsPorMes.Count > 0 || resultado != null ? 0 : null),
+                AFavor = delMes?.IepsSaldoAFavor ?? 0,
+                Renglones = delMes?.RenglonesIeps.ToList() ?? [],
+                Fundamento = "Art. 5o LIEPS: pago mensual a más tardar el día 17 del mes siguiente; se causa al cobrar (art. 10).",
+                Nota = iepsPorMes.Count > 0
+                    ? "Solo se acredita el IEPS de compras de la misma clase de bien que vendes sin modificarlo (art. 4o LIEPS): aquí se emparejan por tasa o cuota; tu contador revisa que sean de la misma clase."
+                    : "No hay IEPS en tus facturas del ejercicio.",
+            }, iepsPorMes, true));
         }
         else
         {
-            dto.NoAplican.Add("IEPS: no está en tus obligaciones ante el SAT.");
+            dto.NoAplican.Add("IEPS: no está en tus obligaciones ante el SAT ni en tus facturas.");
         }
 
         // Retenciones que el cliente hizo a terceros (honorarios, arrendamiento, fletes…) al pagar sus facturas
@@ -309,6 +315,17 @@ public class ConcentradoAppService : AuxiliarContableAppService, IConcentradoApp
 
         var bimestral = mes % 2 == 0;
         var cuotas = await CuotasAsync(delMes);
+        // Los meses anteriores también: si no se pagaron, llevan actualización y recargos como el CFF (art. 40-A LSS).
+        var imssPorMes = new List<(int Mes, decimal Importe)>();
+        foreach (var k in calculados.Select(c => c.Month).Where(k => k < mes).Distinct().Order())
+        {
+            var c = await CuotasAsync(calculados.Where(x => x.Month == k).Select(x => x.Nomina).ToList());
+            if (c != null)
+            {
+                imssPorMes.Add((k, c.TotalMensual));
+            }
+        }
+
         var cuotasDelBimestre = bimestral
             ? await CuotasAsync(calculados.Where(c => c.Month == mes || c.Month == mes - 1).Select(c => c.Nomina).ToList())
             : null;
@@ -321,9 +338,9 @@ public class ConcentradoAppService : AuxiliarContableAppService, IConcentradoApp
             {
                 Concepto = $"{c.Ramo} (patrón {c.Patron.ToString("C", Mx)}, trabajador {c.Obrero.ToString("C", Mx)})", Importe = c.Total, Fundamento = "LSS",
             }).Append(new RenglonDelPapel { Concepto = "(=) Cuotas del mes", Importe = cuotas.TotalMensual, Tipo = "resultado" }).ToList(),
-            Fundamento = "Arts. 39 y 39-A LSS: las cuotas mensuales se pagan a más tardar el día 17 del mes siguiente.",
-            Nota = "Los meses anteriores sin pagar no se suman aquí todavía: revísalos en el SUA.",
-        }, [], false));
+            Fundamento = "Arts. 39 y 39-A LSS: las cuotas mensuales se pagan a más tardar el día 17 del mes siguiente; si no, llevan actualización y recargos en los términos del CFF (art. 40-A LSS).",
+            Nota = "Los meses anteriores salen de la nómina calculada en la plataforma: si pagaste con el SUA, registra el pago para que no aparezcan como adeudo.",
+        }, imssPorMes, true));
 
         var bimestre = (mes + 1) / 2;
         obligaciones.Add((new ObligacionFiscalDto
