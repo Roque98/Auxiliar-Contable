@@ -37,6 +37,7 @@ public class ConcentradoAppService : AuxiliarContableAppService, IConcentradoApp
     private readonly CalculadoraDeImpuestos _calculadora;
     private readonly Autorizador _autorizador;
     private readonly IMotorFiscal _motor;
+    private readonly HojaContable _hoja;
 
     public ConcentradoAppService(
         IRepository<ImpuestosDelMes, Guid> impuestos,
@@ -48,8 +49,10 @@ public class ConcentradoAppService : AuxiliarContableAppService, IConcentradoApp
         IIdentityUserRepository usuarios,
         CalculadoraDeImpuestos calculadora,
         Autorizador autorizador,
-        IMotorFiscal motor)
+        IMotorFiscal motor,
+        HojaContable hoja)
     {
+        _hoja = hoja;
         _impuestos = impuestos;
         _pagos = pagos;
         _periodos = periodos;
@@ -640,6 +643,22 @@ public class ConcentradoAppService : AuxiliarContableAppService, IConcentradoApp
         var u = await _usuarios.FindAsync(creador.Value);
         var nombre = u == null ? null : $"{u.Name} {u.Surname}".Trim();
         return $"la subió {(string.IsNullOrWhiteSpace(nombre) ? u?.UserName ?? "otra persona" : nombre)}";
+    }
+
+    // ------------------------------------------------------------------------------------------- pestañas contables
+
+    public async Task<RubrosContablesDto> GetRubrosAsync(Guid organizacionId, int anio, int mes, string seccion)
+    {
+        await _autorizador.ExigirAsync(organizacionId, AccionEnOrganizacion.Ver);
+        Validar(anio, mes);
+        return await _hoja.RubrosAsync(organizacionId, anio, mes, seccion);
+    }
+
+    public async Task<CuentaContableDto> GetCuentaAsync(Guid organizacionId, int anio, int mes, string cuenta)
+    {
+        await _autorizador.ExigirAsync(organizacionId, AccionEnOrganizacion.Ver);
+        Validar(anio, mes);
+        return await _hoja.CuentaAsync(organizacionId, anio, mes, cuenta);
     }
 
     // ------------------------------------------------------------------------------------------- pagos

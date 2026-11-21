@@ -15,6 +15,8 @@ using AuxiliarContable.PerfilesFiscales;
 using Shouldly;
 using Volo.Abp.Authorization;
 using Volo.Abp.Content;
+using Volo.Abp.Domain.Repositories;
+using Volo.Abp.Guids;
 using Xunit;
 
 namespace AuxiliarContable;
@@ -172,5 +174,70 @@ public class ConcentradoIntegrationTests : ConJerarquiaTestBase
         // Ni siquiera sabe que existe: el Autorizador contesta «no encontrado».
         await Should.ThrowAsync<Volo.Abp.Domain.Entities.EntityNotFoundException>(() =>
             ComoAsync(Usuario, () => _concentrado.GetDeudasFiscalesAsync(otro, Dia.Year, Dia.Month)));
+    }
+
+    [Fact]
+    public async Task Pestanas_contables_de_la_apertura_y_las_polizas_hasta_la_cuenta()
+    {
+        await WithUnitOfWorkAsync(async () =>
+        {
+            var guids = GetRequiredService<IGuidGenerator>();
+            var apertura = new SaldosDeApertura(guids.Create(), _cliente);
+            apertura.Poner(Dia.Year, 1, JsonSerializer.Serialize(new List<SaldoDeApertura>
+            {
+                new() { Cuenta = "102.01", Deudor = 10000 }, new() { Cuenta = "301.01", Acreedor = 10000 },
+            }));
+            await GetRequiredService<IRepository<SaldosDeApertura, Guid>>().InsertAsync(apertura);
+            var mes = new PolizasDelMes(guids.Create(), _cliente, Dia.Year, Dia.Month);
+            mes.Guardar(JsonSerializer.Serialize(new ResultadoContable
+            {
+                Polizas =
+                [
+                    new PolizaContable
+                    {
+                        Tipo = "Diario", Numero = 1, Fecha = $"{Periodo}-03", Concepto = "Ferretería de prueba · tornillos", Rfc = "AAA010101AAA", Uuid = Gasto,
+                        Movimientos =
+                        [
+                            new MovimientoContable { Cuenta = "601.84", Debe = 1000 }, new MovimientoContable { Cuenta = "118.01", Debe = 160 },
+                            new MovimientoContable { Cuenta = "201.01", Haber = 1160 },
+                        ],
+                    },
+                    new PolizaContable
+                    {
+                        Tipo = "Ingresos", Numero = 2, Fecha = $"{Periodo}-04", Concepto = "Cliente de prueba · venta", Rfc = "BBB010101BBB",
+                        Movimientos =
+                        [
+                            new MovimientoContable { Cuenta = "105.01", Debe = 2320 }, new MovimientoContable { Cuenta = "401.01", Haber = 2000 },
+                            new MovimientoContable { Cuenta = "209.01", Haber = 320 },
+                        ],
+                    },
+                ],
+            }), DateTime.UtcNow, null);
+            await GetRequiredService<IRepository<PolizasDelMes, Guid>>().InsertAsync(mes);
+        });
+
+        // Deudas contables: proveedores sí; el IVA trasladado no (es de «Deudas fiscales»).
+        var deudas = await ComoAsync(Usuario, () => _concentrado.GetRubrosAsync(_cliente, Dia.Year, Dia.Month, "deudas_contables"));
+        deudas.HayContabilidad.ShouldBeTrue();
+        var proveedores = deudas.Rubros.ShouldHaveSingleItem();
+        (proveedores.Codigo, proveedores.Saldo, proveedores.Nif).ShouldBe(("201", 1160m, "C-19"));
+        deudas.Total.ShouldBe(1160);
+
+        var activos = await ComoAsync(Usuario, () => _concentrado.GetRubrosAsync(_cliente, Dia.Year, Dia.Month, "activos"));
+        activos.Rubros.Select(r => (r.Codigo, r.Saldo)).ShouldBe([("102", 10000m), ("105", 2320m), ("118", 160m)]);
+
+        var capital = await ComoAsync(Usuario, () => _concentrado.GetRubrosAsync(_cliente, Dia.Year, Dia.Month, "capital"));
+        capital.Rubros.Single(r => r.Codigo == "301").Saldo.ShouldBe(10000);
+        capital.Rubros.Single(r => r.Codigo == "resultado_del_ejercicio").Saldo.ShouldBe(1000);
+
+        var ingresos = await ComoAsync(Usuario, () => _concentrado.GetRubrosAsync(_cliente, Dia.Year, Dia.Month, "ingresos_contables"));
+        ingresos.Rubros.ShouldHaveSingleItem().Saldo.ShouldBe(2000);
+
+        // De proveedores a quién se le debe y la póliza.
+        var cuenta = await ComoAsync(Usuario, () => _concentrado.GetCuentaAsync(_cliente, Dia.Year, Dia.Month, "201"));
+        (cuenta.SaldoInicial, cuenta.Abonos, cuenta.SaldoFinal).ShouldBe((0m, 1160m, 1160m));
+        var tercero = cuenta.Terceros.ShouldHaveSingleItem();
+        (tercero.Rfc, tercero.Nombre, tercero.Saldo).ShouldBe(("AAA010101AAA", "Ferretería de prueba", 1160m));
+        cuenta.Movimientos.ShouldHaveSingleItem().Uuid.ShouldBe(Gasto);
     }
 }

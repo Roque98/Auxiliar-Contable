@@ -253,13 +253,7 @@
         <button type="button" role="tab" class="cc-chip" [attr.aria-selected]="subIngresos() === 'fiscales'" (click)="cambiarSubIngresos('fiscales')">Ingresos fiscales</button>
         <button type="button" role="tab" class="cc-chip" [attr.aria-selected]="subIngresos() === 'contables'" (click)="cambiarSubIngresos('contables')">Ingresos contables</button>
       </div>
-      @if (subIngresos() === 'contables') {
-        <section class="ig-panel cc-construccion">
-          <h2 class="cc-subtitulo">Ingresos contables</h2>
-          <p>Los ingresos según la contabilidad (NIF B-3 y D-1): ventas, otros ingresos y productos financieros, cuenta por cuenta hasta su póliza.</p>
-          <p class="cc-nota">En construcción: es el siguiente paso.</p>
-        </section>
-      } @else if (factura()) {
+      @if (subIngresos() === 'fiscales' && factura()) {
         <nav class="cc-migas" aria-label="Dónde estás">
           <button type="button" class="ig-btn ig-btn-texto" (click)="alDetalle()">{{ detalle()?.titulo }}</button>
           <i class="bi bi-chevron-right" aria-hidden="true"></i><span>Factura</span>
@@ -267,26 +261,130 @@
       }
     }
 
-    @case ('deudas_contables') {
-      <section class="ig-panel cc-construccion">
-        <h2 class="cc-subtitulo">Deudas contables</h2>
-        <p>Proveedores, acreedores, nómina por pagar y demás pasivos que no son impuestos (NIF C-9, C-19 y D-3), cada uno hasta su factura o póliza.</p>
-        <p class="cc-nota">En construcción: es el siguiente paso.</p>
-      </section>
-    }
-    @case ('activos') {
-      <section class="ig-panel cc-construccion">
-        <h2 class="cc-subtitulo">Activos</h2>
-        <p>Bancos, clientes, inventarios, activo fijo y demás, cuenta principal por cuenta principal hasta su movimiento.</p>
-        <p class="cc-nota">En construcción: es el siguiente paso.</p>
-      </section>
-    }
-    @case ('capital') {
-      <section class="ig-panel cc-construccion">
-        <h2 class="cc-subtitulo">Capital</h2>
-        <p>Capital social, resultados de ejercicios anteriores y del ejercicio, hasta su póliza.</p>
-        <p class="cc-nota">En construcción: es el siguiente paso.</p>
-      </section>
+  }
+
+  <!-- Pestañas contables: rubro (cuenta del código agrupador) → subcuentas, terceros y pólizas → archivo -->
+  @if (esContable()) {
+    @if (cargandoNivel() && !rubros()) {
+      <div class="ig-esqueleto cc-esqueleto" aria-busy="true"></div>
+    } @else if (rubros(); as r) {
+      @if (cuenta(); as c) {
+        <nav class="cc-migas" aria-label="Dónde estás">
+          <button type="button" class="ig-btn ig-btn-texto" (click)="volverACuenta(-1)">{{ r.titulo }}</button>
+          @for (x of cuentas(); track x.codigo; let i = $index, last = $last) {
+            <i class="bi bi-chevron-right" aria-hidden="true"></i>
+            @if (last) {
+              <span>{{ x.nombre }}</span>
+            } @else {
+              <button type="button" class="ig-btn ig-btn-texto" (click)="volverACuenta(i)">{{ x.nombre }}</button>
+            }
+          }
+        </nav>
+        <section class="ig-panel">
+          <div class="cc-obligacion-cabeza">
+            <div>
+              <h2 class="cc-subtitulo">{{ c.codigo }} · {{ c.nombre }}</h2>
+              @if (c.nif) { <p class="cc-nota">Norma: NIF {{ c.nif }} · naturaleza {{ c.naturaleza === 'D' ? 'deudora' : 'acreedora' }}</p> }
+            </div>
+            <div class="cc-obligacion-total">
+              <p class="cc-etiqueta">Saldo al cierre de {{ nombreDelMes(mes) }}</p>
+              <p class="cc-cifra-grande ig-cifra">{{ c.saldoFinal | currency: 'MXN' : 'symbol-narrow' }}</p>
+            </div>
+          </div>
+          <div class="ig-tabla-caja">
+            <table class="ig-tabla cc-papel">
+              <tbody>
+                <tr><td>Saldo al iniciar {{ nombreDelMes(mes) }}</td><td class="ig-num ig-cifra">{{ c.saldoInicial | currency: 'MXN' : 'symbol-narrow' }}</td></tr>
+                <tr><td>(+) Cargos del mes</td><td class="ig-num ig-cifra">{{ c.cargos | currency: 'MXN' : 'symbol-narrow' }}</td></tr>
+                <tr><td>(−) Abonos del mes</td><td class="ig-num ig-cifra">{{ c.abonos | currency: 'MXN' : 'symbol-narrow' }}</td></tr>
+                <tr class="cc-resultado"><td>(=) Saldo final</td><td class="ig-num ig-cifra">{{ c.saldoFinal | currency: 'MXN' : 'symbol-narrow' }}</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="cc-nota">En una cuenta {{ c.naturaleza === 'D' ? 'deudora, los cargos suman y los abonos restan' : 'acreedora, los abonos suman y los cargos restan' }}.</p>
+
+          @if (c.subcuentas.length) {
+            <h3 class="cc-subtitulo-chico">Subcuentas</h3>
+            <ul class="cc-facturas">
+              @for (x of c.subcuentas; track x.codigo) {
+                <li><button type="button" class="cc-factura-fila" (click)="abrirCuenta(x.codigo)">
+                  <span class="cc-factura-quien">{{ x.nombre }}<small>{{ x.codigo }}</small></span>
+                  <span class="ig-cifra">{{ x.saldo | currency: 'MXN' : 'symbol-narrow' }}</span></button></li>
+              }
+            </ul>
+          }
+
+          @if (c.terceros.length) {
+            <h3 class="cc-subtitulo-chico">De quién es el saldo</h3>
+            <ul class="cc-facturas">
+              @for (t of c.terceros; track t.rfc) {
+                <li class="cc-tercero">
+                  <span class="cc-factura-quien">{{ t.nombre || t.rfc }}<small>{{ t.rfc }} · {{ t.movimientos }} movimiento(s)</small></span>
+                  <span class="ig-cifra">{{ t.saldo | currency: 'MXN' : 'symbol-narrow' }}</span>
+                </li>
+              }
+            </ul>
+          }
+
+          <h3 class="cc-subtitulo-chico">Pólizas{{ c.movimientosRecortados ? ' (las más recientes)' : '' }}</h3>
+          @if (c.movimientos.length) {
+            <div class="ig-tabla-caja">
+              <table class="ig-tabla">
+                <thead><tr><th scope="col">Fecha</th><th scope="col">Póliza</th><th scope="col">Concepto y origen</th><th scope="col" class="ig-num">Cargo</th><th scope="col" class="ig-num">Abono</th></tr></thead>
+                <tbody>
+                  @for (m of c.movimientos; track $index) {
+                    <tr>
+                      <td>{{ m.fecha }}</td>
+                      <td>{{ m.poliza }}</td>
+                      <td>{{ m.concepto }}@if (m.texto) { <small class="cc-fundamento"> · {{ m.texto }}</small> }
+                        @if (m.archivo) { <br /><small class="cc-fundamento">Archivo {{ m.archivo }}, entró el {{ m.entroUtc | date: 'dd/MM/yyyy' }}</small> }
+                        @else if (m.uuid) { <br /><small class="cc-fundamento">UUID {{ m.uuid }}</small> }</td>
+                      <td class="ig-num ig-cifra">{{ m.debe ? (m.debe | currency: 'MXN' : 'symbol-narrow') : '' }}</td>
+                      <td class="ig-num ig-cifra">{{ m.haber ? (m.haber | currency: 'MXN' : 'symbol-narrow') : '' }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          } @else {
+            <p class="ig-vacio">Sin pólizas en el periodo.</p>
+          }
+        </section>
+      } @else {
+        <section class="ig-panel cc-total">
+          <div>
+            <p class="cc-etiqueta">{{ r.titulo }} al cierre de {{ nombreDelMes(r.mes) }} {{ r.anio }}</p>
+            <p class="cc-cifra-grande ig-cifra">{{ r.total | currency: 'MXN' : 'symbol-narrow' }}</p>
+          </div>
+          <div class="cc-fuente">
+            <p>{{ r.explicacion }}</p>
+            @if (r.hayContabilidad) {
+              <p>Sale de {{ r.desde }} y {{ r.mesesConPolizas }} mes(es) con pólizas@if (r.ultimaContabilizacionUtc) {; última actualización {{ r.ultimaContabilizacionUtc | date: 'dd/MM/yyyy HH:mm' }}}.</p>
+            }
+          </div>
+        </section>
+        @for (a of r.avisos; track a) {
+          <div class="ig-alerta ig-alerta-aviso" role="status">{{ a }}</div>
+        }
+        @if (!r.hayContabilidad) {
+          <p class="ig-vacio">Todavía no hay contabilidad de este cliente hasta {{ nombreDelMes(r.mes) }}: el despacho genera las pólizas en la mesa de trabajo.</p>
+        }
+        @for (g of grupos(); track g.grupo) {
+          <h2 class="cc-subtitulo">{{ g.grupo || 'Otras' }} · {{ g.total | currency: 'MXN' : 'symbol-narrow' }}</h2>
+          <div class="cc-tarjetas">
+            @for (x of g.rubros; track x.codigo) {
+              <button type="button" class="cc-tarjeta" [disabled]="x.virtual" (click)="abrirCuenta(x.codigo, true)">
+                <span class="cc-tarjeta-cabeza">
+                  <span class="cc-tarjeta-nombre">{{ x.nombre }}</span>
+                  @if (x.nif) { <span class="ig-etiqueta ig-etiqueta-tinta">NIF {{ x.nif }}</span> }
+                </span>
+                <span class="cc-tarjeta-cifra ig-cifra">{{ x.saldo | currency: 'MXN' : 'symbol-narrow' }}</span>
+                <span class="cc-tarjeta-pie">{{ x.virtual ? 'Ingresos menos costos y gastos' : x.codigo + ' · ' + x.cuentas.length + ' subcuenta(s)' }}</span>
+              </button>
+            }
+          </div>
+        }
+      }
     }
   }
 

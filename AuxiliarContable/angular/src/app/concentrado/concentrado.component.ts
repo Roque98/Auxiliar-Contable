@@ -6,10 +6,12 @@ import { MESES } from '../documentos/documentos.service';
 import { mensajeDeError } from '../invitaciones/invitaciones.service';
 import { ClienteVisibleDto, PerfilFiscalService } from '../perfil-fiscal/perfil-fiscal.service';
 import {
-  ConcentradoService, DeudasFiscalesDto, DetalleDeRenglonDto, FacturaExplicadaDto, ObligacionFiscalDto, RenglonDelPapel,
+  ConcentradoService, CuentaContableDto, DeudasFiscalesDto, DetalleDeRenglonDto, FacturaExplicadaDto, ObligacionFiscalDto, RenglonDelPapel,
+  RubrosContablesDto,
 } from './concentrado.service';
 import {
-  ETIQUETA_DEL_ESTADO, TEXTO_DEL_ESTADO, TEXTO_DE_ESTADO_DE_FACTURA, consejoDelMotivo, detalleDelRenglon, mesPorOmision,
+  ETIQUETA_DEL_ESTADO, TEXTO_DEL_ESTADO, TEXTO_DE_ESTADO_DE_FACTURA, consejoDelMotivo, detalleDelRenglon, mesPorOmision, porGrupo,
+  seccionContable,
 } from './concentrado';
 
 type Pestana = 'deudas_fiscales' | 'deudas_contables' | 'activos' | 'ingresos' | 'capital';
@@ -18,7 +20,8 @@ type Pestana = 'deudas_fiscales' | 'deudas_contables' | 'activos' | 'ingresos' |
  * La hoja concentrado: lo primero que ve el cliente. «Deudas fiscales» va de lo más importante (cuánto pagar de cada
  * obligación) hasta la raíz: el cálculo renglón por renglón, las facturas detrás de un renglón (consideradas, no
  * consideradas y por definir) y el porqué de cada factura con su fundamento y de dónde se tomó.
- * Las pestañas contables (deudas contables, activos, ingresos contables y capital) siguen en construcción.
+ * Las pestañas contables (deudas contables, activos, ingresos contables y capital) van de cada cuenta del código agrupador
+ * a sus subcuentas, a quién se le debe o quién debe (por RFC) y a sus pólizas con el archivo de donde salieron.
  */
 @Component({
   selector: 'app-concentrado',
@@ -72,6 +75,13 @@ export class ConcentradoComponent implements OnInit {
   pagoFecha = new Date().toISOString().substring(0, 10);
   pagoNota = '';
 
+  // Pestañas contables: los rubros y la cuenta que se abrió (con su camino de subcuentas)
+  readonly rubros = signal<RubrosContablesDto | null>(null);
+  readonly cuentas = signal<CuentaContableDto[]>([]);
+  readonly grupos = computed(() => porGrupo(this.rubros()?.rubros ?? []));
+  readonly cuenta = computed(() => this.cuentas().at(-1) ?? null);
+  readonly esContable = computed(() => seccionContable(this.pestana(), this.subIngresos()) !== null);
+
   readonly obligacionesFederales = computed(() => this.deudas()?.obligaciones.filter(o => o.nivel === 'federal') ?? []);
   readonly obligacionesEstatales = computed(() => this.deudas()?.obligaciones.filter(o => o.nivel === 'estatal') ?? []);
 
@@ -112,6 +122,7 @@ export class ConcentradoComponent implements OnInit {
     if (p === 'ingresos' && this.subIngresos() === 'fiscales') {
       this.abrirIngresosFiscales();
     }
+    this.cargarContable();
   }
 
   cambiarSubIngresos(s: 'fiscales' | 'contables'): void {
@@ -120,12 +131,17 @@ export class ConcentradoComponent implements OnInit {
     if (s === 'fiscales') {
       this.abrirIngresosFiscales();
     }
+    this.cargarContable();
   }
 
   cargar(): void {
     const id = this.clienteId();
     if (!id) {
       return;
+    }
+    this.cargarContable();
+    if (this.pestana() === 'ingresos' && this.subIngresos() === 'fiscales' && this.detalle()) {
+      this.abrirIngresosFiscales();
     }
     this.cargando.set(true);
     this.error.set(null);
@@ -222,6 +238,52 @@ export class ConcentradoComponent implements OnInit {
         this.cargandoNivel.set(false);
       },
     });
+  }
+
+  // ------------------------------------------------------------------ pestañas contables
+
+  cargarContable(): void {
+    const id = this.clienteId();
+    const seccion = seccionContable(this.pestana(), this.subIngresos());
+    this.cuentas.set([]);
+    this.rubros.set(null);
+    if (!id || !seccion) {
+      return;
+    }
+    this.cargandoNivel.set(true);
+    this.api.rubros(id, this.anio, this.mes, seccion).subscribe({
+      next: r => {
+        this.rubros.set(r);
+        this.cargandoNivel.set(false);
+      },
+      error: e => {
+        this.error.set(mensajeDeError(e, 'No se pudo cargar la contabilidad.'));
+        this.cargandoNivel.set(false);
+      },
+    });
+  }
+
+  abrirCuenta(codigo: string, desdeRaiz = false): void {
+    const id = this.clienteId();
+    if (!id) {
+      return;
+    }
+    this.cargandoNivel.set(true);
+    this.api.cuenta(id, this.anio, this.mes, codigo).subscribe({
+      next: c => {
+        this.cuentas.set(desdeRaiz ? [c] : [...this.cuentas(), c]);
+        this.cargandoNivel.set(false);
+      },
+      error: e => {
+        this.error.set(mensajeDeError(e, 'No se pudo abrir la cuenta.'));
+        this.cargandoNivel.set(false);
+      },
+    });
+  }
+
+  /** Volver en el camino de cuentas: -1 = a los rubros. */
+  volverACuenta(i: number): void {
+    this.cuentas.set(this.cuentas().slice(0, i + 1));
   }
 
   // ------------------------------------------------------------------ pagos (despacho)
