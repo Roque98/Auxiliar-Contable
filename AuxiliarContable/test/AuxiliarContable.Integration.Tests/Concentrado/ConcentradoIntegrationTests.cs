@@ -169,6 +169,8 @@ public class ConcentradoIntegrationTests : ConJerarquiaTestBase
     public async Task Quien_no_es_del_cliente_no_ve_sus_deudas()
     {
         var otro = await CrearOrganizacionAsync("Otra empresa");
-        await Should.ThrowAsync<AbpAuthorizationException>(() => ComoAsync(Usuario, () => _concentrado.GetDeudasFiscalesAsync(otro, Dia.Year, Dia.Month)));
+        // Ni siquiera sabe que existe: el Autorizador contesta «no encontrado».
+        await Should.ThrowAsync<Volo.Abp.Domain.Entities.EntityNotFoundException>(() =>
+            ComoAsync(Usuario, () => _concentrado.GetDeudasFiscalesAsync(otro, Dia.Year, Dia.Month)));
     }
 }
