@@ -27,6 +27,16 @@ public interface IConcentradoAppService : IApplicationService
     /// puede corregir, y de dónde y cuándo se tomó.</summary>
     Task<FacturaExplicadaDto> GetFacturaAsync(Guid organizacionId, int anio, int mes, string uuid);
 
+    /// <summary>
+    /// Pestañas contables: <paramref name="seccion"/> = deudas_contables (pasivos que no son impuestos: NIF C-9, C-19,
+    /// D-1, D-3), activos, capital o ingresos_contables. Cada rubro es una cuenta del código agrupador con su saldo al
+    /// cierre del mes, de la balanza de apertura más las pólizas de cada mes.
+    /// </summary>
+    Task<RubrosContablesDto> GetRubrosAsync(Guid organizacionId, int anio, int mes, string seccion);
+
+    /// <summary>Una cuenta (rubro «201» o subcuenta «201.01»): saldos, de quién es el saldo y sus pólizas.</summary>
+    Task<CuentaContableDto> GetCuentaAsync(Guid organizacionId, int anio, int mes, string cuenta);
+
     Task<PagoDeObligacionDto> RegistrarPagoAsync(Guid organizacionId, RegistrarPagoDto dto);
 
     Task BorrarPagoAsync(Guid organizacionId, Guid pagoId);
@@ -237,4 +247,102 @@ public class OrigenDeFacturaDto
 
     public string? EstatusSat { get; set; }
     public DateTime? EstatusSatUtc { get; set; }
+}
+
+public class RubrosContablesDto
+{
+    public string Seccion { get; set; } = "";
+    public string Titulo { get; set; } = "";
+    public string Explicacion { get; set; } = "";
+    public int Anio { get; set; }
+    public int Mes { get; set; }
+    public decimal Total { get; set; }
+    public List<RubroContableDto> Rubros { get; set; } = [];
+    public List<string> Avisos { get; set; } = [];
+
+    /// <summary>¿Hay contabilidad (pólizas) de algún mes hasta este?</summary>
+    public bool HayContabilidad { get; set; }
+
+    /// <summary>Desde dónde se suman los saldos: la apertura o el primer mes con pólizas.</summary>
+    public string Desde { get; set; } = "";
+
+    public int MesesConPolizas { get; set; }
+    public DateTime? UltimaContabilizacionUtc { get; set; }
+}
+
+public class RubroContableDto
+{
+    /// <summary>Código agrupador de primer nivel («201») o una cuenta virtual («resultado_del_ejercicio»).</summary>
+    public string Clave { get; set; } = "";
+
+    public string Nombre { get; set; } = "";
+
+    /// <summary>«Pasivo a corto plazo», «Activo a largo plazo»…</summary>
+    public string Grupo { get; set; } = "";
+
+    /// <summary>La NIF que la rige (C-19, C-9, D-3…).</summary>
+    public string Nif { get; set; } = "";
+
+    public decimal Saldo { get; set; }
+    public bool Virtual { get; set; }
+    public List<SaldoDeCuentaDto> Cuentas { get; set; } = [];
+}
+
+public class SaldoDeCuentaDto
+{
+    public string Clave { get; set; } = "";
+    public string Nombre { get; set; } = "";
+    public decimal Saldo { get; set; }
+}
+
+public class CuentaContableDto
+{
+    public string Clave { get; set; } = "";
+    public string Nombre { get; set; } = "";
+    public string Nif { get; set; } = "";
+
+    /// <summary>D (deudora) o A (acreedora).</summary>
+    public string Naturaleza { get; set; } = "";
+
+    /// <summary>Al empezar el mes que se ve.</summary>
+    public decimal SaldoInicial { get; set; }
+
+    public decimal Cargos { get; set; }
+    public decimal Abonos { get; set; }
+    public decimal SaldoFinal { get; set; }
+    public List<SaldoDeCuentaDto> Subcuentas { get; set; } = [];
+
+    /// <summary>De quién es el saldo (proveedor, cliente…), por RFC.</summary>
+    public List<TerceroDeCuentaDto> Terceros { get; set; } = [];
+
+    /// <summary>Las pólizas del periodo (las más recientes primero).</summary>
+    public List<MovimientoDeCuentaDto> Movimientos { get; set; } = [];
+
+    public bool MovimientosRecortados { get; set; }
+}
+
+public class TerceroDeCuentaDto
+{
+    public string Rfc { get; set; } = "";
+    public string Nombre { get; set; } = "";
+    public decimal Saldo { get; set; }
+    public int Movimientos { get; set; }
+}
+
+public class MovimientoDeCuentaDto
+{
+    public string Fecha { get; set; } = "";
+    public string Poliza { get; set; } = "";
+    public string Concepto { get; set; } = "";
+    public string Cuenta { get; set; } = "";
+    public string Texto { get; set; } = "";
+    public string? Rfc { get; set; }
+    public string? Uuid { get; set; }
+    public decimal Debe { get; set; }
+    public decimal Haber { get; set; }
+
+    /// <summary>El archivo de donde salió (si está en la bóveda) y cuándo entró.</summary>
+    public string? Archivo { get; set; }
+
+    public DateTime? EntroUtc { get; set; }
 }

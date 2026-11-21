@@ -24,4 +24,9 @@
     <PackageReference Include="Volo.Abp.TenantManagement.Application" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Código agrupador del SAT (Anexo 24) con naturaleza, rubro de la NIF B-6/B-3 y NIF: lo genera la librería contable. -->
+    <EmbeddedResource Include="Concentrado\codigo_agrupador.json" LogicalName="AuxiliarContable.Concentrado.codigo_agrupador.json" />
+  </ItemGroup>
+
 </Project>

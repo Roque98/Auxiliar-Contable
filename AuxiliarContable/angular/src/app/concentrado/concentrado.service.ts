@@ -159,7 +159,67 @@ export interface RegistrarPagoDto {
   nota?: string | null;
 }
 
-/** La hoja concentrado del cliente (pestaña «Deudas fiscales»). */
+export interface SaldoDeCuentaDto {
+  clave: string;
+  nombre: string;
+  saldo: number;
+}
+
+export interface RubroContableDto {
+  clave: string;
+  nombre: string;
+  grupo: string;
+  nif: string;
+  saldo: number;
+  virtual: boolean;
+  cuentas: SaldoDeCuentaDto[];
+}
+
+export interface RubrosContablesDto {
+  seccion: string;
+  titulo: string;
+  explicacion: string;
+  anio: number;
+  mes: number;
+  total: number;
+  rubros: RubroContableDto[];
+  avisos: string[];
+  hayContabilidad: boolean;
+  desde: string;
+  mesesConPolizas: number;
+  ultimaContabilizacionUtc?: string | null;
+}
+
+export interface MovimientoDeCuentaDto {
+  fecha: string;
+  poliza: string;
+  concepto: string;
+  cuenta: string;
+  texto: string;
+  rfc?: string | null;
+  uuid?: string | null;
+  debe: number;
+  haber: number;
+  archivo?: string | null;
+  entroUtc?: string | null;
+}
+
+export interface CuentaContableDto {
+  clave: string;
+  nombre: string;
+  nif: string;
+  naturaleza: string;
+  saldoInicial: number;
+  cargos: number;
+  abonos: number;
+  saldoFinal: number;
+  subcuentas: SaldoDeCuentaDto[];
+  terceros: { rfc: string; nombre: string; saldo: number; movimientos: number }[];
+  movimientos: MovimientoDeCuentaDto[];
+  movimientosRecortados: boolean;
+}
+
+/** La hoja concentrado del cliente: deudas fiscales y pestañas contables. */
 @Injectable({ providedIn: 'root' })
 export class ConcentradoService {
   private readonly rest = inject(RestService);
@@ -176,6 +236,14 @@ export class ConcentradoService {
 
   factura(organizacionId: string, anio: number, mes: number, uuid: string): Observable<FacturaExplicadaDto> {
     return this.rest.request<void, FacturaExplicadaDto>({ method: 'GET', url: `${this.base}/factura/${organizacionId}`, params: { anio, mes, uuid } }, this.api);
+  }
+
+  rubros(organizacionId: string, anio: number, mes: number, seccion: string): Observable<RubrosContablesDto> {
+    return this.rest.request<void, RubrosContablesDto>({ method: 'GET', url: `${this.base}/rubros/${organizacionId}`, params: { anio, mes, seccion } }, this.api);
+  }
+
+  cuenta(organizacionId: string, anio: number, mes: number, cuenta: string): Observable<CuentaContableDto> {
+    return this.rest.request<void, CuentaContableDto>({ method: 'GET', url: `${this.base}/cuenta/${organizacionId}`, params: { anio, mes, cuenta } }, this.api);
   }
 
   registrarPago(organizacionId: string, dto: RegistrarPagoDto): Observable<PagoDeObligacionDto> {

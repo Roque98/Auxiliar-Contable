@@ -82,3 +82,32 @@ export function mesPorOmision(hoy: Date): { anio: number; mes: number } {
   const m = hoy.getMonth(); // 0-11: el mes anterior en 1-12
   return m === 0 ? { anio: hoy.getFullYear() - 1, mes: 12 } : { anio: hoy.getFullYear(), mes: m };
 }
+
+/** La sección del servidor para cada pestaña contable. */
+export function seccionContable(pestana: string, subIngresos: string): string | null {
+  switch (pestana) {
+    case 'deudas_contables':
+    case 'activos':
+    case 'capital':
+      return pestana;
+    case 'ingresos':
+      return subIngresos === 'contables' ? 'ingresos_contables' : null;
+    default:
+      return null;
+  }
+}
+
+/** Agrupa los rubros por su grupo de la NIF B-6 («Pasivo a corto plazo»…), en el orden en que llegan. */
+export function porGrupo<T extends { grupo: string; saldo: number }>(rubros: T[]): { grupo: string; total: number; rubros: T[] }[] {
+  const grupos: { grupo: string; total: number; rubros: T[] }[] = [];
+  for (const r of rubros) {
+    let g = grupos.find(x => x.grupo === r.grupo);
+    if (!g) {
+      g = { grupo: r.grupo, total: 0, rubros: [] };
+      grupos.push(g);
+    }
+    g.rubros.push(r);
+    g.total = Math.round((g.total + r.saldo) * 100) / 100;
+  }
+  return grupos;
+}
