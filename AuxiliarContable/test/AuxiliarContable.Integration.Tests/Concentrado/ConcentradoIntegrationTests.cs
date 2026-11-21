@@ -168,6 +168,18 @@ public class ConcentradoIntegrationTests : ConJerarquiaTestBase
     }
 
     [Fact]
+    public async Task El_IEPS_aparece_cuando_las_facturas_lo_traen()
+    {
+        _motor.IepsDelMes = 40;
+        await SubirAsync(Ingreso);
+        await GetRequiredService<ActualizadorDeImpuestos>().ActualizarAsync(espera: TimeSpan.Zero);
+        var d = await ComoAsync(Usuario, () => _concentrado.GetDeudasFiscalesAsync(_cliente, Dia.Year, Dia.Month));
+        var ieps = d.Obligaciones.Single(o => o.Clave == "ieps");
+        (ieps.Impuesto, ieps.Renglones.Last().Importe).ShouldBe((40m, 40m));
+        d.NoAplican.ShouldNotContain(n => n.StartsWith("IEPS"));
+    }
+
+    [Fact]
     public async Task Quien_no_es_del_cliente_no_ve_sus_deudas()
     {
         var otro = await CrearOrganizacionAsync("Otra empresa");

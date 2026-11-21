@@ -184,6 +184,14 @@ public class MesDeImpuestos
 
     /// <summary>El IVA del mes renglón por renglón.</summary>
     public List<RenglonDelPapel> RenglonesIva { get; set; } = [];
+
+    /// <summary>IEPS del mes (LIEPS 4o, 5o y 10); null si no hay IEPS en las facturas.</summary>
+    public decimal? IepsCausado { get; set; }
+
+    public decimal? IepsAcreditable { get; set; }
+    public decimal? IepsAPagar { get; set; }
+    public decimal? IepsSaldoAFavor { get; set; }
+    public List<RenglonDelPapel> RenglonesIeps { get; set; } = [];
 }
 
 public class RenglonDelPapel

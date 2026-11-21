@@ -94,6 +94,7 @@ public class MotorFiscalDePrueba : IMotorFiscal
         AdeudosRecibidos.Clear();
         DetalleDeProvisionales = null;
         TodosLosMeses = false;
+        IepsDelMes = null;
         CoeficienteRecibido = null;
         LlamadasDeProvisionales = 0;
         Interpretaciones = 0;
@@ -476,6 +477,13 @@ public class MotorFiscalDePrueba : IMotorFiscal
             Detalle = DetalleDeProvisionales,
         }).ContinueWith(t =>
         {
+            if (IepsDelMes != null)
+            {
+                var m = t.Result.Meses[^1];
+                (m.IepsCausado, m.IepsAcreditable, m.IepsAPagar, m.IepsSaldoAFavor) = (IepsDelMes, 0, IepsDelMes, 0);
+                m.RenglonesIeps = [new RenglonDelPapel { Concepto = "(=) IEPS a pagar", Importe = IepsDelMes, Tipo = "resultado" }];
+            }
+
             if (TodosLosMeses)
             {
                 var mes = int.Parse(periodo[5..]);
@@ -494,6 +502,9 @@ public class MotorFiscalDePrueba : IMotorFiscal
 
     /// <summary>El pago provisional trae de enero al mes (100 de ISR y 160 de IVA cada mes anterior).</summary>
     public bool TodosLosMeses { get; set; }
+
+    /// <summary>El IEPS a pagar del mes que se calcula (null: sin IEPS en las facturas).</summary>
+    public decimal? IepsDelMes { get; set; }
 
     /// <summary>Con qué detalle contesta el pago provisional (null: sin detalle).</summary>
     public DetalleDelCalculo? DetalleDeProvisionales { get; set; }
