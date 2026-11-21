@@ -91,6 +91,9 @@ public class MotorFiscalDePrueba : IMotorFiscal
         IncidenciasPedidas = null;
         NominaContabilizada = null;
         Provisionales = null;
+        AdeudosRecibidos.Clear();
+        DetalleDeProvisionales = null;
+        TodosLosMeses = false;
         CoeficienteRecibido = null;
         LlamadasDeProvisionales = 0;
         Interpretaciones = 0;
@@ -470,6 +473,50 @@ public class MotorFiscalDePrueba : IMotorFiscal
                 },
             ],
             Archivo = conExcel ? new ArchivoDelMotor { Nombre = "papel de impuestos.xlsx", ContenidoB64 = "UEsDBA==" } : null,
+            Detalle = DetalleDeProvisionales,
+        }).ContinueWith(t =>
+        {
+            if (TodosLosMeses)
+            {
+                var mes = int.Parse(periodo[5..]);
+                t.Result.Meses.InsertRange(0, Enumerable.Range(1, mes - 1).Select(k => new MesDeImpuestos
+                {
+                    Periodo = $"{periodo[..4]}-{k:00}", IsrAPagar = 100, IvaAPagar = 160, IvaCobrado = 160, Metodo = "art. 106",
+                }));
+            }
+
+            return t.Result;
+        });
+    }
+
+    /// <summary>Lo que se le pidió a /impuestos/accesorios.</summary>
+    public List<AdeudoParaElMotor> AdeudosRecibidos { get; } = [];
+
+    /// <summary>El pago provisional trae de enero al mes (100 de ISR y 160 de IVA cada mes anterior).</summary>
+    public bool TodosLosMeses { get; set; }
+
+    /// <summary>Con qué detalle contesta el pago provisional (null: sin detalle).</summary>
+    public DetalleDelCalculo? DetalleDeProvisionales { get; set; }
+
+    public Task<AccesoriosDelMotor> AccesoriosAsync(IReadOnlyList<AdeudoParaElMotor> adeudos, DateTime? pago = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (Caido)
+        {
+            throw new MotorFiscalNoDisponibleException("El motor fiscal no responde.");
+        }
+
+        AdeudosRecibidos.AddRange(adeudos);
+        // 1 % de actualización y 2.07 % de recargos por mes de atraso (lo de verdad lo prueba el motor)
+        return Task.FromResult(new AccesoriosDelMotor
+        {
+            Pago = (pago ?? DateTime.Today).ToString("yyyy-MM-dd"), Tasa = 0.0207m,
+            Adeudos = adeudos.Select(a => new AccesorioDelMotor
+            {
+                Clave = a.Clave, Importe = a.Importe, Limite = a.Limite.ToString("yyyy-MM-dd"), Meses = 1, Factor = 1.01m,
+                Actualizacion = Math.Round(a.Importe * 0.01m, 2), Recargos = Math.Round(a.Importe * 1.01m * 0.0207m, 2),
+                Total = Math.Round(a.Importe + a.Importe * 0.01m + a.Importe * 1.01m * 0.0207m, 2), Fundamento = "arts. 17-A y 21 CFF",
+            }).ToList(),
         });
     }
 

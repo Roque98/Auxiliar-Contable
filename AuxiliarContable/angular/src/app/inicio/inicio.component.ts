@@ -57,6 +57,7 @@ export class InicioComponent implements OnInit {
     const leyes: Atajo = { icono: 'bi-journal-text', titulo: 'Consultar leyes', texto: 'LISR, IVA, CFF, Miscelánea y NIF, con su cita.', ruta: '/leyes' };
     if (this.esEquipo) {
       return [
+        { icono: 'bi-clipboard-data', titulo: 'Hoja concentrado', texto: 'Lo que debe cada cliente de cada impuesto, hasta la factura.', ruta: '/concentrado' },
         { icono: 'bi-grid-3x3-gap', titulo: 'Cartera', texto: 'Todos los clientes del mes con su semáforo.', ruta: '/cartera' },
         { icono: 'bi-arrow-left-right', titulo: 'Cierre del mes', texto: 'Conciliar, aclarar lo que no tiene factura y cerrar.', ruta: '/conciliacion' },
         { icono: 'bi-folder2-open', titulo: 'Mi información', texto: 'Facturas, dinero y control interno de cada cliente, amarrados por operación.', ruta: '/mi-informacion' },
@@ -84,6 +85,11 @@ export class InicioComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    // El cliente entra directo a su hoja concentrado: lo primero que ve es cuánto debe (pedido 21-nov-2026).
+    if (!this.esEquipo) {
+      void this.router.navigate(['/concentrado'], { queryParams: this.ruta.snapshot.queryParams, replaceUrl: true });
+      return;
+    }
     if (this.chat()) {
       void this.router.navigate(['/asistente'], { queryParams: this.ruta.snapshot.queryParams, replaceUrl: true });
       return;

@@ -25,6 +25,13 @@ export const APP_ROUTES: Routes = [
     canActivate: [authGuard],
   },
   {
+    // La hoja concentrado: lo primero que ve el cliente (deudas fiscales hasta la factura). La ven el cliente y el
+    // despacho; el servidor decide qué clientes ve cada quien (Autorizador).
+    path: 'concentrado',
+    loadComponent: () => import('./concentrado/concentrado.component').then(c => c.ConcentradoComponent),
+    canActivate: [authGuard],
+  },
+  {
     // Mi información: facturas, dinero, control interno y todo (cada operación con sus tres patas). El servidor
     // decide qué clientes ve cada quien y quién sube (Autorizador).
     path: 'mi-informacion',

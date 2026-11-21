@@ -297,7 +297,7 @@ public class CalculadoraDeImpuestos : ITransientDependency
         await _impuestos.UpdateAsync(fila, autoSave: true);
     }
 
-    private static List<string> Lista(string? valor)
+    public static List<string> Lista(string? valor)
     {
         if (string.IsNullOrWhiteSpace(valor))
         {

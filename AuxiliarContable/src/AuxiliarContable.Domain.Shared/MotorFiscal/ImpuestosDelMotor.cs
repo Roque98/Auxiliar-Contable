@@ -39,6 +39,86 @@ public class PagosProvisionales
 
     /// <summary>El papel de trabajo (.xlsx) en base64.</summary>
     public ArchivoDelMotor? Archivo { get; set; }
+
+    /// <summary>Factura por factura, lo que entró al cálculo del ejercicio hasta el mes y lo que no, con su porqué.</summary>
+    public DetalleDelCalculo? Detalle { get; set; }
+}
+
+public class DetalleDelCalculo
+{
+    /// <summary>pm (lo facturado × coeficiente), flujo, resico_pf, arrendamiento o plataformas.</summary>
+    public string Clase { get; set; } = "";
+
+    public List<FacturaDelCalculo> Ingresos { get; set; } = [];
+    public List<FacturaDelCalculo> Deducciones { get; set; } = [];
+}
+
+public class FacturaDelCalculo
+{
+    public string Uuid { get; set; } = "";
+    public string Fecha { get; set; } = "";
+    public string Rfc { get; set; } = "";
+    public string Nombre { get; set; } = "";
+
+    /// <summary>Ingreso, Egreso o Nómina (el renglón de los recibos de nómina).</summary>
+    public string Tipo { get; set; } = "";
+
+    public string Metodo { get; set; } = "";
+    public string Forma { get; set; } = "";
+    public string Uso { get; set; } = "";
+    public decimal Total { get; set; }
+
+    /// <summary>Sin IVA; negativa en las notas de crédito.</summary>
+    public decimal Base { get; set; }
+
+    public decimal Iva { get; set; }
+
+    /// <summary>Ingresos: lo que se acumuló (cobrado, o facturado en personas morales).</summary>
+    public decimal Acumulable { get; set; }
+
+    public decimal IvaCobrado { get; set; }
+
+    /// <summary>Deducciones: lo que se dedujo.</summary>
+    public decimal Deducible { get; set; }
+
+    public decimal IvaAcreditable { get; set; }
+    public decimal RetIsr { get; set; }
+    public decimal RetIva { get; set; }
+    public decimal ProporcionNoDeducible { get; set; }
+
+    /// <summary>Ingresos: cobrada, por_cobrar, cobro_parcial, facturada, nota_de_credito, no_cuenta. Deducciones:
+    /// considerada, no_considerada, parcial, por_definir, pago_parcial.</summary>
+    public string Estado { get; set; } = "";
+
+    public List<MotivoDelCalculo> Motivos { get; set; } = [];
+
+    /// <summary>Meses (AAAA-MM) en que contó.</summary>
+    public List<string> Meses { get; set; } = [];
+
+    /// <summary>Lo que movió en cada mes: base, iva, deducible, iva_acreditable, ret_isr, ret_iva.</summary>
+    public Dictionary<string, Dictionary<string, decimal>> PorMes { get; set; } = [];
+
+    public string Concepto { get; set; } = "";
+    public int? Recibos { get; set; }
+}
+
+public class MotivoDelCalculo
+{
+    public string Regla { get; set; } = "";
+
+    /// <summary>requisito (se puede corregir: trae <see cref="Solucion"/>), ley, inversion, indispensable, revisar o
+    /// personal.</summary>
+    public string Clase { get; set; } = "";
+
+    public string Hipotesis { get; set; } = "";
+    public string Articulo { get; set; } = "";
+    public string Resultado { get; set; } = "";
+    public string Concepto { get; set; } = "";
+    public decimal? Importe { get; set; }
+    public decimal? NoDeducible { get; set; }
+    public string Solucion { get; set; } = "";
+    public string Pregunta { get; set; } = "";
+    public string? Explicacion { get; set; }
 }
 
 public class RegimenDelCalculo
@@ -117,6 +197,10 @@ public class RenglonDelPapel
 
     /// <summary>renglon, subtotal, resultado, tasa (en %), factor o nota.</summary>
     public string Tipo { get; set; } = "renglon";
+
+    /// <summary>Qué lista del detalle explica el renglón: ingresos, deducciones, iva_cobrado, iva_acreditable o
+    /// retenciones (null: no se baja).</summary>
+    public string? Detalle { get; set; }
 }
 
 public class ArchivoDelMotor
