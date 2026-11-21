@@ -27,6 +27,8 @@
   <ItemGroup>
     <!-- Código agrupador del SAT (Anexo 24) con naturaleza, rubro de la NIF B-6/B-3 y NIF: lo genera la librería contable. -->
     <EmbeddedResource Include="Concentrado\codigo_agrupador.json" LogicalName="AuxiliarContable.Concentrado.codigo_agrupador.json" />
+    <!-- Plazo y recargos del impuesto sobre nómina de cada estado (de las leyes estatales del índice). -->
+    <EmbeddedResource Include="Concentrado\isn_estados.json" LogicalName="AuxiliarContable.Concentrado.isn_estados.json" />
   </ItemGroup>
 
 </Project>

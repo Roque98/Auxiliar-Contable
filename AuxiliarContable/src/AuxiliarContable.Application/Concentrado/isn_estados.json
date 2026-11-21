@@ -1,0 +1,229 @@
+{
+ "fuente": "Leyes de hacienda, códigos y leyes de ingresos 2026 de cada estado en el índice local (revisado el 2026-11-21)",
+ "estados": {
+  "AGS": {
+   "nombre": "Aguascalientes",
+   "dia": 17,
+   "fundamentoPlazo": "art. 68, EST-AGS-LEY_HACIENDA_2025_05_26",
+   "tasa": 0.0207,
+   "fundamentoRecargos": "art. 37 fr. I-III, EST-AGS-LEY_INGRESOS_EDO_18_220"
+  },
+  "BC": {
+   "nombre": "Baja California",
+   "dia": 25,
+   "fundamentoPlazo": "art. 151-19, EST-BC-LEY_HACIENDA_2026_06_18",
+   "tasa": 0.0225,
+   "fundamentoRecargos": "art. 37, EST-BC-LEY_INGRESOS_2026"
+  },
+  "BCS": {
+   "nombre": "Baja California Sur",
+   "dia": null,
+   "fundamentoPlazo": "",
+   "tasa": null,
+   "fundamentoRecargos": ""
+  },
+  "CAMP": {
+   "nombre": "Campeche",
+   "dia": 20,
+   "fundamentoPlazo": "art. 25, EST-CAMP-LEY_HACIENDA_CONGRESO",
+   "tasa": null,
+   "fundamentoRecargos": ""
+  },
+  "CDMX": {
+   "nombre": "Ciudad de México",
+   "dia": 17,
+   "fundamentoPlazo": "art. 159, EST-CDMX-CODIGO_FISCAL_26_1",
+   "tasa": null,
+   "fundamentoRecargos": ""
+  },
+  "CHIH": {
+   "nombre": "Chihuahua",
+   "dia": 15,
+   "fundamentoPlazo": "art. 76, EST-CHIH-LEY_HACIENDA_1442",
+   "tasa": null,
+   "fundamentoRecargos": ""
+  },
+  "CHIS": {
+   "nombre": "Chiapas",
+   "dia": null,
+   "fundamentoPlazo": "",
+   "tasa": null,
+   "fundamentoRecargos": ""
+  },
+  "COAH": {
+   "nombre": "Coahuila",
+   "dia": 17,
+   "fundamentoPlazo": "art. 25, EST-COAH-LEY_HACIENDA_COA25",
+   "tasa": 0.02,
+   "fundamentoRecargos": "arts. 4 y 5, EST-COAH-LEY_HACIENDA_2024"
+  },
+  "COL": {
+   "nombre": "Colima",
+   "dia": 17,
+   "fundamentoPlazo": "art. 41 R, EST-COL-LEY_HACIENDA_2026_06_30",
+   "tasa": null,
+   "fundamentoRecargos": ""
+  },
+  "DGO": {
+   "nombre": "Durango",
+   "dia": 17,
+   "fundamentoPlazo": "art. 8, EST-DGO-LEY_HACIENDA",
+   "tasa": null,
+   "fundamentoRecargos": ""
+  },
+  "GRO": {
+   "nombre": "Guerrero",
+   "dia": 17,
+   "fundamentoPlazo": "art. 45 fr. IV, EST-GRO-LEY_HACIENDA_419",
+   "tasa": null,
+   "fundamentoRecargos": ""
+  },
+  "GTO": {
+   "nombre": "Guanajuato",
+   "dia": 22,
+   "fundamentoPlazo": "arts. 11 y 17, EST-GTO-LEY_HACIENDA",
+   "tasa": null,
+   "fundamentoRecargos": ""
+  },
+  "HGO": {
+   "nombre": "Hidalgo",
+   "dia": 17,
+   "fundamentoPlazo": "art. 25 fr. I, EST-HGO-LEY_HACIENDA",
+   "tasa": 0.02,
+   "fundamentoRecargos": "arts. 2 y 3, EST-HGO-LEY_INGRESOS_2026"
+  },
+  "JAL": {
+   "nombre": "Jalisco",
+   "dia": null,
+   "fundamentoPlazo": "",
+   "tasa": null,
+   "fundamentoRecargos": ""
+  },
+  "MEX": {
+   "nombre": "Estado de México",
+   "dia": 10,
+   "fundamentoPlazo": "art. 58, EST-MEX-CODIGO_FINANCIERO_CODVIG007",
+   "tasa": null,
+   "fundamentoRecargos": ""
+  },
+  "MICH": {
+   "nombre": "Michoacán",
+   "dia": 17,
+   "fundamentoPlazo": "art. 47 fr. I y II, EST-MICH-LEY_HACIENDA_2025_10",
+   "tasa": 0.02,
+   "fundamentoRecargos": "art. 6°, EST-MICH-LEY_INGRESOS_2026"
+  },
+  "MOR": {
+   "nombre": "Morelos",
+   "dia": 17,
+   "fundamentoPlazo": "art. 58 BIS-5, EST-MOR-LEY_GENERAL_HACIENDA_2026_02_0 (chunk etiquetado art. 52)",
+   "tasa": null,
+   "fundamentoRecargos": ""
+  },
+  "NAY": {
+   "nombre": "Nayarit",
+   "dia": 10,
+   "fundamentoPlazo": "art. 88, EST-NAY-LEY_HACIENDA_CONTRALORIA_2025",
+   "tasa": null,
+   "fundamentoRecargos": ""
+  },
+  "NL": {
+   "nombre": "Nuevo León",
+   "dia": 17,
+   "fundamentoPlazo": "art. 158, EST-NL-LEY_HACIENDA",
+   "tasa": null,
+   "fundamentoRecargos": ""
+  },
+  "OAX": {
+   "nombre": "Oaxaca",
+   "dia": null,
+   "fundamentoPlazo": "art. 66, EST-OAX-LEY_ESTATAL_HACIENDA_2026",
+   "tasa": null,
+   "fundamentoRecargos": ""
+  },
+  "PUE": {
+   "nombre": "Puebla",
+   "dia": null,
+   "fundamentoPlazo": "art. 121, EST-PUE-LEY_INGRESOS_2026 (indirecto)",
+   "tasa": 0.0147,
+   "fundamentoRecargos": "art. 113, EST-PUE-LEY_INGRESOS_2026"
+  },
+  "QRO": {
+   "nombre": "Querétaro",
+   "dia": 22,
+   "fundamentoPlazo": "art. 73 fr. IV, EST-QRO-LEY_HACIENDA_LEGISLATURA_2026_",
+   "tasa": null,
+   "fundamentoRecargos": ""
+  },
+  "QROO": {
+   "nombre": "Quintana Roo",
+   "dia": 10,
+   "fundamentoPlazo": "art. 7, EST-QROO-LEY_IMPUESTO_NOMINAS_2025_12_1",
+   "tasa": null,
+   "fundamentoRecargos": ""
+  },
+  "SIN": {
+   "nombre": "Sinaloa",
+   "dia": 17,
+   "fundamentoPlazo": "art. 19, EST-SIN-LEY_HACIENDA_2026_07_17",
+   "tasa": null,
+   "fundamentoRecargos": ""
+  },
+  "SLP": {
+   "nombre": "San Luis Potosí",
+   "dia": 17,
+   "fundamentoPlazo": "art. 24, EST-SLP-LEY_HACIENDA_2026_01_30",
+   "tasa": null,
+   "fundamentoRecargos": ""
+  },
+  "SON": {
+   "nombre": "Sonora",
+   "dia": 20,
+   "fundamentoPlazo": "art. 219, EST-SON-LEY_HACIENDA_CONGRESO_2026_01",
+   "tasa": null,
+   "fundamentoRecargos": ""
+  },
+  "TAB": {
+   "nombre": "Tabasco",
+   "dia": 20,
+   "fundamentoPlazo": "art. 31, EST-TAB-LEY_HACIENDA_CONGRESO_2026",
+   "tasa": null,
+   "fundamentoRecargos": ""
+  },
+  "TAMPS": {
+   "nombre": "Tamaulipas",
+   "dia": 15,
+   "fundamentoPlazo": "art. 50, EST-TAMPS-LEY_HACIENDA_2026_02_12",
+   "tasa": 0.0207,
+   "fundamentoRecargos": "art. 12, EST-TAMPS-PO_LI_2026 (chunks etiquetados art. 144)"
+  },
+  "TLAX": {
+   "nombre": "Tlaxcala",
+   "dia": null,
+   "fundamentoPlazo": "",
+   "tasa": 0.0207,
+   "fundamentoRecargos": "art. 8, EST-TLAX-PO_1EX_2025_11_28_INDICE (Ley de Ingresos 2026)"
+  },
+  "VER": {
+   "nombre": "Veracruz",
+   "dia": 17,
+   "fundamentoPlazo": "art. 102, EST-VER-CODIGO_FINANCIERO_2026_01",
+   "tasa": null,
+   "fundamentoRecargos": ""
+  },
+  "YUC": {
+   "nombre": "Yucatán",
+   "dia": null,
+   "fundamentoPlazo": "",
+   "tasa": null,
+   "fundamentoRecargos": ""
+  },
+  "ZAC": {
+   "nombre": "Zacatecas",
+   "dia": 17,
+   "fundamentoPlazo": "art. 41, EST-ZAC-LEY_HACIENDA_CONGRESO (chunk etiquetado 28 BIS)",
+   "tasa": 0.0207,
+   "fundamentoRecargos": "art. 11, EST-ZAC-LEY_INGRESOS_2026"
+  }
+ }
+}

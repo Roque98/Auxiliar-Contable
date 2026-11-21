@@ -209,9 +209,20 @@ public class ConcentradoAppService : AuxiliarContableAppService, IConcentradoApp
                                 || await _trabajadores.AnyAsync(t => t.OrganizacionId == organizacionId && t.FechaBaja == null)
                                 || Normal(Campo(CamposDelPerfil.TieneTrabajadores) ?? "") is "si" or "true"
                                 || DiceElSat("sueldos y salarios", "salarios");
+        var dias = new Dictionary<string, int>();
+        var recargosEstatales = new Dictionary<string, IsnPorEstado.Regla>();
         if (tieneTrabajadores)
         {
-            await NominaAsync(obligaciones, periodos, anio, mes, dto);
+            var regla = await NominaAsync(obligaciones, periodos, anio, mes, dto, Campo(CamposDelPerfil.DomicilioFiscal));
+            if (regla?.Dia is { } dia)
+            {
+                dias["isn"] = dia;
+            }
+
+            if (regla?.Tasa != null)
+            {
+                recargosEstatales["isn"] = regla;
+            }
         }
         else
         {
@@ -223,7 +234,8 @@ public class ConcentradoAppService : AuxiliarContableAppService, IConcentradoApp
         foreach (var (o, porMes, conAccesorios) in obligaciones)
         {
             o.Periodo = o.Periodo is { Length: > 0 } ? o.Periodo : NombreDelMes(anio, mes);
-            o.Limite ??= Limite(anio, mes);
+            var diaLimite = dias.GetValueOrDefault(o.Clave, 17);
+            o.Limite ??= Limite(anio, mes, diaLimite);
             o.Pagos = pagos.Where(p => p.Clave == o.Clave && p.Mes == mes).Select(ADto).ToList();
             o.Pagado = o.Pagos.Sum(p => p.Importe);
             foreach (var (k, importe) in porMes.Where(x => x.Mes < mes))
@@ -237,12 +249,21 @@ public class ConcentradoAppService : AuxiliarContableAppService, IConcentradoApp
 
                 var a = new AdeudoAnteriorDto
                 {
-                    Mes = k, Periodo = NombreDelMes(anio, k), Impuesto = importe, Pagado = pagado, Limite = Limite(anio, k), Total = saldo,
+                    Mes = k, Periodo = NombreDelMes(anio, k), Impuesto = importe, Pagado = pagado, Limite = Limite(anio, k, diaLimite), Total = saldo,
                 };
                 o.Adeudos.Add(a);
                 if (conAccesorios && a.Limite < hoy)
                 {
                     adeudos.Add((o, a));
+                }
+                else if (a.Limite < hoy && recargosEstatales.TryGetValue(o.Clave, out var r))
+                {
+                    // Contribución estatal: recargos a la tasa mensual de la ley del estado, por mes o fracción.
+                    a.MesesDeAtraso = MesesDeMora(a.Limite, hoy);
+                    a.Factor = 1;
+                    a.Recargos = Math.Round(saldo * r.Tasa!.Value * a.MesesDeAtraso, 2);
+                    a.Total = Math.Round(saldo + a.Recargos, 2);
+                    a.Fundamento = $"Recargos al {r.Tasa.Value * 100:0.##} % mensual ({r.FundamentoRecargos}); sin actualización.";
                 }
             }
         }
@@ -258,8 +279,9 @@ public class ConcentradoAppService : AuxiliarContableAppService, IConcentradoApp
         return dto;
     }
 
-    private async Task NominaAsync(List<(ObligacionFiscalDto, List<(int Mes, decimal Importe)>, bool)> obligaciones, List<PeriodoDeNomina> periodos,
-        int anio, int mes, DeudasFiscalesDto dto)
+    /// <summary>Las obligaciones de nómina; devuelve la regla del ISN del estado (plazo y recargos), si se conoce.</summary>
+    private async Task<IsnPorEstado.Regla?> NominaAsync(List<(ObligacionFiscalDto, List<(int Mes, decimal Importe)>, bool)> obligaciones,
+        List<PeriodoDeNomina> periodos, int anio, int mes, DeudasFiscalesDto dto, string? domicilio)
     {
         var calculados = periodos.Where(p => p.Resultado != null)
             .Select(p => (p.Fin.Month, Nomina: JsonSerializer.Deserialize<NominaDelMotor>(p.Resultado!)!)).ToList();
@@ -357,21 +379,29 @@ public class ConcentradoAppService : AuxiliarContableAppService, IConcentradoApp
         }, [], false));
 
         var isn = PorMes(n => n.Isn.Importe);
-        var muestra = delMes.Select(n => n.Isn).FirstOrDefault(i => i.Estado != null);
+        var muestra = delMes.Select(n => n.Isn).FirstOrDefault(i => i.Estado != null)
+                      ?? calculados.Select(c => c.Nomina.Isn).LastOrDefault(i => i.Estado != null);
+        var regla = IsnPorEstado.Buscar(muestra?.Estado) ?? IsnPorEstado.Buscar(domicilio);
         obligaciones.Add((new ObligacionFiscalDto
         {
             Clave = "isn", Nombre = "Impuesto sobre nómina", Nivel = "estatal",
             Descripcion = $"El impuesto de tu estado{(muestra?.Estado is { } e ? $" ({e})" : "")} sobre lo que pagas a tus trabajadores.",
             Impuesto = delMes.Count > 0 ? delMes.Sum(n => n.Isn.Importe) : null,
-            LimiteAproximado = true,
+            LimiteAproximado = regla?.Dia == null,
             Renglones = muestra == null ? [] :
             [
                 new RenglonDelPapel { Concepto = "Tasa del estado", Importe = muestra.Tasa * 100, Tipo = "tasa", Fundamento = muestra.Fundamento },
                 new RenglonDelPapel { Concepto = "(=) Impuesto sobre nómina del mes", Importe = delMes.Sum(n => n.Isn.Importe), Tipo = "resultado" },
             ],
             Fundamento = muestra?.Fundamento is { Length: > 0 } f ? f : "Ley de hacienda de tu estado.",
-            Nota = "La fecha límite y los recargos los fija la ley de tu estado; se muestra el día 17 del mes siguiente, que es el usual.",
+            Nota = (regla?.Dia != null
+                       ? $"Fecha límite: día {regla.Dia} del mes siguiente ({regla.FundamentoPlazo}). "
+                       : "La fecha límite la fija la ley de tu estado; se muestra el día 17 del mes siguiente, que es el usual. ")
+                   + (regla?.Tasa != null
+                       ? $"Si se paga tarde: recargos del {regla.Tasa.Value * 100:0.##} % mensual ({regla.FundamentoRecargos})."
+                       : "Los recargos de tu estado no se calculan aquí: su tasa no está en las leyes que tiene el sistema."),
         }, isn, false));
+        return regla;
     }
 
     private async Task AccesoriosAsync(List<(ObligacionFiscalDto Dto, AdeudoAnteriorDto Adeudo)> adeudos, DateTime hoy, DeudasFiscalesDto dto)
@@ -749,12 +779,25 @@ public class ConcentradoAppService : AuxiliarContableAppService, IConcentradoApp
 
     private static string Periodo(int anio, int mes) => $"{anio:0000}-{mes:00}";
 
+    /// <summary>Meses o fracción desde el día siguiente al límite hasta hoy (hasta cinco años).</summary>
+    public static int MesesDeMora(DateTime limite, DateTime pago)
+    {
+        if (pago <= limite)
+        {
+            return 0;
+        }
+
+        var n = (pago.Year - limite.Year) * 12 + pago.Month - limite.Month + (pago.Day > limite.Day ? 1 : 0);
+        return Math.Clamp(n, 1, 60);
+    }
+
     private static int Mes(string periodo) => int.Parse(periodo[5..7], CultureInfo.InvariantCulture);
 
-    /// <summary>El día 17 del mes siguiente; si cae en sábado o domingo, el lunes (art. 12 CFF).</summary>
-    public static DateTime Limite(int anio, int mes)
+    /// <summary>El día límite (17 si no se dice otro) del mes siguiente; si cae en sábado o domingo, el lunes (art. 12 CFF).</summary>
+    public static DateTime Limite(int anio, int mes, int dia = 17)
     {
-        var d = new DateTime(anio, mes, 17).AddMonths(1);
+        var d = new DateTime(anio, mes, 1).AddMonths(1);
+        d = d.AddDays(Math.Min(dia, DateTime.DaysInMonth(d.Year, d.Month)) - 1);
         return d.DayOfWeek switch { DayOfWeek.Saturday => d.AddDays(2), DayOfWeek.Sunday => d.AddDays(1), _ => d };
     }
 
