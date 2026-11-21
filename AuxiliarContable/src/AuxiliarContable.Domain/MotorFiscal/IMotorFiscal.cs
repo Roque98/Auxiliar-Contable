@@ -102,6 +102,12 @@ public interface IMotorFiscal
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Actualización (CFF 17-A) y recargos (CFF 21) de cada adeudo al día del <paramref name="pago"/> (null = hoy).
+    /// </summary>
+    Task<AccesoriosDelMotor> AccesoriosAsync(IReadOnlyList<AdeudoParaElMotor> adeudos, DateTime? pago = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// DIOT del <paramref name="periodo"/> (AAAA-MM) con los CFDI del ejercicio y del anterior: un renglón por proveedor y
     /// tipo de operación, por flujo de pagos (LIVA 5-III), lo que no entra y el archivo de carga masiva.
     /// </summary>
@@ -301,6 +307,10 @@ public class MotorFiscalSinConfigurar : IMotorFiscal, ISingletonDependency
         string rfc, IReadOnlyList<string> regimenes, string periodo, string? nombre, IReadOnlyList<ArchivoParaElMotor> facturas,
         IReadOnlyList<string> cancelados, decimal? coeficienteDeUtilidad, bool conExcel, string? plataformas = null,
         string? actividadDePlataformas = null, IReadOnlyList<CobroDelBanco>? cobrosDelBanco = null,
+        CancellationToken cancellationToken = default) =>
+        throw new MotorFiscalNoDisponibleException("No hay motor fiscal en este proceso.");
+
+    public Task<AccesoriosDelMotor> AccesoriosAsync(IReadOnlyList<AdeudoParaElMotor> adeudos, DateTime? pago = null,
         CancellationToken cancellationToken = default) =>
         throw new MotorFiscalNoDisponibleException("No hay motor fiscal en este proceso.");
 

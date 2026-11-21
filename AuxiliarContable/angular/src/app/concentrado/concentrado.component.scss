@@ -1,0 +1,134 @@
+/* Hoja concentrado: de la cifra a pagar hasta la factura. Tarjetas que se apilan en el teléfono. */
+:host { display: block; }
+
+h1 { font-size: var(--ig-titulo-2); font-weight: var(--ig-peso-semi); margin: 0; }
+
+.cc-cabecera { display: flex; flex-direction: column; gap: var(--ig-esp-1); margin-bottom: var(--ig-esp-3); }
+.cc-nota { margin: 0; color: var(--ig-texto-secundario); font-size: var(--ig-texto-sm); }
+.cc-etiqueta { margin: 0; color: var(--ig-texto-secundario); font-size: var(--ig-texto-sm); text-transform: uppercase; letter-spacing: 0.04em; }
+
+.cc-barra { display: flex; flex-wrap: wrap; gap: var(--ig-esp-3); margin-bottom: var(--ig-esp-4); align-items: flex-end; }
+.cc-campo { display: flex; flex-direction: column; gap: var(--ig-esp-1); font-size: var(--ig-texto-sm); min-width: 0; }
+.cc-campo-ancho { flex: 1 1 16rem; }
+
+.cc-esqueleto { height: 12rem; }
+
+.cc-migas { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ig-esp-1); margin-bottom: var(--ig-esp-3); font-size: var(--ig-texto-sm); }
+
+.cc-total { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--ig-esp-4); }
+.cc-cifra-grande { margin: 0; font-size: var(--ig-titulo-1); font-weight: var(--ig-peso-fuerte); }
+.cc-fuente { display: flex; flex-direction: column; gap: var(--ig-esp-1); color: var(--ig-texto-secundario); font-size: var(--ig-texto-sm); max-width: 32rem; }
+.cc-fuente p { margin: 0; }
+
+.cc-subtitulo { font-size: var(--ig-titulo-3); font-weight: var(--ig-peso-semi); margin: var(--ig-esp-4) 0 var(--ig-esp-2); }
+.cc-subtitulo-chico { font-size: var(--ig-texto-md); font-weight: var(--ig-peso-semi); margin: var(--ig-esp-4) 0 var(--ig-esp-2); }
+
+.cc-tarjetas { display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); gap: var(--ig-esp-3); }
+
+.cc-tarjeta {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ig-esp-1);
+  text-align: left;
+  padding: var(--ig-esp-3);
+  background: var(--ig-fondo);
+  color: inherit;
+  border: var(--ig-borde);
+  border-radius: var(--ig-radio-md);
+  cursor: pointer;
+  min-width: 0;
+}
+
+.cc-tarjeta:hover { box-shadow: var(--ig-sombra-sutil); }
+.cc-tarjeta:focus-visible { outline: none; box-shadow: var(--ig-anillo-foco); }
+.cc-tarjeta-cabeza { display: flex; justify-content: space-between; gap: var(--ig-esp-2); align-items: flex-start; }
+.cc-tarjeta-nombre { font-weight: var(--ig-peso-semi); }
+.cc-tarjeta-cifra { font-size: var(--ig-titulo-3); font-weight: var(--ig-peso-fuerte); }
+.cc-tarjeta-pie { font-size: var(--ig-texto-sm); color: var(--ig-texto-secundario); }
+.cc-alerta-texto { color: var(--ig-alerta-texto); }
+.cc-exito-texto { color: var(--ig-exito-texto); }
+
+.cc-no-aplican { margin-top: var(--ig-esp-4); font-size: var(--ig-texto-sm); color: var(--ig-texto-secundario); }
+
+.cc-obligacion-cabeza { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--ig-esp-3); }
+.cc-obligacion-cabeza .cc-subtitulo { margin-top: 0; }
+.cc-obligacion-total { display: flex; flex-direction: column; align-items: flex-end; gap: var(--ig-esp-1); }
+
+.cc-papel td { vertical-align: top; }
+.cc-papel .cc-subtotal td { font-weight: var(--ig-peso-medio); }
+.cc-papel .cc-resultado td { font-weight: var(--ig-peso-fuerte); }
+.cc-papel .cc-nota td { color: var(--ig-texto-secundario); font-style: italic; }
+.cc-fundamento { color: var(--ig-texto-secundario); font-size: var(--ig-texto-sm); }
+
+.cc-abrir {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ig-esp-1);
+  padding: 0;
+  background: none;
+  border: none;
+  color: var(--ig-acento-texto);
+  text-decoration: underline;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+}
+
+.cc-pagos { margin: 0; padding-left: var(--ig-esp-4); font-size: var(--ig-texto-sm); }
+.cc-pago { display: flex; flex-wrap: wrap; gap: var(--ig-esp-3); align-items: flex-end; margin-top: var(--ig-esp-3); }
+
+.cc-sub { display: flex; flex-wrap: wrap; gap: var(--ig-esp-2); margin-bottom: var(--ig-esp-4); }
+
+.cc-chip {
+  min-height: 44px;
+  padding: 0 var(--ig-esp-3);
+  border: var(--ig-borde);
+  border-radius: var(--ig-radio-pastilla);
+  background: var(--ig-fondo);
+  color: inherit;
+  font-size: var(--ig-texto-sm);
+  cursor: pointer;
+}
+
+.cc-chip[aria-selected='true'] { background: var(--ig-acento-suave); color: var(--ig-acento-texto); font-weight: var(--ig-peso-semi); }
+
+.cc-grupo { margin-top: var(--ig-esp-3); }
+.cc-grupo summary { display: flex; justify-content: space-between; gap: var(--ig-esp-2); cursor: pointer; font-weight: var(--ig-peso-semi); min-height: 44px; align-items: center; }
+
+.cc-facturas { list-style: none; margin: 0; padding: 0; }
+
+.cc-factura-fila {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  gap: var(--ig-esp-3);
+  padding: var(--ig-esp-2) 0;
+  background: none;
+  border: none;
+  border-bottom: var(--ig-borde);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+}
+
+.cc-factura-fila:disabled { cursor: default; }
+.cc-factura-quien { display: flex; flex-direction: column; min-width: 0; overflow-wrap: anywhere; }
+.cc-factura-quien small { color: var(--ig-texto-secundario); }
+.cc-factura-quien small.cc-alerta-texto { color: var(--ig-alerta-texto); }
+
+.cc-factura .cc-subtitulo { margin-top: 0; }
+.cc-concepto { margin: var(--ig-esp-2) 0; }
+.cc-resumen { font-size: var(--ig-texto-md); font-weight: var(--ig-peso-medio); }
+
+.cc-motivo {
+  margin-top: var(--ig-esp-3);
+  padding: var(--ig-esp-3);
+  border-radius: var(--ig-radio-md);
+  background: var(--ig-gris-fondo);
+}
+
+.cc-motivo p { margin: 0 0 var(--ig-esp-1); }
+.cc-motivo-que { font-weight: var(--ig-peso-medio); }
+
+.cc-construccion p { max-width: 65ch; }

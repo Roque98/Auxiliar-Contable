@@ -403,6 +403,22 @@ public class MotorFiscalHttp : IMotorFiscal, ITransientDependency
         return await EnviarAsync<PagosProvisionales>(peticion, tope.Token, cancellationToken);
     }
 
+    public async Task<AccesoriosDelMotor> AccesoriosAsync(IReadOnlyList<AdeudoParaElMotor> adeudos, DateTime? pago = null,
+        CancellationToken cancellationToken = default)
+    {
+        using var tope = CancelationConTope(_opciones.TimeoutSegundos, cancellationToken);
+        var peticion = new HttpRequestMessage(HttpMethod.Post, "impuestos/accesorios")
+        {
+            Content = JsonContent.Create(
+                new
+                {
+                    adeudos = adeudos.Select(a => new { clave = a.Clave, importe = a.Importe, limite = a.Limite.ToString("yyyy-MM-dd") }),
+                    pago = pago?.ToString("yyyy-MM-dd"),
+                }, options: Json),
+        };
+        return await EnviarAsync<AccesoriosDelMotor>(peticion, tope.Token, cancellationToken);
+    }
+
     public async Task<SugerenciasDeAmarre> SugerirAmarresAsync(
         IReadOnlyList<MovimientoParaAmarrar> movimientos, IReadOnlyList<CandidataParaAmarrar> candidatas, string? giro,
         CancellationToken cancellationToken = default)

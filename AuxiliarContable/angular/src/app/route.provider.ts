@@ -104,6 +104,15 @@ function configureRoutes() {
       layout: eLayoutType.application,
     },
 
+    // La hoja concentrado: cuánto debe el cliente y de dónde sale cada cifra. Cliente y despacho.
+    {
+      path: '/concentrado',
+      name: '::Menu:Concentrado',
+      iconClass: 'bi bi-clipboard-data',
+      order: 1.05,
+      layout: eLayoutType.application,
+    },
+
     // El chat con IA. Invisible hasta saber si está encendido (patch de arriba).
     {
       path: '/asistente',

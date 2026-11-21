@@ -87,6 +87,8 @@ public class AuxiliarContableDbContext :
     public DbSet<Nomina.ContratoEspecializado> ContratosEspecializados { get; set; }
     public DbSet<Nomina.CumplimientoRepse> CumplimientosRepse { get; set; }
 
+    public DbSet<Concentrado.PagoDeObligacion> PagosDeObligaciones { get; set; }
+
     public DbSet<Contabilidad.SaldosDeApertura> SaldosDeAperturas { get; set; }
 
     public DbSet<Credenciales.CredencialesDelCliente> CredencialesDeClientes { get; set; }
@@ -465,6 +467,15 @@ public class AuxiliarContableDbContext :
             b.ConfigureByConvention();
             b.Property(x => x.Clave).IsRequired().HasMaxLength(20);
             b.HasIndex(x => new { x.OrganizacionId, x.Anio, x.Periodo });
+        });
+        builder.Entity<Concentrado.PagoDeObligacion>(b =>
+        {
+            b.ToTable(AuxiliarContableConsts.DbTablePrefix + "PagosDeObligaciones", AuxiliarContableConsts.DbSchema);
+            b.ConfigureByConvention();
+            b.Property(x => x.Clave).IsRequired().HasMaxLength(Concentrado.PagoDeObligacion.MaxClaveLength);
+            b.Property(x => x.Nota).HasMaxLength(Concentrado.PagoDeObligacion.MaxNotaLength);
+            b.Property(x => x.Importe).HasPrecision(18, 2);
+            b.HasIndex(x => new { x.OrganizacionId, x.Anio, x.Mes });
         });
         builder.Entity<Nomina.PeriodoDeNomina>(b =>
         {
