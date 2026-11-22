@@ -17,7 +17,13 @@ public class IsnPorEstadoTests
         (bc.Dia, bc.Tasa).ShouldBe((25, 0.0225m));
         IsnPorEstado.Buscar("Ciudad de México").ShouldNotBeNull().Clave.ShouldBe("CDMX");
         IsnPorEstado.Buscar("Av. Juárez 1, Toluca, Estado de México").ShouldNotBeNull().Clave.ShouldBe("MEX");
-        IsnPorEstado.Buscar("Baja California Sur").ShouldNotBeNull().Clave.ShouldBe("BCS");
+        var bcs = IsnPorEstado.Buscar("Baja California Sur").ShouldNotBeNull();
+        (bcs.Clave, bcs.Dia, bcs.Tasa).ShouldBe(("BCS", 15, 0.01m));
+        IsnPorEstado.Buscar("Jalisco").ShouldNotBeNull().Dia.ShouldBe(12);
+        IsnPorEstado.Buscar("Puebla").ShouldNotBeNull().Dia.ShouldBe(17);
+        IsnPorEstado.Buscar("Sinaloa").ShouldNotBeNull().Tasa.ShouldBe(0.0225m);
+        IsnPorEstado.Buscar("Chihuahua").ShouldNotBeNull().Tasa.ShouldBe(0.0207m);
+        IsnPorEstado.Buscar("Veracruz").ShouldNotBeNull().Tasa.ShouldBeNull(); // su LI 2026 no se obtuvo
         IsnPorEstado.Buscar(null).ShouldBeNull();
     }
 

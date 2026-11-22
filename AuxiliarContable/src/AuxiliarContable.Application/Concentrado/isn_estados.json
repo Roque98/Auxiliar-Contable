@@ -1,5 +1,5 @@
 {
- "fuente": "Leyes de hacienda, códigos fiscales y leyes de ingresos 2026 de cada estado en el índice local; cada dato con su cita literal (revisado el 2026-11-21, isn_plazos_recargos_v2.json)",
+ "fuente": "Leyes de hacienda, códigos fiscales y leyes de ingresos 2026 de cada estado en el índice local; cada dato con su cita literal (revisado el 2026-11-21, isn_plazos_recargos_v3.json)",
  "estados": {
   "AGS": {
    "nombre": "Aguascalientes",
@@ -17,10 +17,10 @@
   },
   "BCS": {
    "nombre": "Baja California Sur",
-   "dia": null,
-   "fundamentoPlazo": "",
-   "tasa": null,
-   "fundamentoRecargos": ""
+   "dia": 15,
+   "fundamentoPlazo": "art. 37, EST-BCS-LEY_HACIENDA_2010_09_10",
+   "tasa": 0.01,
+   "fundamentoRecargos": "art. 5 EST-BCS-LEY_INGRESOS_2026_BO88 (Ley de Ingresos del Estado, Decreto 3265)"
   },
   "CAMP": {
    "nombre": "Campeche",
@@ -40,8 +40,8 @@
    "nombre": "Chihuahua",
    "dia": 15,
    "fundamentoPlazo": "art. 76, EST-CHIH-LEY_HACIENDA_1442",
-   "tasa": null,
-   "fundamentoRecargos": ""
+   "tasa": 0.0207,
+   "fundamentoRecargos": "art. 24 EST-CHIH-CODIGO_FISCAL_2025_12_24; art. tercero EST-CHIH-LEY_INGRESOS_2026"
   },
   "CHIS": {
    "nombre": "Chiapas",
@@ -80,8 +80,8 @@
   },
   "GTO": {
    "nombre": "Guanajuato",
-   "dia": null,
-   "fundamentoPlazo": "art. 11, EST-GTO-LEY_HACIENDA (pago bimestral)",
+   "dia": 22,
+   "fundamentoPlazo": "art. 11, EST-GTO-LEY_HACIENDA",
    "tasa": 0.0207,
    "fundamentoRecargos": "art. 38 EST-GTO-CODIGO_FISCAL_2025_12_31; art. 50 fr. I EST-GTO-LEY_INGRESOS_2026"
   },
@@ -94,8 +94,8 @@
   },
   "JAL": {
    "nombre": "Jalisco",
-   "dia": null,
-   "fundamentoPlazo": "",
+   "dia": 12,
+   "fundamentoPlazo": "art. 43, EST-JAL-LEY_HACIENDA_INFO_JALISCO",
    "tasa": 0.0147,
    "fundamentoRecargos": "art. 71 EST-JAL-CODIGO_FISCAL_2026_05_14; art. 45 EST-JAL-LEY_INGRESOS_2026_02_24"
   },
@@ -143,8 +143,8 @@
   },
   "PUE": {
    "nombre": "Puebla",
-   "dia": null,
-   "fundamentoPlazo": "",
+   "dia": 17,
+   "fundamentoPlazo": "art. 15, EST-PUE-LEY_HACIENDA_2024_08_05",
    "tasa": 0.0147,
    "fundamentoRecargos": "art. 113 fr. I EST-PUE-LEY_INGRESOS_2026; art. 35 EST-PUE-CODIGO_FISCAL_2025_07_31"
   },
@@ -166,8 +166,8 @@
    "nombre": "Sinaloa",
    "dia": 17,
    "fundamentoPlazo": "art. 19, EST-SIN-LEY_HACIENDA_2026_07_17",
-   "tasa": null,
-   "fundamentoRecargos": ""
+   "tasa": 0.0225,
+   "fundamentoRecargos": "art. 16 EST-SIN-CODIGO_FISCAL_2019_12_25; art. 16 EST-SIN-LEY_INGRESOS_2026_P1_58"
   },
   "SLP": {
    "nombre": "San Luis Potosí",
