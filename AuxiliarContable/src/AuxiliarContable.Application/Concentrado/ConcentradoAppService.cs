@@ -381,7 +381,13 @@ public class ConcentradoAppService : AuxiliarContableAppService, IConcentradoApp
         var isn = PorMes(n => n.Isn.Importe);
         var muestra = delMes.Select(n => n.Isn).FirstOrDefault(i => i.Estado != null)
                       ?? calculados.Select(c => c.Nomina.Isn).LastOrDefault(i => i.Estado != null);
-        var regla = IsnPorEstado.Buscar(muestra?.Estado) ?? IsnPorEstado.Buscar(domicilio);
+        var regla = IsnPorEstado.Buscar(muestra?.Estado, anio) ?? IsnPorEstado.Buscar(domicilio, anio);
+        if (regla?.HeredadoDe is { } heredado)
+        {
+            dto.Avisos.Add($"Las leyes estatales de {anio} aún no están cargadas en el sistema: la fecha límite del impuesto sobre nómina "
+                           + $"es la de {heredado} y sus recargos no se calculan hasta cargar la tasa de {anio}.");
+        }
+
         obligaciones.Add((new ObligacionFiscalDto
         {
             Clave = "isn", Nombre = "Impuesto sobre nómina", Nivel = "estatal",
@@ -395,11 +401,14 @@ public class ConcentradoAppService : AuxiliarContableAppService, IConcentradoApp
             ],
             Fundamento = muestra?.Fundamento is { Length: > 0 } f ? f : "Ley de hacienda de tu estado.",
             Nota = (regla?.Dia != null
-                       ? $"Fecha límite: día {regla.Dia} del mes siguiente ({regla.FundamentoPlazo}). "
+                       ? $"Fecha límite: día {regla.Dia} del mes siguiente ({regla.FundamentoPlazo}"
+                         + (regla.HeredadoDe is { } h ? $", ley vigente en {h}" : "") + "). "
                        : "La fecha límite la fija la ley de tu estado; se muestra el día 17 del mes siguiente, que es el usual. ")
                    + (regla?.Tasa != null
                        ? $"Si se paga tarde: recargos del {regla.Tasa.Value * 100:0.##} % mensual ({regla.FundamentoRecargos})."
-                       : "Los recargos de tu estado no se calculan aquí: su tasa no está en las leyes que tiene el sistema."),
+                       : regla?.HeredadoDe != null
+                           ? $"Los recargos de tu estado no se calculan aquí: la tasa de {anio} sale de su ley de ingresos {anio}, que aún no está cargada."
+                           : "Los recargos de tu estado no se calculan aquí: su tasa no está en las leyes que tiene el sistema."),
         }, isn, false));
         return regla;
     }

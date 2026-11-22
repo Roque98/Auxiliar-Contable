@@ -28,6 +28,19 @@ public class IsnPorEstadoTests
     }
 
     [Fact]
+    public void Un_anio_sin_sus_leyes_hereda_el_plazo_pero_no_la_tasa()
+    {
+        IsnPorEstado.Ejercicios.ShouldContain(2026);
+        var mor26 = IsnPorEstado.Buscar("Morelos", 2026).ShouldNotBeNull();
+        (mor26.Ejercicio, mor26.HeredadoDe, mor26.Tasa).ShouldBe((2026, (int?)null, 0.0142m));
+
+        var mor27 = IsnPorEstado.Buscar("Morelos", 2027).ShouldNotBeNull();
+        mor27.Dia.ShouldBe(17);
+        mor27.HeredadoDe.ShouldBe(2026);
+        mor27.Tasa.ShouldBeNull();
+    }
+
+    [Fact]
     public void Fecha_limite_y_meses_de_mora()
     {
         ConcentradoAppService.Limite(2026, 10).ShouldBe(new DateTime(2026, 11, 17));
