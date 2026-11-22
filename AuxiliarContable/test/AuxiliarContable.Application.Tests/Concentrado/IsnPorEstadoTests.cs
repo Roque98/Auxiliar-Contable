@@ -23,7 +23,9 @@ public class IsnPorEstadoTests
         IsnPorEstado.Buscar("Puebla").ShouldNotBeNull().Dia.ShouldBe(17);
         IsnPorEstado.Buscar("Sinaloa").ShouldNotBeNull().Tasa.ShouldBe(0.0225m);
         IsnPorEstado.Buscar("Chihuahua").ShouldNotBeNull().Tasa.ShouldBe(0.0207m);
-        IsnPorEstado.Buscar("Veracruz").ShouldNotBeNull().Tasa.ShouldBeNull(); // su LI 2026 no se obtuvo
+        IsnPorEstado.Buscar("Veracruz").ShouldNotBeNull().Tasa.ShouldBe(0.015m); // del dictamen de su LI 2026
+        IsnPorEstado.Buscar("Tabasco").ShouldNotBeNull().Tasa.ShouldBe(0.0147m); // 0.98 % × 1.5 (CF art. 22)
+        IsnPorEstado.Buscar("Sonora").ShouldNotBeNull().Tasa.ShouldBe(0.015m);
         IsnPorEstado.Buscar(null).ShouldBeNull();
     }
 

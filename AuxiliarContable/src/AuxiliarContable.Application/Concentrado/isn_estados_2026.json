@@ -1,6 +1,6 @@
 {
  "ejercicio": 2026,
- "fuente": "Leyes de hacienda, códigos fiscales y leyes de ingresos 2026 de cada estado en el índice local; cada dato con su cita literal (revisado el 2026-11-21, isn_plazos_recargos_v3.json)",
+ "fuente": "Leyes estatales 2026 del índice local; cada dato con su cita literal (isn_plazos_recargos_2026.json, exportado 2026-11-22)",
  "estados": {
   "AGS": {
    "nombre": "Aguascalientes",
@@ -19,7 +19,7 @@
   "BCS": {
    "nombre": "Baja California Sur",
    "dia": 15,
-   "fundamentoPlazo": "art. 37, EST-BCS-LEY_HACIENDA_2010_09_10",
+   "fundamentoPlazo": "art. 37, EST-BCS-LEY_HACIENDA_2025_12_31",
    "tasa": 0.01,
    "fundamentoRecargos": "art. 5 EST-BCS-LEY_INGRESOS_2026_BO88 (Ley de Ingresos del Estado, Decreto 3265)"
   },
@@ -181,15 +181,15 @@
    "nombre": "Sonora",
    "dia": 20,
    "fundamentoPlazo": "art. 219, EST-SON-LEY_HACIENDA_CONGRESO_2026_01",
-   "tasa": null,
-   "fundamentoRecargos": ""
+   "tasa": 0.015,
+   "fundamentoRecargos": "art. 26 EST-SON-CODIGO_FISCAL_2025_12_12; art. 3o EST-SON-LEY_INGRESOS_2026_2025_12_12"
   },
   "TAB": {
    "nombre": "Tabasco",
    "dia": 20,
    "fundamentoPlazo": "art. 31, EST-TAB-LEY_HACIENDA_CONGRESO_2026",
-   "tasa": 0.0098,
-   "fundamentoRecargos": "art. 5 EST-TAB-LEY_INGRESOS_2026"
+   "tasa": 0.0147,
+   "fundamentoRecargos": "art. 22 EST-TAB-CODIGO_FISCAL_2025_12_24; art. 5 EST-TAB-LEY_INGRESOS_2026"
   },
   "TAMPS": {
    "nombre": "Tamaulipas",
@@ -209,8 +209,8 @@
    "nombre": "Veracruz",
    "dia": 17,
    "fundamentoPlazo": "art. 102, EST-VER-CODIGO_FINANCIERO_2026_01",
-   "tasa": null,
-   "fundamentoRecargos": ""
+   "tasa": 0.015,
+   "fundamentoRecargos": "art. 5 EST-VER-LEY_INGRESOS_2026_DICTAMEN_202 (dictamen, Gaceta Legislativa 70, 15-12-2025); art. 42 EST-VER-CODIGO_FINANCIERO_2026_01"
   },
   "YUC": {
    "nombre": "Yucatán",
