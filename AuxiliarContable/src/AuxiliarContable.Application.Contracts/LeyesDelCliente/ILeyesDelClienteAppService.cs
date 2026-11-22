@@ -29,6 +29,76 @@ public interface ILeyesDelClienteAppService : IApplicationService
     Task<HallazgoDeLeyDto> DecidirAsync(Guid organizacionId, Guid id, DecidirHallazgoDto input);
 
     Task<PreguntaSobreLeyesDto> PreguntarAsync(Guid organizacionId, PreguntarSobreLeyesDto input);
+
+    /// <summary>Qué leyes estatales le tocan por su domicilio y su actividad (catálogo del motor, sin Claude), por qué, qué le
+    /// piden y cuáles ya tenemos para usarlas sin subirlas.</summary>
+    Task<LeyesQueTeAplicanDto> GetQueTeAplicanAsync(Guid organizacionId);
+
+    /// <summary>Usa una ley que ya tenemos del estado del cliente (sin subir el PDF): entra a «Mis leyes» y se analiza igual.
+    /// <paramref name="ley"/> es la clave del catálogo (salud, proteccion_civil…).</summary>
+    Task<LeyDelClienteDto> UsarDeLaBibliotecaAsync(Guid organizacionId, string ley);
+}
+
+public class LeyesQueTeAplicanDto
+{
+    /// <summary>Clave del estado del domicilio fiscal (MOR, JAL…); null si no se sabe.</summary>
+    public string? Estado { get; set; }
+
+    public string? NombreDelEstado { get; set; }
+
+    /// <summary>Cuando no se puede decir (sin domicilio, motor caído, estado sin ficha todavía).</summary>
+    public string? Aviso { get; set; }
+
+    /// <summary>Dónde están las versiones anteriores de las leyes del estado (para trabajar ejercicios pasados).</summary>
+    public string? Historico { get; set; }
+
+    public List<FuenteOficialDto> Fuentes { get; set; } = [];
+
+    /// <summary>Lo que se tomó en cuenta del cliente: trabajadores, establecimiento, inmuebles…</summary>
+    public List<string> Disparadores { get; set; } = [];
+
+    /// <summary>Clave del bloque (A…G) -> título.</summary>
+    public Dictionary<string, string> Bloques { get; set; } = [];
+
+    public List<LeyQueTeAplicaDto> Leyes { get; set; } = [];
+}
+
+public class FuenteOficialDto
+{
+    public string Url { get; set; } = "";
+    public string Que { get; set; } = "";
+}
+
+public class LeyQueTeAplicaDto
+{
+    /// <summary>Clave del catálogo (salud, proteccion_civil…).</summary>
+    public string Id { get; set; } = "";
+
+    /// <summary>Nombre genérico («Ley de salud»).</summary>
+    public string Nombre { get; set; } = "";
+
+    /// <summary>Nombre real en el estado («Ley de Salud del Estado de Morelos»).</summary>
+    public string? NombreOficial { get; set; }
+
+    public string Bloque { get; set; } = "";
+    public List<string> Motivos { get; set; } = [];
+    public string? Pide { get; set; }
+
+    /// <summary>local (la tenemos), pendiente (existe y falta), no_existe, federal, municipal o sin_ficha.</summary>
+    public string Estatus { get; set; } = "";
+
+    public string? UltimaReforma { get; set; }
+    public string? Url { get; set; }
+    public string? Nota { get; set; }
+
+    /// <summary>¿La tenemos para usarla sin subirla?</summary>
+    public bool Disponible { get; set; }
+
+    /// <summary>Cambia cada año (ley de ingresos).</summary>
+    public bool Anual { get; set; }
+
+    /// <summary>Si ya está en «Mis leyes», su id.</summary>
+    public Guid? EnMisLeyes { get; set; }
 }
 
 public class MisLeyesDto
@@ -78,6 +148,9 @@ public class LeyDelClienteDto
     public DateTime? AnalizadoUtc { get; set; }
     public string? Error { get; set; }
     public DateTime CreationTime { get; set; }
+
+    /// <summary>Si salió de las leyes que ya tenemos del estado («MOR/salud») y no la subió el cliente.</summary>
+    public string? Biblioteca { get; set; }
 }
 
 public class HallazgoDeLeyDto

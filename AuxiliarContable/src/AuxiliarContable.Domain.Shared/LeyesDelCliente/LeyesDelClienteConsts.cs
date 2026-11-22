@@ -46,6 +46,7 @@ public static class LeyesDelClienteConsts
     public const int MaxResumenLength = 2000;
     public const int MaxErrorLength = 500;
     public const int MaxHuellaLength = 64;
+    public const int MaxBibliotecaLength = 64;
     public const int MaxPreguntaLength = 2000;
 
     /// <summary>Claves de los valores que pueden reemplazar a los del sistema (las mismas que devuelve el motor).</summary>

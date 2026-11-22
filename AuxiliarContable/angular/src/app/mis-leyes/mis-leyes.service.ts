@@ -23,6 +23,8 @@ export interface LeyDelClienteDto {
   analizadoUtc?: string | null;
   error?: string | null;
   creationTime: string;
+  /** «MOR/salud» si es una ley que ya teníamos del estado (no la subió el cliente). */
+  biblioteca?: string | null;
 }
 
 export interface HallazgoDeLeyDto {
@@ -65,6 +67,33 @@ export interface MisLeyesDto {
   hallazgos: HallazgoDeLeyDto[];
   preguntas: PreguntaSobreLeyesDto[];
   enCurso: boolean;
+}
+
+export interface LeyQueTeAplicaDto {
+  id: string;
+  nombre: string;
+  nombreOficial?: string | null;
+  bloque: string;
+  motivos: string[];
+  pide?: string | null;
+  estatus: 'local' | 'pendiente' | 'no_existe' | 'federal' | 'municipal' | 'sin_ficha';
+  ultimaReforma?: string | null;
+  url?: string | null;
+  nota?: string | null;
+  disponible: boolean;
+  anual: boolean;
+  enMisLeyes?: string | null;
+}
+
+export interface LeyesQueTeAplicanDto {
+  estado?: string | null;
+  nombreDelEstado?: string | null;
+  aviso?: string | null;
+  historico?: string | null;
+  fuentes: { url: string; que: string }[];
+  disparadores: string[];
+  bloques: Record<string, string>;
+  leyes: LeyQueTeAplicaDto[];
 }
 
 /** La respuesta del motor a una pregunta (JSON guardado en `respuesta`). */
@@ -142,6 +171,15 @@ export class MisLeyesService {
   decidir(organizacionId: string, id: string, aceptar: boolean): Observable<HallazgoDeLeyDto> {
     return this.rest.request<{ aceptar: boolean }, HallazgoDeLeyDto>(
       { method: 'POST', url: `${this.base}/${id}/decidir/${organizacionId}`, body: { aceptar } }, this.opciones);
+  }
+
+  queTeAplican(organizacionId: string): Observable<LeyesQueTeAplicanDto> {
+    return this.rest.request<void, LeyesQueTeAplicanDto>({ method: 'GET', url: `${this.base}/que-te-aplican/${organizacionId}` }, this.opciones);
+  }
+
+  usarDeLaBiblioteca(organizacionId: string, ley: string): Observable<LeyDelClienteDto> {
+    return this.rest.request<void, LeyDelClienteDto>(
+      { method: 'POST', url: `${this.base}/usar-de-la-biblioteca/${organizacionId}`, params: { ley } }, this.opciones);
   }
 
   preguntar(organizacionId: string, pregunta: string): Observable<PreguntaSobreLeyesDto> {

@@ -531,7 +531,9 @@ public class AuxiliarContableDbContext :
             b.Property(x => x.Resumen).HasMaxLength(LeyesDelCliente.LeyesDelClienteConsts.MaxResumenLength);
             b.Property(x => x.Error).HasMaxLength(LeyesDelCliente.LeyesDelClienteConsts.MaxErrorLength);
             b.Property(x => x.Resultado).HasColumnType("text");
-            b.HasIndex(x => new { x.OrganizacionId, x.DocumentoId }).IsUnique();
+            b.Property(x => x.Biblioteca).HasMaxLength(LeyesDelCliente.LeyesDelClienteConsts.MaxBibliotecaLength);
+            // Una ley por archivo y cliente: la huella vale para las subidas y para las de la biblioteca (sin documento).
+            b.HasIndex(x => new { x.OrganizacionId, x.Sha256 }).IsUnique();
             b.HasIndex(x => new { x.Lectura, x.ProximoIntentoUtc });
         });
         builder.Entity<LeyesDelCliente.HallazgoDeLey>(b =>

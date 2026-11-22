@@ -37,6 +37,10 @@ public class LeyDelCliente : CreationAuditedAggregateRoot<Guid>
     /// <summary>El título que leyó el motor del propio documento.</summary>
     public string? Titulo { get; protected set; }
 
+    /// <summary>Si es una ley que ya teníamos del estado («MOR/tabaco», catálogo del motor): no hay PDF en la bóveda
+    /// (<see cref="DocumentoId"/> vacío) y el motor la lee de su propia copia.</summary>
+    public string? Biblioteca { get; protected set; }
+
     public LecturaDeLey Lectura { get; protected set; }
     public int? Paginas { get; protected set; }
     public int? PaginasConOcr { get; protected set; }
@@ -77,6 +81,16 @@ public class LeyDelCliente : CreationAuditedAggregateRoot<Guid>
         Materia = Corto(materia, LeyesDelClienteConsts.MaxMateriaLength);
         Lectura = LecturaDeLey.Pendiente;
         ProximoIntentoUtc = utc;
+    }
+
+    /// <summary>Una ley del catálogo del estado que el cliente decidió usar sin subirla.</summary>
+    public static LeyDelCliente DeBiblioteca(Guid id, Guid organizacionId, string estado, string ley, string sha256, string nombre,
+        DateTime utc)
+    {
+        return new LeyDelCliente(id, organizacionId, Guid.Empty, sha256, nombre, AmbitoDeLey.Estatal, estado, null, nombre, utc)
+        {
+            Biblioteca = Corto($"{estado}/{ley}", LeyesDelClienteConsts.MaxBibliotecaLength),
+        };
     }
 
     public void Leyendo(int? paginas, int? conOcr, int? leidas, DateTime proxima)

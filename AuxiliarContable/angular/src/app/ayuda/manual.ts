@@ -279,12 +279,13 @@ export const SECCIONES: Seccion[] = [
         ],
         pasos: [
           'En la hoja concentrado abre la pestaña «Mis leyes».',
-          'Sube el PDF de la ley (ley de ingresos, de hacienda, código fiscal, reglamento de protección civil, de comercio, de anuncios…), di si es estatal o municipal, el estado y, si es municipal, el municipio.',
+          'Arriba ves «Leyes de tu estado que te aplican»: por tu domicilio fiscal y lo que haces (giro, trabajadores, local, inmuebles, vehículos, ventas al gobierno) te decimos qué leyes estatales te tocan, por qué y qué te piden. Las que ya tenemos las agregas con «Usar esta ley», sin subirlas.',
+          'Si te falta alguna, o es municipal, sube el PDF de la ley (ley de ingresos, de hacienda, código fiscal, reglamento de protección civil, de comercio, de anuncios…), di si es estatal o municipal, el estado y, si es municipal, el municipio.',
           'Se lee artículo por artículo (las páginas escaneadas también) y se busca lo que te toca según tu giro y tu perfil: tasa y día del impuesto sobre nómina, recargos, licencias, protección civil, estímulos…',
           'Cada hallazgo trae la cita textual del artículo. El despacho lo revisa: lo que acepta cambia tus cálculos solo a ti; las obligaciones locales aparecen en «Deudas fiscales».',
           'Abajo puedes preguntar sobre tus leyes; la respuesta sale solo de lo que subiste, con su artículo.',
         ],
-        nota: 'Si cambias de giro o contratas trabajadores, tus leyes se vuelven a revisar solas con tu perfil nuevo.',
+        nota: 'Si cambias de giro, contratas trabajadores o abres un local, tus leyes se vuelven a revisar solas con tu perfil nuevo. Para que la lista sea exacta, contesta en tu perfil si tienes local, inmuebles o vehículos y si vendes al gobierno.',
       },
       {
         titulo: 'Efectivo y crédito',

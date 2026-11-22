@@ -3,7 +3,8 @@ import { ChangeDetectionStrategy, Component, DestroyRef, OnChanges, computed, in
 import { FormsModule } from '@angular/forms';
 import { mensajeDeError } from '../invitaciones/invitaciones.service';
 import {
-  ESTADOS, HallazgoDeLeyDto, LeyDelClienteDto, MisLeyesDto, MisLeyesService, QUE_REEMPLAZA, leerRespuesta,
+  ESTADOS, HallazgoDeLeyDto, LeyDelClienteDto, LeyQueTeAplicaDto, LeyesQueTeAplicanDto, MisLeyesDto, MisLeyesService, QUE_REEMPLAZA,
+  leerRespuesta,
 } from './mis-leyes.service';
 
 /** Cada cuánto se vuelve a preguntar mientras algo se lee, se analiza o se contesta. */
@@ -37,6 +38,7 @@ export class MisLeyesComponent implements OnChanges {
   readonly subiendo = signal(false);
   readonly preguntando = signal(false);
   readonly ocupado = signal<string | null>(null);
+  readonly aplican = signal<LeyesQueTeAplicanDto | null>(null);
 
   archivo: File | null = null;
   ambito: 'estatal' | 'municipal' = 'estatal';
@@ -54,13 +56,60 @@ export class MisLeyesComponent implements OnChanges {
   readonly avisos = computed(() => this.hallazgos().filter(h => !h.clave && h.tipo === 'aviso'));
   readonly porDecidir = computed(() => this.hallazgos().filter(h => h.decision === 'Propuesto').length);
 
+  /** Las leyes que le tocan, por bloque; las que no existen en su estado o las regula otra autoridad van aparte. */
+  readonly bloques = computed(() => {
+    const a = this.aplican();
+    if (!a) {
+      return [];
+    }
+    return Object.entries(a.bloques)
+      .map(([clave, titulo]) => ({ clave, titulo, leyes: a.leyes.filter(l => l.bloque === clave && (l.estatus === 'local' || l.estatus === 'pendiente' || l.estatus === 'sin_ficha')) }))
+      .filter(b => b.leyes.length);
+  });
+  readonly otras = computed(() => (this.aplican()?.leyes ?? []).filter(l => l.estatus === 'no_existe' || l.estatus === 'federal' || l.estatus === 'municipal'));
+
   constructor() {
     inject(DestroyRef).onDestroy(() => this.parar());
   }
 
   ngOnChanges(): void {
     this.datos.set(null);
+    this.aplican.set(null);
     this.cargar();
+    this.cargarQueTeAplican();
+  }
+
+  cargarQueTeAplican(): void {
+    this.api.queTeAplican(this.organizacionId()).subscribe({
+      next: a => this.aplican.set(a),
+      error: () => this.aplican.set({ aviso: 'No se pudo consultar qué leyes te aplican.', fuentes: [], disparadores: [], bloques: {}, leyes: [] }),
+    });
+  }
+
+  usar(l: LeyQueTeAplicaDto): void {
+    this.ocupado.set(l.id);
+    this.error.set(null);
+    this.api.usarDeLaBiblioteca(this.organizacionId(), l.id).subscribe({
+      next: () => { this.ocupado.set(null); this.cargar(); this.cargarQueTeAplican(); },
+      error: e => { this.ocupado.set(null); this.error.set(mensajeDeError(e, 'No se pudo agregar la ley.')); },
+    });
+  }
+
+  textoDeEstatus(l: LeyQueTeAplicaDto): string {
+    switch (l.estatus) {
+      case 'local':
+        return l.enMisLeyes ? 'En tus leyes' : 'La tenemos';
+      case 'pendiente':
+        return 'Aún no la tenemos';
+      case 'no_existe':
+        return 'Tu estado no tiene esta ley';
+      case 'federal':
+        return 'La regula una ley federal';
+      case 'municipal':
+        return 'La regula tu municipio';
+      default:
+        return 'Súbela tú';
+    }
   }
 
   private hallazgos(): HallazgoDeLeyDto[] {
