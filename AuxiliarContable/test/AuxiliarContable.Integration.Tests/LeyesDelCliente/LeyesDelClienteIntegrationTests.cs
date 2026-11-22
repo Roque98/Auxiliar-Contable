@@ -160,4 +160,65 @@ public class LeyesDelClienteIntegrationTests : ConJerarquiaTestBase
         caida.Lectura.ShouldBe("Pendiente");
         caida.Error!.ShouldContain("no respondió");
     }
+
+    [Fact]
+    public async Task Las_leyes_que_le_aplican_y_usar_la_que_ya_tenemos_sin_subirla()
+    {
+        await PonerAsync(CamposDelPerfil.Nombre, "PANADERIA DE PRUEBA S.C.");
+        await PonerAsync(CamposDelPerfil.TieneEstablecimiento, "si");
+        await PonerAsync(CamposDelPerfil.ContrataConGobierno, "no");
+
+        var r = await ComoAsync(Usuario, () => _leyes.GetQueTeAplicanAsync(_cliente));
+        r.Estado.ShouldBe("JAL");
+        r.Aviso.ShouldBeNull();
+        r.Historico.ShouldNotBeNull();
+        r.Fuentes.ShouldHaveSingleItem().Url.ShouldStartWith("https://");
+        var pc = r.Leyes.Single(x => x.Id == "proteccion_civil");
+        pc.Disponible.ShouldBeTrue();
+        pc.NombreOficial.ShouldBe("Ley Estatal de Protección Civil de Prueba");
+        pc.EnMisLeyes.ShouldBeNull();
+        r.Leyes.Single(x => x.Id == "mejora_regulatoria").Estatus.ShouldBe("pendiente");
+
+        // Al motor va el perfil sin nombre ni RFC: solo la forma jurídica y los disparadores contestados
+        var (perfil, estado) = _motor.CatalogosPedidos.ShouldHaveSingleItem();
+        estado.ShouldBe("JAL");
+        perfil["forma_juridica"].ShouldBe("S.C.");
+        perfil["tiene_establecimiento"].ShouldBe(true);
+        perfil["contrata_gobierno"].ShouldBe(false);
+        perfil.ContainsKey("tiene_vehiculos").ShouldBeFalse();
+        perfil.Values.OfType<string>().ShouldNotContain(v => v.Contains("PANADERIA") || v.Contains("GODE561231GR8"));
+
+        // La usa sin subirla: entra leída a Mis leyes, sin documento en la bóveda, y se analiza igual
+        var ley = await ComoAsync(Usuario, () => _leyes.UsarDeLaBibliotecaAsync(_cliente, "proteccion_civil"));
+        ley.Biblioteca.ShouldBe("JAL/proteccion_civil");
+        ley.Lectura.ShouldBe("Lista");
+        ley.DocumentoId.ShouldBe(Guid.Empty);
+        await Should.ThrowAsync<UserFriendlyException>(() => ComoAsync(Usuario, () => _leyes.UsarDeLaBibliotecaAsync(_cliente, "proteccion_civil")));
+        await Should.ThrowAsync<UserFriendlyException>(() => ComoAsync(Usuario, () => _leyes.UsarDeLaBibliotecaAsync(_cliente, "mejora_regulatoria")));
+        await Should.ThrowAsync<UserFriendlyException>(() => ComoAsync(Usuario, () => _leyes.UsarDeLaBibliotecaAsync(_cliente, "../x")));
+        (await ComoAsync(Usuario, () => _leyes.GetQueTeAplicanAsync(_cliente))).Leyes.Single(x => x.Id == "proteccion_civil").EnMisLeyes.ShouldBe(ley.Id);
+
+        (await ProcesarAsync()).ShouldBe(1);
+        _motor.LeyesAnalizadas.ShouldHaveSingleItem().Documentos.ShouldHaveSingleItem();
+
+        // Si el motor perdió su lectura, la vuelve a leer de su copia (no hay PDF que mandar)
+        _motor.LeyesLeidas.Clear();
+        await ComoAsync(Administrador, () => _leyes.ReanalizarAsync(_cliente, ley.Id));
+        (await ProcesarAsync()).ShouldBe(1);          // análisis -> 404 -> vuelve a leer
+        (await ProcesarAsync()).ShouldBe(2);          // lee de la biblioteca y analiza
+        _motor.LeyesAnalizadas.Count.ShouldBe(2);
+
+        // Otro cliente no la ve ni la usa por él
+        await Should.ThrowAsync<Volo.Abp.Domain.Entities.EntityNotFoundException>(() => ComoAsync(Usuario, () => _leyes.GetQueTeAplicanAsync(_otro)));
+    }
+
+    [Theory]
+    [InlineData("PANADERIA DE PRUEBA S.C.", "S.C.")]
+    [InlineData("CONSTRUCTORA DEL CENTRO, S.A. DE C.V.", "S.A. DE C.V.")]
+    [InlineData("AMIGOS DEL BOSQUE A.C.", "A.C.")]
+    [InlineData("SERVICIOS INTEGRALES S. DE R.L. DE C.V.", "S. DE R.L. DE C.V.")]
+    [InlineData("TRACTORES Y MAS", null)]
+    [InlineData("", null)]
+    public void Solo_viaja_la_forma_juridica(string razon, string? forma) =>
+        ProcesadorDeLeyesDelCliente.FormaJuridica(razon).ShouldBe(forma);
 }

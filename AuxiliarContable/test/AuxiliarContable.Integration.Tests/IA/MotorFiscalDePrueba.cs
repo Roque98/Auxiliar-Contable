@@ -82,6 +82,7 @@ public class MotorFiscalDePrueba : IMotorFiscal
         LeyesAnalizadas.Clear();
         AnalisisDeLeyes = AnalisisDeLeyesPorDefecto;
         PreguntasDeLeyes.Clear();
+        CatalogosPedidos.Clear();
         Analisis.Clear();
         Analizados.Clear();
         Amarres = null;
@@ -676,5 +677,49 @@ public class MotorFiscalDePrueba : IMotorFiscal
         PreguntasDeLeyes.Add(pregunta);
         return Task.FromResult("{\"encontrado\":true,\"respuesta\":\"Hasta el día 12.\",\"falta\":\"\",\"citas\":[{\"documento\":\""
                                + documentos[0] + "\",\"articulo\":\"4\",\"etiqueta\":\"Artículo 4\",\"pagina\":2,\"cita\":\"a más tardar el día 12\"}]}");
+    }
+
+    /// <summary>Los perfiles con que se pidió el catálogo estatal.</summary>
+    public List<(IReadOnlyDictionary<string, object?> Perfil, string? Estado)> CatalogosPedidos { get; } = [];
+
+    public Task<string> LeyesEstatalesDelClienteAsync(IReadOnlyDictionary<string, object?> perfil, string? estado,
+        CancellationToken cancellationToken = default)
+    {
+        if (Caido)
+        {
+            throw new MotorFiscalNoDisponibleException("El motor fiscal no responde.");
+        }
+
+        CatalogosPedidos.Add((perfil, estado));
+        return Task.FromResult(
+            "{\"estado\":\"" + estado + "\",\"nombre_estado\":\"Estado de prueba\",\"disparadores\":[\"siempre\",\"trabajadores\"]," +
+            "\"ficha\":{\"historico\":\"Periódico oficial de prueba.\",\"fuentes\":[{\"url\":\"https://leyes.ejemplo.gob.mx/\",\"que\":\"Portal\"}]}," +
+            "\"bloques\":{\"D\":\"Ambiental\",\"E\":\"Fiscal\"},\"no_aplican\":[],\"resumen\":{\"local\":1,\"pendiente\":1}," +
+            "\"aplican\":[{\"id\":\"proteccion_civil\",\"nombre\":\"Ley de protección civil\",\"bloque\":\"D\",\"motivos\":[\"tiene local\"]," +
+            "\"pide\":\"Programa interno\",\"temas\":[],\"anual\":false,\"ficha\":{\"estatus\":\"local\",\"nombre\":\"Ley Estatal de Protección Civil de Prueba\"," +
+            "\"url\":\"https://leyes.ejemplo.gob.mx/pc.pdf\",\"ultima_reforma\":\"2026-01-01\",\"disponible\":true}}," +
+            "{\"id\":\"mejora_regulatoria\",\"nombre\":\"Ley de mejora regulatoria\",\"bloque\":\"A\",\"motivos\":[\"todos\"],\"pide\":\"Trámites\"," +
+            "\"temas\":[],\"anual\":false,\"ficha\":{\"estatus\":\"pendiente\",\"disponible\":false}}]}");
+    }
+
+    public Task<LecturaDeLeyDelMotor> IndexarLeyEstatalAsync(string estado, string ley, CancellationToken cancellationToken = default)
+    {
+        if (Caido)
+        {
+            throw new MotorFiscalNoDisponibleException("El motor fiscal no responde.");
+        }
+
+        if (ley != "proteccion_civil")
+        {
+            throw new MotorFiscalNoDisponibleException("El motor fiscal respondió 404.") { Data = { ["Codigo"] = 404 } };
+        }
+
+        var sha = Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(estado + "/" + ley)));
+        LeyesLeidas.Add(sha);
+        return Task.FromResult(new LecturaDeLeyDelMotor
+        {
+            Documento = sha, Estado = "lista", Paginas = 60, ArticulosTotal = 200, NombreOficial = "Ley Estatal de Protección Civil de Prueba",
+            UltimaReforma = "2026-01-01",
+        });
     }
 }

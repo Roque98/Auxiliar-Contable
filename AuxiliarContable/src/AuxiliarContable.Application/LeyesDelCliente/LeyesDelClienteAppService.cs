@@ -7,6 +7,7 @@ using AuxiliarContable.Autorizacion;
 using AuxiliarContable.Concentrado;
 using AuxiliarContable.Documentos;
 using AuxiliarContable.Files;
+using AuxiliarContable.MotorFiscal;
 using AuxiliarContable.Organizaciones;
 using AuxiliarContable.PerfilesFiscales;
 using Microsoft.AspNetCore.Authorization;
@@ -35,10 +36,12 @@ public class LeyesDelClienteAppService : AuxiliarContableAppService, ILeyesDelCl
     private readonly IRepository<PerfilFiscal, Guid> _perfiles;
     private readonly GestorDeDocumentos _gestor;
     private readonly Autorizador _autorizador;
+    private readonly IMotorFiscal _motor;
+    private readonly ProcesadorDeLeyesDelCliente _procesador;
 
     public LeyesDelClienteAppService(IRepository<LeyDelCliente, Guid> leyes, IRepository<HallazgoDeLey, Guid> hallazgos,
         IRepository<PreguntaSobreLeyes, Guid> preguntas, IRepository<PerfilFiscal, Guid> perfiles, GestorDeDocumentos gestor,
-        Autorizador autorizador)
+        Autorizador autorizador, IMotorFiscal motor, ProcesadorDeLeyesDelCliente procesador)
     {
         _leyes = leyes;
         _hallazgos = hallazgos;
@@ -46,6 +49,8 @@ public class LeyesDelClienteAppService : AuxiliarContableAppService, ILeyesDelCl
         _perfiles = perfiles;
         _gestor = gestor;
         _autorizador = autorizador;
+        _motor = motor;
+        _procesador = procesador;
     }
 
     public async Task<MisLeyesDto> GetMisLeyesAsync(Guid organizacionId)
@@ -112,7 +117,7 @@ public class LeyesDelClienteAppService : AuxiliarContableAppService, ILeyesDelCl
 
         var (documento, _) = await _gestor.RecibirAsync(organizacionId, TipoDeDocumento.LeyLocal, archivo.FileName ?? "ley.pdf", bytes,
             mime => mime == DetectorDeDocumento.Pdf);
-        var ya = await _leyes.FirstOrDefaultAsync(x => x.OrganizacionId == organizacionId && x.DocumentoId == documento.Id);
+        var ya = await _leyes.FirstOrDefaultAsync(x => x.OrganizacionId == organizacionId && x.Sha256 == documento.Sha256);
         if (ya != null)
         {
             throw new UserFriendlyException("Esa ley ya está subida.");
@@ -196,6 +201,164 @@ public class LeyesDelClienteAppService : AuxiliarContableAppService, ILeyesDelCl
         return Dto(p);
     }
 
+    public async Task<LeyesQueTeAplicanDto> GetQueTeAplicanAsync(Guid organizacionId)
+    {
+        await _autorizador.ExigirAsync(organizacionId, AccionEnOrganizacion.Ver);
+        Dictionary<string, object?> perfil;
+        string? estado;
+        try
+        {
+            (perfil, estado) = await _procesador.PerfilParaElMotorAsync(organizacionId, null, null);
+        }
+        catch (UserFriendlyException ex)
+        {
+            return new LeyesQueTeAplicanDto { Aviso = ex.Message };
+        }
+
+        if (estado == null)
+        {
+            return new LeyesQueTeAplicanDto { Aviso = "Falta el domicilio fiscal: con él sabemos qué leyes estatales te tocan." };
+        }
+
+        string json;
+        try
+        {
+            json = await _motor.LeyesEstatalesDelClienteAsync(perfil, estado);
+        }
+        catch (MotorFiscalNoDisponibleException)
+        {
+            return new LeyesQueTeAplicanDto { Estado = estado, Aviso = "No pudimos consultar el catálogo de leyes ahora; intenta en unos minutos." };
+        }
+
+        var mias = (await _leyes.GetListAsync(x => x.OrganizacionId == organizacionId && x.Biblioteca != null))
+            .ToDictionary(x => x.Biblioteca!, x => x.Id);
+        return LeerQueTeAplican(json, estado, mias);
+    }
+
+    public async Task<LeyDelClienteDto> UsarDeLaBibliotecaAsync(Guid organizacionId, string ley)
+    {
+        await _autorizador.ExigirAsync(organizacionId, AccionEnOrganizacion.Subir);
+        ley = (ley ?? "").Trim().ToLowerInvariant();
+        if (!System.Text.RegularExpressions.Regex.IsMatch(ley, "^[a-z_]{2,40}$"))
+        {
+            throw new UserFriendlyException("Esa ley no está en el catálogo.");
+        }
+
+        var (_, estado) = await _procesador.PerfilParaElMotorAsync(organizacionId, null, null);
+        if (estado == null)
+        {
+            throw new UserFriendlyException("Falta el domicilio fiscal: con él sabemos de qué estado es la ley.");
+        }
+
+        if (await _leyes.AnyAsync(x => x.OrganizacionId == organizacionId && x.Biblioteca == estado + "/" + ley))
+        {
+            throw new UserFriendlyException("Esa ley ya está en tus leyes.");
+        }
+
+        LecturaDeLeyDelMotor r;
+        try
+        {
+            r = await _motor.IndexarLeyEstatalAsync(estado, ley);
+        }
+        catch (MotorFiscalNoDisponibleException ex) when (ex.Data["Codigo"] is 404)
+        {
+            throw new UserFriendlyException("Esa ley no la tenemos todavía: súbela tú en PDF.");
+        }
+        catch (MotorFiscalNoDisponibleException)
+        {
+            throw new UserFriendlyException("No pudimos abrir la ley ahora; intenta en unos minutos.");
+        }
+
+        if (await _leyes.AnyAsync(x => x.OrganizacionId == organizacionId && x.Sha256 == r.Documento))
+        {
+            throw new UserFriendlyException("Esa ley ya está en tus leyes.");
+        }
+
+        var ahora = Clock.Now.ToUniversalTime();
+        var nueva = LeyDelCliente.DeBiblioteca(GuidGenerator.Create(), organizacionId, estado, ley, r.Documento,
+            r.NombreOficial ?? ley.Replace('_', ' '), ahora);
+        switch (r.Estado)
+        {
+            case "lista":
+                nueva.Leida(r.Paginas, r.PaginasOcr, r.ArticulosTotal, r.NombreOficial ?? r.Titulo, ahora);
+                break;
+            case "error":
+                nueva.NoSePudoLeer(r.Error ?? "El motor no pudo leer la ley.");
+                break;
+            default:
+                nueva.Leyendo(r.Paginas, r.PaginasOcr, r.PaginasLeidas, ahora);
+                break;
+        }
+
+        await _leyes.InsertAsync(nueva, autoSave: true);
+        return Dto(nueva);
+    }
+
+    /// <summary>La respuesta del motor (<c>/leyes-estatales/del-cliente</c>) a DTO; <paramref name="mias"/>: «EDO/ley» -> id en Mis leyes.</summary>
+    public static LeyesQueTeAplicanDto LeerQueTeAplican(string json, string estado, IReadOnlyDictionary<string, Guid> mias)
+    {
+        var dto = new LeyesQueTeAplicanDto { Estado = estado };
+        try
+        {
+            using var d = JsonDocument.Parse(json);
+            var r = d.RootElement;
+            static string? Txt(JsonElement e, string k) => e.ValueKind == JsonValueKind.Object && e.TryGetProperty(k, out var v)
+                                                           && v.ValueKind == JsonValueKind.String ? v.GetString() : null;
+            static List<string> Lista(JsonElement e, string k) => e.ValueKind == JsonValueKind.Object && e.TryGetProperty(k, out var v)
+                                                                  && v.ValueKind == JsonValueKind.Array
+                ? [.. v.EnumerateArray().Where(x => x.ValueKind == JsonValueKind.String).Select(x => x.GetString()!)]
+                : [];
+            dto.NombreDelEstado = Txt(r, "nombre_estado");
+            dto.Disparadores = Lista(r, "disparadores");
+            if (r.TryGetProperty("ficha", out var f) && f.ValueKind == JsonValueKind.Object)
+            {
+                dto.Historico = Txt(f, "historico");
+                if (f.TryGetProperty("fuentes", out var fs) && fs.ValueKind == JsonValueKind.Array)
+                {
+                    dto.Fuentes = [.. fs.EnumerateArray().Select(x => new FuenteOficialDto { Url = Txt(x, "url") ?? "", Que = Txt(x, "que") ?? "" })
+                        .Where(x => x.Url.StartsWith("http", StringComparison.OrdinalIgnoreCase))];
+                }
+            }
+            else
+            {
+                dto.Aviso = "Todavía no tenemos el catálogo de leyes de tu estado: sube tú las que te apliquen.";
+            }
+
+            if (r.TryGetProperty("bloques", out var b) && b.ValueKind == JsonValueKind.Object)
+            {
+                foreach (var p in b.EnumerateObject())
+                {
+                    dto.Bloques[p.Name] = p.Value.GetString() ?? p.Name;
+                }
+            }
+
+            if (r.TryGetProperty("aplican", out var ap) && ap.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var x in ap.EnumerateArray())
+                {
+                    var fi = x.TryGetProperty("ficha", out var fx) ? fx : default;
+                    var id = Txt(x, "id") ?? "";
+                    dto.Leyes.Add(new LeyQueTeAplicaDto
+                    {
+                        Id = id, Nombre = Txt(x, "nombre") ?? id, Bloque = Txt(x, "bloque") ?? "", Motivos = Lista(x, "motivos"),
+                        Pide = Txt(x, "pide"), Estatus = Txt(fi, "estatus") ?? "sin_ficha", NombreOficial = Txt(fi, "nombre"),
+                        UltimaReforma = Txt(fi, "ultima_reforma"), Url = Txt(fi, "url") is { } u && u.StartsWith("http", StringComparison.OrdinalIgnoreCase) ? u : null,
+                        Nota = Txt(fi, "nota"),
+                        Disponible = fi.ValueKind == JsonValueKind.Object && fi.TryGetProperty("disponible", out var dv) && dv.ValueKind == JsonValueKind.True,
+                        Anual = x.TryGetProperty("anual", out var an) && an.ValueKind == JsonValueKind.True,
+                        EnMisLeyes = mias.TryGetValue(estado + "/" + id, out var g) ? g : null,
+                    });
+                }
+            }
+        }
+        catch (JsonException)
+        {
+            dto.Aviso = "El catálogo de leyes respondió algo que no se pudo leer.";
+        }
+
+        return dto;
+    }
+
     private async Task ExigirDespachoAsync(Guid organizacionId)
     {
         await _autorizador.ExigirAsync(organizacionId, AccionEnOrganizacion.Subir);
@@ -234,7 +397,7 @@ public class LeyesDelClienteAppService : AuxiliarContableAppService, ILeyesDelCl
                 : l.HuellaAnalizada != null ? "analizada"
                 : l.Intentos >= LeyDelCliente.MaxIntentos ? "error" : "por_analizar",
             Resumen = l.Resumen, NoEncontrado = noEncontrado, Temas = temas, AnalizadoUtc = l.AnalizadoUtc, Error = l.Error,
-            CreationTime = l.CreationTime,
+            CreationTime = l.CreationTime, Biblioteca = l.Biblioteca,
         };
     }
 

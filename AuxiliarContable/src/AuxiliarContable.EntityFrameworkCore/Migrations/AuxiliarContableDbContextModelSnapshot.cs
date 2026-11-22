@@ -1856,6 +1856,10 @@ namespace AuxiliarContable.Migrations
                     b.Property<int?>("Articulos")
                         .HasColumnType("integer");
 
+                    b.Property<string>("Biblioteca")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
                     b.Property<string>("ConcurrencyStamp")
                         .IsConcurrencyToken()
                         .IsRequired()
@@ -1952,7 +1956,7 @@ namespace AuxiliarContable.Migrations
 
                     b.HasIndex("Lectura", "ProximoIntentoUtc");
 
-                    b.HasIndex("OrganizacionId", "DocumentoId")
+                    b.HasIndex("OrganizacionId", "Sha256")
                         .IsUnique();
 
                     b.ToTable("AppLeyesDeClientes", (string)null);

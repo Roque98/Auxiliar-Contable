@@ -157,7 +157,13 @@ public class ProcesadorDeLeyesDelCliente : ITransientDependency
                 r = await _motor.EstadoDeLeyAsync(ley.Sha256);
             }
 
-            if (r == null)
+            if (r == null && ley.Biblioteca is { } bib)
+            {
+                // Una ley de la biblioteca del estado: el motor la vuelve a leer de su copia («MOR/tabaco»).
+                var partes = bib.Split('/', 2);
+                r = await _motor.IndexarLeyEstatalAsync(partes[0], partes.Length > 1 ? partes[1] : "");
+            }
+            else if (r == null)
             {
                 var doc = await _documentos.GetAsync(ley.DocumentoId);
                 r = await _motor.IndexarLeyAsync(new ArchivoParaElMotor(ley.NombreDelArchivo, await _almacen.LeerAsync(doc)));
@@ -178,7 +184,7 @@ public class ProcesadorDeLeyesDelCliente : ITransientDependency
 
             return 1;
         }
-        catch (MotorFiscalNoDisponibleException ex) when (ex.Data["Codigo"] is 422)
+        catch (MotorFiscalNoDisponibleException ex) when (ex.Data["Codigo"] is 422 || (ex.Data["Codigo"] is 404 && ley.Biblioteca != null))
         {
             ley.NoSePudoLeer(ex.Data["Detalle"] as string ?? "El motor no pudo leer el PDF.");
             return 1;
@@ -190,14 +196,18 @@ public class ProcesadorDeLeyesDelCliente : ITransientDependency
         }
     }
 
-    /// <summary>Lo que se le manda al motor del cliente (sin RFC ni nombre) y lo que hoy usa el sistema.</summary>
-    public async Task<(Dictionary<string, object?> Perfil, Dictionary<string, object?> Sistema, string Huella)> PreguntaAsync(LeyDelCliente ley)
+    /// <summary>
+    /// El perfil que se le manda al motor (sin RFC ni nombre: de la razón social solo viaja la forma jurídica, «S.C.»,
+    /// «A.C.»…) y el estado: el de la ley o, si no, el del domicilio fiscal. Los disparadores del perfil (local, inmuebles,
+    /// vehículos, ventas al gobierno) solo van si el cliente o el despacho los contestaron.
+    /// </summary>
+    public async Task<(Dictionary<string, object?> Perfil, string? Estado)> PerfilParaElMotorAsync(Guid organizacionId, string? estado,
+        string? municipio)
     {
         var anio = _reloj.Now.Year;
-        var p = await _normativa.PerfilAsync(ley.OrganizacionId, anio);
-        var domicilio = (await _perfiles.FirstOrDefaultAsync(x => x.OrganizacionId == ley.OrganizacionId))
-            ?.Dato(CamposDelPerfil.DomicilioFiscal)?.Valor;
-        var estado = ley.Estado ?? IsnPorEstado.Buscar(domicilio)?.Clave;
+        var p = await _normativa.PerfilAsync(organizacionId, anio);
+        var pf = await _perfiles.FirstOrDefaultAsync(x => x.OrganizacionId == organizacionId);
+        estado ??= IsnPorEstado.Buscar(pf?.Dato(CamposDelPerfil.DomicilioFiscal)?.Valor)?.Clave;
         var perfil = new Dictionary<string, object?>
         {
             ["tipo_persona"] = p.TipoPersona,
@@ -206,9 +216,53 @@ public class ProcesadorDeLeyesDelCliente : ITransientDependency
             ["giro"] = p.Actividades.FirstOrDefault(),
             ["tiene_trabajadores"] = p.TieneTrabajadores,
             ["estado"] = estado,
-            ["municipio"] = ley.Municipio,
+            ["municipio"] = municipio,
             ["ejercicio"] = anio,
         };
+        if ((p.TipoPersona ?? "").Contains("moral", StringComparison.OrdinalIgnoreCase) && FormaJuridica(p.Nombre) is { } forma)
+        {
+            perfil["forma_juridica"] = forma;
+        }
+
+        foreach (var (campo, clave) in new[]
+                 {
+                     (CamposDelPerfil.TieneEstablecimiento, "tiene_establecimiento"), (CamposDelPerfil.TieneInmuebles, "tiene_inmuebles"),
+                     (CamposDelPerfil.TieneVehiculos, "tiene_vehiculos"), (CamposDelPerfil.ContrataConGobierno, "contrata_gobierno"),
+                 })
+        {
+            var v = pf?.Dato(campo)?.Valor?.Trim().ToLowerInvariant();
+            if (v is "si" or "sí" or "true")
+            {
+                perfil[clave] = true;
+            }
+            else if (v is "no" or "false")
+            {
+                perfil[clave] = false;
+            }
+        }
+
+        return (perfil, estado);
+    }
+
+    /// <summary>Solo la forma jurídica de la razón social («S.C.», «A.C.», «S.A. de C.V.»…): el nombre no sale.</summary>
+    public static string? FormaJuridica(string? razonSocial)
+    {
+        if (string.IsNullOrWhiteSpace(razonSocial))
+        {
+            return null;
+        }
+
+        var m = System.Text.RegularExpressions.Regex.Match(razonSocial.Trim().ToUpperInvariant(),
+            @"(?:^|[\s,])(?<f>S\.?\s?A\.?\s?P\.?\s?I\.?(?:\s+DE\s+C\.?\s?V\.?)?|S\.?\s?A\.?\s?S\.?|S\.?\s?A\.?(?:\s+DE\s+C\.?\s?V\.?)?"
+            + @"|S\.?\s+DE\s+R\.?\s?L\.?(?:\s+DE\s+C\.?\s?V\.?)?|S\.?\s?C\.?(?:\s+DE\s+(?:R\.?\s?L\.?|P\.?))?|A\.?\s?C\.?|I\.?\s?A\.?\s?P\.?)\s*$");
+        return m.Success ? m.Groups["f"].Value.Trim() : null;
+    }
+
+    /// <summary>Lo que se le manda al motor del cliente (sin RFC ni nombre) y lo que hoy usa el sistema.</summary>
+    public async Task<(Dictionary<string, object?> Perfil, Dictionary<string, object?> Sistema, string Huella)> PreguntaAsync(LeyDelCliente ley)
+    {
+        var anio = _reloj.Now.Year;
+        var (perfil, estado) = await PerfilParaElMotorAsync(ley.OrganizacionId, ley.Estado, ley.Municipio);
         var sistema = new Dictionary<string, object?>();
         if (IsnPorEstado.Buscar(estado, anio) is { } regla)
         {

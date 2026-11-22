@@ -519,6 +519,26 @@ public class MotorFiscalHttp : IMotorFiscal, ITransientDependency
         return r.GetRawText();
     }
 
+    public async Task<string> LeyesEstatalesDelClienteAsync(IReadOnlyDictionary<string, object?> perfil, string? estado,
+        CancellationToken cancellationToken = default)
+    {
+        using var tope = CancelationConTope(_opciones.TimeoutSegundos, cancellationToken);
+        var peticion = new HttpRequestMessage(HttpMethod.Post, "leyes-estatales/del-cliente")
+        {
+            Content = JsonContent.Create(new { perfil, estado }, options: Json),
+        };
+        var r = await EnviarAsync<System.Text.Json.JsonElement>(peticion, tope.Token, cancellationToken);
+        return r.GetRawText();
+    }
+
+    public async Task<LecturaDeLeyDelMotor> IndexarLeyEstatalAsync(string estado, string ley, CancellationToken cancellationToken = default)
+    {
+        using var tope = CancelationConTope(Math.Max(_opciones.TimeoutSegundos, 120), cancellationToken);
+        var peticion = new HttpRequestMessage(HttpMethod.Post,
+            $"leyes-estatales/{Uri.EscapeDataString(estado)}/{Uri.EscapeDataString(ley)}/indexar");
+        return await EnviarAsync<LecturaDeLeyDelMotor>(peticion, tope.Token, cancellationToken);
+    }
+
     private static object Base64(ArchivoParaElMotor a) => new { nombre = a.Nombre, contenido_b64 = Convert.ToBase64String(a.Contenido) };
 
     /// <summary>Cada operación con su tope; el del HttpClient es solo el máximo de todos.</summary>

@@ -69,6 +69,15 @@ public static class CamposDelPerfil
     public const string TieneTrabajadores = "tiene_trabajadores";
     public const string ManejoDeGastos = "manejo_de_gastos";
 
+    /// <summary>Disparadores de las leyes estatales (catálogo del motor): con local abierto tocan protección civil, residuos,
+    /// tabaco…; con inmuebles, catastro y condominio; con vehículos, tránsito y movilidad; si vende al gobierno, obra pública,
+    /// adquisiciones y responsabilidades.</summary>
+    public const string TieneEstablecimiento = "tiene_establecimiento";
+
+    public const string TieneInmuebles = "tiene_inmuebles";
+    public const string TieneVehiculos = "tiene_vehiculos";
+    public const string ContrataConGobierno = "contrata_gobierno";
+
     /// <summary>Decide a qué cuentas van las compras (inventario, materia prima, costo del servicio o gasto).</summary>
     public const string TipoDeEmpresa = "tipo_empresa";
 
@@ -126,6 +135,10 @@ public static class CamposDelPerfil
         new(Bancos, "Bancos que usa", TipoDeCampo.Lista, GrupoDeCampos.Operacion, false),
         new(TieneTrabajadores, "Tiene trabajadores", TipoDeCampo.SiNo, GrupoDeCampos.Operacion, false),
         new(ManejoDeGastos, "Cómo maneja sus gastos", TipoDeCampo.Texto, GrupoDeCampos.Operacion, false),
+        new(TieneEstablecimiento, "Tiene local, oficina o bodega abierta", TipoDeCampo.SiNo, GrupoDeCampos.Operacion, false),
+        new(TieneInmuebles, "Es dueño de inmuebles", TipoDeCampo.SiNo, GrupoDeCampos.Operacion, false),
+        new(TieneVehiculos, "Tiene vehículos o presta servicios de transporte", TipoDeCampo.SiNo, GrupoDeCampos.Operacion, false),
+        new(ContrataConGobierno, "Vende o presta servicios al gobierno", TipoDeCampo.SiNo, GrupoDeCampos.Operacion, false),
         new(TipoDeEmpresa, "Tipo de empresa", TipoDeCampo.Opcion, GrupoDeCampos.Operacion, false,
         [
             new("comercial", "Comercial: compra y vende sin transformar"),
