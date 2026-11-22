@@ -1,0 +1,45 @@
+/* Mis leyes: subir, ver qué se encontró (con su cita) y decidir. Tarjetas que se apilan en el teléfono. */
+:host { display: block; }
+
+.ml-mensaje { display: flex; gap: var(--ig-esp-2); align-items: flex-start; }
+.ml-mensaje p { margin: 0; }
+
+.ml-subtitulo { font-size: var(--ig-titulo-3); font-weight: var(--ig-peso-semi); margin: var(--ig-esp-4) 0 var(--ig-esp-2); }
+.ml-nota { margin: 0; color: var(--ig-texto-secundario); font-size: var(--ig-texto-sm); }
+
+.ml-form { display: flex; flex-wrap: wrap; gap: var(--ig-esp-3); align-items: flex-end; }
+.ml-campo { display: flex; flex-direction: column; gap: var(--ig-esp-1); font-size: var(--ig-texto-sm); min-width: 0; }
+.ml-campo-ancho { flex: 1 1 16rem; }
+
+.ml-lista { display: grid; gap: var(--ig-esp-3); }
+.ml-tarjeta {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ig-esp-2);
+  padding: var(--ig-esp-3);
+  background: var(--ig-fondo);
+  border: var(--ig-borde);
+  border-radius: var(--ig-radio-md);
+  min-width: 0;
+}
+.ml-cabeza { display: flex; flex-wrap: wrap; gap: var(--ig-esp-2); align-items: baseline; justify-content: space-between; }
+.ml-cabeza h4 { margin: 0; font-size: var(--ig-texto-md); font-weight: var(--ig-peso-semi); overflow-wrap: anywhere; }
+.ml-meta { display: flex; flex-wrap: wrap; gap: var(--ig-esp-2); color: var(--ig-texto-secundario); font-size: var(--ig-texto-sm); }
+.ml-acciones { display: flex; flex-wrap: wrap; gap: var(--ig-esp-2); }
+
+.ml-valor { display: flex; flex-wrap: wrap; gap: var(--ig-esp-3); font-size: var(--ig-texto-sm); }
+.ml-valor strong { font-weight: var(--ig-peso-semi); }
+
+.ml-cita {
+  margin: 0;
+  padding: var(--ig-esp-2) var(--ig-esp-3);
+  border-left: 3px solid var(--ig-acento-texto);
+  background: var(--ig-gris-fondo);
+  font-size: var(--ig-texto-sm);
+  font-style: italic;
+  overflow-wrap: anywhere;
+}
+.ml-fuente { font-size: var(--ig-texto-sm); color: var(--ig-texto-secundario); }
+
+.ml-pregunta { display: flex; flex-direction: column; gap: var(--ig-esp-2); }
+.ml-pregunta textarea { width: 100%; }

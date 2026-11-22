@@ -36,6 +36,16 @@ export interface PagoDeObligacionDto {
   nota?: string | null;
 }
 
+export interface ObligacionLocalDto {
+  titulo: string;
+  valor?: string | null;
+  condicion?: string | null;
+  periodicidad?: string | null;
+  fechaLimite?: string | null;
+  fundamento: string;
+  tipo: string;
+}
+
 export interface ObligacionFiscalDto {
   clave: string;
   nombre: string;
@@ -73,6 +83,8 @@ export interface DeudasFiscalesDto {
   obligaciones: ObligacionFiscalDto[];
   noAplican: string[];
   avisos: string[];
+  /** Lo que el despacho aceptó de las leyes que subió el cliente («Mis leyes»): sin importe calculado. */
+  obligacionesLocales?: ObligacionLocalDto[];
   fuente: { facturas: number; canceladas: number; ultimaFacturaUtc?: string | null; periodosDeNomina: number; supuestos: string[] };
 }
 

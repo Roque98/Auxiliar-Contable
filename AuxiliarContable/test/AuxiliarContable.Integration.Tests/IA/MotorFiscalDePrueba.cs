@@ -78,6 +78,10 @@ public class MotorFiscalDePrueba : IMotorFiscal
 
     public void Reiniciar()
     {
+        LeyesLeidas.Clear();
+        LeyesAnalizadas.Clear();
+        AnalisisDeLeyes = AnalisisDeLeyesPorDefecto;
+        PreguntasDeLeyes.Clear();
         Analisis.Clear();
         Analizados.Clear();
         Amarres = null;
@@ -599,5 +603,78 @@ public class MotorFiscalDePrueba : IMotorFiscal
         EstadoSentencias.Trabajo.Corriendo = true;
         EstadoSentencias.Trabajo.Fase = "descargando";
         return Task.FromResult(true);
+    }
+
+    /// <summary>Leyes que «tiene leídas» el motor (por SHA-256) y lo que se le pidió analizar o preguntar.</summary>
+    public HashSet<string> LeyesLeidas { get; } = [];
+
+    public List<(IReadOnlyList<string> Documentos, IReadOnlyDictionary<string, object?> Perfil, IReadOnlyDictionary<string, object?> Sistema)>
+        LeyesAnalizadas { get; } = [];
+
+    /// <summary>El JSON que devuelve el análisis de leyes; el test lo puede cambiar.</summary>
+    public string AnalisisDeLeyes { get; set; } = AnalisisDeLeyesPorDefecto;
+
+    public const string AnalisisDeLeyesPorDefecto =
+        "{\"resumen\":\"Ley de hacienda de prueba.\",\"no_encontrado\":[],\"hallazgos\":[" +
+        "{\"tipo\":\"valor\",\"tema\":\"isn\",\"titulo\":\"Tasa del ISN\",\"clave\":\"isn.tasa\",\"valor\":\"2.5 %\",\"valor_numerico\":0.025," +
+        "\"valor_del_sistema\":\"3 %\",\"condicion\":\"\",\"periodicidad\":\"mensual\",\"fecha_limite\":\"\",\"articulo\":\"3\",\"etiqueta\":\"Artículo 3\"," +
+        "\"pagina\":2,\"cita\":\"aplicando la tasa del 2.5% sobre el total\",\"explicacion\":\"Paga 2.5 %.\"}," +
+        "{\"tipo\":\"valor\",\"tema\":\"isn\",\"titulo\":\"Día de pago\",\"clave\":\"isn.dia\",\"valor\":\"día 12\",\"valor_numerico\":12," +
+        "\"valor_del_sistema\":\"17\",\"condicion\":\"\",\"periodicidad\":\"mensual\",\"fecha_limite\":\"día 12 del mes siguiente\",\"articulo\":\"4\"," +
+        "\"etiqueta\":\"Artículo 4\",\"pagina\":2,\"cita\":\"a más tardar el día 12 del mes siguiente\",\"explicacion\":\"Paga el 12.\"}," +
+        "{\"tipo\":\"obligacion\",\"tema\":\"proteccion_civil\",\"titulo\":\"Dictamen de protección civil\",\"clave\":\"\",\"valor\":\"20 UMA\"," +
+        "\"valor_numerico\":null,\"valor_del_sistema\":\"\",\"condicion\":\"aforo mayor a 50\",\"periodicidad\":\"anual\",\"fecha_limite\":\"31 de marzo\"," +
+        "\"articulo\":\"5\",\"etiqueta\":\"Artículo 5\",\"pagina\":3,\"cita\":\"deberán obtener anualmente el dictamen de protección civil\",\"explicacion\":\"…\"}]}";
+
+    public List<string> PreguntasDeLeyes { get; } = [];
+
+    public Task<LecturaDeLeyDelMotor> IndexarLeyAsync(ArchivoParaElMotor ley, CancellationToken cancellationToken = default)
+    {
+        if (Caido)
+        {
+            throw new MotorFiscalNoDisponibleException("El motor fiscal no responde.");
+        }
+
+        var sha = Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(ley.Contenido));
+        LeyesLeidas.Add(sha);
+        return Task.FromResult(new LecturaDeLeyDelMotor
+        {
+            Documento = sha, Estado = "lista", Paginas = 4, PaginasOcr = 1, PaginasLeidas = 1, ArticulosTotal = 7,
+            Titulo = "LEY DE HACIENDA DEL ESTADO DE PRUEBA",
+        });
+    }
+
+    public Task<LecturaDeLeyDelMotor?> EstadoDeLeyAsync(string sha256, CancellationToken cancellationToken = default) =>
+        Caido ? throw new MotorFiscalNoDisponibleException("El motor fiscal no responde.")
+            : Task.FromResult(LeyesLeidas.Contains(sha256) ? new LecturaDeLeyDelMotor { Documento = sha256, Estado = "lista", ArticulosTotal = 7 } : null);
+
+    public Task<string> AnalizarLeyesAsync(IReadOnlyList<string> documentos, IReadOnlyDictionary<string, object?> perfil,
+        IReadOnlyDictionary<string, object?> sistema, CancellationToken cancellationToken = default)
+    {
+        if (Caido)
+        {
+            throw new MotorFiscalNoDisponibleException("El motor fiscal no responde.");
+        }
+
+        if (documentos.Any(d => !LeyesLeidas.Contains(d)))
+        {
+            throw new MotorFiscalNoDisponibleException("El motor fiscal respondió 404.") { Data = { ["Codigo"] = 404 } };
+        }
+
+        LeyesAnalizadas.Add((documentos, perfil, sistema));
+        return Task.FromResult(AnalisisDeLeyes);
+    }
+
+    public Task<string> PreguntarLeyesAsync(IReadOnlyList<string> documentos, string pregunta, IReadOnlyDictionary<string, object?> perfil,
+        CancellationToken cancellationToken = default)
+    {
+        if (Caido)
+        {
+            throw new MotorFiscalNoDisponibleException("El motor fiscal no responde.");
+        }
+
+        PreguntasDeLeyes.Add(pregunta);
+        return Task.FromResult("{\"encontrado\":true,\"respuesta\":\"Hasta el día 12.\",\"falta\":\"\",\"citas\":[{\"documento\":\""
+                               + documentos[0] + "\",\"articulo\":\"4\",\"etiqueta\":\"Artículo 4\",\"pagina\":2,\"cita\":\"a más tardar el día 12\"}]}");
     }
 }

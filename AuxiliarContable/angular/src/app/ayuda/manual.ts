@@ -271,6 +271,22 @@ export const SECCIONES: Seccion[] = [
         nota: 'Es el texto de la ley tal cual, sin interpretación: lo que hay que hacer en tu caso lo decide tu contador.',
       },
       {
+        titulo: 'Mis leyes estatales y municipales',
+        icono: 'bi-journal-text',
+        ruta: '/concentrado',
+        texto: [
+          'Si el sistema no calcula de acuerdo a tu ley estatal o municipal, sube las leyes en este apartado y se trabajará a partir de ahí.',
+        ],
+        pasos: [
+          'En la hoja concentrado abre la pestaña «Mis leyes».',
+          'Sube el PDF de la ley (ley de ingresos, de hacienda, código fiscal, reglamento de protección civil, de comercio, de anuncios…), di si es estatal o municipal, el estado y, si es municipal, el municipio.',
+          'Se lee artículo por artículo (las páginas escaneadas también) y se busca lo que te toca según tu giro y tu perfil: tasa y día del impuesto sobre nómina, recargos, licencias, protección civil, estímulos…',
+          'Cada hallazgo trae la cita textual del artículo. El despacho lo revisa: lo que acepta cambia tus cálculos solo a ti; las obligaciones locales aparecen en «Deudas fiscales».',
+          'Abajo puedes preguntar sobre tus leyes; la respuesta sale solo de lo que subiste, con su artículo.',
+        ],
+        nota: 'Si cambias de giro o contratas trabajadores, tus leyes se vuelven a revisar solas con tu perfil nuevo.',
+      },
+      {
         titulo: 'Efectivo y crédito',
         icono: 'bi-cash-coin',
         ruta: '/mi-informacion/dinero/efectivo',

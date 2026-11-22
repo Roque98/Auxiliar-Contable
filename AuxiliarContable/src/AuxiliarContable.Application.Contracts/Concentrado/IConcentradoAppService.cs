@@ -77,8 +77,27 @@ public class DeudasFiscalesDto
 
     public List<string> Avisos { get; set; } = [];
 
+    /// <summary>
+    /// Obligaciones y beneficios locales que el despacho aceptó de las leyes que subió el cliente («Mis leyes»): licencias,
+    /// protección civil, anuncios, estímulos… Sin importe calculado: se muestran con su periodicidad, fecha y fundamento.
+    /// </summary>
+    public List<ObligacionLocalDto> ObligacionesLocales { get; set; } = [];
+
     /// <summary>De dónde salió la información: facturas, descargas, nómina…</summary>
     public FuenteDelCalculoDto Fuente { get; set; } = new();
+}
+
+public class ObligacionLocalDto
+{
+    public string Titulo { get; set; } = "";
+    public string? Valor { get; set; }
+    public string? Condicion { get; set; }
+    public string? Periodicidad { get; set; }
+    public string? FechaLimite { get; set; }
+    public string Fundamento { get; set; } = "";
+
+    /// <summary>obligacion o beneficio.</summary>
+    public string Tipo { get; set; } = "";
 }
 
 public class FuenteDelCalculoDto

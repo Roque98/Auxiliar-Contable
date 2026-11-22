@@ -1,0 +1,205 @@
+<div class="ig-alerta ig-alerta-aviso ml-mensaje" role="note">
+  <i class="bi bi-journal-text" aria-hidden="true"></i>
+  <div>
+    <p><strong>{{ datos()?.mensaje ?? 'Si el sistema no calcula de acuerdo a tu ley estatal o municipal, sube las leyes en este apartado y se trabajará a partir de ahí.' }}</strong></p>
+    <p class="ml-nota">
+      Sirve cualquier ley o reglamento de tu estado o municipio que afecte tu economía: ley de ingresos, ley de hacienda, código fiscal,
+      protección civil, licencias de funcionamiento, anuncios, alcoholes, ecología… Se leen artículo por artículo, se busca lo que te toca
+      según tu giro y tu perfil, y el despacho revisa cada hallazgo antes de que cambie tus cálculos.
+    </p>
+  </div>
+</div>
+
+@if (error(); as e) {
+  <div class="ig-alerta ig-alerta-error" role="alert">{{ e }}</div>
+}
+
+<h3 class="ml-subtitulo">Subir una ley</h3>
+<form class="ig-panel ml-form" (ngSubmit)="subir(campoArchivo)" data-testid="subir-ley">
+  <label class="ml-campo ml-campo-ancho">
+    <span>Archivo (PDF, máximo 20 MB)</span>
+    <input #campoArchivo class="ig-control" type="file" accept="application/pdf,.pdf" (change)="elegirArchivo($event)" />
+  </label>
+  <label class="ml-campo">
+    <span>Es una ley</span>
+    <select class="ig-control" [(ngModel)]="ambito" name="ambito">
+      <option value="estatal">Estatal</option>
+      <option value="municipal">Municipal</option>
+    </select>
+  </label>
+  <label class="ml-campo">
+    <span>Estado</span>
+    <select class="ig-control" [(ngModel)]="estado" name="estado">
+      <option [ngValue]="null">Sin decir</option>
+      @for (e of estados; track e.clave) { <option [ngValue]="e.clave">{{ e.nombre }}</option> }
+    </select>
+  </label>
+  @if (ambito === 'municipal') {
+    <label class="ml-campo">
+      <span>Municipio</span>
+      <input class="ig-control" [(ngModel)]="municipio" name="municipio" maxlength="120" required placeholder="Ej.: Zapopan" />
+    </label>
+  }
+  <label class="ml-campo ml-campo-ancho">
+    <span>¿Qué ley es?</span>
+    <input class="ig-control" [(ngModel)]="materia" name="materia" maxlength="200"
+      placeholder="Ej.: Ley de ingresos 2026, reglamento de protección civil" />
+  </label>
+  <div class="ig-acciones">
+    <button type="submit" class="ig-btn ig-btn-principal" [disabled]="!archivo || subiendo() || (ambito === 'municipal' && !municipio.trim())">
+      @if (subiendo()) { <i class="bi bi-arrow-repeat ig-girando" aria-hidden="true"></i> Subiendo… } @else { <i class="bi bi-upload" aria-hidden="true"></i> Subir }
+    </button>
+  </div>
+</form>
+
+@if (cargando() && !datos()) {
+  <div class="ig-esqueleto" style="height: 8rem" aria-busy="true"></div>
+} @else if (datos(); as d) {
+  <h3 class="ml-subtitulo">Tus leyes</h3>
+  @if (!d.leyes.length) {
+    <p class="ig-vacio">Todavía no has subido ninguna ley.</p>
+  } @else {
+    <div class="ml-lista">
+      @for (l of d.leyes; track l.id) {
+        <article class="ml-tarjeta" data-testid="ley">
+          <div class="ml-cabeza">
+            <h4>{{ l.titulo || l.materia || l.nombreDelArchivo }}</h4>
+            <span class="ig-etiqueta" [class.ig-etiqueta-exito]="l.analisis === 'analizada'" [class.ig-etiqueta-error]="l.lectura === 'Error' || l.analisis === 'error'"
+              [class.ig-etiqueta-tinta]="l.lectura !== 'Error' && l.analisis !== 'analizada' && l.analisis !== 'error'">
+              @if (l.lectura === 'Pendiente' || l.lectura === 'Leyendo' || l.analisis === 'por_analizar') { <i class="bi bi-arrow-repeat ig-girando" aria-hidden="true"></i> }
+              {{ textoDeLectura(l) }}
+            </span>
+          </div>
+          <div class="ml-meta">
+            <span>{{ l.ambito === 'estatal' ? 'Estatal' : 'Municipal' }}{{ l.estado ? ' · ' + nombreDelEstado(l.estado) : '' }}{{ l.municipio ? ' · ' + l.municipio : '' }}</span>
+            @if (l.paginas) { <span>{{ l.paginas }} páginas</span> }
+            @if (l.articulos) { <span>{{ l.articulos }} artículos o tramos</span> }
+            @if (l.paginasConOcr) { <span>{{ l.paginasConOcr }} escaneadas (OCR)</span> }
+            <span>{{ l.nombreDelArchivo }}</span>
+          </div>
+          @if (l.resumen) { <p class="ml-nota">{{ l.resumen }}</p> }
+          @if (l.noEncontrado.length) {
+            <p class="ml-nota"><strong>No viene en esta ley:</strong> {{ l.noEncontrado.join(', ') }}. Si te aplica, sube la ley que lo regula.</p>
+          }
+          @if (l.error) { <p class="ml-nota" role="alert">{{ l.error }}</p> }
+          <div class="ml-acciones">
+            @if (d.esDelDespacho && (l.lectura === 'Lista' || l.lectura === 'Error')) {
+              <button type="button" class="ig-btn ig-btn-texto ig-btn-chico" [disabled]="ocupado() === l.id" (click)="reanalizar(l)">
+                <i class="bi bi-arrow-clockwise" aria-hidden="true"></i> Volver a revisar
+              </button>
+            }
+            <button type="button" class="ig-btn ig-btn-texto ig-btn-chico" [disabled]="ocupado() === l.id" (click)="eliminar(l)">
+              <i class="bi bi-trash" aria-hidden="true"></i> Quitar
+            </button>
+          </div>
+        </article>
+      }
+    </div>
+  }
+
+  @if (d.hallazgos.length) {
+    <h3 class="ml-subtitulo">Lo que encontramos en tus leyes</h3>
+    <p class="ml-nota">
+      Cada hallazgo trae la cita textual del artículo, comprobada letra por letra contra la ley que subiste.
+      @if (d.esDelDespacho) {
+        Lo que aceptes reemplaza al valor del sistema <strong>solo para este cliente</strong>.
+        @if (porDecidir()) { Hay {{ porDecidir() }} por decidir. }
+      } @else {
+        El despacho los revisa antes de que cambien tus cálculos.
+      }
+    </p>
+
+    @for (grupo of [
+      { titulo: 'Valores que cambian el cálculo', lista: valores() },
+      { titulo: 'Obligaciones, pagos y trámites locales', lista: obligaciones() },
+      { titulo: 'Beneficios y estímulos', lista: beneficios() },
+      { titulo: 'Avisos', lista: avisos() }
+    ]; track grupo.titulo) {
+      @if (grupo.lista.length) {
+        <h4 class="ml-subtitulo" style="font-size: var(--ig-texto-md)">{{ grupo.titulo }}</h4>
+        <div class="ml-lista">
+          @for (h of grupo.lista; track h.id) {
+            <article class="ml-tarjeta" data-testid="hallazgo">
+              <div class="ml-cabeza">
+                <h4>{{ h.titulo }}</h4>
+                <span class="ig-etiqueta" [class.ig-etiqueta-exito]="h.decision === 'Aceptado'" [class.ig-etiqueta-error]="h.decision === 'Rechazado'"
+                  [class.ig-etiqueta-alerta]="h.decision === 'Propuesto'" [class.ig-etiqueta-tinta]="h.decision === 'Reemplazado'">
+                  {{ h.decision === 'Propuesto' ? 'Por revisar' : h.decision === 'Aceptado' ? 'Aceptado' : h.decision === 'Rechazado' ? 'Rechazado' : 'Reemplazado' }}
+                </span>
+              </div>
+              <div class="ml-valor">
+                @if (h.clave) { <span>{{ queReemplaza[h.clave] }}</span> }
+                @if (h.valor) { <span>Según tu ley: <strong>{{ h.valor }}</strong></span> }
+                @if (h.valorDelSistema) { <span>El sistema usa: {{ h.valorDelSistema }}</span> }
+                @if (h.periodicidad) { <span>Periodicidad: {{ h.periodicidad }}</span> }
+                @if (h.fechaLimite) { <span>Fecha límite: {{ h.fechaLimite }}</span> }
+                @if (h.condicion) { <span>Aplica si: {{ h.condicion }}</span> }
+              </div>
+              @if (h.explicacion) { <p class="ml-nota">{{ h.explicacion }}</p> }
+              <blockquote class="ml-cita">«{{ h.cita }}»</blockquote>
+              <span class="ml-fuente">{{ h.etiqueta || 'Art. ' + h.articulo }}{{ h.pagina ? ', pág. ' + h.pagina : '' }} — {{ h.ley || nombreDeLey().get(h.leyId) }}</span>
+              @if (d.esDelDespacho && (h.decision === 'Propuesto' || h.decision === 'Rechazado' || h.decision === 'Reemplazado')) {
+                <div class="ml-acciones">
+                  <button type="button" class="ig-btn ig-btn-principal ig-btn-chico" [disabled]="ocupado() === h.id" (click)="decidir(h, true)">
+                    <i class="bi bi-check2" aria-hidden="true"></i> {{ h.clave ? 'Usar este valor' : 'Aceptar' }}
+                  </button>
+                  @if (h.decision === 'Propuesto') {
+                    <button type="button" class="ig-btn ig-btn-secundario ig-btn-chico" [disabled]="ocupado() === h.id" (click)="decidir(h, false)">
+                      <i class="bi bi-x" aria-hidden="true"></i> Rechazar
+                    </button>
+                  }
+                </div>
+              } @else if (d.esDelDespacho && h.decision === 'Aceptado') {
+                <div class="ml-acciones">
+                  <button type="button" class="ig-btn ig-btn-texto ig-btn-chico" [disabled]="ocupado() === h.id" (click)="decidir(h, false)">
+                    <i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i> Dejar de usarlo
+                  </button>
+                </div>
+              }
+            </article>
+          }
+        </div>
+      }
+    }
+  }
+
+  @if (d.leyes.length) {
+    <h3 class="ml-subtitulo">Pregunta sobre tus leyes</h3>
+    <div class="ig-panel ml-pregunta">
+      <label class="ml-campo">
+        <span>Se contesta solo con las leyes que subiste, citando el artículo. Tarda un par de minutos.</span>
+        <textarea class="ig-control" rows="2" [(ngModel)]="pregunta" name="pregunta" maxlength="2000"
+          placeholder="Ej.: ¿cada cuándo tengo que renovar el dictamen de protección civil y cuánto cuesta?"></textarea>
+      </label>
+      <div class="ig-acciones">
+        <button type="button" class="ig-btn ig-btn-principal" [disabled]="pregunta.trim().length < 8 || preguntando()" (click)="preguntar()">
+          <i class="bi bi-question-circle" aria-hidden="true"></i> Preguntar
+        </button>
+      </div>
+    </div>
+    @if (d.preguntas.length) {
+      <div class="ml-lista" style="margin-top: var(--ig-esp-3)">
+        @for (p of d.preguntas; track p.id) {
+          <article class="ml-tarjeta" data-testid="pregunta">
+            <div class="ml-cabeza">
+              <h4>{{ p.pregunta }}</h4>
+              <span class="ml-fuente">{{ p.creationTime | date: 'd MMM, HH:mm' }}</span>
+            </div>
+            @if (p.estado === 'Pendiente') {
+              <p class="ml-nota"><i class="bi bi-arrow-repeat ig-girando" aria-hidden="true"></i> Buscando en tus leyes…</p>
+            } @else if (p.estado === 'Error') {
+              <p class="ml-nota" role="alert">{{ p.error || 'No se pudo contestar.' }}</p>
+            } @else if (leer(p.respuesta); as r) {
+              <p>{{ r.respuesta }}</p>
+              @if (!r.encontrado && r.falta) { <p class="ml-nota">Haría falta: {{ r.falta }}</p> }
+              @for (c of r.citas; track $index) {
+                <blockquote class="ml-cita">«{{ c.cita }}»</blockquote>
+                <span class="ml-fuente">{{ c.etiqueta || 'Art. ' + c.articulo }}{{ c.pagina ? ', pág. ' + c.pagina : '' }}{{ c.nombre_documento ? ' — ' + c.nombre_documento : '' }}</span>
+              }
+            }
+          </article>
+        }
+      </div>
+    }
+  }
+}

@@ -80,6 +80,9 @@ public class AuxiliarContableDbContext :
     public DbSet<Contabilidad.ContabilidadDelMes> ContabilidadesDeMeses { get; set; }
     public DbSet<Contabilidad.OperacionInterpretada> OperacionesInterpretadas { get; set; }
     public DbSet<Normativa.AnalisisNormativo> AnalisisNormativos { get; set; }
+    public DbSet<LeyesDelCliente.LeyDelCliente> LeyesDeClientes { get; set; }
+    public DbSet<LeyesDelCliente.HallazgoDeLey> HallazgosDeLeyes { get; set; }
+    public DbSet<LeyesDelCliente.PreguntaSobreLeyes> PreguntasSobreLeyes { get; set; }
     public DbSet<Contabilidad.ConciliacionIntegral> ConciliacionesIntegrales { get; set; }
     public DbSet<Nomina.Trabajador> Trabajadores { get; set; }
     public DbSet<Nomina.PeriodoDeNomina> PeriodosDeNomina { get; set; }
@@ -510,6 +513,57 @@ public class AuxiliarContableDbContext :
             b.Property(x => x.Error).HasMaxLength(Contabilidad.ConciliacionIntegral.MaxErrorLength);
             b.HasIndex(x => new { x.OrganizacionId, x.PedidaUtc });
             b.HasIndex(x => new { x.Estado, x.PedidaUtc });
+        });
+
+        // «Mis leyes»: leyes estatales y municipales que sube el cliente, lo que el motor encontró en ellas y las preguntas.
+        builder.Entity<LeyesDelCliente.LeyDelCliente>(b =>
+        {
+            b.ToTable(AuxiliarContableConsts.DbTablePrefix + "LeyesDeClientes", AuxiliarContableConsts.DbSchema);
+            b.ConfigureByConvention();
+            b.Property(x => x.Sha256).IsRequired().HasMaxLength(LeyesDelCliente.LeyesDelClienteConsts.MaxHuellaLength);
+            b.Property(x => x.NombreDelArchivo).IsRequired().HasMaxLength(255);
+            b.Property(x => x.Estado).HasMaxLength(LeyesDelCliente.LeyesDelClienteConsts.MaxEstadoLength);
+            b.Property(x => x.Municipio).HasMaxLength(LeyesDelCliente.LeyesDelClienteConsts.MaxMunicipioLength);
+            b.Property(x => x.Materia).HasMaxLength(LeyesDelCliente.LeyesDelClienteConsts.MaxMateriaLength);
+            b.Property(x => x.Titulo).HasMaxLength(LeyesDelCliente.LeyesDelClienteConsts.MaxTituloLength);
+            b.Property(x => x.HuellaAnalizada).HasMaxLength(LeyesDelCliente.LeyesDelClienteConsts.MaxHuellaLength);
+            b.Property(x => x.HuellaEnCurso).HasMaxLength(LeyesDelCliente.LeyesDelClienteConsts.MaxHuellaLength);
+            b.Property(x => x.Resumen).HasMaxLength(LeyesDelCliente.LeyesDelClienteConsts.MaxResumenLength);
+            b.Property(x => x.Error).HasMaxLength(LeyesDelCliente.LeyesDelClienteConsts.MaxErrorLength);
+            b.Property(x => x.Resultado).HasColumnType("text");
+            b.HasIndex(x => new { x.OrganizacionId, x.DocumentoId }).IsUnique();
+            b.HasIndex(x => new { x.Lectura, x.ProximoIntentoUtc });
+        });
+        builder.Entity<LeyesDelCliente.HallazgoDeLey>(b =>
+        {
+            b.ToTable(AuxiliarContableConsts.DbTablePrefix + "HallazgosDeLeyes", AuxiliarContableConsts.DbSchema);
+            b.ConfigureByConvention();
+            b.Property(x => x.Tipo).IsRequired().HasMaxLength(20);
+            b.Property(x => x.Tema).HasMaxLength(60);
+            b.Property(x => x.Titulo).IsRequired().HasMaxLength(300);
+            b.Property(x => x.Clave).HasMaxLength(30);
+            b.Property(x => x.Valor).HasMaxLength(200);
+            b.Property(x => x.ValorNumerico).HasPrecision(18, 6);
+            b.Property(x => x.ValorDelSistema).HasMaxLength(200);
+            b.Property(x => x.Condicion).HasMaxLength(500);
+            b.Property(x => x.Periodicidad).HasMaxLength(20);
+            b.Property(x => x.FechaLimite).HasMaxLength(200);
+            b.Property(x => x.Articulo).IsRequired().HasMaxLength(60);
+            b.Property(x => x.Etiqueta).HasMaxLength(120);
+            b.Property(x => x.Cita).IsRequired().HasMaxLength(2000);
+            b.Property(x => x.Explicacion).HasMaxLength(2000);
+            b.HasIndex(x => new { x.OrganizacionId, x.Decision });
+            b.HasIndex(x => x.LeyId);
+        });
+        builder.Entity<LeyesDelCliente.PreguntaSobreLeyes>(b =>
+        {
+            b.ToTable(AuxiliarContableConsts.DbTablePrefix + "PreguntasSobreLeyes", AuxiliarContableConsts.DbSchema);
+            b.ConfigureByConvention();
+            b.Property(x => x.Pregunta).IsRequired().HasMaxLength(LeyesDelCliente.LeyesDelClienteConsts.MaxPreguntaLength);
+            b.Property(x => x.Error).HasMaxLength(LeyesDelCliente.LeyesDelClienteConsts.MaxErrorLength);
+            b.Property(x => x.Respuesta).HasColumnType("text");
+            b.HasIndex(x => new { x.OrganizacionId, x.CreationTime });
+            b.HasIndex(x => new { x.Estado, x.PedidoUtc });
         });
 
         // AppAnalisisNormativos: hipótesis normativa de cada cliente (pregunta, conclusión y el JSON del motor).

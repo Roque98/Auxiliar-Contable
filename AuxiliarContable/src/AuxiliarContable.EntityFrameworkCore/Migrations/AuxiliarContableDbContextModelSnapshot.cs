@@ -1742,6 +1742,283 @@ namespace AuxiliarContable.Migrations
                     b.ToTable("AppJobFailures", (string)null);
                 });
 
+            modelBuilder.Entity("AuxiliarContable.LeyesDelCliente.HallazgoDeLey", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Articulo")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<string>("Cita")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<string>("Clave")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<string>("Condicion")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTime>("CreationTime")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("CreationTime");
+
+                    b.Property<Guid?>("CreatorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("CreatorId");
+
+                    b.Property<Guid?>("DecididoPor")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("DecididoUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Decision")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Etiqueta")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<string>("Explicacion")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<string>("FechaLimite")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<Guid>("LeyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("OrganizacionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int?>("Pagina")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Periodicidad")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("Tema")
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<string>("Tipo")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("Titulo")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<string>("Valor")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("ValorDelSistema")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<decimal?>("ValorNumerico")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("numeric(18,6)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LeyId");
+
+                    b.HasIndex("OrganizacionId", "Decision");
+
+                    b.ToTable("AppHallazgosDeLeyes", (string)null);
+                });
+
+            modelBuilder.Entity("AuxiliarContable.LeyesDelCliente.LeyDelCliente", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Ambito")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("AnalizadoUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("Articulos")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("ConcurrencyStamp");
+
+                    b.Property<DateTime>("CreationTime")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("CreationTime");
+
+                    b.Property<Guid?>("CreatorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("CreatorId");
+
+                    b.Property<Guid>("DocumentoId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Error")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("Estado")
+                        .HasMaxLength(6)
+                        .HasColumnType("character varying(6)");
+
+                    b.Property<string>("ExtraProperties")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("ExtraProperties");
+
+                    b.Property<string>("HuellaAnalizada")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("HuellaEnCurso")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<int>("Intentos")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("IntentosDeLectura")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Lectura")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Materia")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Municipio")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<string>("NombreDelArchivo")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.Property<Guid>("OrganizacionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int?>("Paginas")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("PaginasConOcr")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("PaginasLeidas")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("ProximoIntentoUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Resultado")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Resumen")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<string>("Sha256")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("Titulo")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Lectura", "ProximoIntentoUtc");
+
+                    b.HasIndex("OrganizacionId", "DocumentoId")
+                        .IsUnique();
+
+                    b.ToTable("AppLeyesDeClientes", (string)null);
+                });
+
+            modelBuilder.Entity("AuxiliarContable.LeyesDelCliente.PreguntaSobreLeyes", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("ConcurrencyStamp");
+
+                    b.Property<DateTime>("CreationTime")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("CreationTime");
+
+                    b.Property<Guid?>("CreatorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("CreatorId");
+
+                    b.Property<string>("Error")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<int>("Estado")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ExtraProperties")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("ExtraProperties");
+
+                    b.Property<int>("Intentos")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("ListaUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("OrganizacionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("PedidoUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Pregunta")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<string>("Respuesta")
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Estado", "PedidoUtc");
+
+                    b.HasIndex("OrganizacionId", "CreationTime");
+
+                    b.ToTable("AppPreguntasSobreLeyes", (string)null);
+                });
+
             modelBuilder.Entity("AuxiliarContable.Monitoring.RateLimitEvent", b =>
                 {
                     b.Property<Guid>("Id")

@@ -621,6 +621,7 @@ public class AuxiliarContableHttpApiHostModule : AbpModule
         await context.AddBackgroundWorkerAsync<ContabilidadAlDiaWorker>();
         await context.AddBackgroundWorkerAsync<InterpretacionesWorker>();
         await context.AddBackgroundWorkerAsync<Normativa.AnalisisNormativoWorker>();
+        await context.AddBackgroundWorkerAsync<LeyesDelCliente.LeyesDelClienteWorker>();
         await context.AddBackgroundWorkerAsync<Contabilidad.ConciliacionIntegralWorker>();
         await context.AddBackgroundWorkerAsync<Contabilidad.RecordatorioDeLoQueFaltaWorker>();
         await context.AddBackgroundWorkerAsync<Nomina.RecordatorioRepseWorker>();
