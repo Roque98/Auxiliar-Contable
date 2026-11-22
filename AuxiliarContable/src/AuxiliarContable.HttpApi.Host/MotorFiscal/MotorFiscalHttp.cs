@@ -299,7 +299,11 @@ public class MotorFiscalHttp : IMotorFiscal, ITransientDependency
         {
             Content = JsonContent.Create(new
             {
-                patron = new { rfc = patron.Rfc, estado = patron.Estado, cp = patron.CodigoPostal, zona = patron.Zona, prima_riesgo = patron.PrimaRiesgo },
+                patron = new
+                {
+                    rfc = patron.Rfc, estado = patron.Estado, cp = patron.CodigoPostal, zona = patron.Zona, prima_riesgo = patron.PrimaRiesgo,
+                    isn_tasa = patron.IsnTasa, isn_fundamento = patron.IsnFundamento,
+                },
                 periodo,
                 trabajadores = trabajadores.Select(t => new
                 {
@@ -466,6 +470,55 @@ public class MotorFiscalHttp : IMotorFiscal, ITransientDependency
         }
     }
 
+    public async Task<LecturaDeLeyDelMotor> IndexarLeyAsync(ArchivoParaElMotor ley, CancellationToken cancellationToken = default)
+    {
+        // Responde enseguida: si hay páginas escaneadas, el OCR sigue en un hilo del motor y se pregunta con EstadoDeLeyAsync.
+        using var tope = CancelationConTope(Math.Max(_opciones.TimeoutSegundos, 120), cancellationToken);
+        var peticion = new HttpRequestMessage(HttpMethod.Post, "leyes-propias/indexar")
+        {
+            Content = JsonContent.Create(new { nombre = ley.Nombre, contenido = Convert.ToBase64String(ley.Contenido) }, options: Json),
+        };
+        return await EnviarAsync<LecturaDeLeyDelMotor>(peticion, tope.Token, cancellationToken);
+    }
+
+    public async Task<LecturaDeLeyDelMotor?> EstadoDeLeyAsync(string sha256, CancellationToken cancellationToken = default)
+    {
+        using var tope = CancelationConTope(_opciones.TimeoutSegundos, cancellationToken);
+        try
+        {
+            return await EnviarAsync<LecturaDeLeyDelMotor>(
+                new HttpRequestMessage(HttpMethod.Get, "leyes-propias/" + Uri.EscapeDataString(sha256)), tope.Token, cancellationToken);
+        }
+        catch (MotorFiscalNoDisponibleException ex) when (ex.Data["Codigo"] is 404)
+        {
+            return null;
+        }
+    }
+
+    public async Task<string> AnalizarLeyesAsync(IReadOnlyList<string> documentos, IReadOnlyDictionary<string, object?> perfil,
+        IReadOnlyDictionary<string, object?> sistema, CancellationToken cancellationToken = default)
+    {
+        using var tope = CancelationConTope(_opciones.TimeoutDeBancosSegundos, cancellationToken);
+        var peticion = new HttpRequestMessage(HttpMethod.Post, "leyes-propias/analizar")
+        {
+            Content = JsonContent.Create(new { documentos, perfil, sistema }, options: Json),
+        };
+        var r = await EnviarAsync<System.Text.Json.JsonElement>(peticion, tope.Token, cancellationToken);
+        return r.GetRawText();
+    }
+
+    public async Task<string> PreguntarLeyesAsync(IReadOnlyList<string> documentos, string pregunta, IReadOnlyDictionary<string, object?> perfil,
+        CancellationToken cancellationToken = default)
+    {
+        using var tope = CancelationConTope(_opciones.TimeoutDeBancosSegundos, cancellationToken);
+        var peticion = new HttpRequestMessage(HttpMethod.Post, "leyes-propias/preguntar")
+        {
+            Content = JsonContent.Create(new { documentos, pregunta, perfil }, options: Json),
+        };
+        var r = await EnviarAsync<System.Text.Json.JsonElement>(peticion, tope.Token, cancellationToken);
+        return r.GetRawText();
+    }
+
     private static object Base64(ArchivoParaElMotor a) => new { nombre = a.Nombre, contenido_b64 = Convert.ToBase64String(a.Contenido) };
 
     /// <summary>Cada operación con su tope; el del HttpClient es solo el máximo de todos.</summary>
@@ -497,7 +550,7 @@ public class MotorFiscalHttp : IMotorFiscal, ITransientDependency
                     cuerpo.Length > 300 ? cuerpo[..300] : cuerpo);
                 throw new MotorFiscalNoDisponibleException($"El motor fiscal respondió {(int)respuesta.StatusCode}.")
                 {
-                    Data = { ["Codigo"] = (int)respuesta.StatusCode },
+                    Data = { ["Codigo"] = (int)respuesta.StatusCode, ["Detalle"] = Detalle(cuerpo) },
                 };
             }
 
@@ -508,6 +561,20 @@ public class MotorFiscalHttp : IMotorFiscal, ITransientDependency
         {
             _log.LogWarning(ex, "No se pudo llamar al motor fiscal ({Ruta})", ruta.Split('?')[0]);
             throw new MotorFiscalNoDisponibleException("El motor fiscal no responde.", ex);
+        }
+    }
+
+    /// <summary>El «detail» de FastAPI (texto para la persona), si viene como texto.</summary>
+    private static string? Detalle(string cuerpo)
+    {
+        try
+        {
+            using var d = System.Text.Json.JsonDocument.Parse(cuerpo);
+            return d.RootElement.TryGetProperty("detail", out var x) && x.ValueKind == System.Text.Json.JsonValueKind.String ? x.GetString() : null;
+        }
+        catch (JsonException)
+        {
+            return null;
         }
     }
 

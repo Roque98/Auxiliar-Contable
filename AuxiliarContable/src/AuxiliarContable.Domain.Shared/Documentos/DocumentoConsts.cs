@@ -50,6 +50,12 @@ public enum TipoDeDocumento
 
     /// <summary>Balanza de comprobación con la que llega el cliente (XML del Anexo 24): respaldo de sus saldos de apertura.</summary>
     BalanzaDeComprobacion = 9,
+
+    /// <summary>
+    /// Una ley estatal o municipal que subió el cliente (apartado «Mis leyes»): ley de ingresos, de hacienda, código fiscal,
+    /// reglamentos de protección civil, comercio, anuncios… El motor la lee por artículos y busca lo que le toca al cliente.
+    /// </summary>
+    LeyLocal = 10,
 }
 
 /// <summary>En qué punto del proceso está.</summary>

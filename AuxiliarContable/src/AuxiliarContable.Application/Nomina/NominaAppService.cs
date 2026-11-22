@@ -576,6 +576,14 @@ public class NominaAppService : AuxiliarContableAppService, INominaAppService
             PrimaRiesgo = decimal.TryParse(Campo(CamposDelPerfil.PrimaDeRiesgo), System.Globalization.NumberStyles.Number,
                 System.Globalization.CultureInfo.InvariantCulture, out var pr) ? pr : null,
         };
+        // La tasa del ISN que el despacho aceptó de la ley que subió el cliente manda sobre la del sistema.
+        var ajustes = await LazyServiceProvider.LazyGetRequiredService<LeyesDelCliente.AjustesDeLeyes>().DeAsync(organizacionId);
+        if (ajustes.IsnTasa is { } isn)
+        {
+            patron.IsnTasa = isn.Numero;
+            patron.IsnFundamento = isn.Fundamento;
+        }
+
         var falta = new List<string>();
         if (string.IsNullOrWhiteSpace(Campo(CamposDelPerfil.RegistroPatronal)))
         {

@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MESES } from '../documentos/documentos.service';
 import { mensajeDeError } from '../invitaciones/invitaciones.service';
+import { MisLeyesComponent } from '../mis-leyes/mis-leyes.component';
 import { ClienteVisibleDto, PerfilFiscalService } from '../perfil-fiscal/perfil-fiscal.service';
 import {
   ConcentradoService, CuentaContableDto, DeudasFiscalesDto, DetalleDeRenglonDto, FacturaExplicadaDto, ObligacionFiscalDto, RenglonDelPapel,
@@ -14,7 +15,7 @@ import {
   seccionContable,
 } from './concentrado';
 
-type Pestana = 'deudas_fiscales' | 'deudas_contables' | 'activos' | 'ingresos' | 'capital';
+type Pestana = 'deudas_fiscales' | 'deudas_contables' | 'activos' | 'ingresos' | 'capital' | 'mis_leyes';
 
 /**
  * La hoja concentrado: lo primero que ve el cliente. «Deudas fiscales» va de lo más importante (cuánto pagar de cada
@@ -26,7 +27,7 @@ type Pestana = 'deudas_fiscales' | 'deudas_contables' | 'activos' | 'ingresos' |
 @Component({
   selector: 'app-concentrado',
   standalone: true,
-  imports: [FormsModule, CurrencyPipe, DatePipe, DecimalPipe],
+  imports: [FormsModule, CurrencyPipe, DatePipe, DecimalPipe, MisLeyesComponent],
   templateUrl: './concentrado.component.html',
   styleUrls: ['./concentrado.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -49,6 +50,7 @@ export class ConcentradoComponent implements OnInit {
     { clave: 'activos', nombre: 'Activos', icono: 'bi-safe' },
     { clave: 'ingresos', nombre: 'Ingresos', icono: 'bi-graph-up-arrow' },
     { clave: 'capital', nombre: 'Capital', icono: 'bi-pie-chart' },
+    { clave: 'mis_leyes', nombre: 'Mis leyes', icono: 'bi-journal-text' },
   ];
 
   readonly clientes = signal<ClienteVisibleDto[] | null>(null);

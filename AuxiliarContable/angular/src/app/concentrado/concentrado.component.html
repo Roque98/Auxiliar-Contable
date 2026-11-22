@@ -141,6 +141,27 @@
             }
           }
 
+          @if (d.obligacionesLocales?.length) {
+            <h2 class="cc-subtitulo">De tus leyes locales</h2>
+            <p class="cc-nota">Lo que el despacho aceptó de las leyes que subiste en «Mis leyes». No se calcula aquí: cúmplelo con su fecha.</p>
+            <div class="cc-tarjetas">
+              @for (o of d.obligacionesLocales; track o.titulo + o.fundamento) {
+                <button type="button" class="cc-tarjeta" (click)="cambiarPestana('mis_leyes')">
+                  <span class="cc-tarjeta-cabeza">
+                    <span class="cc-tarjeta-nombre">{{ o.titulo }}</span>
+                    <span class="ig-etiqueta" [class.ig-etiqueta-exito]="o.tipo === 'beneficio'" [class.ig-etiqueta-tinta]="o.tipo !== 'beneficio'">
+                      {{ o.tipo === 'beneficio' ? 'Beneficio' : 'Obligación local' }}
+                    </span>
+                  </span>
+                  @if (o.valor) { <span class="cc-tarjeta-cifra">{{ o.valor }}</span> }
+                  <span class="cc-tarjeta-pie">{{ o.periodicidad }}{{ o.fechaLimite ? ' · ' + o.fechaLimite : '' }}</span>
+                  @if (o.condicion) { <span class="cc-tarjeta-pie">Si: {{ o.condicion }}</span> }
+                  <span class="cc-tarjeta-pie">{{ o.fundamento }}</span>
+                </button>
+              }
+            </div>
+          }
+
           @if (d.puedeRegistrarPagos && d.noAplican.length) {
             <details class="cc-no-aplican">
               <summary>Lo que no le aplica a este cliente ({{ d.noAplican.length }})</summary>
@@ -246,6 +267,10 @@
       } @else if (!cargando()) {
         <p class="ig-vacio">Elige el mes para ver tus deudas fiscales.</p>
       }
+    }
+
+    @case ('mis_leyes') {
+      <app-mis-leyes [organizacionId]="clienteId()!" />
     }
 
     @case ('ingresos') {

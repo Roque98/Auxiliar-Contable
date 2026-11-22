@@ -189,6 +189,44 @@ public interface IMotorFiscal
     /// Devuelve false si ya había una en curso.
     /// </summary>
     Task<bool> ActualizarSentenciasAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Una ley estatal o municipal que subió el cliente (motor: <c>/leyes-propias/indexar</c>): la lee por artículos, con OCR
+    /// en segundo plano si viene escaneada. Sin Claude. Si el motor la rechaza (no es PDF, no abre) lanza
+    /// <see cref="MotorFiscalNoDisponibleException"/> con <c>Data["Codigo"] = 422</c> y el porqué en <c>Data["Detalle"]</c>.
+    /// </summary>
+    Task<LecturaDeLeyDelMotor> IndexarLeyAsync(ArchivoParaElMotor ley, CancellationToken cancellationToken = default);
+
+    /// <summary>En qué va la lectura; null si el motor no tiene ese documento (hay que volver a mandarlo).</summary>
+    Task<LecturaDeLeyDelMotor?> EstadoDeLeyAsync(string sha256, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Lo que las leyes del cliente le cambian según su perfil (claude -p, se guarda por huella): el JSON del motor con
+    /// «resumen», «hallazgos» (cita literal verificada), «no_encontrado» y «temas». 404 en <c>Data["Codigo"]</c> = el motor
+    /// ya no tiene algún documento.
+    /// </summary>
+    Task<string> AnalizarLeyesAsync(IReadOnlyList<string> documentos, IReadOnlyDictionary<string, object?> perfil,
+        IReadOnlyDictionary<string, object?> sistema, CancellationToken cancellationToken = default);
+
+    /// <summary>Una pregunta contestada solo con las leyes del cliente: JSON con encontrado, respuesta, citas y falta.</summary>
+    Task<string> PreguntarLeyesAsync(IReadOnlyList<string> documentos, string pregunta, IReadOnlyDictionary<string, object?> perfil,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>Respuesta de <c>/leyes-propias/indexar</c> y <c>GET /leyes-propias/{sha}</c>.</summary>
+public class LecturaDeLeyDelMotor
+{
+    public string Documento { get; set; } = "";
+
+    /// <summary>leyendo, lista o error.</summary>
+    public string Estado { get; set; } = "";
+
+    public int? Paginas { get; set; }
+    public int? PaginasOcr { get; set; }
+    public int? PaginasLeidas { get; set; }
+    public int? ArticulosTotal { get; set; }
+    public string? Titulo { get; set; }
+    public string? Error { get; set; }
 }
 
 /// <summary>Un archivo de la bóveda, ya descifrado, para mandarlo al motor.</summary>
@@ -377,4 +415,18 @@ public class MotorFiscalSinConfigurar : IMotorFiscal, ISingletonDependency
     {
         throw new MotorFiscalNoDisponibleException("No hay motor fiscal en este proceso.");
     }
+
+    public Task<LecturaDeLeyDelMotor> IndexarLeyAsync(ArchivoParaElMotor ley, CancellationToken cancellationToken = default) =>
+        throw new MotorFiscalNoDisponibleException("No hay motor fiscal en este proceso.");
+
+    public Task<LecturaDeLeyDelMotor?> EstadoDeLeyAsync(string sha256, CancellationToken cancellationToken = default) =>
+        throw new MotorFiscalNoDisponibleException("No hay motor fiscal en este proceso.");
+
+    public Task<string> AnalizarLeyesAsync(IReadOnlyList<string> documentos, IReadOnlyDictionary<string, object?> perfil,
+        IReadOnlyDictionary<string, object?> sistema, CancellationToken cancellationToken = default) =>
+        throw new MotorFiscalNoDisponibleException("No hay motor fiscal en este proceso.");
+
+    public Task<string> PreguntarLeyesAsync(IReadOnlyList<string> documentos, string pregunta, IReadOnlyDictionary<string, object?> perfil,
+        CancellationToken cancellationToken = default) =>
+        throw new MotorFiscalNoDisponibleException("No hay motor fiscal en este proceso.");
 }

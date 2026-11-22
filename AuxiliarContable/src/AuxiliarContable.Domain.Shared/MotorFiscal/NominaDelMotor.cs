@@ -124,6 +124,12 @@ public class PatronParaNomina
 
     /// <summary>Prima de riesgo de trabajo de la empresa, en %.</summary>
     public decimal? PrimaRiesgo { get; set; }
+
+    /// <summary>Tasa del ISN (fracción) que el despacho aceptó de la ley que subió el cliente («Mis leyes»); manda sobre la
+    /// tabla del sistema. Null = la del sistema.</summary>
+    public decimal? IsnTasa { get; set; }
+
+    public string? IsnFundamento { get; set; }
 }
 
 public class PeriodoParaNomina

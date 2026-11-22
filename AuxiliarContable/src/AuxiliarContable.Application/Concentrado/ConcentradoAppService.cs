@@ -211,9 +211,16 @@ public class ConcentradoAppService : AuxiliarContableAppService, IConcentradoApp
                                 || DiceElSat("sueldos y salarios", "salarios");
         var dias = new Dictionary<string, int>();
         var recargosEstatales = new Dictionary<string, IsnPorEstado.Regla>();
+        // Lo que el despacho aceptó de las leyes que subió el cliente: manda sobre las tablas del sistema solo para él.
+        var ajustes = await LazyServiceProvider.LazyGetRequiredService<LeyesDelCliente.AjustesDeLeyes>().DeAsync(organizacionId);
+        dto.ObligacionesLocales = [.. ajustes.Obligaciones.Select(o => new ObligacionLocalDto
+        {
+            Titulo = o.Titulo, Valor = o.Valor, Condicion = o.Condicion, Periodicidad = o.Periodicidad, FechaLimite = o.FechaLimite,
+            Fundamento = o.Fundamento, Tipo = o.Tipo,
+        })];
         if (tieneTrabajadores)
         {
-            var regla = await NominaAsync(obligaciones, periodos, anio, mes, dto, Campo(CamposDelPerfil.DomicilioFiscal));
+            var regla = await NominaAsync(obligaciones, periodos, anio, mes, dto, Campo(CamposDelPerfil.DomicilioFiscal), ajustes);
             if (regla?.Dia is { } dia)
             {
                 dias["isn"] = dia;
@@ -281,7 +288,7 @@ public class ConcentradoAppService : AuxiliarContableAppService, IConcentradoApp
 
     /// <summary>Las obligaciones de nómina; devuelve la regla del ISN del estado (plazo y recargos), si se conoce.</summary>
     private async Task<IsnPorEstado.Regla?> NominaAsync(List<(ObligacionFiscalDto, List<(int Mes, decimal Importe)>, bool)> obligaciones,
-        List<PeriodoDeNomina> periodos, int anio, int mes, DeudasFiscalesDto dto, string? domicilio)
+        List<PeriodoDeNomina> periodos, int anio, int mes, DeudasFiscalesDto dto, string? domicilio, LeyesDelCliente.AjustesDeLeyes.Ajustes ajustes)
     {
         var calculados = periodos.Where(p => p.Resultado != null)
             .Select(p => (p.Fin.Month, Nomina: JsonSerializer.Deserialize<NominaDelMotor>(p.Resultado!)!)).ToList();
@@ -378,10 +385,31 @@ public class ConcentradoAppService : AuxiliarContableAppService, IConcentradoApp
             Nota = bimestral ? null : $"El bimestre termina en {NombreDelMes(anio, mes + 1)}: se paga con ese mes.",
         }, [], false));
 
-        var isn = PorMes(n => n.Isn.Importe);
+        // La tasa del ISN aceptada de la ley del cliente se aplica también a lo ya calculado (sin volver a llamar al motor).
+        var tasaPropia = ajustes.IsnTasa?.Numero;
+        decimal IsnDe(NominaDelMotor n) => tasaPropia is { } t ? Math.Round(n.Totales.TotalPercepciones * t, 2) : n.Isn.Importe;
+        var isn = PorMes(IsnDe);
         var muestra = delMes.Select(n => n.Isn).FirstOrDefault(i => i.Estado != null)
                       ?? calculados.Select(c => c.Nomina.Isn).LastOrDefault(i => i.Estado != null);
+        if (tasaPropia is { } tp && muestra != null && muestra.Tasa != tp)
+        {
+            dto.Avisos.Add($"El impuesto sobre nómina va al {tp * 100:0.####} % según la ley que subió el cliente (el sistema tenía {muestra.Tasa * 100:0.####} %).");
+            muestra = new IsnDeNomina { Estado = muestra.Estado, Tasa = tp, Importe = muestra.Importe, Fundamento = ajustes.IsnTasa!.Fundamento };
+        }
+
         var regla = IsnPorEstado.Buscar(muestra?.Estado, anio) ?? IsnPorEstado.Buscar(domicilio, anio);
+        if (ajustes.IsnDia is { } diaPropio)
+        {
+            regla = (regla ?? new IsnPorEstado.Regla(diaPropio.Estado ?? "", diaPropio.Estado ?? "", null, "", null, ""))
+                with { Dia = (int)diaPropio.Numero, FundamentoPlazo = diaPropio.Fundamento, HeredadoDe = null };
+        }
+
+        if (ajustes.RecargosTasa is { } recargosPropios)
+        {
+            regla = (regla ?? new IsnPorEstado.Regla(recargosPropios.Estado ?? "", recargosPropios.Estado ?? "", null, "", null, ""))
+                with { Tasa = recargosPropios.Numero, FundamentoRecargos = recargosPropios.Fundamento };
+        }
+
         if (regla?.HeredadoDe is { } heredado)
         {
             dto.Avisos.Add($"Las leyes estatales de {anio} aún no están cargadas en el sistema: la fecha límite del impuesto sobre nómina "
@@ -392,12 +420,12 @@ public class ConcentradoAppService : AuxiliarContableAppService, IConcentradoApp
         {
             Clave = "isn", Nombre = "Impuesto sobre nómina", Nivel = "estatal",
             Descripcion = $"El impuesto de tu estado{(muestra?.Estado is { } e ? $" ({e})" : "")} sobre lo que pagas a tus trabajadores.",
-            Impuesto = delMes.Count > 0 ? delMes.Sum(n => n.Isn.Importe) : null,
+            Impuesto = delMes.Count > 0 ? delMes.Sum(IsnDe) : null,
             LimiteAproximado = regla?.Dia == null,
             Renglones = muestra == null ? [] :
             [
                 new RenglonDelPapel { Concepto = "Tasa del estado", Importe = muestra.Tasa * 100, Tipo = "tasa", Fundamento = muestra.Fundamento },
-                new RenglonDelPapel { Concepto = "(=) Impuesto sobre nómina del mes", Importe = delMes.Sum(n => n.Isn.Importe), Tipo = "resultado" },
+                new RenglonDelPapel { Concepto = "(=) Impuesto sobre nómina del mes", Importe = delMes.Sum(IsnDe), Tipo = "resultado" },
             ],
             Fundamento = muestra?.Fundamento is { Length: > 0 } f ? f : "Ley de hacienda de tu estado.",
             Nota = (regla?.Dia != null
