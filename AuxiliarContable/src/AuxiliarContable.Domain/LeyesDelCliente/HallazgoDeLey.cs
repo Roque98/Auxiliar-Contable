@@ -67,8 +67,9 @@ public class HallazgoDeLey : CreationAuditedEntity<Guid>
         Decision = DecisionDeHallazgo.Propuesto;
     }
 
-    /// <summary>Para no repetir un hallazgo ya decidido cuando la ley se vuelve a analizar.</summary>
-    public string Llave => $"{Clave}|{Articulo}|{(Clave != null ? ValorNumerico?.ToString(System.Globalization.CultureInfo.InvariantCulture) : Titulo)}";
+    /// <summary>Para no repetir un hallazgo ya decidido cuando la ley se vuelve a analizar. El número va sin ceros de más:
+    /// la base lo devuelve con 6 decimales («0.025000») y el motor sin ellos («0.025»).</summary>
+    public string Llave => $"{Clave}|{Articulo}|{(Clave != null ? ValorNumerico?.ToString("0.##########", System.Globalization.CultureInfo.InvariantCulture) : Titulo)}";
 
     public void Decidir(bool aceptar, Guid? quien, DateTime utc)
     {
