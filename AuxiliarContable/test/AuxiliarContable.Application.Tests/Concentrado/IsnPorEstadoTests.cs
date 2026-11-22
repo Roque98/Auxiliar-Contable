@@ -11,7 +11,8 @@ public class IsnPorEstadoTests
     public void Plazo_y_recargos_del_estado_salen_de_su_ley()
     {
         var mor = IsnPorEstado.Buscar("Morelos").ShouldNotBeNull();
-        (mor.Clave, mor.Dia).ShouldBe(("MOR", 17));
+        (mor.Clave, mor.Dia, mor.Tasa).ShouldBe(("MOR", 17, 0.0142m));
+        IsnPorEstado.Buscar("Oaxaca").ShouldNotBeNull().Dia.ShouldBeNull(); // bimestral
         var bc = IsnPorEstado.Buscar("BC").ShouldNotBeNull();
         (bc.Dia, bc.Tasa).ShouldBe((25, 0.0225m));
         IsnPorEstado.Buscar("Ciudad de México").ShouldNotBeNull().Clave.ShouldBe("CDMX");
