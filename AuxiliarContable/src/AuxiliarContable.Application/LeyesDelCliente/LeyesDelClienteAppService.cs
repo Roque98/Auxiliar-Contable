@@ -332,6 +332,8 @@ public class LeyesDelClienteAppService : AuxiliarContableAppService, ILeyesDelCl
                 : [];
             dto.NombreDelEstado = Txt(r, "nombre_estado");
             dto.Municipio = Txt(r, "municipio");
+            dto.CoberturaMunicipio = Txt(r, "cobertura_municipio");
+            dto.AvisoMunicipal = AvisoMunicipal(dto.Municipio, dto.CoberturaMunicipio);
             var inegi = Txt(r, "municipio_inegi");
             if (r.TryGetProperty("ficha_municipio", out var fmu) && fmu.ValueKind == JsonValueKind.Object)
             {
@@ -393,6 +395,20 @@ public class LeyesDelClienteAppService : AuxiliarContableAppService, ILeyesDelCl
 
         return dto;
     }
+
+    /// <summary>El aviso para el cliente cuyo municipio no tenemos todavía (o que no supimos).</summary>
+    public static string? AvisoMunicipal(string? municipio, string? cobertura) => cobertura switch
+    {
+        "cubierto" => null,
+        _ when string.IsNullOrWhiteSpace(municipio) =>
+            "No pudimos saber tu municipio por tu domicilio fiscal: por ahora tu control abarca lo federal y lo estatal. " +
+            "Si tienes los reglamentos municipales que te aplican, súbelos abajo.",
+        "seleccionado" =>
+            $"Estamos integrando los reglamentos de {municipio}: mientras tanto tu control abarca lo federal y lo estatal. " +
+            "Si ya tienes los reglamentos municipales que te aplican, súbelos abajo.",
+        _ => $"La plataforma todavía no contempla los reglamentos de {municipio}: solo tenemos conocimiento de lo federal y lo " +
+             "estatal. Si tienes los reglamentos municipales que te aplican por tu actividad, súbelos abajo y se trabajará a partir de ellos.",
+    };
 
     private async Task ExigirDespachoAsync(Guid organizacionId)
     {

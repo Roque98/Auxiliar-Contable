@@ -224,6 +224,14 @@ public interface IMotorFiscal
     /// nombre en <paramref name="municipio"/>), sin que el cliente la suba (<c>/leyes-estatales/{edo}/{ley}/indexar</c>).
     /// 404 en <c>Data["Codigo"]</c> si no la tenemos.</summary>
     Task<LecturaDeLeyDelMotor> IndexarLeyEstatalAsync(string estado, string ley, string? municipio = null, CancellationToken cancellationToken = default);
+
+    /// <summary>Reporte de cobertura municipal (<c>GET /leyes-estatales/cobertura</c>): JSON con criterio, totales y, por estado,
+    /// municipios cubiertos, seleccionados (en proceso) y no cubiertos.</summary>
+    Task<string> CoberturaMunicipalAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>Municipio y cobertura de varios domicilios (<c>POST /leyes-estatales/municipios</c>); cada uno
+    /// <c>{id, estado, domicilio}</c> con el domicilio ya sin calle ni números.</summary>
+    Task<string> MunicipiosDeAsync(IReadOnlyList<IReadOnlyDictionary<string, object?>> domicilios, CancellationToken cancellationToken = default);
 }
 
 /// <summary>Respuesta de <c>/leyes-propias/indexar</c> y <c>GET /leyes-propias/{sha}</c>.</summary>
@@ -452,5 +460,11 @@ public class MotorFiscalSinConfigurar : IMotorFiscal, ISingletonDependency
         throw new MotorFiscalNoDisponibleException("No hay motor fiscal en este proceso.");
 
     public Task<LecturaDeLeyDelMotor> IndexarLeyEstatalAsync(string estado, string ley, string? municipio = null, CancellationToken cancellationToken = default) =>
+        throw new MotorFiscalNoDisponibleException("No hay motor fiscal en este proceso.");
+
+    public Task<string> CoberturaMunicipalAsync(CancellationToken cancellationToken = default) =>
+        throw new MotorFiscalNoDisponibleException("No hay motor fiscal en este proceso.");
+
+    public Task<string> MunicipiosDeAsync(IReadOnlyList<IReadOnlyDictionary<string, object?>> domicilios, CancellationToken cancellationToken = default) =>
         throw new MotorFiscalNoDisponibleException("No hay motor fiscal en este proceso.");
 }

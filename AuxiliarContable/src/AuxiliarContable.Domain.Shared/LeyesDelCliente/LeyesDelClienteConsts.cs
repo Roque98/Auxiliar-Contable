@@ -57,6 +57,11 @@ public static class LeyesDelClienteConsts
     /// <summary>
     /// Lo que se le dice a quien entra al apartado (pedido del 22-nov-2026, palabra por palabra en lo esencial).
     /// </summary>
+    /// <summary>Lo que sí y lo que no hace la plataforma (pedido del 22-nov-2026): se le recuerda al cliente.</summary>
+    public const string Alcance =
+        "Este apartado es para llevar el control de todas tus obligaciones de acuerdo con tu negocio. No te podemos apoyar con " +
+        "trámites presenciales; por el momento, eso solo lo hacemos en Morelos.";
+
     public const string Mensaje =
         "Si el sistema no calcula de acuerdo a tu ley estatal o municipal, sube las leyes en este apartado y se trabajará a partir de ahí.";
 }

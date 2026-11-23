@@ -1,0 +1,56 @@
+<h1>Cobertura municipal</h1>
+<p class="cm-nota">
+  Qué municipios tienen sus reglamentos en la plataforma. De los clientes en un municipio no cubierto solo tenemos lo federal y lo
+  estatal; ellos pueden subir sus reglamentos en «Mis leyes».
+</p>
+
+@if (error(); as e) {
+  <div class="ig-alerta ig-alerta-error" role="alert">{{ e }}</div>
+} @else if (!datos()) {
+  <div class="ig-esqueleto" style="height: 10rem" aria-busy="true"></div>
+} @else if (datos(); as d) {
+  @if (d.aviso) { <div class="ig-alerta ig-alerta-aviso" role="note">{{ d.aviso }}</div> }
+
+  <div class="cm-totales">
+    <div class="ig-panel"><strong>{{ d.cubiertos }}</strong><span>municipios cubiertos</span></div>
+    <div class="ig-panel"><strong>{{ d.enProceso }}</strong><span>en proceso</span></div>
+    <div class="ig-panel"><strong>{{ d.noCubiertos }}</strong><span>no cubiertos</span></div>
+  </div>
+  @if (d.criterio) { <p class="cm-nota"><strong>Criterio:</strong> {{ d.criterio }}</p> }
+
+  <h2 class="cm-subtitulo">Clientes fuera de cobertura</h2>
+  @if (!d.clientes.length) {
+    <p class="ig-vacio">Todos tus clientes están en municipios cubiertos.</p>
+  } @else {
+    <ul class="cm-clientes" data-testid="clientes-sin-cobertura">
+      @for (c of d.clientes; track c.organizacionId) {
+        <li class="ig-panel">
+          <strong>{{ c.nombre }}</strong>
+          <span>{{ c.municipio ? c.municipio + ', ' : '' }}{{ c.estado || 'sin estado' }}</span>
+          <span class="ig-etiqueta" [class.ig-etiqueta-alerta]="c.cobertura !== 'seleccionado'" [class.ig-etiqueta-tinta]="c.cobertura === 'seleccionado'">
+            {{ textoDeCobertura(c.cobertura) }}
+          </span>
+        </li>
+      }
+    </ul>
+  }
+
+  <div class="cm-cabeza">
+    <h2 class="cm-subtitulo">Por estado</h2>
+    <button type="button" class="ig-btn ig-btn-secundario ig-btn-chico" (click)="descargar()">
+      <i class="bi bi-download" aria-hidden="true"></i> Descargar CSV
+    </button>
+  </div>
+  @for (e of d.estados; track e.estado) {
+    <details class="cm-estado">
+      <summary>
+        <span>{{ e.nombre }}</span>
+        <span class="cm-cuenta">{{ e.cubiertos.length }} de {{ e.municipios }} cubiertos · {{ e.enProceso.length }} en proceso ·
+          {{ e.poblacionCubiertaPct ?? 0 | number: '1.0-1' }} % de la población</span>
+      </summary>
+      @if (e.cubiertos.length) { <p class="cm-lista"><strong>Cubiertos:</strong> {{ e.cubiertos.join(', ') }}</p> }
+      @if (e.enProceso.length) { <p class="cm-lista"><strong>En proceso:</strong> {{ e.enProceso.join(', ') }}</p> }
+      @if (e.noCubiertos.length) { <p class="cm-lista"><strong>No cubiertos ({{ e.noCubiertos.length }}):</strong> {{ e.noCubiertos.join(', ') }}</p> }
+    </details>
+  }
+}

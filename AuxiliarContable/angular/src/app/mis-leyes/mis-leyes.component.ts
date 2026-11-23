@@ -86,6 +86,16 @@ export class MisLeyesComponent implements OnChanges {
     });
   }
 
+  /** «Súbela tú»: llena el formulario con la ley que falta y lleva al cliente ahí. */
+  subirEsta(l: LeyQueTeAplicaDto): void {
+    const a = this.aplican();
+    this.ambito = l.ambito === 'municipal' ? 'municipal' : 'estatal';
+    this.estado = a?.estado ?? this.estado;
+    this.municipio = l.ambito === 'municipal' ? (a?.municipio ?? '') : '';
+    this.materia = l.nombreOficial || l.nombre;
+    document.getElementById('subir-ley')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
   usar(l: LeyQueTeAplicaDto): void {
     this.ocupado.set(l.id);
     this.error.set(null);

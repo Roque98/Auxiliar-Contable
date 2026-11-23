@@ -52,6 +52,12 @@ public class LeyesQueTeAplicanDto
     /// <summary>Dónde están las versiones anteriores de la normativa del municipio.</summary>
     public string? HistoricoMunicipal { get; set; }
 
+    /// <summary>cubierto (tenemos sus reglamentos), seleccionado (en proceso), no_cubierto, o null si no se supo el municipio.</summary>
+    public string? CoberturaMunicipio { get; set; }
+
+    /// <summary>Si su municipio no está cubierto: qué sí sabemos (federal y estatal) y que puede subir sus reglamentos.</summary>
+    public string? AvisoMunicipal { get; set; }
+
     /// <summary>Cuando no se puede decir (sin domicilio, motor caído, estado sin ficha todavía).</summary>
     public string? Aviso { get; set; }
 
@@ -118,6 +124,9 @@ public class MisLeyesDto
 {
     /// <summary>El mensaje que se le dice a quien entra al apartado.</summary>
     public string Mensaje { get; set; } = LeyesDelClienteConsts.Mensaje;
+
+    /// <summary>Qué hace y qué no la plataforma (control de obligaciones; trámites presenciales solo en Morelos).</summary>
+    public string Alcance { get; set; } = LeyesDelClienteConsts.Alcance;
 
     /// <summary>¿Quien mira es del despacho? (solo el despacho decide los hallazgos)</summary>
     public bool EsDelDespacho { get; set; }

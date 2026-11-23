@@ -23,6 +23,11 @@
         @if (invitacion()?.organizacion; as org) {<span>de <strong>{{ org }}</strong></span>}
         con el correo <strong>{{ invitacion()?.email }}</strong>.
       </p>
+      <p class="ig-ayuda" data-testid="alcance-registro">
+        Aquí llevas el control de tus obligaciones de acuerdo con tu negocio: lo federal y lo de tu estado, y lo municipal en los
+        municipios que tenemos. Si tu municipio aún no está, te lo diremos al leer tu constancia y podrás subir tus reglamentos.
+        No hacemos trámites presenciales; por el momento, eso solo lo hacemos en Morelos.
+      </p>
 
       @if (conSesion()) {
         <div class="ig-alerta ig-alerta-aviso">

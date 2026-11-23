@@ -83,6 +83,7 @@ public class MotorFiscalDePrueba : IMotorFiscal
         AnalisisDeLeyes = AnalisisDeLeyesPorDefecto;
         PreguntasDeLeyes.Clear();
         CatalogosPedidos.Clear();
+        DomiciliosPedidos.Clear();
         Analisis.Clear();
         Analizados.Clear();
         Amarres = null;
@@ -692,7 +693,7 @@ public class MotorFiscalDePrueba : IMotorFiscal
 
         CatalogosPedidos.Add((perfil, estado));
         return Task.FromResult(
-            "{\"estado\":\"" + estado + "\",\"nombre_estado\":\"Estado de prueba\",\"municipio\":\"Guadalajara\",\"municipio_inegi\":\"14039\"," +
+            "{\"estado\":\"" + estado + "\",\"nombre_estado\":\"Estado de prueba\",\"municipio\":\"Guadalajara\",\"municipio_inegi\":\"14039\",\"cobertura_municipio\":\"cubierto\"," +
             "\"ficha_municipio\":{\"historico\":\"Gaceta municipal de prueba.\",\"fuentes\":[{\"url\":\"https://gaceta.ejemplo.gob.mx/\",\"que\":\"Gaceta\"}]},\"disparadores\":[\"siempre\",\"trabajadores\"]," +
             "\"ficha\":{\"historico\":\"Periódico oficial de prueba.\",\"fuentes\":[{\"url\":\"https://leyes.ejemplo.gob.mx/\",\"que\":\"Portal\"}]}," +
             "\"bloques\":{\"D\":\"Ambiental\",\"E\":\"Fiscal\",\"MC\":\"Municipal · Protección civil\"},\"no_aplican\":[],\"resumen\":{\"local\":1,\"pendiente\":1}," +
@@ -704,6 +705,25 @@ public class MotorFiscalDePrueba : IMotorFiscal
             "{\"id\":\"m_proteccion_civil\",\"nombre\":\"Reglamento municipal de protección civil\",\"bloque\":\"MC\",\"ambito\":\"municipal\"," +
             "\"clasificacion\":\"actividad\",\"motivos\":[\"tiene local\"],\"pide\":\"Visto bueno\",\"temas\":[],\"anual\":false," +
             "\"ficha\":{\"estatus\":\"local\",\"nombre\":\"Reglamento de Protección Civil de Guadalajara\",\"disponible\":true}}]}");
+    }
+
+    public Task<string> CoberturaMunicipalAsync(CancellationToken cancellationToken = default) =>
+        Caido ? throw new MotorFiscalNoDisponibleException("El motor fiscal no responde.")
+            : Task.FromResult("{\"criterio\":\"Criterio de prueba\",\"totales\":{\"cubierto\":1,\"seleccionado\":1,\"no_cubierto\":1}," +
+                              "\"estados\":[{\"estado\":\"JAL\",\"nombre\":\"Jalisco\",\"municipios\":3,\"poblacion_cubierta_pct\":50.0," +
+                              "\"poblacion_seleccionada_pct\":80.0,\"cubierto\":[{\"cvegeo\":\"14039\",\"nombre\":\"Guadalajara\",\"poblacion\":1}]," +
+                              "\"seleccionado\":[{\"cvegeo\":\"14120\",\"nombre\":\"Zapopan\",\"poblacion\":1}]," +
+                              "\"no_cubierto\":[{\"cvegeo\":\"14001\",\"nombre\":\"Acatic\",\"poblacion\":1}]}]}");
+
+    public List<IReadOnlyList<IReadOnlyDictionary<string, object?>>> DomiciliosPedidos { get; } = [];
+
+    public Task<string> MunicipiosDeAsync(IReadOnlyList<IReadOnlyDictionary<string, object?>> domicilios, CancellationToken cancellationToken = default)
+    {
+        DomiciliosPedidos.Add(domicilios);
+        var filas = domicilios.Select(d => (d["domicilio"] as string ?? "").Contains("Guadalajara")
+            ? $"{{\"id\":\"{d["id"]}\",\"estado\":\"JAL\",\"municipio\":\"Guadalajara\",\"cvegeo\":\"14039\",\"cobertura\":\"cubierto\"}}"
+            : $"{{\"id\":\"{d["id"]}\",\"estado\":\"{d["estado"]}\",\"municipio\":\"Acatic\",\"cvegeo\":\"14001\",\"cobertura\":\"no_cubierto\"}}");
+        return Task.FromResult("[" + string.Join(",", filas) + "]");
     }
 
     public Task<LecturaDeLeyDelMotor> IndexarLeyEstatalAsync(string estado, string ley, string? municipio = null, CancellationToken cancellationToken = default)

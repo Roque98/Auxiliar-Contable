@@ -140,6 +140,13 @@ export const APP_ROUTES: Routes = [
     data: { requiredPolicy: 'AuxiliarContable.Organizaciones' },
   },
   {
+    // Solo el equipo: qué municipios cubrimos con sus reglamentos y qué clientes quedan fuera (solo federal y estatal).
+    path: 'cobertura-municipal',
+    loadComponent: () => import('./cobertura-municipal/cobertura-municipal.component').then(c => c.CoberturaMunicipalComponent),
+    canActivate: [authGuard, permissionGuard],
+    data: { requiredPolicy: 'AuxiliarContable.Organizaciones' },
+  },
+  {
     // Conciliación mensual: el auxiliar carga todo el mes de un cliente y concilia (solo el despacho).
     path: 'conciliacion-mensual',
     loadComponent: () => import('./conciliacion-mensual/conciliacion-mensual.component').then(c => c.ConciliacionMensualComponent),

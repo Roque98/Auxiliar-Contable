@@ -280,12 +280,27 @@ export const SECCIONES: Seccion[] = [
         pasos: [
           'En la hoja concentrado abre la pestaña «Mis leyes».',
           'Arriba ves «Leyes y reglamentos que te aplican»: por tu domicilio fiscal y lo que haces (giro, trabajadores, local, inmuebles, vehículos, ventas al gobierno) te decimos qué leyes estatales y qué reglamentos de tu municipio te tocan (licencia de funcionamiento, protección civil, anuncios, uso de suelo, construcción, residuos…), por qué y qué te piden. Las que ya tenemos las agregas con «Usar esta ley», sin subirlas.',
+          'Si tu municipio aún no está en la plataforma te lo avisamos: de él solo tenemos lo federal y lo estatal. En cada ley o reglamento que nos falte, «Súbela tú» llena el formulario por ti.',
           'Si te falta alguna, o es municipal, sube el PDF de la ley (ley de ingresos, de hacienda, código fiscal, reglamento de protección civil, de comercio, de anuncios…), di si es estatal o municipal, el estado y, si es municipal, el municipio.',
           'Se lee artículo por artículo (las páginas escaneadas también) y se busca lo que te toca según tu giro y tu perfil: tasa y día del impuesto sobre nómina, recargos, licencias, protección civil, estímulos…',
           'Cada hallazgo trae la cita textual del artículo. El despacho lo revisa: lo que acepta cambia tus cálculos solo a ti; las obligaciones locales aparecen en «Deudas fiscales».',
           'Abajo puedes preguntar sobre tus leyes; la respuesta sale solo de lo que subiste, con su artículo.',
         ],
-        nota: 'Si cambias de giro, contratas trabajadores o abres un local, tus leyes se vuelven a revisar solas con tu perfil nuevo. Para que la lista sea exacta, contesta en tu perfil si tienes local, inmuebles o vehículos y si vendes al gobierno.',
+        nota: 'Es para llevar el control de todas tus obligaciones de acuerdo con tu negocio; no te apoyamos con trámites presenciales (por ahora, solo en Morelos). Si cambias de giro, contratas trabajadores o abres un local, tus leyes se vuelven a revisar solas. Para que la lista sea exacta, contesta en tu perfil si tienes local, inmuebles o vehículos y si vendes al gobierno.',
+      },
+      {
+        titulo: 'Cobertura municipal (despacho)',
+        icono: 'bi-map',
+        ruta: '/cobertura-municipal',
+        texto: [
+          'Qué municipios tienen sus reglamentos en la plataforma: en todos los estados, los más poblados y formales (no un número fijo por estado).',
+        ],
+        pasos: [
+          'Abre «Cobertura municipal» en el menú (solo el equipo del despacho).',
+          'Arriba, los clientes que están en un municipio no cubierto o del que no se supo el municipio: de ellos solo tenemos lo federal y lo estatal.',
+          'Abajo, por estado, los municipios cubiertos, en proceso y no cubiertos, con el criterio de selección; «Descargar CSV» los baja para Excel.',
+        ],
+        nota: 'El cliente de un municipio no cubierto lo ve en su perfil fiscal y en «Mis leyes», y puede subir sus reglamentos.',
       },
       {
         titulo: 'Efectivo y crédito',

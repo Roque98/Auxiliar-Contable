@@ -61,6 +61,7 @@ export interface PreguntaSobreLeyesDto {
 
 export interface MisLeyesDto {
   mensaje: string;
+  alcance?: string | null;
   esDelDespacho: boolean;
   estadoDelCliente?: string | null;
   leyes: LeyDelClienteDto[];
@@ -92,6 +93,8 @@ export interface LeyesQueTeAplicanDto {
   nombreDelEstado?: string | null;
   municipio?: string | null;
   historicoMunicipal?: string | null;
+  coberturaMunicipio?: 'cubierto' | 'seleccionado' | 'no_cubierto' | null;
+  avisoMunicipal?: string | null;
   aviso?: string | null;
   historico?: string | null;
   fuentes: { url: string; que: string }[];
