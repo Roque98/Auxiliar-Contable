@@ -14,7 +14,7 @@
   <div class="ig-alerta ig-alerta-error" role="alert">{{ e }}</div>
 }
 
-<h3 class="ml-subtitulo">Leyes de tu estado que te aplican</h3>
+<h3 class="ml-subtitulo">Leyes y reglamentos que te aplican</h3>
 @if (!aplican()) {
   <div class="ig-esqueleto" style="height: 4rem" aria-busy="true"></div>
 } @else if (aplican(); as a) {
@@ -23,7 +23,8 @@
   }
   @if (a.leyes.length) {
     <p class="ml-nota">
-      Por tu domicilio fiscal en <strong>{{ a.nombreDelEstado || nombreDelEstado(a.estado) }}</strong> y lo que haces, estas leyes estatales te tocan.
+      Por tu domicilio fiscal en <strong>{{ a.municipio ? a.municipio + ', ' : '' }}{{ a.nombreDelEstado || nombreDelEstado(a.estado) }}</strong>
+      y lo que haces, estas leyes estatales{{ a.municipio ? ' y reglamentos municipales' : '' }} te tocan.
       Las que ya tenemos las puedes usar sin subirlas: se revisan igual que las tuyas. Si falta alguna, súbela abajo.
     </p>
     @for (b of bloques(); track b.clave) {
@@ -61,13 +62,16 @@
         <summary>No existen en tu estado o las regula otra autoridad <span class="ml-cuenta">{{ otras().length }}</span></summary>
         <ul class="ml-otras">
           @for (l of otras(); track l.id) {
-            <li><strong>{{ l.nombre }}:</strong> {{ textoDeEstatus(l) }}{{ l.nota ? '. ' + l.nota : '' }}</li>
+            <li><strong>{{ l.nombre }}{{ l.ambito === 'municipal' ? ' (municipal)' : '' }}:</strong> {{ textoDeEstatus(l) }}{{ l.nota ? '. ' + l.nota : '' }}</li>
           }
         </ul>
       </details>
     }
     @if (a.historico) {
       <p class="ml-nota">¿Un ejercicio anterior? {{ a.historico }}</p>
+    }
+    @if (a.historicoMunicipal) {
+      <p class="ml-nota">De tu municipio: {{ a.historicoMunicipal }}</p>
     }
   }
 }

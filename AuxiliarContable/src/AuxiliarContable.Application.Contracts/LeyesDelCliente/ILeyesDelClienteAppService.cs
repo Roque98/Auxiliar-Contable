@@ -46,6 +46,12 @@ public class LeyesQueTeAplicanDto
 
     public string? NombreDelEstado { get; set; }
 
+    /// <summary>Municipio del domicilio fiscal (si se pudo saber): con él salen también las normas municipales.</summary>
+    public string? Municipio { get; set; }
+
+    /// <summary>Dónde están las versiones anteriores de la normativa del municipio.</summary>
+    public string? HistoricoMunicipal { get; set; }
+
     /// <summary>Cuando no se puede decir (sin domicilio, motor caído, estado sin ficha todavía).</summary>
     public string? Aviso { get; set; }
 
@@ -81,10 +87,17 @@ public class LeyQueTeAplicaDto
     public string? NombreOficial { get; set; }
 
     public string Bloque { get; set; } = "";
+
+    /// <summary>estatal o municipal.</summary>
+    public string Ambito { get; set; } = "estatal";
+
+    /// <summary>Solo las municipales: operar, inmueble o actividad.</summary>
+    public string? Clasificacion { get; set; }
+
     public List<string> Motivos { get; set; } = [];
     public string? Pide { get; set; }
 
-    /// <summary>local (la tenemos), pendiente (existe y falta), no_existe, federal, municipal o sin_ficha.</summary>
+    /// <summary>local (la tenemos), pendiente (existe y falta), no_existe, federal, estatal, municipal o sin_ficha.</summary>
     public string Estatus { get; set; } = "";
 
     public string? UltimaReforma { get; set; }

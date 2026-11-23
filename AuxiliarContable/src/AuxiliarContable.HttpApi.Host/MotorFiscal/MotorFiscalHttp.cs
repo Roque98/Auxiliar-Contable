@@ -531,11 +531,12 @@ public class MotorFiscalHttp : IMotorFiscal, ITransientDependency
         return r.GetRawText();
     }
 
-    public async Task<LecturaDeLeyDelMotor> IndexarLeyEstatalAsync(string estado, string ley, CancellationToken cancellationToken = default)
+    public async Task<LecturaDeLeyDelMotor> IndexarLeyEstatalAsync(string estado, string ley, string? municipio = null, CancellationToken cancellationToken = default)
     {
         using var tope = CancelationConTope(Math.Max(_opciones.TimeoutSegundos, 120), cancellationToken);
         var peticion = new HttpRequestMessage(HttpMethod.Post,
-            $"leyes-estatales/{Uri.EscapeDataString(estado)}/{Uri.EscapeDataString(ley)}/indexar");
+            $"leyes-estatales/{Uri.EscapeDataString(estado)}/{Uri.EscapeDataString(ley)}/indexar"
+            + (string.IsNullOrWhiteSpace(municipio) ? "" : "?municipio=" + Uri.EscapeDataString(municipio)));
         return await EnviarAsync<LecturaDeLeyDelMotor>(peticion, tope.Token, cancellationToken);
     }
 

@@ -66,7 +66,7 @@ export class MisLeyesComponent implements OnChanges {
       .map(([clave, titulo]) => ({ clave, titulo, leyes: a.leyes.filter(l => l.bloque === clave && (l.estatus === 'local' || l.estatus === 'pendiente' || l.estatus === 'sin_ficha')) }))
       .filter(b => b.leyes.length);
   });
-  readonly otras = computed(() => (this.aplican()?.leyes ?? []).filter(l => l.estatus === 'no_existe' || l.estatus === 'federal' || l.estatus === 'municipal'));
+  readonly otras = computed(() => (this.aplican()?.leyes ?? []).filter(l => l.estatus === 'no_existe' || l.estatus === 'federal' || l.estatus === 'municipal' || l.estatus === 'estatal'));
 
   constructor() {
     inject(DestroyRef).onDestroy(() => this.parar());
@@ -102,11 +102,13 @@ export class MisLeyesComponent implements OnChanges {
       case 'pendiente':
         return 'Aún no la tenemos';
       case 'no_existe':
-        return 'Tu estado no tiene esta ley';
+        return l.ambito === 'municipal' ? 'Tu municipio no tiene este reglamento' : 'Tu estado no tiene esta ley';
       case 'federal':
         return 'La regula una ley federal';
       case 'municipal':
         return 'La regula tu municipio';
+      case 'estatal':
+        return 'La regula una ley del estado';
       default:
         return 'Súbela tú';
     }

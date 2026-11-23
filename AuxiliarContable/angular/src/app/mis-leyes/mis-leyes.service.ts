@@ -74,9 +74,11 @@ export interface LeyQueTeAplicaDto {
   nombre: string;
   nombreOficial?: string | null;
   bloque: string;
+  ambito: 'estatal' | 'municipal';
+  clasificacion?: 'operar' | 'inmueble' | 'actividad' | null;
   motivos: string[];
   pide?: string | null;
-  estatus: 'local' | 'pendiente' | 'no_existe' | 'federal' | 'municipal' | 'sin_ficha';
+  estatus: 'local' | 'pendiente' | 'no_existe' | 'federal' | 'estatal' | 'municipal' | 'sin_ficha';
   ultimaReforma?: string | null;
   url?: string | null;
   nota?: string | null;
@@ -88,6 +90,8 @@ export interface LeyQueTeAplicaDto {
 export interface LeyesQueTeAplicanDto {
   estado?: string | null;
   nombreDelEstado?: string | null;
+  municipio?: string | null;
+  historicoMunicipal?: string | null;
   aviso?: string | null;
   historico?: string | null;
   fuentes: { url: string; que: string }[];

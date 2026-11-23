@@ -692,29 +692,33 @@ public class MotorFiscalDePrueba : IMotorFiscal
 
         CatalogosPedidos.Add((perfil, estado));
         return Task.FromResult(
-            "{\"estado\":\"" + estado + "\",\"nombre_estado\":\"Estado de prueba\",\"disparadores\":[\"siempre\",\"trabajadores\"]," +
+            "{\"estado\":\"" + estado + "\",\"nombre_estado\":\"Estado de prueba\",\"municipio\":\"Guadalajara\",\"municipio_inegi\":\"14039\"," +
+            "\"ficha_municipio\":{\"historico\":\"Gaceta municipal de prueba.\",\"fuentes\":[{\"url\":\"https://gaceta.ejemplo.gob.mx/\",\"que\":\"Gaceta\"}]},\"disparadores\":[\"siempre\",\"trabajadores\"]," +
             "\"ficha\":{\"historico\":\"Periódico oficial de prueba.\",\"fuentes\":[{\"url\":\"https://leyes.ejemplo.gob.mx/\",\"que\":\"Portal\"}]}," +
-            "\"bloques\":{\"D\":\"Ambiental\",\"E\":\"Fiscal\"},\"no_aplican\":[],\"resumen\":{\"local\":1,\"pendiente\":1}," +
+            "\"bloques\":{\"D\":\"Ambiental\",\"E\":\"Fiscal\",\"MC\":\"Municipal · Protección civil\"},\"no_aplican\":[],\"resumen\":{\"local\":1,\"pendiente\":1}," +
             "\"aplican\":[{\"id\":\"proteccion_civil\",\"nombre\":\"Ley de protección civil\",\"bloque\":\"D\",\"motivos\":[\"tiene local\"]," +
             "\"pide\":\"Programa interno\",\"temas\":[],\"anual\":false,\"ficha\":{\"estatus\":\"local\",\"nombre\":\"Ley Estatal de Protección Civil de Prueba\"," +
             "\"url\":\"https://leyes.ejemplo.gob.mx/pc.pdf\",\"ultima_reforma\":\"2026-01-01\",\"disponible\":true}}," +
             "{\"id\":\"mejora_regulatoria\",\"nombre\":\"Ley de mejora regulatoria\",\"bloque\":\"A\",\"motivos\":[\"todos\"],\"pide\":\"Trámites\"," +
-            "\"temas\":[],\"anual\":false,\"ficha\":{\"estatus\":\"pendiente\",\"disponible\":false}}]}");
+            "\"temas\":[],\"anual\":false,\"ficha\":{\"estatus\":\"pendiente\",\"disponible\":false}}," +
+            "{\"id\":\"m_proteccion_civil\",\"nombre\":\"Reglamento municipal de protección civil\",\"bloque\":\"MC\",\"ambito\":\"municipal\"," +
+            "\"clasificacion\":\"actividad\",\"motivos\":[\"tiene local\"],\"pide\":\"Visto bueno\",\"temas\":[],\"anual\":false," +
+            "\"ficha\":{\"estatus\":\"local\",\"nombre\":\"Reglamento de Protección Civil de Guadalajara\",\"disponible\":true}}]}");
     }
 
-    public Task<LecturaDeLeyDelMotor> IndexarLeyEstatalAsync(string estado, string ley, CancellationToken cancellationToken = default)
+    public Task<LecturaDeLeyDelMotor> IndexarLeyEstatalAsync(string estado, string ley, string? municipio = null, CancellationToken cancellationToken = default)
     {
         if (Caido)
         {
             throw new MotorFiscalNoDisponibleException("El motor fiscal no responde.");
         }
 
-        if (ley != "proteccion_civil")
+        if (ley != "proteccion_civil" && !(ley == "m_proteccion_civil" && municipio == "14039"))
         {
             throw new MotorFiscalNoDisponibleException("El motor fiscal respondió 404.") { Data = { ["Codigo"] = 404 } };
         }
 
-        var sha = Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(estado + "/" + ley)));
+        var sha = Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(estado + "/" + municipio + "/" + ley)));
         LeyesLeidas.Add(sha);
         return Task.FromResult(new LecturaDeLeyDelMotor
         {

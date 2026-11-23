@@ -85,11 +85,13 @@ public class LeyDelCliente : CreationAuditedAggregateRoot<Guid>
 
     /// <summary>Una ley del catálogo del estado que el cliente decidió usar sin subirla.</summary>
     public static LeyDelCliente DeBiblioteca(Guid id, Guid organizacionId, string estado, string ley, string sha256, string nombre,
-        DateTime utc)
+        DateTime utc, string? municipioInegi = null, string? nombreMunicipio = null)
     {
-        return new LeyDelCliente(id, organizacionId, Guid.Empty, sha256, nombre, AmbitoDeLey.Estatal, estado, null, nombre, utc)
+        var municipal = municipioInegi != null;
+        return new LeyDelCliente(id, organizacionId, Guid.Empty, sha256, nombre, municipal ? AmbitoDeLey.Municipal : AmbitoDeLey.Estatal,
+            estado, municipal ? nombreMunicipio ?? municipioInegi : null, nombre, utc)
         {
-            Biblioteca = Corto($"{estado}/{ley}", LeyesDelClienteConsts.MaxBibliotecaLength),
+            Biblioteca = Corto(municipal ? $"{estado}/{municipioInegi}/{ley}" : $"{estado}/{ley}", LeyesDelClienteConsts.MaxBibliotecaLength),
         };
     }
 

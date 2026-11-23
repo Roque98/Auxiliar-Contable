@@ -279,7 +279,7 @@ export const SECCIONES: Seccion[] = [
         ],
         pasos: [
           'En la hoja concentrado abre la pestaña «Mis leyes».',
-          'Arriba ves «Leyes de tu estado que te aplican»: por tu domicilio fiscal y lo que haces (giro, trabajadores, local, inmuebles, vehículos, ventas al gobierno) te decimos qué leyes estatales te tocan, por qué y qué te piden. Las que ya tenemos las agregas con «Usar esta ley», sin subirlas.',
+          'Arriba ves «Leyes y reglamentos que te aplican»: por tu domicilio fiscal y lo que haces (giro, trabajadores, local, inmuebles, vehículos, ventas al gobierno) te decimos qué leyes estatales y qué reglamentos de tu municipio te tocan (licencia de funcionamiento, protección civil, anuncios, uso de suelo, construcción, residuos…), por qué y qué te piden. Las que ya tenemos las agregas con «Usar esta ley», sin subirlas.',
           'Si te falta alguna, o es municipal, sube el PDF de la ley (ley de ingresos, de hacienda, código fiscal, reglamento de protección civil, de comercio, de anuncios…), di si es estatal o municipal, el estado y, si es municipal, el municipio.',
           'Se lee artículo por artículo (las páginas escaneadas también) y se busca lo que te toca según tu giro y tu perfil: tasa y día del impuesto sobre nómina, recargos, licencias, protección civil, estímulos…',
           'Cada hallazgo trae la cita textual del artículo. El despacho lo revisa: lo que acepta cambia tus cálculos solo a ti; las obligaciones locales aparecen en «Deudas fiscales».',

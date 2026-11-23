@@ -208,6 +208,21 @@ public class LeyesDelClienteIntegrationTests : ConJerarquiaTestBase
         (await ProcesarAsync()).ShouldBe(2);          // lee de la biblioteca y analiza
         _motor.LeyesAnalizadas.Count.ShouldBe(2);
 
+        // Municipal: del domicilio solo viaja colonia, municipio y estado; la norma municipal se usa igual, con la clave INEGI
+        perfil["domicilio"].ShouldBe("Centro, Guadalajara, Jalisco");
+        var q = await ComoAsync(Usuario, () => _leyes.GetQueTeAplicanAsync(_cliente));
+        q.Municipio.ShouldBe("Guadalajara");
+        q.HistoricoMunicipal.ShouldNotBeNull();
+        var pcm = q.Leyes.Single(x => x.Id == "m_proteccion_civil");
+        pcm.Ambito.ShouldBe("municipal");
+        pcm.Clasificacion.ShouldBe("actividad");
+        var mun = await ComoAsync(Usuario, () => _leyes.UsarDeLaBibliotecaAsync(_cliente, "m_proteccion_civil"));
+        mun.Biblioteca.ShouldBe("JAL/14039/m_proteccion_civil");
+        mun.Ambito.ShouldBe("municipal");
+        mun.Municipio.ShouldBe("Guadalajara");
+        (await ComoAsync(Usuario, () => _leyes.GetQueTeAplicanAsync(_cliente))).Leyes.Single(x => x.Id == "m_proteccion_civil").EnMisLeyes.ShouldBe(mun.Id);
+        await Should.ThrowAsync<UserFriendlyException>(() => ComoAsync(Usuario, () => _leyes.UsarDeLaBibliotecaAsync(_cliente, "m_proteccion_civil")));
+
         // Otro cliente no la ve ni la usa por él
         await Should.ThrowAsync<Volo.Abp.Domain.Entities.EntityNotFoundException>(() => ComoAsync(Usuario, () => _leyes.GetQueTeAplicanAsync(_otro)));
     }
@@ -221,4 +236,11 @@ public class LeyesDelClienteIntegrationTests : ConJerarquiaTestBase
     [InlineData("", null)]
     public void Solo_viaja_la_forma_juridica(string razon, string? forma) =>
         ProcesadorDeLeyesDelCliente.FormaJuridica(razon).ShouldBe(forma);
+
+    [Theory]
+    [InlineData("Av. Juárez 100, Centro, Guadalajara, Jalisco, 44100", "Centro, Guadalajara, Jalisco")]
+    [InlineData("CALLE 5 NUM 23 INT 4, COL. DEL VALLE, SAN PEDRO GARZA GARCIA, NUEVO LEON, C.P. 66220", "COL. DEL VALLE, SAN PEDRO GARZA GARCIA, NUEVO LEON")]
+    [InlineData("", null)]
+    public void Del_domicilio_solo_viaja_el_final_sin_numeros(string domicilio, string? esperado) =>
+        ProcesadorDeLeyesDelCliente.DomicilioSinCalle(domicilio).ShouldBe(esperado);
 }
