@@ -30,7 +30,18 @@ export class CoberturaMunicipalComponent implements OnInit {
   }
 
   textoDeCobertura(c: string): string {
-    return c === 'no_cubierto' ? 'Municipio no cubierto' : c === 'seleccionado' ? 'En proceso' : 'No se sabe su municipio';
+    switch (c) {
+      case 'no_cubierto':
+        return 'Municipio no cubierto';
+      case 'parcial':
+        return 'Solo algunos reglamentos';
+      case 'sin_fuente':
+        return 'Su municipio no publica en línea';
+      case 'seleccionado':
+        return 'En proceso';
+      default:
+        return 'No se sabe su municipio';
+    }
   }
 
   descargar(): void {

@@ -101,7 +101,10 @@ public class CoberturaMunicipalAppService : AuxiliarContableAppService, ICobertu
         }
 
         dto.Clientes.AddRange(sinMunicipio);
-        dto.Clientes = [.. dto.Clientes.OrderBy(c => c.Cobertura == "no_cubierto" ? 0 : c.Cobertura == "sin_municipio" ? 1 : 2).ThenBy(c => c.Nombre)];
+        dto.Clientes = [.. dto.Clientes.OrderBy(c => c.Cobertura switch
+        {
+            "no_cubierto" => 0, "sin_fuente" => 1, "sin_municipio" => 2, "parcial" => 3, _ => 4,
+        }).ThenBy(c => c.Nombre)];
         return dto;
     }
 
@@ -113,9 +116,12 @@ public class CoberturaMunicipalAppService : AuxiliarContableAppService, ICobertu
             using var d = JsonDocument.Parse(json);
             var r = d.RootElement;
             dto.Criterio = Txt(r, "criterio");
+            dto.MinimoCubierto = Num(r, "minimo_cubierto");
             if (r.TryGetProperty("totales", out var t))
             {
                 dto.Cubiertos = Num(t, "cubierto");
+                dto.Parciales = Num(t, "parcial");
+                dto.SinFuente = Num(t, "sin_fuente");
                 dto.EnProceso = Num(t, "seleccionado");
                 dto.NoCubiertos = Num(t, "no_cubierto");
             }
@@ -131,7 +137,8 @@ public class CoberturaMunicipalAppService : AuxiliarContableAppService, ICobertu
                     {
                         Estado = Txt(e, "estado") ?? "", Nombre = Txt(e, "nombre") ?? "", Municipios = Num(e, "municipios"),
                         PoblacionCubiertaPct = Dbl(e, "poblacion_cubierta_pct"), PoblacionSeleccionadaPct = Dbl(e, "poblacion_seleccionada_pct"),
-                        Cubiertos = Nombres(e, "cubierto"), EnProceso = Nombres(e, "seleccionado"), NoCubiertos = Nombres(e, "no_cubierto"),
+                        Cubiertos = Nombres(e, "cubierto"), Parciales = Nombres(e, "parcial"), SinFuente = Nombres(e, "sin_fuente"),
+                        EnProceso = Nombres(e, "seleccionado"), NoCubiertos = Nombres(e, "no_cubierto"),
                     });
                 }
             }
