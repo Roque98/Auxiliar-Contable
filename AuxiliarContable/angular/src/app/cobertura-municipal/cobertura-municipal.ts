@@ -5,7 +5,7 @@ export interface ClienteSinCoberturaDto {
   nombre: string;
   estado?: string | null;
   municipio?: string | null;
-  cobertura: 'seleccionado' | 'no_cubierto' | 'sin_municipio';
+  cobertura: 'parcial' | 'sin_fuente' | 'seleccionado' | 'no_cubierto' | 'sin_municipio';
 }
 
 export interface CoberturaDeEstadoDto {
@@ -15,6 +15,8 @@ export interface CoberturaDeEstadoDto {
   poblacionCubiertaPct?: number | null;
   poblacionSeleccionadaPct?: number | null;
   cubiertos: string[];
+  parciales: string[];
+  sinFuente: string[];
   enProceso: string[];
   noCubiertos: string[];
 }
@@ -22,6 +24,9 @@ export interface CoberturaDeEstadoDto {
 export interface CoberturaMunicipalDto {
   criterio?: string | null;
   cubiertos: number;
+  parciales: number;
+  sinFuente: number;
+  minimoCubierto?: number;
   enProceso: number;
   noCubiertos: number;
   clientes: ClienteSinCoberturaDto[];
@@ -33,7 +38,8 @@ export interface CoberturaMunicipalDto {
 export function csvDeCobertura(r: CoberturaMunicipalDto): string {
   const filas = [['Estado', 'Municipio', 'Cobertura']];
   for (const e of r.estados) {
-    for (const [lista, texto] of [[e.cubiertos, 'Cubierto'], [e.enProceso, 'En proceso'], [e.noCubiertos, 'No cubierto']] as const) {
+    for (const [lista, texto] of [[e.cubiertos, 'Cubierto'], [e.parciales ?? [], 'Parcial'], [e.sinFuente ?? [], 'Sin fuente en línea'],
+      [e.enProceso, 'En proceso'], [e.noCubiertos, 'No cubierto']] as const) {
       for (const m of lista) {
         filas.push([e.nombre, m, texto]);
       }

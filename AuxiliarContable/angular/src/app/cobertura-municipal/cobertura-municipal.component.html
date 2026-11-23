@@ -13,10 +13,16 @@
 
   <div class="cm-totales">
     <div class="ig-panel"><strong>{{ d.cubiertos }}</strong><span>municipios cubiertos</span></div>
+    <div class="ig-panel"><strong>{{ d.parciales }}</strong><span>con algunos reglamentos</span></div>
+    <div class="ig-panel"><strong>{{ d.sinFuente }}</strong><span>sin nada en línea</span></div>
     <div class="ig-panel"><strong>{{ d.enProceso }}</strong><span>en proceso</span></div>
     <div class="ig-panel"><strong>{{ d.noCubiertos }}</strong><span>no cubiertos</span></div>
   </div>
-  @if (d.criterio) { <p class="cm-nota"><strong>Criterio:</strong> {{ d.criterio }}</p> }
+  @if (d.criterio) {
+    <p class="cm-nota"><strong>Criterio:</strong> {{ d.criterio }}
+      @if (d.minimoCubierto) { Cuenta como cubierto con al menos {{ d.minimoCubierto }} reglamentos propios (o un código reglamentario que reúna la mayoría). }
+    </p>
+  }
 
   <h2 class="cm-subtitulo">Clientes fuera de cobertura</h2>
   @if (!d.clientes.length) {
@@ -27,7 +33,8 @@
         <li class="ig-panel">
           <strong>{{ c.nombre }}</strong>
           <span>{{ c.municipio ? c.municipio + ', ' : '' }}{{ c.estado || 'sin estado' }}</span>
-          <span class="ig-etiqueta" [class.ig-etiqueta-alerta]="c.cobertura !== 'seleccionado'" [class.ig-etiqueta-tinta]="c.cobertura === 'seleccionado'">
+          <span class="ig-etiqueta" [class.ig-etiqueta-alerta]="c.cobertura !== 'seleccionado' && c.cobertura !== 'parcial'"
+            [class.ig-etiqueta-tinta]="c.cobertura === 'seleccionado' || c.cobertura === 'parcial'">
             {{ textoDeCobertura(c.cobertura) }}
           </span>
         </li>
@@ -45,10 +52,12 @@
     <details class="cm-estado">
       <summary>
         <span>{{ e.nombre }}</span>
-        <span class="cm-cuenta">{{ e.cubiertos.length }} de {{ e.municipios }} cubiertos · {{ e.enProceso.length }} en proceso ·
+        <span class="cm-cuenta">{{ e.cubiertos.length }} de {{ e.municipios }} cubiertos · {{ e.parciales.length }} parciales ·
           {{ e.poblacionCubiertaPct ?? 0 | number: '1.0-1' }} % de la población</span>
       </summary>
       @if (e.cubiertos.length) { <p class="cm-lista"><strong>Cubiertos:</strong> {{ e.cubiertos.join(', ') }}</p> }
+      @if (e.parciales.length) { <p class="cm-lista"><strong>Con algunos reglamentos:</strong> {{ e.parciales.join(', ') }}</p> }
+      @if (e.sinFuente.length) { <p class="cm-lista"><strong>Sin nada en línea:</strong> {{ e.sinFuente.join(', ') }}</p> }
       @if (e.enProceso.length) { <p class="cm-lista"><strong>En proceso:</strong> {{ e.enProceso.join(', ') }}</p> }
       @if (e.noCubiertos.length) { <p class="cm-lista"><strong>No cubiertos ({{ e.noCubiertos.length }}):</strong> {{ e.noCubiertos.join(', ') }}</p> }
     </details>

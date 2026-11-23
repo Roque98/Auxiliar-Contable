@@ -235,6 +235,8 @@ public class LeyesDelClienteIntegrationTests : ConJerarquiaTestBase
         (await ComoAsync(Usuario, () => _leyes.GetMisLeyesAsync(_cliente))).Alcance.ShouldContain("Morelos");
         LeyesDelClienteAppService.AvisoMunicipal("Acatic", "no_cubierto")!.ShouldContain("solo tenemos conocimiento de lo federal y lo estatal");
         LeyesDelClienteAppService.AvisoMunicipal(null, null)!.ShouldContain("No pudimos saber tu municipio");
+        LeyesDelClienteAppService.AvisoMunicipal("Uruapan", "parcial")!.ShouldContain("solo tenemos algunos reglamentos");
+        LeyesDelClienteAppService.AvisoMunicipal("Uruapan", "sin_fuente")!.ShouldContain("solo tenemos conocimiento de lo federal y lo estatal");
 
         // Reporte: solo el despacho; trae criterio, estados y los clientes fuera de cobertura (sin mandar nombres al motor)
         var reporte = GetRequiredService<ICoberturaMunicipalAppService>();

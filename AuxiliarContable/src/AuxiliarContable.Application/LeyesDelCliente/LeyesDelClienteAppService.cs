@@ -406,6 +406,9 @@ public class LeyesDelClienteAppService : AuxiliarContableAppService, ILeyesDelCl
         "seleccionado" =>
             $"Estamos integrando los reglamentos de {municipio}: mientras tanto tu control abarca lo federal y lo estatal. " +
             "Si ya tienes los reglamentos municipales que te aplican, súbelos abajo.",
+        "parcial" =>
+            $"De {municipio} solo tenemos algunos reglamentos (por ejemplo su ley de ingresos o su bando): de lo demás tu control " +
+            "abarca lo federal y lo estatal. Si tienes los reglamentos que te faltan por tu actividad, súbelos abajo.",
         _ => $"La plataforma todavía no contempla los reglamentos de {municipio}: solo tenemos conocimiento de lo federal y lo " +
              "estatal. Si tienes los reglamentos municipales que te aplican por tu actividad, súbelos abajo y se trabajará a partir de ellos.",
     };

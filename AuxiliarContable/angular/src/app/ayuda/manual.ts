@@ -298,7 +298,7 @@ export const SECCIONES: Seccion[] = [
         pasos: [
           'Abre «Cobertura municipal» en el menú (solo el equipo del despacho).',
           'Arriba, los clientes que están en un municipio no cubierto o del que no se supo el municipio: de ellos solo tenemos lo federal y lo estatal.',
-          'Abajo, por estado, los municipios cubiertos, en proceso y no cubiertos, con el criterio de selección; «Descargar CSV» los baja para Excel.',
+          'Abajo, por estado: cubiertos (al menos 5 reglamentos propios), con algunos reglamentos (por ejemplo solo la ley de ingresos), sin nada en línea (portal caído o bloqueado), en proceso y no cubiertos, con el criterio de selección; «Descargar CSV» los baja para Excel.',
         ],
         nota: 'El cliente de un municipio no cubierto lo ve en su perfil fiscal y en «Mis leyes», y puede subir sus reglamentos.',
       },
