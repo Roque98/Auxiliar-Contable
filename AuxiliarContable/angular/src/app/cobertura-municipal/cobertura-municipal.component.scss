@@ -1,0 +1,18 @@
+/* Cobertura municipal: totales, clientes fuera de cobertura y estados plegables. Se apila en el teléfono. */
+:host { display: block; }
+.cm-nota { color: var(--ig-texto-secundario); font-size: var(--ig-texto-sm); }
+.cm-subtitulo { font-size: var(--ig-titulo-3); font-weight: var(--ig-peso-semi); margin: var(--ig-esp-4) 0 var(--ig-esp-2); }
+.cm-totales { display: grid; grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr)); gap: var(--ig-esp-2); }
+.cm-totales > div { display: flex; flex-direction: column; gap: var(--ig-esp-1); }
+.cm-totales strong { font-size: var(--ig-titulo-2); }
+.cm-clientes { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--ig-esp-2); }
+.cm-clientes li { display: flex; flex-wrap: wrap; gap: var(--ig-esp-2); align-items: center; min-width: 0; }
+.cm-cabeza { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: var(--ig-esp-2); }
+.cm-estado {
+  border: var(--ig-borde);
+  border-radius: var(--ig-radio-md);
+  padding: var(--ig-esp-2) var(--ig-esp-3);
+  margin-bottom: var(--ig-esp-2);
+}
+.cm-estado > summary { cursor: pointer; min-height: 2.75rem; display: flex; flex-wrap: wrap; gap: var(--ig-esp-2); align-items: center; }
+.cm-cuenta, .cm-lista { font-size: var(--ig-texto-sm); color: var(--ig-texto-secundario); overflow-wrap: anywhere; }

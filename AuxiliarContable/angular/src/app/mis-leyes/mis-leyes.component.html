@@ -7,6 +7,7 @@
       protección civil, licencias de funcionamiento, anuncios, alcoholes, ecología… Se leen artículo por artículo, se busca lo que te toca
       según tu giro y tu perfil, y el despacho revisa cada hallazgo antes de que cambie tus cálculos.
     </p>
+    <p class="ml-nota" data-testid="alcance">{{ datos()?.alcance ?? 'Este apartado es para llevar el control de todas tus obligaciones de acuerdo con tu negocio. No te podemos apoyar con trámites presenciales; por el momento, eso solo lo hacemos en Morelos.' }}</p>
   </div>
 </div>
 
@@ -20,6 +21,9 @@
 } @else if (aplican(); as a) {
   @if (a.aviso) {
     <p class="ml-nota" role="note">{{ a.aviso }}</p>
+  }
+  @if (a.avisoMunicipal) {
+    <div class="ig-alerta ig-alerta-aviso" role="note" data-testid="aviso-municipal">{{ a.avisoMunicipal }}</div>
   }
   @if (a.leyes.length) {
     <p class="ml-nota">
@@ -51,6 +55,12 @@
                     <i class="bi bi-plus-lg" aria-hidden="true"></i> Usar esta ley
                   </button>
                 </div>
+              } @else if (!l.disponible && (l.estatus === 'pendiente' || l.estatus === 'sin_ficha')) {
+                <div class="ml-acciones">
+                  <button type="button" class="ig-btn ig-btn-texto ig-btn-chico" (click)="subirEsta(l)">
+                    <i class="bi bi-upload" aria-hidden="true"></i> Súbela tú
+                  </button>
+                </div>
               }
             </article>
           }
@@ -77,7 +87,7 @@
 }
 
 <h3 class="ml-subtitulo">Subir una ley</h3>
-<form class="ig-panel ml-form" (ngSubmit)="subir(campoArchivo)" data-testid="subir-ley">
+<form id="subir-ley" class="ig-panel ml-form" (ngSubmit)="subir(campoArchivo)" data-testid="subir-ley">
   <label class="ml-campo ml-campo-ancho">
     <span>Archivo (PDF, máximo 20 MB)</span>
     <input #campoArchivo class="ig-control" type="file" accept="application/pdf,.pdf" (change)="elegirArchivo($event)" />

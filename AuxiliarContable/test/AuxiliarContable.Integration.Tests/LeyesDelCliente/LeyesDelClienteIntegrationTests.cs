@@ -227,6 +227,29 @@ public class LeyesDelClienteIntegrationTests : ConJerarquiaTestBase
         await Should.ThrowAsync<Volo.Abp.Domain.Entities.EntityNotFoundException>(() => ComoAsync(Usuario, () => _leyes.GetQueTeAplicanAsync(_otro)));
     }
 
+    [Fact]
+    public async Task Cobertura_municipal_aviso_al_cliente_y_reporte_del_despacho()
+    {
+        // El cliente en un municipio cubierto no recibe aviso; el alcance (sin trámites presenciales salvo Morelos) siempre
+        (await ComoAsync(Usuario, () => _leyes.GetQueTeAplicanAsync(_cliente))).AvisoMunicipal.ShouldBeNull();
+        (await ComoAsync(Usuario, () => _leyes.GetMisLeyesAsync(_cliente))).Alcance.ShouldContain("Morelos");
+        LeyesDelClienteAppService.AvisoMunicipal("Acatic", "no_cubierto")!.ShouldContain("solo tenemos conocimiento de lo federal y lo estatal");
+        LeyesDelClienteAppService.AvisoMunicipal(null, null)!.ShouldContain("No pudimos saber tu municipio");
+
+        // Reporte: solo el despacho; trae criterio, estados y los clientes fuera de cobertura (sin mandar nombres al motor)
+        var reporte = GetRequiredService<ICoberturaMunicipalAppService>();
+        await Should.ThrowAsync<AbpAuthorizationException>(() => ComoAsync(Usuario, () => reporte.GetReporteAsync()));
+        await ComoAsync(Administrador, () => GetRequiredService<IPerfilFiscalAppService>().ResponderAsync(_otro,
+            new ResponderDatoDelPerfilDto { Campo = CamposDelPerfil.DomicilioFiscal, Valor = "Calle 2 #5, Centro, Acatic, Jalisco, 45470" }));
+        var r = await ComoAsync(Administrador, () => reporte.GetReporteAsync());
+        r.Criterio.ShouldNotBeNull();
+        r.Estados.ShouldHaveSingleItem().NoCubiertos.ShouldContain("Acatic");
+        r.Clientes.ShouldContain(c => c.OrganizacionId == _otro && c.Cobertura == "no_cubierto" && c.Municipio == "Acatic");
+        r.Clientes.ShouldNotContain(c => c.OrganizacionId == _cliente);
+        var enviados = _motor.DomiciliosPedidos.ShouldHaveSingleItem();
+        enviados.ShouldAllBe(d => !((string)d["domicilio"]!).Contains('5') && !((string)d["domicilio"]!).Contains("Calle"));
+    }
+
     [Theory]
     [InlineData("PANADERIA DE PRUEBA S.C.", "S.C.")]
     [InlineData("CONSTRUCTORA DEL CENTRO, S.A. DE C.V.", "S.A. DE C.V.")]

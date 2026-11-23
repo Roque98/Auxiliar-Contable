@@ -27,6 +27,9 @@
 @if (error(); as e) {
   <div class="ig-alerta ig-alerta-error" role="alert">{{ e }}</div>
 }
+@if (avisoMunicipal(); as a) {
+  <div class="ig-alerta ig-alerta-aviso" role="note" data-testid="aviso-municipal">{{ a }}</div>
+}
 
 @if (cargando() && !perfil()) {
   <div class="ig-esqueleto"></div>

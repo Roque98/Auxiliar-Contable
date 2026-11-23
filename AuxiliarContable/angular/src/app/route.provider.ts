@@ -163,6 +163,16 @@ function configureRoutes() {
       requiredPolicy: 'AuxiliarContable.Organizaciones',
     },
 
+    // Qué municipios cubre la biblioteca de reglamentos y qué clientes quedan fuera: solo el equipo.
+    {
+      path: '/cobertura-municipal',
+      name: '::Menu:CoberturaMunicipal',
+      iconClass: 'bi bi-map',
+      order: 1.45,
+      layout: eLayoutType.application,
+      requiredPolicy: 'AuxiliarContable.Organizaciones',
+    },
+
     // La mesa de trabajo del despacho: solo el equipo (lleva permiso, ABP la oculta a los clientes).
     {
       path: '/mesa',

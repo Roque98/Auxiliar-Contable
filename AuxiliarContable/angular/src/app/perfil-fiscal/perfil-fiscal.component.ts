@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } 
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { mensajeDeError } from '../invitaciones/invitaciones.service';
+import { MisLeyesService } from '../mis-leyes/mis-leyes.service';
 import { chatEncendido } from '../shared/chat';
 import {
   ClienteVisibleDto,
@@ -41,6 +42,7 @@ export class PerfilFiscalComponent implements OnInit {
   private readonly api = inject(PerfilFiscalService);
   private readonly ruta = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly leyes = inject(MisLeyesService);
 
   readonly Estado = EstadoDeDocumento;
   readonly TipoDeCampo = TipoDeCampo;
@@ -57,6 +59,8 @@ export class PerfilFiscalComponent implements OnInit {
   readonly error = signal<string | null>(null);
   readonly editando = signal<string | null>(null);
   readonly guardando = signal<string | null>(null);
+  /** Si su municipio no está en la biblioteca: que sepa que solo tenemos lo federal y lo estatal (pedido del 22-nov-2026). */
+  readonly avisoMunicipal = signal<string | null>(null);
   valorEditado = '';
 
   readonly cliente = computed(() => this.clientes()?.find(c => c.id === this.clienteId()) ?? null);
@@ -193,5 +197,11 @@ export class PerfilFiscalComponent implements OnInit {
   private mostrar(p: PerfilFiscalDto): void {
     this.cargando.set(false);
     this.perfil.set(p);
+    const id = this.clienteId();
+    const domicilio = p.campos.find(c => c.clave === 'domicilio_fiscal')?.valor;
+    this.avisoMunicipal.set(null);
+    if (id && domicilio) {
+      this.leyes.queTeAplican(id).subscribe({ next: a => this.avisoMunicipal.set(a.avisoMunicipal ?? null), error: () => undefined });
+    }
   }
 }
