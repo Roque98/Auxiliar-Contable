@@ -160,8 +160,9 @@ public class ProcesadorDeLeyesDelCliente : ITransientDependency
             if (r == null && ley.Biblioteca is { } bib)
             {
                 // Una ley de la biblioteca del estado: el motor la vuelve a leer de su copia («MOR/tabaco»).
-                var partes = bib.Split('/', 2);
-                r = await _motor.IndexarLeyEstatalAsync(partes[0], partes.Length > 1 ? partes[1] : "");
+                // «MOR/salud» (estatal) o «MOR/17007/m_bando» (municipal, con la clave INEGI del municipio).
+                var partes = bib.Split('/');
+                r = await _motor.IndexarLeyEstatalAsync(partes[0], partes[^1], partes.Length == 3 ? partes[1] : null);
             }
             else if (r == null)
             {
@@ -219,6 +220,12 @@ public class ProcesadorDeLeyesDelCliente : ITransientDependency
             ["municipio"] = municipio,
             ["ejercicio"] = anio,
         };
+        // Del domicilio solo viaja el final (colonia, municipio, estado), sin calle ni números: lo justo para el municipio.
+        if (DomicilioSinCalle(pf?.Dato(CamposDelPerfil.DomicilioFiscal)?.Valor) is { } dom)
+        {
+            perfil["domicilio"] = dom;
+        }
+
         if ((p.TipoPersona ?? "").Contains("moral", StringComparison.OrdinalIgnoreCase) && FormaJuridica(p.Nombre) is { } forma)
         {
             perfil["forma_juridica"] = forma;
@@ -242,6 +249,22 @@ public class ProcesadorDeLeyesDelCliente : ITransientDependency
         }
 
         return (perfil, estado);
+    }
+
+    /// <summary>Los últimos tramos del domicilio sin números (colonia, municipio, estado); null si no hay.</summary>
+    public static string? DomicilioSinCalle(string? domicilio)
+    {
+        if (string.IsNullOrWhiteSpace(domicilio))
+        {
+            return null;
+        }
+
+        var tramos = domicilio.Split([',', ';', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(t => System.Text.RegularExpressions.Regex.Replace(t, @"\d+", " ").Trim())
+            .Where(t => t.Length > 1 && !System.Text.RegularExpressions.Regex.IsMatch(t, @"^(c\.?\s?p\.?|codigo postal|código postal|mexico|méxico)$",
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase))
+            .ToList();
+        return tramos.Count == 0 ? null : string.Join(", ", tramos.Skip(Math.Max(0, tramos.Count - 3)));
     }
 
     /// <summary>Solo la forma jurídica de la razón social («S.C.», «A.C.», «S.A. de C.V.»…): el nombre no sale.</summary>

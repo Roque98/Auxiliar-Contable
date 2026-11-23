@@ -244,13 +244,35 @@ public class LeyesDelClienteAppService : AuxiliarContableAppService, ILeyesDelCl
             throw new UserFriendlyException("Esa ley no está en el catálogo.");
         }
 
-        var (_, estado) = await _procesador.PerfilParaElMotorAsync(organizacionId, null, null);
+        var (perfil, estado) = await _procesador.PerfilParaElMotorAsync(organizacionId, null, null);
         if (estado == null)
         {
             throw new UserFriendlyException("Falta el domicilio fiscal: con él sabemos de qué estado es la ley.");
         }
 
-        if (await _leyes.AnyAsync(x => x.OrganizacionId == organizacionId && x.Biblioteca == estado + "/" + ley))
+        // Las municipales (m_…) necesitan el municipio del domicilio: lo resuelve el motor (clave INEGI).
+        string? municipio = null, nombreMunicipio = null;
+        if (ley.StartsWith("m_", StringComparison.Ordinal))
+        {
+            try
+            {
+                using var d = JsonDocument.Parse(await _motor.LeyesEstatalesDelClienteAsync(perfil, estado));
+                municipio = d.RootElement.TryGetProperty("municipio_inegi", out var mi) && mi.ValueKind == JsonValueKind.String ? mi.GetString() : null;
+                nombreMunicipio = d.RootElement.TryGetProperty("municipio", out var mn) && mn.ValueKind == JsonValueKind.String ? mn.GetString() : null;
+            }
+            catch (Exception ex) when (ex is MotorFiscalNoDisponibleException or JsonException)
+            {
+                throw new UserFriendlyException("No pudimos abrir la ley ahora; intenta en unos minutos.");
+            }
+
+            if (municipio == null)
+            {
+                throw new UserFriendlyException("No sabemos tu municipio: revisa que tu domicilio fiscal lo diga.");
+            }
+        }
+
+        var clave = municipio == null ? estado + "/" + ley : estado + "/" + municipio + "/" + ley;
+        if (await _leyes.AnyAsync(x => x.OrganizacionId == organizacionId && x.Biblioteca == clave))
         {
             throw new UserFriendlyException("Esa ley ya está en tus leyes.");
         }
@@ -258,7 +280,7 @@ public class LeyesDelClienteAppService : AuxiliarContableAppService, ILeyesDelCl
         LecturaDeLeyDelMotor r;
         try
         {
-            r = await _motor.IndexarLeyEstatalAsync(estado, ley);
+            r = await _motor.IndexarLeyEstatalAsync(estado, ley, municipio);
         }
         catch (MotorFiscalNoDisponibleException ex) when (ex.Data["Codigo"] is 404)
         {
@@ -276,7 +298,7 @@ public class LeyesDelClienteAppService : AuxiliarContableAppService, ILeyesDelCl
 
         var ahora = Clock.Now.ToUniversalTime();
         var nueva = LeyDelCliente.DeBiblioteca(GuidGenerator.Create(), organizacionId, estado, ley, r.Documento,
-            r.NombreOficial ?? ley.Replace('_', ' '), ahora);
+            r.NombreOficial ?? ley.Replace('_', ' '), ahora, municipio, nombreMunicipio);
         switch (r.Estado)
         {
             case "lista":
@@ -309,6 +331,17 @@ public class LeyesDelClienteAppService : AuxiliarContableAppService, ILeyesDelCl
                 ? [.. v.EnumerateArray().Where(x => x.ValueKind == JsonValueKind.String).Select(x => x.GetString()!)]
                 : [];
             dto.NombreDelEstado = Txt(r, "nombre_estado");
+            dto.Municipio = Txt(r, "municipio");
+            var inegi = Txt(r, "municipio_inegi");
+            if (r.TryGetProperty("ficha_municipio", out var fmu) && fmu.ValueKind == JsonValueKind.Object)
+            {
+                dto.HistoricoMunicipal = Txt(fmu, "historico");
+                if (fmu.TryGetProperty("fuentes", out var fms) && fms.ValueKind == JsonValueKind.Array)
+                {
+                    dto.Fuentes.AddRange(fms.EnumerateArray().Select(x => new FuenteOficialDto { Url = Txt(x, "url") ?? "", Que = Txt(x, "que") ?? "" })
+                        .Where(x => x.Url.StartsWith("http", StringComparison.OrdinalIgnoreCase)));
+                }
+            }
             dto.Disparadores = Lista(r, "disparadores");
             if (r.TryGetProperty("ficha", out var f) && f.ValueKind == JsonValueKind.Object)
             {
@@ -338,6 +371,7 @@ public class LeyesDelClienteAppService : AuxiliarContableAppService, ILeyesDelCl
                 {
                     var fi = x.TryGetProperty("ficha", out var fx) ? fx : default;
                     var id = Txt(x, "id") ?? "";
+                    var ambito = Txt(x, "ambito") ?? (id.StartsWith("m_", StringComparison.Ordinal) ? "municipal" : "estatal");
                     dto.Leyes.Add(new LeyQueTeAplicaDto
                     {
                         Id = id, Nombre = Txt(x, "nombre") ?? id, Bloque = Txt(x, "bloque") ?? "", Motivos = Lista(x, "motivos"),
@@ -346,7 +380,8 @@ public class LeyesDelClienteAppService : AuxiliarContableAppService, ILeyesDelCl
                         Nota = Txt(fi, "nota"),
                         Disponible = fi.ValueKind == JsonValueKind.Object && fi.TryGetProperty("disponible", out var dv) && dv.ValueKind == JsonValueKind.True,
                         Anual = x.TryGetProperty("anual", out var an) && an.ValueKind == JsonValueKind.True,
-                        EnMisLeyes = mias.TryGetValue(estado + "/" + id, out var g) ? g : null,
+                        Ambito = ambito, Clasificacion = Txt(x, "clasificacion"),
+                        EnMisLeyes = mias.TryGetValue(ambito == "municipal" ? $"{estado}/{inegi}/{id}" : estado + "/" + id, out var g) ? g : null,
                     });
                 }
             }

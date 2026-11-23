@@ -220,9 +220,10 @@ public interface IMotorFiscal
     Task<string> LeyesEstatalesDelClienteAsync(IReadOnlyDictionary<string, object?> perfil, string? estado,
         CancellationToken cancellationToken = default);
 
-    /// <summary>Lee en el motor una ley que ya tenemos del estado (<c>/leyes-estatales/{edo}/{ley}/indexar</c>), sin que el
-    /// cliente la suba. 404 en <c>Data["Codigo"]</c> si no la tenemos.</summary>
-    Task<LecturaDeLeyDelMotor> IndexarLeyEstatalAsync(string estado, string ley, CancellationToken cancellationToken = default);
+    /// <summary>Lee en el motor una ley que ya tenemos del estado o, si el id empieza con «m_», del municipio (clave INEGI o
+    /// nombre en <paramref name="municipio"/>), sin que el cliente la suba (<c>/leyes-estatales/{edo}/{ley}/indexar</c>).
+    /// 404 en <c>Data["Codigo"]</c> si no la tenemos.</summary>
+    Task<LecturaDeLeyDelMotor> IndexarLeyEstatalAsync(string estado, string ley, string? municipio = null, CancellationToken cancellationToken = default);
 }
 
 /// <summary>Respuesta de <c>/leyes-propias/indexar</c> y <c>GET /leyes-propias/{sha}</c>.</summary>
@@ -450,6 +451,6 @@ public class MotorFiscalSinConfigurar : IMotorFiscal, ISingletonDependency
         CancellationToken cancellationToken = default) =>
         throw new MotorFiscalNoDisponibleException("No hay motor fiscal en este proceso.");
 
-    public Task<LecturaDeLeyDelMotor> IndexarLeyEstatalAsync(string estado, string ley, CancellationToken cancellationToken = default) =>
+    public Task<LecturaDeLeyDelMotor> IndexarLeyEstatalAsync(string estado, string ley, string? municipio = null, CancellationToken cancellationToken = default) =>
         throw new MotorFiscalNoDisponibleException("No hay motor fiscal en este proceso.");
 }
