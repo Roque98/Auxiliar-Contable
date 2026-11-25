@@ -317,6 +317,18 @@ public class LeyesDelClienteAppService : AuxiliarContableAppService, ILeyesDelCl
     }
 
     /// <summary>La respuesta del motor (<c>/leyes-estatales/del-cliente</c>) a DTO; <paramref name="mias"/>: «EDO/ley» -> id en Mis leyes.</summary>
+    /// <summary>«lo_tratan» del motor: [{nombre, donde, id}].</summary>
+    public static List<ReglamentoQueLoTrataDto> LoTratan(JsonElement e) =>
+        e.ValueKind == JsonValueKind.Object && e.TryGetProperty("lo_tratan", out var v) && v.ValueKind == JsonValueKind.Array
+            ? [.. v.EnumerateArray().Where(x => x.ValueKind == JsonValueKind.Object && x.TryGetProperty("nombre", out var n) && n.ValueKind == JsonValueKind.String)
+                .Select(x => new ReglamentoQueLoTrataDto
+                {
+                    Nombre = x.GetProperty("nombre").GetString()!,
+                    Donde = x.TryGetProperty("donde", out var d) && d.ValueKind == JsonValueKind.String ? d.GetString() : null,
+                    Id = x.TryGetProperty("id", out var i) && i.ValueKind == JsonValueKind.String ? i.GetString() : null,
+                })]
+            : [];
+
     public static LeyesQueTeAplicanDto LeerQueTeAplican(string json, string estado, IReadOnlyDictionary<string, Guid> mias)
     {
         var dto = new LeyesQueTeAplicanDto { Estado = estado };
@@ -384,6 +396,7 @@ public class LeyesDelClienteAppService : AuxiliarContableAppService, ILeyesDelCl
                         Anual = x.TryGetProperty("anual", out var an) && an.ValueKind == JsonValueKind.True,
                         Ambito = ambito, Clasificacion = Txt(x, "clasificacion"),
                         EnMisLeyes = mias.TryGetValue(ambito == "municipal" ? $"{estado}/{inegi}/{id}" : estado + "/" + id, out var g) ? g : null,
+                        LoTratan = LoTratan(fi),
                     });
                 }
             }

@@ -305,6 +305,7 @@ public partial class CoberturaMunicipalAppService : AuxiliarContableAppService, 
             Id = Txt(n, "id") ?? "", Nombre = Txt(n, "nombre"), Bloque = Txt(n, "bloque"), Clase = Txt(n, "clase") ?? "",
             Motivo = Txt(n, "motivo"), Titulo = Txt(n, "titulo"), Nota = Txt(n, "nota"), UltimaReforma = Txt(n, "ultima_reforma"),
             Url = Txt(n, "url") is { } u && u.StartsWith("http", StringComparison.OrdinalIgnoreCase) ? u : null,
+            LoTratan = LeyesDelClienteAppService.LoTratan(n),
         })];
 
     private static IEnumerable<JsonElement> Arreglo(JsonElement e, string k) =>

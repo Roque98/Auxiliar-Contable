@@ -6,6 +6,7 @@
 
 .ml-subtitulo { font-size: var(--ig-titulo-3); font-weight: var(--ig-peso-semi); margin: var(--ig-esp-4) 0 var(--ig-esp-2); }
 .ml-nota { margin: 0; color: var(--ig-texto-secundario); font-size: var(--ig-texto-sm); }
+.ml-lo-tratan { margin: var(--ig-esp-1) 0 0; padding-left: 1.2em; overflow-wrap: anywhere; }
 
 .ml-form { display: flex; flex-wrap: wrap; gap: var(--ig-esp-3); align-items: flex-end; }
 .ml-campo { display: flex; flex-direction: column; gap: var(--ig-esp-1); font-size: var(--ig-texto-sm); min-width: 0; }

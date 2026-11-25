@@ -86,6 +86,14 @@ export interface LeyQueTeAplicaDto {
   disponible: boolean;
   anual: boolean;
   enMisLeyes?: string | null;
+  /** Sin reglamento propio: otros reglamentos del lugar que tratan el tema y en qué artículos. */
+  loTratan?: ReglamentoQueLoTrataDto[];
+}
+
+export interface ReglamentoQueLoTrataDto {
+  nombre: string;
+  donde?: string | null;
+  id?: string | null;
 }
 
 export interface LeyesQueTeAplicanDto {

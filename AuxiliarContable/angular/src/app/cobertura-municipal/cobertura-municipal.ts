@@ -85,6 +85,8 @@ export interface NormaDeCoberturaDto {
   nota?: string | null;
   ultimaReforma?: string | null;
   url?: string | null;
+  /** Sin reglamento propio: qué otros reglamentos del lugar lo tratan. */
+  loTratan?: { nombre: string; donde?: string | null; id?: string | null }[];
 }
 
 export interface BalanceConNormasDto extends BalanceDto {

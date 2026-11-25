@@ -701,7 +701,8 @@ public class MotorFiscalDePrueba : IMotorFiscal
             "\"pide\":\"Programa interno\",\"temas\":[],\"anual\":false,\"ficha\":{\"estatus\":\"local\",\"nombre\":\"Ley Estatal de Protección Civil de Prueba\"," +
             "\"url\":\"https://leyes.ejemplo.gob.mx/pc.pdf\",\"ultima_reforma\":\"2026-01-01\",\"disponible\":true}}," +
             "{\"id\":\"mejora_regulatoria\",\"nombre\":\"Ley de mejora regulatoria\",\"bloque\":\"A\",\"motivos\":[\"todos\"],\"pide\":\"Trámites\"," +
-            "\"temas\":[],\"anual\":false,\"ficha\":{\"estatus\":\"pendiente\",\"disponible\":false}}," +
+            "\"temas\":[],\"anual\":false,\"ficha\":{\"estatus\":\"pendiente\",\"disponible\":false," +
+            "\"lo_tratan\":[{\"nombre\":\"Bando de Policía y Gobierno\",\"donde\":\"arts. 27, 126\",\"id\":\"m_bando\"},{\"donde\":\"sin nombre: se ignora\"}]}}," +
             "{\"id\":\"m_proteccion_civil\",\"nombre\":\"Reglamento municipal de protección civil\",\"bloque\":\"MC\",\"ambito\":\"municipal\"," +
             "\"clasificacion\":\"actividad\",\"motivos\":[\"tiene local\"],\"pide\":\"Visto bueno\",\"temas\":[],\"anual\":false," +
             "\"ficha\":{\"estatus\":\"local\",\"nombre\":\"Reglamento de Protección Civil de Guadalajara\",\"disponible\":true}}]}");

@@ -178,6 +178,9 @@ public class NormaDeCoberturaDto
     public string? Nota { get; set; }
     public string? UltimaReforma { get; set; }
     public string? Url { get; set; }
+
+    /// <summary>Sin reglamento propio: qué otros reglamentos del lugar tratan el tema.</summary>
+    public List<ReglamentoQueLoTrataDto> LoTratan { get; set; } = [];
 }
 
 public class PrioridadDelVigiaDto

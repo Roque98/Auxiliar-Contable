@@ -177,7 +177,12 @@ public class LeyesDelClienteIntegrationTests : ConJerarquiaTestBase
         pc.Disponible.ShouldBeTrue();
         pc.NombreOficial.ShouldBe("Ley Estatal de Protección Civil de Prueba");
         pc.EnMisLeyes.ShouldBeNull();
-        r.Leyes.Single(x => x.Id == "mejora_regulatoria").Estatus.ShouldBe("pendiente");
+        var mr = r.Leyes.Single(x => x.Id == "mejora_regulatoria");
+        mr.Estatus.ShouldBe("pendiente");
+        var lt = mr.LoTratan.ShouldHaveSingleItem(); // sin reglamento propio: quién lo trata y dónde
+        lt.Nombre.ShouldBe("Bando de Policía y Gobierno");
+        lt.Donde.ShouldBe("arts. 27, 126");
+        lt.Id.ShouldBe("m_bando");
 
         // Al motor va el perfil sin nombre ni RFC: solo la forma jurídica y los disparadores contestados
         var (perfil, estado) = _motor.CatalogosPedidos.ShouldHaveSingleItem();

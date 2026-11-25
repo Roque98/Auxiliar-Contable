@@ -167,6 +167,13 @@
             <strong>{{ n.titulo || n.nombre }}</strong>
             @if (n.motivo) { <span class="cm-motivo">{{ n.motivo }}</span> }
             @if (n.nota) { <span class="cm-nota-norma">{{ n.nota }}</span> }
+            @if (n.loTratan?.length) {
+              <span class="cm-nota-norma">Lo tratan:
+                @for (r of n.loTratan; track r.nombre; let ultimo = $last) {
+                  <span>{{ r.nombre }}@if (r.donde) { <span> ({{ r.donde }})</span> }@if (!ultimo) { <span>; </span> }</span>
+                }
+              </span>
+            }
             @if (n.ultimaReforma || n.url) {
               <span class="cm-cuenta">
                 @if (n.ultimaReforma) { <span>Última reforma {{ n.ultimaReforma }}</span> }
