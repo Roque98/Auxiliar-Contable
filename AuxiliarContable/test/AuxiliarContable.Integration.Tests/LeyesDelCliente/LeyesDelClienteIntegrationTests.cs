@@ -252,6 +252,47 @@ public class LeyesDelClienteIntegrationTests : ConJerarquiaTestBase
         enviados.ShouldAllBe(d => !((string)d["domicilio"]!).Contains('5') && !((string)d["domicilio"]!).Contains("Calle"));
     }
 
+    [Fact]
+    public async Task Mapa_de_control_balance_expediente_y_prioridad_del_vigia()
+    {
+        var mapa = GetRequiredService<ICoberturaMunicipalAppService>();
+        await ComoAsync(Administrador, () => GetRequiredService<IPerfilFiscalAppService>().ResponderAsync(_otro,
+            new ResponderDatoDelPerfilDto { Campo = CamposDelPerfil.DomicilioFiscal, Valor = "Calle 2 #5, Centro, Acatic, Jalisco, 45470" }));
+
+        // Balance contra el catálogo y municipios no elegidos con su motivo
+        var r = await ComoAsync(Administrador, () => mapa.GetReporteAsync());
+        r.Elegidos.ShouldBe(2);
+        r.UniversoMunicipal.ShouldBe(40);
+        r.MotivosFuera["chico"].ShouldContain("30 000");
+        var jal = r.Estados.ShouldHaveSingleItem();
+        jal.Estatal.Completo.ShouldBeTrue();
+        jal.Estatal.NoAplicaPorNoExistir.ShouldBe(8);
+        var gdl = jal.ConFicha.ShouldHaveSingleItem();
+        (gdl.Nombre, gdl.Nivel, gdl.NoAplica, gdl.NoAplicaPorOtraAutoridad, gdl.NoEncontrado).ShouldBe(("Guadalajara", "cubierto", 36, 30, 1));
+        jal.NoElegidos.ShouldHaveSingleItem().Motivo.ShouldBe("chico");
+
+        // Expediente norma por norma: solo el despacho; estado desconocido o mal escrito = 404; una url que no es web no pasa
+        await Should.ThrowAsync<AbpAuthorizationException>(() => ComoAsync(Usuario, () => mapa.GetExpedienteAsync("JAL")));
+        await Should.ThrowAsync<Volo.Abp.Domain.Entities.EntityNotFoundException>(() => ComoAsync(Administrador, () => mapa.GetExpedienteAsync("OAX")));
+        await Should.ThrowAsync<Volo.Abp.Domain.Entities.EntityNotFoundException>(() => ComoAsync(Administrador, () => mapa.GetExpedienteAsync("../x")));
+        var x = await ComoAsync(Administrador, () => mapa.GetExpedienteAsync("jal"));
+        var rastro = x.Municipios.ShouldHaveSingleItem().Normas.ShouldHaveSingleItem();
+        (rastro.Clase, rastro.Nota, rastro.Url).ShouldBe(("no_aplica", "No tiene rastro municipal", null));
+        rastro.Motivo!.ShouldStartWith("B)");
+
+        // Prioridad del vigía: solo carpetas «EDO/municipio», sin nombres ni domicilios; solo el despacho
+        await Should.ThrowAsync<AbpAuthorizationException>(() => ComoAsync(Usuario, () => mapa.GetPrioridadDelVigiaAsync()));
+        var p = await ComoAsync(Administrador, () => mapa.GetPrioridadDelVigiaAsync());
+        p.Municipios.ShouldContain("JAL/acatic");
+        p.Municipios.ShouldBeUnique();
+        p.Municipios.ShouldAllBe(m => System.Text.RegularExpressions.Regex.IsMatch(m, "^[A-Z]{2,5}/[a-z0-9_]+$"));
+
+        _motor.Caido = true;
+        (await ComoAsync(Administrador, () => mapa.GetPrioridadDelVigiaAsync())).Aviso.ShouldNotBeNull();
+        await Should.ThrowAsync<UserFriendlyException>(() => ComoAsync(Administrador, () => mapa.GetExpedienteAsync("JAL")));
+        _motor.Caido = false;
+    }
+
     [Theory]
     [InlineData("PANADERIA DE PRUEBA S.C.", "S.C.")]
     [InlineData("CONSTRUCTORA DEL CENTRO, S.A. DE C.V.", "S.A. DE C.V.")]

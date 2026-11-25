@@ -1,7 +1,7 @@
-<h1>Cobertura municipal</h1>
+<h1>Cobertura de leyes y reglamentos</h1>
 <p class="cm-nota">
-  Qué municipios tienen sus reglamentos en la plataforma. De los clientes en un municipio no cubierto solo tenemos lo federal y lo
-  estatal; ellos pueden subir sus reglamentos en «Mis leyes».
+  Qué leyes estatales y qué reglamentos municipales tenemos de cada estado y municipio, medidos contra todo el catálogo: lo que
+  tenemos, lo que no aplica (y por qué), lo que no se encontró en fuente oficial y lo que falta revisar.
 </p>
 
 @if (error(); as e) {
@@ -12,17 +12,121 @@
   @if (d.aviso) { <div class="ig-alerta ig-alerta-aviso" role="note">{{ d.aviso }}</div> }
 
   <div class="cm-totales">
-    <div class="ig-panel"><strong>{{ d.cubiertos }}</strong><span>municipios cubiertos</span></div>
-    <div class="ig-panel"><strong>{{ d.parciales }}</strong><span>con algunos reglamentos</span></div>
-    <div class="ig-panel"><strong>{{ d.sinFuente }}</strong><span>sin nada en línea</span></div>
-    <div class="ig-panel"><strong>{{ d.enProceso }}</strong><span>en proceso</span></div>
-    <div class="ig-panel"><strong>{{ d.noCubiertos }}</strong><span>no cubiertos</span></div>
+    <div class="ig-panel"><strong>{{ estatalesCompletos() }} de {{ d.estados.length }}</strong><span>estados con todas sus leyes ({{ d.universoEstatal }} del catálogo)</span></div>
+    <div class="ig-panel"><strong>{{ estatalesPendientes() }}</strong><span>leyes estatales por conseguir</span></div>
+    <div class="ig-panel"><strong>{{ d.cubiertos }} de {{ d.elegidos }}</strong><span>municipios elegidos con sus reglamentos principales</span></div>
+    <div class="ig-panel"><strong>{{ d.completos }}</strong><span>municipios completos (todo tenido o con motivo)</span></div>
+    <div class="ig-panel"><strong>{{ sinRevisarMunicipal() | number }}</strong><span>reglamentos municipales sin revisar</span></div>
   </div>
-  @if (d.criterio) {
-    <p class="cm-nota"><strong>Criterio:</strong> {{ d.criterio }}
-      @if (d.minimoCubierto) { Cuenta como cubierto con al menos {{ d.minimoCubierto }} reglamentos propios (o un código reglamentario que reúna la mayoría). }
-    </p>
-  }
+
+  <details class="cm-clases">
+    <summary>Qué significa cada cosa</summary>
+    <ul>
+      <li><i class="cm-c cm-c-tenemos"></i><strong>Tenemos:</strong> el texto vigente está en la plataforma.</li>
+      <li><i class="cm-c cm-c-no_aplica"></i><strong>No aplica:</strong> A) lo regula el estado, la federación o el municipio; B) no existe en ese lugar o lo cubre otra norma.</li>
+      <li><i class="cm-c cm-c-no_encontrado"></i><strong>No encontrado:</strong> C) debería existir y no se encontró el texto oficial.</li>
+      <li><i class="cm-c cm-c-sin_revisar"></i><strong>Sin revisar:</strong> nadie lo ha buscado todavía.</li>
+      <li><strong>Municipio cubierto:</strong> al menos {{ d.minimoCubierto }} reglamentos propios, o ya tiene todo lo que le aplica. <strong>Parcial:</strong> solo algunos.</li>
+    </ul>
+    @if (d.criterio) { <p class="cm-nota"><strong>Municipios elegidos:</strong> {{ d.criterio }}</p> }
+  </details>
+
+  <div class="cm-trabajo">
+    <section aria-label="Mapa de México">
+      <div class="cm-vista" role="group" aria-label="Qué colorea el mapa">
+        <button type="button" class="ig-btn ig-btn-chico" [class.ig-btn-principal]="vista() === 'municipal'" [class.ig-btn-secundario]="vista() !== 'municipal'"
+          [attr.aria-pressed]="vista() === 'municipal'" (click)="vista.set('municipal')">Municipal: población cubierta</button>
+        <button type="button" class="ig-btn ig-btn-chico" [class.ig-btn-principal]="vista() === 'estatal'" [class.ig-btn-secundario]="vista() !== 'estatal'"
+          [attr.aria-pressed]="vista() === 'estatal'" (click)="vista.set('estatal')">Estatal: leyes</button>
+      </div>
+      <div class="cm-mapa" data-testid="mapa-cobertura">
+        @for (c of celdas(); track $index) {
+          @if (c) {
+            <button type="button" class="cm-cuadro cm-n{{ nivel(c) }}" [attr.aria-pressed]="c.estado === elegido()"
+              [attr.aria-label]="c.nombre + ': ' + datoDeCelda(c)" (click)="elegir(c.estado)">
+              {{ c.estado }}<small>{{ datoDeCelda(c) }}</small>
+            </button>
+          } @else {
+            <span></span>
+          }
+        }
+      </div>
+      <div class="cm-leyenda">
+        @if (vista() === 'municipal') {
+          <span><i class="cm-n0"></i>menos de 15 %</span><span><i class="cm-n1"></i>15–34 %</span><span><i class="cm-n2"></i>35–54 %</span>
+          <span><i class="cm-n3"></i>55–79 %</span><span><i class="cm-n4"></i>80 % o más</span>
+          <span>de la población vive en un municipio cubierto</span>
+        } @else {
+          <span><i class="cm-n4"></i>completo</span><span><i class="cm-n3"></i>falta hasta 3 %</span><span><i class="cm-n2"></i>hasta 10 %</span>
+          <span><i class="cm-n0"></i>más del 10 %</span>
+        }
+      </div>
+    </section>
+
+    @if (estado(); as e) {
+      <section class="ig-panel cm-expediente" aria-live="polite" data-testid="expediente">
+        <h2 class="cm-subtitulo">{{ e.nombre }}</h2>
+
+        <h3 class="cm-h3">Leyes estatales</h3>
+        @if (e.estatal; as b) {
+          <div class="cm-barra" role="img" [attr.aria-label]="'Tenemos ' + b.tenemos + ', no aplica ' + b.noAplica + ', no encontradas ' + b.noEncontrado + ', sin revisar ' + b.sinRevisar">
+            @for (t of tramos(b); track t.clase) { <b class="cm-c-{{ t.clase }}" [style.width.%]="t.pct"></b> }
+          </div>
+          <p class="cm-cuenta">{{ b.tenemos }} tenemos · {{ b.noAplica }} no aplican (A {{ b.noAplicaPorOtraAutoridad }}, B {{ b.noAplicaPorNoExistir }}) ·
+            {{ b.noEncontrado }} no encontradas · {{ b.sinRevisar }} sin revisar · de {{ b.universo }}
+            @if (b.revisado) { · revisada el {{ b.revisado }} }</p>
+          <button type="button" class="ig-btn ig-btn-secundario ig-btn-chico" (click)="alternar('estatal')" [attr.aria-expanded]="abierto() === 'estatal'">
+            {{ abierto() === 'estatal' ? 'Ocultar' : 'Ver' }} ley por ley
+          </button>
+          @if (abierto() === 'estatal') {
+            @if (expediente(); as x) {
+              <ng-container *ngTemplateOutlet="normas; context: { $implicit: x.estatal.normas }" />
+            } @else { <div class="ig-esqueleto" style="height: 4rem" aria-busy="true"></div> }
+          }
+        }
+
+        <h3 class="cm-h3">Municipios</h3>
+        <p class="cm-cuenta">{{ e.municipios }} en el estado · {{ e.elegidos }} elegidos · {{ e.poblacionCubiertaPct ?? 0 | number: '1.0-1' }} % de la población cubierta</p>
+        @if (errorExpediente(); as ee) { <div class="ig-alerta ig-alerta-error" role="alert">{{ ee }}</div> }
+        <ul class="cm-municipios">
+          @for (m of e.conFicha ?? []; track m.cvegeo) {
+            <li>
+              <button type="button" class="cm-municipio" (click)="alternar(m.cvegeo)" [attr.aria-expanded]="abierto() === m.cvegeo">
+                <span class="cm-nombre">{{ m.nombre }} <small>{{ m.poblacion | number }} hab.</small></span>
+                <span class="ig-etiqueta" [class.ig-etiqueta-exito]="m.completo || m.nivel === 'cubierto'" [class.ig-etiqueta-alerta]="!m.completo && m.nivel !== 'cubierto'">
+                  {{ textoDeNivel(m.nivel, m.completo) }}</span>
+                <span class="cm-barra cm-barra-chica">@for (t of tramos(m); track t.clase) { <b class="cm-c-{{ t.clase }}" [style.width.%]="t.pct"></b> }</span>
+                <span class="cm-cuenta">{{ m.tenemos }} tenemos · {{ m.noAplica }} no aplican · {{ m.noEncontrado }} no encontrados · {{ m.sinRevisar }} sin revisar</span>
+              </button>
+              @if (abierto() === m.cvegeo) {
+                @if (expediente(); as x) {
+                  @for (xm of x.municipios; track xm.cvegeo) {
+                    @if (xm.cvegeo === m.cvegeo) { <ng-container *ngTemplateOutlet="normas; context: { $implicit: xm.normas }" /> }
+                  }
+                } @else { <div class="ig-esqueleto" style="height: 4rem" aria-busy="true"></div> }
+              }
+            </li>
+          } @empty {
+            <li class="ig-vacio">Ningún municipio de este estado tiene ficha todavía.</li>
+          }
+        </ul>
+
+        @if (noElegidosPorMotivo().length) {
+          <details class="cm-fuera">
+            <summary>No elegidos ({{ e.noElegidos?.length }}) y por qué</summary>
+            @for (g of noElegidosPorMotivo(); track g.motivo) {
+              <p class="cm-nota"><strong>{{ textoDeMotivo(g.motivo) }}</strong></p>
+              <p class="cm-lista">
+                @for (m of g.municipios; track m.nombre; let ultimo = $last) {
+                  <span>{{ m.nombre }} ({{ m.poblacion | number }}){{ ultimo ? '' : ', ' }}</span>
+                }
+              </p>
+            }
+          </details>
+        }
+      </section>
+    }
+  </div>
 
   <h2 class="cm-subtitulo">Clientes fuera de cobertura</h2>
   @if (!d.clientes.length) {
@@ -42,24 +146,36 @@
     </ul>
   }
 
-  <div class="cm-cabeza">
-    <h2 class="cm-subtitulo">Por estado</h2>
+  <div class="cm-acciones">
     <button type="button" class="ig-btn ig-btn-secundario ig-btn-chico" (click)="descargar()">
       <i class="bi bi-download" aria-hidden="true"></i> Descargar CSV
     </button>
+    <button type="button" class="ig-btn ig-btn-secundario ig-btn-chico" (click)="descargarPrioridad()" data-testid="prioridad-vigia">
+      <i class="bi bi-list-check" aria-hidden="true"></i> Municipios de clientes para el vigía (prioridad.txt)
+    </button>
   </div>
-  @for (e of d.estados; track e.estado) {
-    <details class="cm-estado">
-      <summary>
-        <span>{{ e.nombre }}</span>
-        <span class="cm-cuenta">{{ e.cubiertos.length }} de {{ e.municipios }} cubiertos · {{ e.parciales.length }} parciales ·
-          {{ e.poblacionCubiertaPct ?? 0 | number: '1.0-1' }} % de la población</span>
-      </summary>
-      @if (e.cubiertos.length) { <p class="cm-lista"><strong>Cubiertos:</strong> {{ e.cubiertos.join(', ') }}</p> }
-      @if (e.parciales.length) { <p class="cm-lista"><strong>Con algunos reglamentos:</strong> {{ e.parciales.join(', ') }}</p> }
-      @if (e.sinFuente.length) { <p class="cm-lista"><strong>Sin nada en línea:</strong> {{ e.sinFuente.join(', ') }}</p> }
-      @if (e.enProceso.length) { <p class="cm-lista"><strong>En proceso:</strong> {{ e.enProceso.join(', ') }}</p> }
-      @if (e.noCubiertos.length) { <p class="cm-lista"><strong>No cubiertos ({{ e.noCubiertos.length }}):</strong> {{ e.noCubiertos.join(', ') }}</p> }
-    </details>
-  }
+  @if (avisoPrioridad(); as a) { <p class="cm-nota" role="status">{{ a }}</p> }
 }
+
+<ng-template #normas let-normas>
+  <div class="cm-normas">
+    @for (g of normasPorClase(normas); track g.clase) {
+      <h4 class="cm-h4"><i class="cm-c cm-c-{{ g.clase }}"></i>{{ g.titulo }} ({{ g.normas.length }})</h4>
+      <ul>
+        @for (n of g.normas; track n.id) {
+          <li>
+            <strong>{{ n.titulo || n.nombre }}</strong>
+            @if (n.motivo) { <span class="cm-motivo">{{ n.motivo }}</span> }
+            @if (n.nota) { <span class="cm-nota-norma">{{ n.nota }}</span> }
+            @if (n.ultimaReforma || n.url) {
+              <span class="cm-cuenta">
+                @if (n.ultimaReforma) { <span>Última reforma {{ n.ultimaReforma }}</span> }
+                @if (n.url) { <a [href]="n.url" target="_blank" rel="noopener noreferrer">fuente oficial</a> }
+              </span>
+            }
+          </li>
+        }
+      </ul>
+    }
+  </div>
+</ng-template>

@@ -293,14 +293,18 @@ export const SECCIONES: Seccion[] = [
         icono: 'bi-map',
         ruta: '/cobertura-municipal',
         texto: [
-          'Qué municipios tienen sus reglamentos en la plataforma: en todos los estados, los más poblados y formales (no un número fijo por estado).',
+          'Mapa de control: qué leyes estatales y qué reglamentos municipales tenemos de cada estado y municipio, medidos contra todo el catálogo (72 leyes estatales y 40 reglamentos municipales).',
+          'Cada norma cae en una clase: tenemos; no aplica (A: lo regula el estado, la federación o el municipio; B: no existe ahí o la cubre otra norma); no encontrado (C: debería existir y no hay texto oficial); o sin revisar.',
         ],
         pasos: [
           'Abre «Cobertura municipal» en el menú (solo el equipo del despacho).',
-          'Arriba, los clientes que están en un municipio no cubierto o del que no se supo el municipio: de ellos solo tenemos lo federal y lo estatal.',
-          'Abajo, por estado: cubiertos (al menos 5 reglamentos propios), con algunos reglamentos (por ejemplo solo la ley de ingresos), sin nada en línea (portal caído o bloqueado), en proceso y no cubiertos, con el criterio de selección; «Descargar CSV» los baja para Excel.',
+          'Arriba, las cifras: estados con todas sus leyes, municipios elegidos con sus reglamentos principales, municipios completos y lo que falta revisar.',
+          'En el mapa de México elige qué colorear: «Municipal» (cuánta población vive en un municipio cubierto) o «Estatal» (cuánto del catálogo estatal tenemos). Toca un estado para ver su expediente.',
+          'En el expediente: la barra de sus leyes estatales y «Ver ley por ley»; sus municipios con ficha, cada uno con su barra (toca uno para ver reglamento por reglamento, con el motivo de lo que no aplica y la fuente oficial); y los municipios no elegidos, agrupados por el motivo.',
+          'Abajo, los clientes en un municipio no cubierto o del que no se supo el municipio: de ellos solo tenemos lo federal y lo estatal.',
+          '«Descargar CSV» baja la cobertura para Excel; «Municipios de clientes para el vigía» baja prioridad.txt (solo estado/municipio, sin nombres) para la revisión mensual de reglamentos.',
         ],
-        nota: 'El cliente de un municipio no cubierto lo ve en su perfil fiscal y en «Mis leyes», y puede subir sus reglamentos.',
+        nota: 'Un municipio que ya tiene todo lo que le aplica cuenta como cubierto aunque tenga pocos reglamentos. El cliente de un municipio no cubierto lo ve en su perfil fiscal y en «Mis leyes», y puede subir sus reglamentos.',
       },
       {
         titulo: 'Efectivo y crédito',

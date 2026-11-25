@@ -707,22 +707,55 @@ public class MotorFiscalDePrueba : IMotorFiscal
             "\"ficha\":{\"estatus\":\"local\",\"nombre\":\"Reglamento de Protección Civil de Guadalajara\",\"disponible\":true}}]}");
     }
 
+    private const string BalanceDePrueba = "\"universo\":40,\"tenemos\":3,\"no_aplica\":36,\"no_aplica_motivo\":{\"A\":30,\"B\":6}," +
+                                           "\"no_encontrado\":1,\"sin_revisar\":0,\"avance_pct\":97.5,\"completo\":false";
+
     public Task<string> CoberturaMunicipalAsync(CancellationToken cancellationToken = default) =>
         Caido ? throw new MotorFiscalNoDisponibleException("El motor fiscal no responde.")
-            : Task.FromResult("{\"criterio\":\"Criterio de prueba\",\"totales\":{\"cubierto\":1,\"seleccionado\":1,\"no_cubierto\":1}," +
-                              "\"estados\":[{\"estado\":\"JAL\",\"nombre\":\"Jalisco\",\"municipios\":3,\"poblacion_cubierta_pct\":50.0," +
-                              "\"poblacion_seleccionada_pct\":80.0,\"cubierto\":[{\"cvegeo\":\"14039\",\"nombre\":\"Guadalajara\",\"poblacion\":1}]," +
-                              "\"seleccionado\":[{\"cvegeo\":\"14120\",\"nombre\":\"Zapopan\",\"poblacion\":1}]," +
-                              "\"no_cubierto\":[{\"cvegeo\":\"14001\",\"nombre\":\"Acatic\",\"poblacion\":1}]}]}");
+            : Task.FromResult("{\"criterio\":\"Criterio de prueba\",\"elegidos\":2,\"completos\":0,\"universo_municipal\":40,\"universo_estatal\":72," +
+                              "\"motivos_fuera\":{\"chico\":\"Menos de 30 000 habitantes\"}," +
+                              "\"totales\":{\"cubierto\":1,\"seleccionado\":1,\"no_cubierto\":1}," +
+                              "\"estados\":[{\"estado\":\"JAL\",\"nombre\":\"Jalisco\",\"municipios\":3,\"elegidos\":2,\"poblacion_cubierta_pct\":50.0," +
+                              "\"poblacion_seleccionada_pct\":80.0,\"estatal\":{\"universo\":72,\"tenemos\":60,\"no_aplica\":12," +
+                              "\"no_aplica_motivo\":{\"A\":4,\"B\":8},\"no_encontrado\":0,\"sin_revisar\":0,\"avance_pct\":100.0,\"completo\":true," +
+                              "\"revisado\":\"2026-11-22\"}," +
+                              "\"cubierto\":[{\"cvegeo\":\"14039\",\"nombre\":\"Guadalajara\",\"poblacion\":1385629,\"elegido\":true," + BalanceDePrueba + "}]," +
+                              "\"seleccionado\":[{\"cvegeo\":\"14120\",\"nombre\":\"Zapopan\",\"poblacion\":1,\"elegido\":true}]," +
+                              "\"no_cubierto\":[{\"cvegeo\":\"14001\",\"nombre\":\"Acatic\",\"poblacion\":23000,\"elegido\":false,\"motivo\":\"chico\"}]}]}");
+
+    public Task<string> ExpedienteDeCoberturaAsync(string estado, CancellationToken cancellationToken = default)
+    {
+        if (Caido)
+        {
+            throw new MotorFiscalNoDisponibleException("El motor fiscal no responde.");
+        }
+
+        if (estado != "JAL")
+        {
+            throw new MotorFiscalNoDisponibleException("El motor fiscal respondió 404.") { Data = { ["Codigo"] = 404 } };
+        }
+
+        const string norma = "{\"id\":\"m_rastro\",\"nombre\":\"Reglamento de rastro\",\"bloque\":\"MD\",\"clase\":\"no_aplica\"," +
+                             "\"motivo\":\"B) No existe en este lugar o la cubre otra norma\",\"nota\":\"No tiene rastro municipal\",\"url\":\"javascript:x\"}";
+        return Task.FromResult("{\"estado\":\"JAL\",\"nombre\":\"Jalisco\",\"revisado\":\"2026-11-22\",\"estatal\":{\"universo\":72,\"tenemos\":60," +
+                               "\"no_aplica\":12,\"no_aplica_motivo\":{\"A\":4,\"B\":8},\"no_encontrado\":0,\"sin_revisar\":0,\"avance_pct\":100.0," +
+                               "\"completo\":true,\"normas\":[]},\"municipios\":[{\"cvegeo\":\"14039\",\"nombre\":\"Guadalajara\",\"poblacion\":1385629," +
+                               "\"nivel\":\"cubierto\"," + BalanceDePrueba + ",\"normas\":[" + norma + "]}]}");
+    }
 
     public List<IReadOnlyList<IReadOnlyDictionary<string, object?>>> DomiciliosPedidos { get; } = [];
 
     public Task<string> MunicipiosDeAsync(IReadOnlyList<IReadOnlyDictionary<string, object?>> domicilios, CancellationToken cancellationToken = default)
     {
+        if (Caido)
+        {
+            throw new MotorFiscalNoDisponibleException("El motor fiscal no responde.");
+        }
+
         DomiciliosPedidos.Add(domicilios);
         var filas = domicilios.Select(d => (d["domicilio"] as string ?? "").Contains("Guadalajara")
-            ? $"{{\"id\":\"{d["id"]}\",\"estado\":\"JAL\",\"municipio\":\"Guadalajara\",\"cvegeo\":\"14039\",\"cobertura\":\"cubierto\"}}"
-            : $"{{\"id\":\"{d["id"]}\",\"estado\":\"{d["estado"]}\",\"municipio\":\"Acatic\",\"cvegeo\":\"14001\",\"cobertura\":\"no_cubierto\"}}");
+            ? $"{{\"id\":\"{d["id"]}\",\"estado\":\"JAL\",\"municipio\":\"Guadalajara\",\"cvegeo\":\"14039\",\"carpeta\":\"guadalajara\",\"cobertura\":\"cubierto\"}}"
+            : $"{{\"id\":\"{d["id"]}\",\"estado\":\"{d["estado"]}\",\"municipio\":\"Acatic\",\"cvegeo\":\"14001\",\"carpeta\":\"acatic\",\"cobertura\":\"no_cubierto\"}}");
         return Task.FromResult("[" + string.Join(",", filas) + "]");
     }
 
