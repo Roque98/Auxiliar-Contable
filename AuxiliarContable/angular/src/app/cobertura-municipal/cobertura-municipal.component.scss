@@ -1,18 +1,98 @@
-/* Cobertura municipal: totales, clientes fuera de cobertura y estados plegables. Se apila en el teléfono. */
-:host { display: block; }
+/* Mapa de control de cobertura: totales, mosaico de México + expediente del estado, clientes. Se apila en el teléfono. */
+:host {
+  display: block;
+  --cm-tenemos: var(--ig-exito);
+  --cm-no-aplica: var(--ig-gris-medio);
+  --cm-no-encontrado: var(--ig-alerta);
+  --cm-sin-revisar: var(--ig-gris-claro);
+}
 .cm-nota { color: var(--ig-texto-secundario); font-size: var(--ig-texto-sm); }
 .cm-subtitulo { font-size: var(--ig-titulo-3); font-weight: var(--ig-peso-semi); margin: var(--ig-esp-4) 0 var(--ig-esp-2); }
-.cm-totales { display: grid; grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr)); gap: var(--ig-esp-2); }
+.cm-h3 { font-size: var(--ig-texto-lg); font-weight: var(--ig-peso-semi); margin: var(--ig-esp-3) 0 var(--ig-esp-1); }
+.cm-h4 { font-size: var(--ig-texto-md); font-weight: var(--ig-peso-semi); margin: var(--ig-esp-3) 0 var(--ig-esp-1); display: flex; align-items: center; gap: var(--ig-esp-2); }
+.cm-totales { display: grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); gap: var(--ig-esp-2); }
 .cm-totales > div { display: flex; flex-direction: column; gap: var(--ig-esp-1); }
 .cm-totales strong { font-size: var(--ig-titulo-2); }
-.cm-clientes { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--ig-esp-2); }
-.cm-clientes li { display: flex; flex-wrap: wrap; gap: var(--ig-esp-2); align-items: center; min-width: 0; }
-.cm-cabeza { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: var(--ig-esp-2); }
-.cm-estado {
+.cm-clases { margin: var(--ig-esp-3) 0; }
+.cm-clases summary, .cm-fuera summary { cursor: pointer; min-height: 2.75rem; display: flex; align-items: center; color: var(--ig-texto-secundario); }
+.cm-clases ul { list-style: none; padding: 0; margin: 0; display: grid; gap: var(--ig-esp-1); font-size: var(--ig-texto-sm); }
+.cm-clases li { display: flex; gap: var(--ig-esp-2); align-items: baseline; }
+
+.cm-trabajo { display: grid; gap: var(--ig-esp-4); grid-template-columns: minmax(0, 1fr); align-items: start; }
+@media (min-width: 64rem) { .cm-trabajo { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); } }
+.cm-vista { display: flex; flex-wrap: wrap; gap: var(--ig-esp-2); margin-bottom: var(--ig-esp-2); }
+.cm-mapa {
+  display: grid;
+  grid-template-columns: repeat(11, minmax(0, 1fr));
+  gap: 3px;
+  padding: var(--ig-esp-2);
   border: var(--ig-borde);
   border-radius: var(--ig-radio-md);
-  padding: var(--ig-esp-2) var(--ig-esp-3);
-  margin-bottom: var(--ig-esp-2);
 }
-.cm-estado > summary { cursor: pointer; min-height: 2.75rem; display: flex; flex-wrap: wrap; gap: var(--ig-esp-2); align-items: center; }
-.cm-cuenta, .cm-lista { font-size: var(--ig-texto-sm); color: var(--ig-texto-secundario); overflow-wrap: anywhere; }
+.cm-cuadro {
+  aspect-ratio: 1;
+  border: 0;
+  border-radius: var(--ig-radio-sm);
+  padding: 0;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-weight: var(--ig-peso-semi);
+  font-size: clamp(0.55rem, 1.6vw, 0.85rem);
+  line-height: 1.1;
+  color: var(--ig-tinta);
+  min-width: 0;
+  overflow: hidden;
+}
+.cm-cuadro small { font-weight: var(--ig-peso-normal); font-size: clamp(0.5rem, 1.1vw, 0.7rem); opacity: 0.85; }
+.cm-cuadro[aria-pressed='true'] { outline: 3px solid var(--ig-tinta); outline-offset: 1px; }
+.cm-cuadro:focus-visible { box-shadow: var(--ig-anillo-foco); }
+.cm-n0 { background: var(--ig-alerta-suave); }
+.cm-n1 { background: color-mix(in srgb, var(--ig-acento) 18%, var(--ig-fondo)); }
+.cm-n2 { background: color-mix(in srgb, var(--ig-acento) 38%, var(--ig-fondo)); }
+.cm-n3 { background: color-mix(in srgb, var(--ig-acento) 62%, var(--ig-fondo)); }
+.cm-n4 { background: var(--ig-acento); }
+.cm-cuadro.cm-n3, .cm-cuadro.cm-n4 { color: var(--ig-sobre-acento); }
+.cm-leyenda { display: flex; flex-wrap: wrap; gap: var(--ig-esp-1) var(--ig-esp-3); margin-top: var(--ig-esp-2); font-size: var(--ig-texto-xs); color: var(--ig-texto-secundario); }
+.cm-leyenda i, .cm-c { display: inline-block; width: 0.85rem; height: 0.85rem; border-radius: var(--ig-radio-xs); vertical-align: -0.1rem; margin-right: var(--ig-esp-1); flex: none; }
+
+.cm-expediente { min-width: 0; }
+.cm-barra { display: flex; height: 0.75rem; border-radius: var(--ig-radio-pastilla); overflow: hidden; background: var(--cm-sin-revisar); margin: var(--ig-esp-1) 0; }
+.cm-barra b { display: block; height: 100%; }
+.cm-barra-chica { height: 0.45rem; width: 100%; }
+.cm-c-tenemos { background: var(--cm-tenemos); }
+.cm-c-no_aplica { background: var(--cm-no-aplica); }
+.cm-c-no_encontrado { background: var(--cm-no-encontrado); }
+.cm-c-sin_revisar { background: var(--cm-sin-revisar); }
+.cm-cuenta, .cm-lista { font-size: var(--ig-texto-sm); color: var(--ig-texto-secundario); overflow-wrap: anywhere; margin: 0; }
+.cm-municipios { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--ig-esp-1); }
+.cm-municipio {
+  width: 100%;
+  min-height: 2.75rem;
+  text-align: left;
+  background: none;
+  border: 0;
+  border-bottom: var(--ig-borde);
+  padding: var(--ig-esp-2) 0;
+  cursor: pointer;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--ig-esp-1) var(--ig-esp-2);
+  align-items: center;
+  color: inherit;
+}
+.cm-municipio .cm-barra-chica, .cm-municipio .cm-cuenta { grid-column: 1 / -1; }
+.cm-municipio:focus-visible { box-shadow: var(--ig-anillo-foco); }
+.cm-nombre { font-weight: var(--ig-peso-medio); min-width: 0; overflow-wrap: anywhere; }
+.cm-nombre small { font-weight: var(--ig-peso-normal); color: var(--ig-texto-secundario); }
+.cm-normas ul { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--ig-esp-2); }
+.cm-normas li { display: flex; flex-direction: column; gap: 2px; font-size: var(--ig-texto-sm); min-width: 0; overflow-wrap: anywhere; }
+.cm-motivo { color: var(--ig-tinta); }
+.cm-nota-norma { color: var(--ig-texto-secundario); }
+.cm-fuera { margin-top: var(--ig-esp-3); }
+
+.cm-clientes { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--ig-esp-2); }
+.cm-clientes li { display: flex; flex-wrap: wrap; gap: var(--ig-esp-2); align-items: center; min-width: 0; }
+.cm-acciones { display: flex; flex-wrap: wrap; gap: var(--ig-esp-2); margin-top: var(--ig-esp-4); }

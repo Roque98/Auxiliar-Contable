@@ -548,6 +548,14 @@ public class MotorFiscalHttp : IMotorFiscal, ITransientDependency
         return r.GetRawText();
     }
 
+    public async Task<string> ExpedienteDeCoberturaAsync(string estado, CancellationToken cancellationToken = default)
+    {
+        using var tope = CancelationConTope(_opciones.TimeoutSegundos, cancellationToken);
+        var r = await EnviarAsync<System.Text.Json.JsonElement>(
+            new HttpRequestMessage(HttpMethod.Get, "leyes-estatales/cobertura/" + Uri.EscapeDataString(estado)), tope.Token, cancellationToken);
+        return r.GetRawText();
+    }
+
     public async Task<string> MunicipiosDeAsync(IReadOnlyList<IReadOnlyDictionary<string, object?>> domicilios,
         CancellationToken cancellationToken = default)
     {

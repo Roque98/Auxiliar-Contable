@@ -232,6 +232,11 @@ public interface IMotorFiscal
     /// <summary>Municipio y cobertura de varios domicilios (<c>POST /leyes-estatales/municipios</c>); cada uno
     /// <c>{id, estado, domicilio}</c> con el domicilio ya sin calle ni números.</summary>
     Task<string> MunicipiosDeAsync(IReadOnlyList<IReadOnlyDictionary<string, object?>> domicilios, CancellationToken cancellationToken = default);
+
+    /// <summary>Expediente de un estado para el mapa de control (<c>GET /leyes-estatales/cobertura/{estado}</c>): su ficha estatal y
+    /// cada municipio con ficha, norma por norma (tenemos / no aplica y por qué / no encontrado / sin revisar). 404 en
+    /// <c>Data["Codigo"]</c> si el estado no tiene ficha.</summary>
+    Task<string> ExpedienteDeCoberturaAsync(string estado, CancellationToken cancellationToken = default);
 }
 
 /// <summary>Respuesta de <c>/leyes-propias/indexar</c> y <c>GET /leyes-propias/{sha}</c>.</summary>
@@ -466,5 +471,8 @@ public class MotorFiscalSinConfigurar : IMotorFiscal, ISingletonDependency
         throw new MotorFiscalNoDisponibleException("No hay motor fiscal en este proceso.");
 
     public Task<string> MunicipiosDeAsync(IReadOnlyList<IReadOnlyDictionary<string, object?>> domicilios, CancellationToken cancellationToken = default) =>
+        throw new MotorFiscalNoDisponibleException("No hay motor fiscal en este proceso.");
+
+    public Task<string> ExpedienteDeCoberturaAsync(string estado, CancellationToken cancellationToken = default) =>
         throw new MotorFiscalNoDisponibleException("No hay motor fiscal en este proceso.");
 }
