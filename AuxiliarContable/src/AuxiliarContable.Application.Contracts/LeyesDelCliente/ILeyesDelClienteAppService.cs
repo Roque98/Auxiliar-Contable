@@ -118,6 +118,21 @@ public class LeyQueTeAplicaDto
 
     /// <summary>Si ya está en «Mis leyes», su id.</summary>
     public Guid? EnMisLeyes { get; set; }
+
+    /// <summary>Cuando no hay reglamento propio: otros reglamentos del lugar que tratan el tema y en qué artículos.</summary>
+    public List<ReglamentoQueLoTrataDto> LoTratan { get; set; } = [];
+}
+
+/// <summary>Un reglamento del mismo lugar que regula un tema sin reglamento propio (p. ej. el Bando, para licencias).</summary>
+public class ReglamentoQueLoTrataDto
+{
+    public string Nombre { get; set; } = "";
+
+    /// <summary>«arts. 27, 126, 261».</summary>
+    public string? Donde { get; set; }
+
+    /// <summary>La norma del catálogo a la que pertenece ese reglamento, si es una.</summary>
+    public string? Id { get; set; }
 }
 
 public class MisLeyesDto

@@ -49,6 +49,16 @@
                 @if (l.url) { <a [href]="l.url" target="_blank" rel="noopener">Fuente oficial</a> }
               </div>
               @if (l.nota) { <p class="ml-nota">{{ l.nota }}</p> }
+              @if (l.loTratan?.length) {
+                <div class="ml-nota" data-testid="lo-tratan">
+                  <strong>No hay reglamento propio; el tema lo tratan:</strong>
+                  <ul class="ml-lo-tratan">
+                    @for (r of l.loTratan; track r.nombre) {
+                      <li>{{ r.nombre }}@if (r.donde) { <span> ({{ r.donde }})</span> }</li>
+                    }
+                  </ul>
+                </div>
+              }
               @if (l.disponible && !l.enMisLeyes) {
                 <div class="ml-acciones">
                   <button type="button" class="ig-btn ig-btn-secundario ig-btn-chico" [disabled]="ocupado() === l.id" (click)="usar(l)">
