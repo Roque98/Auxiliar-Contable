@@ -747,6 +747,11 @@ public class MotorFiscalDePrueba : IMotorFiscal
 
     public Task<string> MunicipiosDeAsync(IReadOnlyList<IReadOnlyDictionary<string, object?>> domicilios, CancellationToken cancellationToken = default)
     {
+        if (Caido)
+        {
+            throw new MotorFiscalNoDisponibleException("El motor fiscal no responde.");
+        }
+
         DomiciliosPedidos.Add(domicilios);
         var filas = domicilios.Select(d => (d["domicilio"] as string ?? "").Contains("Guadalajara")
             ? $"{{\"id\":\"{d["id"]}\",\"estado\":\"JAL\",\"municipio\":\"Guadalajara\",\"cvegeo\":\"14039\",\"carpeta\":\"guadalajara\",\"cobertura\":\"cubierto\"}}"
