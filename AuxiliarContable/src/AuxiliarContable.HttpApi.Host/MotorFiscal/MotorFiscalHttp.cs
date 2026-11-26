@@ -278,6 +278,14 @@ public class MotorFiscalHttp : IMotorFiscal, ITransientDependency
         return r.GetRawText();
     }
 
+    public async Task<string> LeerLeyAsync(string clave, int desde, int n, CancellationToken cancellationToken = default)
+    {
+        var ruta = $"rag/documento?clave={Uri.EscapeDataString(clave.Trim())}&desde={Math.Clamp(desde, 0, 20000)}&n={Math.Clamp(n, 1, 6)}";
+        using var tope = CancelationConTope(_opciones.TimeoutSegundos, cancellationToken);
+        var r = await EnviarAsync<System.Text.Json.JsonElement>(new HttpRequestMessage(HttpMethod.Get, ruta), tope.Token, cancellationToken);
+        return r.GetRawText();
+    }
+
     public async Task<string> TarifaIsrAsync(int dias, decimal? baseGravable, int? mes, CancellationToken cancellationToken = default)
     {
         var ruta = $"nomina/tarifa-isr?dias={dias}";

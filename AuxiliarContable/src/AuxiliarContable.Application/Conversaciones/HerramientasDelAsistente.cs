@@ -58,6 +58,7 @@ public class HerramientasDelAsistente : ITransientDependency
     public const string AnalizarOperacion = "analizar_operacion";
     public const string Solicitar = "solicitar";
     public const string TarifaIsr = "tarifa_isr";
+    public const string LeerLey = "leer_ley";
     public const string VerSolicitudes = "ver_solicitudes";
     public const string ResolverSolicitud = "resolver_solicitud";
     public const string SolicitudesPendientes = "solicitudes_pendientes";
@@ -70,12 +71,23 @@ public class HerramientasDelAsistente : ITransientDependency
 
     /// <summary>Consultar leyes no toca datos de nadie: vale igual en la conversación de un cliente y en la de la cartera.</summary>
     private static readonly HerramientaDelModelo DeLeyes = new(ConsultarLeyes,
-        "Busca en las leyes fiscales mexicanas vigentes (LISR, LIVA, CFF, LIEPS, LFT, LSS…), sus reglamentos, la Resolución " +
-        "Miscelánea Fiscal y las NIF. Devuelve los artículos más relevantes con su texto, la ley, el artículo y la última reforma. " +
-        "Úsala SIEMPRE que la respuesta dependa de lo que dice la ley (deducciones, obligaciones, plazos, tasas, requisitos) y cita " +
-        "ley y artículo. «ley» acota a unas siglas; omítela si no estás seguro. Pregunta con términos de la ley o con la cita " +
-        "(«artículo 27 LISR», «deducción de automóviles personas morales»).",
+        "Busca en las leyes federales vigentes (LISR, LIVA, CFF, LIEPS, LFT, LSS, Ley del INFONAVIT…), sus reglamentos, la " +
+        "Resolución Miscelánea Fiscal 2026 con TODOS sus anexos, las RGCE y las NIF. Devuelve los fragmentos más relevantes con " +
+        "ley, artículo y última reforma. Úsala SIEMPRE que la respuesta dependa de la ley y cita ley y artículo. Busca con las " +
+        "palabras de la ley o la cita («artículo 27 LISR»). «ley» acota a unas siglas. Dónde está cada cosa: RMF (reglas); " +
+        "RMF-A8 tarifas de ISR (retenciones a salarios «calculada en días» —la semanal es la diaria por 7—, mensual, anual, " +
+        "RESICO); RMF-A2 fichas de trámite; RMF-A3 y RMF-A7 criterios; RMF-A24 contabilidad electrónica; RMF-A29 CFDI; " +
+        "RMF-A5 cantidades actualizadas; Reg_LISR reglamento. Si la primera búsqueda no trae lo que necesitas, NO te rindas: " +
+        "reformula con otras palabras, acota con «ley» y lee el documento seguido con leer_ley.",
         """{"type":"object","properties":{"pregunta":{"type":"string","minLength":2,"maxLength":300},"ley":{"type":"string","maxLength":20}},"required":["pregunta"]}""");
+
+    /// <summary>Leer una ley seguida tampoco es de nadie.</summary>
+    private static readonly HerramientaDelModelo DeLeerLey = new(LeerLey,
+        "Lee un ordenamiento SEGUIDO, por partes (3 fragmentos por vez): las tablas completas de un anexo, un capítulo, lo que " +
+        "sigue de un artículo. «clave» son las siglas que devuelve consultar_leyes (LISR, RMF, RMF-A8, Reg_LISR_060516…); " +
+        "«desde» el fragmento por el que empiezas (0 = el inicio; usa «siguiente» para continuar). Úsala cuando consultar_leyes " +
+        "te dé un trozo y necesites la tabla o el texto completo.",
+        """{"type":"object","properties":{"clave":{"type":"string","minLength":2,"maxLength":40},"desde":{"type":"integer","minimum":0}},"required":["clave"]}""");
 
     /// <summary>La tarifa de ISR tampoco es de nadie: vale en el chat de un cliente y en el de la cartera.</summary>
     private static readonly HerramientaDelModelo DeTarifa = new(TarifaIsr,
@@ -207,6 +219,7 @@ public class HerramientasDelAsistente : ITransientDependency
                 "y cómo se pagaría. disparadores: solo los que la persona dijo o son obvios.",
                 EsquemaDeAnalizarOperacion),
             DeTarifa,
+            DeLeerLey,
             new(Solicitar,
                 "Deja una SOLICITUD registrada. Si escribe el cliente, va al despacho: un cambio o corrección que él no puede " +
                 "hacer (su contabilidad la cambia el despacho), o una aclaración. Si escribe el despacho, va al cliente: un " +
@@ -310,6 +323,7 @@ public class HerramientasDelAsistente : ITransientDependency
             LeyesQueLeAplican => "Revisó las leyes que te aplican",
             AnalizarOperacion => "Analizó la operación con la ley",
             TarifaIsr => "Consultó la tarifa de ISR",
+            LeerLey => "Leyó la ley",
             Solicitar => "Dejó una solicitud",
             VerSolicitudes or SolicitudesPendientes => "Revisó las solicitudes",
             ResolverSolicitud when uso.Entrada.ValueKind == JsonValueKind.Object && uso.Entrada.TryGetProperty("estado", out var es) =>
@@ -337,13 +351,14 @@ public class HerramientasDelAsistente : ITransientDependency
         DeLeyes,
         DeSentencias,
         DeTarifa,
+        DeLeerLey,
     ];
 
     public async Task<BloqueDeResultadoDeHerramienta> EjecutarAsync(Guid organizacionId, BloqueDeUsoDeHerramienta uso)
     {
         // El candado entre las dos clases de conversación: en la de la cartera (Guid.Empty) solo sus
         // herramientas (resumen y alta); en la de un cliente, nunca esas. Lo que pida el modelo no lo salta.
-        if (uso.Nombre is not (ConsultarLeyes or ConsultarSentencias or TarifaIsr) && (organizacionId == Guid.Empty) != (uso.Nombre is ResumenDeCartera or CrearCliente or SolicitudesPendientes))
+        if (uso.Nombre is not (ConsultarLeyes or ConsultarSentencias or TarifaIsr or LeerLey) && (organizacionId == Guid.Empty) != (uso.Nombre is ResumenDeCartera or CrearCliente or SolicitudesPendientes))
         {
             return new BloqueDeResultadoDeHerramienta(uso.Id, $"La herramienta «{uso.Nombre}» no está disponible en esta conversación.", EsError: true);
         }
@@ -392,6 +407,7 @@ public class HerramientasDelAsistente : ITransientDependency
                         Respuesta = Opcional(uso.Entrada, "respuesta"),
                     })]),
                 SolicitudesPendientes => SolicitudesJson(await _solicitudes.GetPendientesDelDespachoAsync()),
+                LeerLey => await _motor.LeerLeyAsync(Texto(uso.Entrada, "clave"), Entero(uso.Entrada, "desde") ?? 0, 3),
                 TarifaIsr => await _motor.TarifaIsrAsync(
                     Texto(uso.Entrada, "periodo") switch
                     {
@@ -608,7 +624,7 @@ public class HerramientasDelAsistente : ITransientDependency
 
     private async Task<string> LeyesAsync(JsonElement entrada)
     {
-        var resultados = await _motor.BuscarEnLeyesAsync(Texto(entrada, "pregunta").Trim(), Opcional(entrada, "ley"), cuantos: 5);
+        var resultados = await _motor.BuscarEnLeyesAsync(Texto(entrada, "pregunta").Trim(), Opcional(entrada, "ley"), cuantos: 6);
         if (resultados.Count == 0)
         {
             return "No se encontró nada con esa búsqueda. Prueba con otras palabras o sin acotar la ley.";
@@ -621,6 +637,7 @@ public class HerramientasDelAsistente : ITransientDependency
             articulo = r.Articulo,
             ubicacion = r.Ubicacion,
             ultimaReformaDof = r.UltimaReformaDof,
+            url = r.Url,
             vigencia = r.NotaDeVigencia,
             texto = r.Texto.Length > MaxCaracteresPorArticulo ? r.Texto[..MaxCaracteresPorArticulo] + " […]" : r.Texto,
         }), Json);

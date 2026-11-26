@@ -50,6 +50,8 @@ public class ClaudeGatewayConversacionalTests
         cuerpo.GetProperty("model").GetString().ShouldBe("sonnet");
         cuerpo.GetProperty("system").GetString()!.ShouldContain("## buscar_operaciones");
         cuerpo.GetProperty("prompt").GetString()!.ShouldContain("[PERSONA]\n¿Ya pagué Telmex?");
+        cuerpo.GetProperty("tools").EnumerateArray().Select(t => t.GetString()).ShouldBe(["WebSearch", "WebFetch"]);
+        cuerpo.GetProperty("system").GetString()!.ShouldContain("fuentes OFICIALES");
         cuerpo.GetProperty("json_schema").GetProperty("properties").GetProperty("herramientas").GetProperty("items")
             .GetProperty("properties").GetProperty("nombre").GetProperty("enum").EnumerateArray().Single().GetString()
             .ShouldBe("buscar_operaciones");
