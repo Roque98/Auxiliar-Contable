@@ -244,6 +244,20 @@ public class AuxiliarContableHttpApiHostModule : AbpModule
             cliente.Timeout = TimeSpan.FromSeconds(claude.TimeoutSegundos);
         });
 
+        // claude-gateway (VPS, 127.0.0.1:5050, suscripción de claude.ai): con su clave, el CHAT lo usa en lugar de la
+        // API de Anthropic. Leer documentos sigue en ClaudeModeloDeIA (necesita Claude__ApiKey).
+        Configure<AuxiliarContable.IA.Gateway.ClaudeGatewayOptions>(configuration.GetSection(AuxiliarContable.IA.Gateway.ClaudeGatewayOptions.Seccion));
+        var gateway = configuration.GetSection(AuxiliarContable.IA.Gateway.ClaudeGatewayOptions.Seccion).Get<AuxiliarContable.IA.Gateway.ClaudeGatewayOptions>()
+                      ?? new AuxiliarContable.IA.Gateway.ClaudeGatewayOptions();
+        context.Services.AddHttpClient(AuxiliarContable.IA.Gateway.ClaudeGatewayConversacional.NombreHttpClient, cliente =>
+        {
+            cliente.Timeout = TimeSpan.FromSeconds(gateway.TimeoutSegundos + 30);
+        });
+        if (gateway.TieneCredenciales)
+        {
+            context.Services.Replace(ServiceDescriptor.Transient<AuxiliarContable.IA.IModeloConversacional, AuxiliarContable.IA.Gateway.ClaudeGatewayConversacional>());
+        }
+
         // Verificación de CFDI del SAT (servicio público del código QR): el estatus de cada factura cada noche.
         context.Services.AddHttpClient(AuxiliarContable.HealthChecks.VerificadorDeCfdiSat.NombreHttpClient, cliente =>
         {
