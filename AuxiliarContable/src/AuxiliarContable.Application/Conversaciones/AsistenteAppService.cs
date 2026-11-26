@@ -123,6 +123,7 @@ public class AsistenteAppService : AuxiliarContableAppService, IAsistenteAppServ
             ? HerramientasDelAsistente.DeCartera()
             : HerramientasDelAsistente.Disponibles(puedeEditar, puedeInvitar, quien.Equipo);
 
+        var verificada = false;
         for (var vuelta = 1; ; vuelta++)
         {
             RespuestaDeConversacion respuesta;
@@ -146,6 +147,25 @@ public class AsistenteAppService : AuxiliarContableAppService, IAsistenteAppServ
             if (bloques.Count == 0)
             {
                 bloques = [new BloqueDeTexto("…")];
+            }
+
+            // Antes de enseñar la respuesta: lo que cita tiene que venir en lo que consultó en este turno. Una vez; el borrador
+            // queda guardado sin texto visible (no se le enseña a la persona) y el modelo recibe el aviso.
+            if (usos.Count == 0 && !verificada && vuelta < ConversacionConsts.MaxVueltasDeHerramientas)
+            {
+                var consultado = nuevos.Where(m => m.Rol == RolDelMensaje.Herramientas)
+                    .SelectMany(m => m.ATurno().Bloques.OfType<BloqueDeResultadoDeHerramienta>().Select(r => r.Contenido));
+                var faltan = VerificadorDeCitas.SinRespaldo(respuesta.Texto, consultado);
+                if (faltan.Count > 0)
+                {
+                    verificada = true;
+                    Logger.LogInformation("Chat: {Citas} citas sin respaldo; se le pide verificarlas.", faltan.Count);
+                    await GuardarAsync(RolDelMensaje.Asistente, string.Empty, bloques,
+                        respuesta.Uso.TokensDeEntrada + respuesta.Uso.TokensDeSalida);
+                    await GuardarAsync(RolDelMensaje.Herramientas, string.Empty,
+                        new BloqueDeTurno[] { new BloqueDeTexto(VerificadorDeCitas.Aviso(faltan, respuesta.Texto)) });
+                    continue;
+                }
             }
 
             await GuardarAsync(RolDelMensaje.Asistente, respuesta.Texto, bloques,
