@@ -108,7 +108,8 @@ export const SECCIONES: Seccion[] = [
         chat: true,
         salvoPermisos: ['AuxiliarContable.Organizaciones'],
         pasos: [
-          'Al entrar te recibe el asistente: escríbele como a tu contador, «tengo una panadería», «¿qué me falta?».',
+          'Al entrar te recibe el asistente: escríbele como a tu contador, con tus palabras y de lo que quieras: «tengo una panadería», «¿qué me falta?», «¿me conviene…?».',
+          'Antes de hacer algo, pregúntale: «voy a comprar una camioneta», «me quieren pagar en efectivo», «me salió un cliente en Estados Unidos». Revisa la ley con tu perfil y te dice qué cuidar: si lo puedes deducir, a nombre de quién va la factura, cómo pagar y qué guardar.',
           'Con el clip (o arrastrando) le mandas facturas XML, estados de cuenta, tickets o tu constancia: los guarda en tus documentos y te dice qué llegó.',
           'Arriba ves cómo vas (perfil, documentos del mes, constancia): toca una cifra para preguntarle por ella.',
           'Lo que le digas de tu negocio lo anota en tu perfil fiscal; abajo de su respuesta ves qué guardó.',
@@ -143,6 +144,7 @@ export const SECCIONES: Seccion[] = [
           'Pídele un resumen del perfil, qué falta o un borrador de mensaje para el cliente (no lo envía: lo copias tú).',
           'Pídele «¿qué falta conciliar de octubre?»: cruza sus estados de cuenta con sus facturas y te dice qué depósitos y pagos no tienen factura.',
           'Pregúntale por la ley (deducciones, plazos, tasas): contesta citando ley y artículo.',
+          'Cuéntale una operación que el cliente piensa hacer: arma lo que la ley pide revisar para su perfil (leyes que se activan, preguntas obligatorias, artículos) y te orienta.',
           'En el chat de un cliente busca sus operaciones («¿ya se pagó la factura X?») y explica por qué un gasto no se dedujo, con el motivo y el artículo que dejó el cálculo.',
           'También lee las pólizas y el pago provisional guardados del mes («¿cómo va el ISR de octubre?», «la póliza de Telmex»). Todavía no corrige desde el chat: te dice qué y dónde corregir.',
           'Lo que guarde a partir de lo que le digas queda como «Del despacho». Cada quien tiene su propia conversación.',

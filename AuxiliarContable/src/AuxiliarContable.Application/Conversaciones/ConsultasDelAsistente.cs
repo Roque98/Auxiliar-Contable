@@ -10,6 +10,8 @@ using AuxiliarContable.Autorizacion;
 using AuxiliarContable.Contabilidad;
 using AuxiliarContable.LeyesDelCliente;
 using AuxiliarContable.MotorFiscal;
+using AuxiliarContable.Normativa;
+using System.Text.Json.Nodes;
 using AuxiliarContable.Organizaciones;
 using Volo.Abp;
 using Volo.Abp.Authorization;
@@ -46,6 +48,8 @@ public class ConsultasDelAsistente : ITransientDependency
     private readonly IRepository<PolizasDelMes, Guid> _polizas;
     private readonly ILeyesDelClienteAppService _leyes;
     private readonly IAsyncQueryableExecuter _async;
+    private readonly AnalizadorNormativo _normativa;
+    private readonly IMotorFiscal _motor;
 
     public ConsultasDelAsistente(
         Autorizador autorizador,
@@ -53,8 +57,12 @@ public class ConsultasDelAsistente : ITransientDependency
         IRepository<ImpuestosDelMes, Guid> impuestos,
         IRepository<PolizasDelMes, Guid> polizas,
         ILeyesDelClienteAppService leyes,
-        IAsyncQueryableExecuter ejecutor)
+        IAsyncQueryableExecuter ejecutor,
+        AnalizadorNormativo normativa,
+        IMotorFiscal motor)
     {
+        _normativa = normativa;
+        _motor = motor;
         _autorizador = autorizador;
         _operaciones = operaciones;
         _impuestos = impuestos;
@@ -501,6 +509,97 @@ public class ConsultasDelAsistente : ITransientDependency
                 loTratan = l.LoTratan.Count == 0 ? null : l.LoTratan.Select(x => x.Donde == null ? x.Nombre : $"{x.Nombre} ({x.Donde})"),
             }),
         }, Json);
+    }
+
+    // ---------------------------------------------------------------- antes de operar
+
+    /// <summary>
+    /// Lo que hay que revisar de una operación que el cliente PIENSA hacer (o ya hizo): el expediente de hipótesis normativa
+    /// del motor, sin Claude: núcleo fiscal, leyes que activa su perfil y las descartadas con su motivo, preguntas
+    /// obligatorias («chispazos») con sus fuentes, artículos del mapa y fragmentos de ley. Al motor va el perfil sin RFC
+    /// ni nombre (<see cref="AnalizadorNormativo.PerfilAsync"/>); el modelo del chat lo razona.
+    /// </summary>
+    public async Task<string> AnalizarOperacionAsync(Guid organizacionId, string descripcion, DateTime? fecha,
+        string? contraparteTipo, string? contraparteResidencia, IReadOnlyList<string> disparadores)
+    {
+        await _autorizador.ExigirAsync(organizacionId, AccionEnOrganizacion.Ver);
+        descripcion = descripcion.Trim();
+        if (descripcion.Length < 10)
+        {
+            throw new UserFriendlyException("Describe la operación con un poco más de detalle (qué, con quién, cómo se paga).");
+        }
+
+        var tipo = contraparteTipo?.Trim().ToLowerInvariant();
+        if (tipo is not (null or "" or "fisica" or "moral"))
+        {
+            throw new UserFriendlyException("La contraparte es persona «fisica» o «moral».");
+        }
+
+        var conocidos = NormativaAppService.ListaDeDisparadores.Select(d => d.Clave).ToHashSet();
+        var perfil = await _normativa.PerfilAsync(organizacionId, fecha?.Year);
+        var operacion = new OperacionParaNormativa
+        {
+            Descripcion = descripcion,
+            Fecha = fecha?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+            Contraparte = string.IsNullOrEmpty(tipo) && string.IsNullOrWhiteSpace(contraparteResidencia)
+                ? null
+                : new ContraparteParaNormativa { TipoPersona = string.IsNullOrEmpty(tipo) ? null : tipo, Residencia = contraparteResidencia?.Trim().ToUpperInvariant() },
+            Disparadores = [.. disparadores.Where(conocidos.Contains).Distinct()],
+        };
+
+        return Compactar(await _motor.ExpedienteNormativoAsync(perfil, operacion));
+    }
+
+    /// <summary>
+    /// El expediente cabe en el turno: listas con tope y fragmentos recortados (cada carácter cuesta tokens en cada vuelta).
+    /// Lo que no se entiende se devuelve tal cual, recortado.
+    /// </summary>
+    public static string Compactar(string json)
+    {
+        JsonNode? raiz;
+        try
+        {
+            raiz = JsonNode.Parse(json);
+        }
+        catch (JsonException)
+        {
+            return Corto(json, 12_000);
+        }
+
+        if (raiz is not JsonObject o)
+        {
+            return Corto(json, 12_000);
+        }
+
+        void Tope(string clave, int max)
+        {
+            if (o[clave] is JsonArray a)
+            {
+                while (a.Count > max)
+                {
+                    a.RemoveAt(a.Count - 1);
+                }
+            }
+        }
+
+        Tope("leyes_descartadas", 15);
+        Tope("mapa", 20);
+        Tope("cadena", 10);
+        Tope("fragmentos", 8);
+        o.Remove("perfil");
+        if (o["fragmentos"] is JsonArray fragmentos)
+        {
+            foreach (var f in fragmentos.OfType<JsonObject>())
+            {
+                if (f["texto"] is JsonValue v && v.TryGetValue<string>(out var t) && t.Length > 900)
+                {
+                    f["texto"] = t[..900] + " […]";
+                }
+            }
+        }
+
+        var texto = o.ToJsonString(Json);
+        return Corto(texto, 20_000);
     }
 
     // ---------------------------------------------------------------- comunes
