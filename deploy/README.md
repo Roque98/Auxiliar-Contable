@@ -127,6 +127,22 @@ La API key de Anthropic va en `/etc/auxiliar-contable/env` como `Claude__ApiKey`
 Sin `Claude__ApiKey` la aplicación arranca igual; lo que necesite IA lanza «no configurado».
 Ver `CLAUDE.md` §1.2.8. El chat usa `Claude__ModeloDelChat` si se define (si no, el mismo).
 
+### El chat por claude-gateway (sin API key)
+
+En el mismo VPS corre `claude-gateway` (127.0.0.1:5050, interno, `claude -p` con la suscripción de claude.ai). Con
+`ClaudeGateway__Clave=cgw_…` en el `env`, **el chat** usa el gateway en lugar de la API de Anthropic (leer documentos
+sigue necesitando `Claude__ApiKey`). La clave se crea una vez para esta app (`claude-gw-claves nueva auxiliar-contable`,
+se muestra una sola vez) y se escribe directo al `env` sin que pase por la pantalla:
+
+```bash
+ssh -t vps 'K=$(sudo claude-gw-claves nueva auxiliar-contable | grep -o "cgw_[A-Za-z0-9_-]*" | head -1);   [ -n "$K" ] || { echo "no salió la clave"; exit 1; };   sudo sed -i "/^ClaudeGateway__Clave=/d;/^Settings__AuxiliarContable.Asistente.Habilitado=/d" /etc/auxiliar-contable/env;   printf "ClaudeGateway__Clave=%s
+Settings__AuxiliarContable.Asistente.Habilitado=true
+" "$K" | sudo tee -a /etc/auxiliar-contable/env >/dev/null;   unset K; sudo systemctl restart auxiliar-contable && systemctl is-active auxiliar-contable'
+```
+
+Opcional: `ClaudeGateway__Modelo` (`sonnet` por defecto; `haiku` es más rápido). Cada turno tarda de 3 s en adelante y
+el gateway atiende 3 a la vez para todos sus programas. Para revocarla: `claude-gw-claves revocar auxiliar-contable`.
+
 ### Motor fiscal
 
 El chat consulta leyes (y, más adelante, lee estados de cuenta) en el servicio `motores-fiscales`, que corre
