@@ -15,7 +15,7 @@ public static class ConversacionConsts
     public const int MensajesDeHistorial = 30;
 
     /// <summary>Vueltas de herramientas por mensaje. Corta un bucle del modelo antes de que cueste.</summary>
-    public const int MaxVueltasDeHerramientas = 6;
+    public const int MaxVueltasDeHerramientas = 10;
 
     /// <summary>Mensajes por persona en 24 h: control de costo (CLAUDE.md §1.2.8).</summary>
     public const int MaxMensajesPorDia = 200;

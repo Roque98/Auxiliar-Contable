@@ -100,6 +100,7 @@ public class MotorFiscalDePrueba : IMotorFiscal
         AdeudosRecibidos.Clear();
         ExpedientesPedidos.Clear();
         TarifasPedidas.Clear();
+        LeyesLeidasSeguidas.Clear();
         PerfilesDeExpediente.Clear();
         DetalleDeProvisionales = null;
         TodosLosMeses = false;
@@ -317,6 +318,21 @@ public class MotorFiscalDePrueba : IMotorFiscal
     }
 
     public List<(int Dias, decimal? Base, int? Mes)> TarifasPedidas { get; } = [];
+
+    public List<(string Clave, int Desde)> LeyesLeidasSeguidas { get; } = [];
+
+    public Task<string> LeerLeyAsync(string clave, int desde, int n, CancellationToken cancellationToken = default)
+    {
+        if (Caido)
+        {
+            throw new MotorFiscalNoDisponibleException("El motor fiscal no responde.");
+        }
+
+        LeyesLeidasSeguidas.Add((clave, desde));
+        return Task.FromResult(
+            "{\"clave\":\"RMF-A8\",\"nombre\":\"Anexo 8 de la RMF 2026\",\"total\":9,\"siguiente\":4,"
+            + "\"fragmentos\":[{\"texto\":\"B. Tarifas aplicables a retenciones … calculada en días … 0.01 27.78 0.00 1.92\"}]}");
+    }
 
     public Task<string> TarifaIsrAsync(int dias, decimal? baseGravable, int? mes, CancellationToken cancellationToken = default)
     {

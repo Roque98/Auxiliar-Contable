@@ -25,5 +25,11 @@ public class ClaudeGatewayOptions
     /// <summary>Reintentos ante 429 (cola llena), 502 y 504. Los demás fallarían igual.</summary>
     public int Reintentos { get; set; } = 2;
 
+    /// <summary>
+    /// Buscar en internet (WebSearch y WebFetch del gateway) cuando lo que tenemos no alcanza, SOLO en fuentes oficiales y
+    /// citando la URL. Las instrucciones de qué dominios valen van en el prompt de sistema.
+    /// </summary>
+    public bool Web { get; set; } = true;
+
     public bool TieneCredenciales => !string.IsNullOrWhiteSpace(Clave);
 }
