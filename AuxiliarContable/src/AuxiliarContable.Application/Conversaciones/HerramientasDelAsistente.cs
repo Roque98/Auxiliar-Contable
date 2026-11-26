@@ -50,6 +50,11 @@ public class HerramientasDelAsistente : ITransientDependency
     public const string ConsultarLeyes = "consultar_leyes";
     public const string ConsultarSentencias = "consultar_sentencias";
     public const string ConciliarMes = "conciliar_mes";
+    public const string BuscarOperaciones = "buscar_operaciones";
+    public const string ExplicarOperacion = "explicar_operacion";
+    public const string PolizasDelMes = "polizas_del_mes";
+    public const string ImpuestosDelMes = "impuestos_del_mes";
+    public const string LeyesQueLeAplican = "leyes_que_le_aplican";
 
     /// <summary>De la conciliación, el modelo recibe un resumen y hasta este número de pendientes por lista.</summary>
     private const int MaxPendientesPorLista = 15;
@@ -88,6 +93,7 @@ public class HerramientasDelAsistente : ITransientDependency
     private readonly IInvitacionAppService _invitaciones;
     private readonly IMotorFiscal _motor;
     private readonly IBancosAppService _bancos;
+    private readonly ConsultasDelAsistente _consultas;
 
     public HerramientasDelAsistente(
         IPerfilFiscalAppService perfiles,
@@ -96,8 +102,10 @@ public class HerramientasDelAsistente : ITransientDependency
         IOrganizacionAppService organizaciones,
         IInvitacionAppService invitaciones,
         IMotorFiscal motor,
-        IBancosAppService bancos)
+        IBancosAppService bancos,
+        ConsultasDelAsistente consultas)
     {
+        _consultas = consultas;
         _motor = motor;
         _bancos = bancos;
         _invitaciones = invitaciones;
@@ -133,6 +141,34 @@ public class HerramientasDelAsistente : ITransientDependency
                   "tipo":{"type":"string","enum":["cfdi","estado_de_cuenta","ticket","comprobante_de_pago","control_interno","constancia","otro"]},
                   "texto":{"type":"string"}}}
                 """),
+            new(BuscarOperaciones,
+                "Busca en las operaciones del cliente activo (cada una junta su factura, su pago y su control interno). Filtros " +
+                "opcionales: texto (proveedor o cliente, concepto, UUID o referencia del pago), año, mes, importe mínimo y máximo, " +
+                "sentido (entrada = cobros e ingresos, salida = pagos y gastos) y falta (factura, pago o control: las que no tienen " +
+                "esa parte). Devuelve hasta 20, las más recientes, con su id y si la factura y el pago están ligados. Úsala para " +
+                "«¿ya se pagó la factura de Telmex?», «¿qué gastos de octubre no tienen factura?» o «dame los datos de …».",
+                """
+                {"type":"object","properties":{
+                  "texto":{"type":"string","maxLength":100},
+                  "anio":{"type":"integer","minimum":2000,"maximum":2100},
+                  "mes":{"type":"integer","minimum":1,"maximum":12},
+                  "importe_minimo":{"type":"number","minimum":0},
+                  "importe_maximo":{"type":"number","minimum":0},
+                  "sentido":{"type":"string","enum":["entrada","salida"]},
+                  "falta":{"type":"string","enum":["factura","pago","control"]}}}
+                """),
+            new(ExplicarOperacion,
+                "Explica UNA operación o factura: sus tres partes (factura, pago, control interno) con su estado y motivo, y el PORQUÉ " +
+                "que dejó el sistema: si el gasto se dedujo o no y cuánto, con cada motivo, la hipótesis, el ARTÍCULO y cómo " +
+                "corregirlo; y lo que encontró la revisión contable. Pásale el id que dio buscar_operaciones o el UUID de la factura. " +
+                "Úsala para «¿por qué esta factura es no deducible?» o «¿por qué no se tomó este gasto?». Cita el artículo que trae; " +
+                "si quieres el texto de la ley, consúltalo después con consultar_leyes.",
+                """{"type":"object","properties":{"operacionId":{"type":"string","format":"uuid"},"uuid":{"type":"string","maxLength":40}}}"""),
+            new(LeyesQueLeAplican,
+                "Las leyes estatales y reglamentos municipales que le aplican al cliente activo por su domicilio y su actividad: por " +
+                "qué, qué le piden, si la tenemos, si no la encontramos en línea, si la rige la ley estatal, y qué otros reglamentos " +
+                "tratan el tema cuando no hay uno propio. «tema» filtra (licencia, protección civil, anuncios, predial…).",
+                """{"type":"object","properties":{"tema":{"type":"string","maxLength":60}}}"""),
             DeLeyes,
             DeSentencias,
         };
@@ -167,6 +203,16 @@ public class HerramientasDelAsistente : ITransientDependency
                 "despacho: si cada estado de cuenta cuadra con lo que imprime el banco, cuántos movimientos tienen factura, cuáles " +
                 "no (depósitos sin factura emitida, pagos sin factura recibida), facturas sin movimiento y alertas (forma de pago " +
                 "mal, PUE pagada en otro mes). Tarda unos segundos. Úsala para «¿qué falta conciliar de octubre?».",
+                """{"type":"object","properties":{"anio":{"type":"integer","minimum":2000,"maximum":2100},"mes":{"type":"integer","minimum":1,"maximum":12}},"required":["anio","mes"]}"""));
+            lista.Add(new(PolizasDelMes,
+                "Solo despacho. Las pólizas guardadas del cliente activo de un mes (cuentas, debe y haber), cuántas operaciones " +
+                "detuvo la revisión y los pendientes de cierre. «texto» filtra por concepto, UUID, nombre de cuenta o número de cuenta. " +
+                "No las genera: lee las que hay.",
+                """{"type":"object","properties":{"anio":{"type":"integer","minimum":2000,"maximum":2100},"mes":{"type":"integer","minimum":1,"maximum":12},"texto":{"type":"string","maxLength":60}},"required":["anio","mes"]}"""));
+            lista.Add(new(ImpuestosDelMes,
+                "Solo despacho. El pago provisional de ISR e IVA guardado del cliente activo de un mes: régimen, artículo con que se " +
+                "calculó, ISR e IVA a pagar o a favor, cada renglón del papel de trabajo con su fundamento, cuántos gastos no se " +
+                "consideraron, avisos y supuestos. No recalcula: dice si está por actualizarse.",
                 """{"type":"object","properties":{"anio":{"type":"integer","minimum":2000,"maximum":2100},"mes":{"type":"integer","minimum":1,"maximum":12}},"required":["anio","mes"]}"""));
             lista.Add(new(PersonasDelCliente,
                 "Las personas con acceso al cliente activo: nombre, correo y papel (dueño, miembro, lector). Los «userId» no se enseñan.",
@@ -203,6 +249,11 @@ public class HerramientasDelAsistente : ITransientDependency
             ConsultarLeyes => "Consultó la ley",
             ConsultarSentencias => "Consultó sentencias",
             ConciliarMes => "Concilió el banco",
+            BuscarOperaciones => "Buscó en las operaciones",
+            ExplicarOperacion => "Revisó el porqué de una operación",
+            PolizasDelMes => "Consultó las pólizas",
+            ImpuestosDelMes => "Consultó los impuestos",
+            LeyesQueLeAplican => "Revisó las leyes que te aplican",
             _ => null,
         };
     }
@@ -239,6 +290,21 @@ public class HerramientasDelAsistente : ITransientDependency
                 ConsultarLeyes => await LeyesAsync(uso.Entrada),
                 ConsultarSentencias => await SentenciasAsync(uso.Entrada),
                 ConciliarMes => await ConciliarAsync(organizacionId, uso.Entrada),
+                BuscarOperaciones => await _consultas.BuscarOperacionesAsync(organizacionId, new ConsultasDelAsistente.FiltroDeOperaciones(
+                    Opcional(uso.Entrada, "texto"), Entero(uso.Entrada, "anio"), Entero(uso.Entrada, "mes"),
+                    Decimal(uso.Entrada, "importe_minimo"), Decimal(uso.Entrada, "importe_maximo"),
+                    Opcional(uso.Entrada, "sentido"), Opcional(uso.Entrada, "falta"))),
+                ExplicarOperacion => await _consultas.ExplicarOperacionAsync(organizacionId,
+                    Opcional(uso.Entrada, "operacionId") != null ? Id(uso.Entrada, "operacionId") : (Guid?)null,
+                    Opcional(uso.Entrada, "uuid")),
+                PolizasDelMes => await _consultas.PolizasDelMesAsync(organizacionId,
+                    Entero(uso.Entrada, "anio") ?? throw new UserFriendlyException("Falta «anio»."),
+                    Entero(uso.Entrada, "mes") ?? throw new UserFriendlyException("Falta «mes»."),
+                    Opcional(uso.Entrada, "texto")),
+                ImpuestosDelMes => await _consultas.ImpuestosDelMesAsync(organizacionId,
+                    Entero(uso.Entrada, "anio") ?? throw new UserFriendlyException("Falta «anio»."),
+                    Entero(uso.Entrada, "mes") ?? throw new UserFriendlyException("Falta «mes».")),
+                LeyesQueLeAplican => await _consultas.LeyesQueLeAplicanAsync(organizacionId, Opcional(uso.Entrada, "tema")),
                 ResumenDeCartera => await CarteraAsync(uso.Entrada),
                 CrearCliente => await CrearClienteAsync(uso.Entrada),
                 InvitarPersona => await InvitarAsync(organizacionId, uso.Entrada),
@@ -267,6 +333,11 @@ public class HerramientasDelAsistente : ITransientDependency
                     ? "La librería de sentencias no está disponible en este momento. Dilo así y no cites tesis de memoria."
                     : "La consulta de leyes no está disponible en este momento. Dilo así y no respondas de memoria sobre lo que dice la ley.",
                 EsError: true);
+        }
+        catch (Volo.Abp.Authorization.AbpAuthorizationException)
+        {
+            // Lo que solo ve el despacho (pólizas, impuestos): sin detalles, y la conversación sigue.
+            return new BloqueDeResultadoDeHerramienta(uso.Id, "Eso solo lo puede consultar el despacho.", EsError: true);
         }
         catch (EntityNotFoundException)
         {
@@ -555,6 +626,10 @@ public class HerramientasDelAsistente : ITransientDependency
         entrada.ValueKind == JsonValueKind.Object && entrada.TryGetProperty(propiedad, out var v) && v.ValueKind == JsonValueKind.String
             ? v.GetString()!
             : throw new UserFriendlyException($"Falta «{propiedad}».");
+
+    private static decimal? Decimal(JsonElement entrada, string propiedad) =>
+        entrada.ValueKind == JsonValueKind.Object && entrada.TryGetProperty(propiedad, out var v) && v.ValueKind == JsonValueKind.Number
+        && v.TryGetDecimal(out var n) ? n : null;
 
     private static int? Entero(JsonElement entrada, string propiedad) =>
         entrada.ValueKind == JsonValueKind.Object && entrada.TryGetProperty(propiedad, out var v) && v.TryGetInt32(out var n) ? n : null;
