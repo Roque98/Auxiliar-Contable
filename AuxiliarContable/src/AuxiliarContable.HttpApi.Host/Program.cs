@@ -69,6 +69,16 @@ public class Program
                         });
                     }
                 });
+            // systemd ignora en EnvironmentFile los nombres con punto: «Settings__AuxiliarContable.Asistente.Habilitado»
+            // nunca llegaba. Alias sin punto: Asistente__Habilitado=true en /etc/auxiliar-contable/env.
+            if (builder.Configuration["Asistente:Habilitado"] is { Length: > 0 } asistente)
+            {
+                builder.Configuration.AddInMemoryCollection(new System.Collections.Generic.Dictionary<string, string?>
+                {
+                    ["Settings:" + AuxiliarContable.Settings.AuxiliarContableSettings.AsistenteHabilitado] = asistente,
+                });
+            }
+
             await builder.AddApplicationAsync<AuxiliarContableHttpApiHostModule>();
             var app = builder.Build();
             await app.InitializeApplicationAsync();

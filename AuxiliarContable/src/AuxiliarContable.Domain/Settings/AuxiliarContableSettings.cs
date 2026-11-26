@@ -13,7 +13,7 @@ public static class AuxiliarContableSettings
     /// <summary>
     /// El chat con IA (API de Claude). Apagado, la consola se usa solo por pantallas: el menú y la
     /// portada no lo enseñan y el servicio lo rechaza. Se enciende sin desplegar código con
-    /// <c>Settings__AuxiliarContable.Asistente.Habilitado=true</c> en el env (y la API key de Claude).
+    /// <c>Asistente__Habilitado=true</c> en el env (systemd ignora los nombres con punto; alias en Program.cs) (y la API key de Claude).
     /// </summary>
     public const string AsistenteHabilitado = Prefix + ".Asistente.Habilitado";
 }
