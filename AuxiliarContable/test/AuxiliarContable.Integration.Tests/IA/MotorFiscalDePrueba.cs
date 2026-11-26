@@ -321,7 +321,7 @@ public class MotorFiscalDePrueba : IMotorFiscal
 
     public List<(string Clave, int Desde)> LeyesLeidasSeguidas { get; } = [];
 
-    public Task<string> LeerLeyAsync(string clave, int desde, int n, CancellationToken cancellationToken = default)
+    public Task<string> LeerLeyAsync(string clave, int desde, int n, string? articulo = null, CancellationToken cancellationToken = default)
     {
         if (Caido)
         {

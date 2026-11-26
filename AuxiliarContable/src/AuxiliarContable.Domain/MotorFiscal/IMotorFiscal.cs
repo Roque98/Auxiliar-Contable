@@ -157,7 +157,7 @@ public interface IMotorFiscal
     /// <paramref name="desde"/> del documento vigente con esas siglas (LISR, RMF, RMF-A8…). Para tablas de anexos o
     /// capítulos completos. El JSON del motor (con «total» y «siguiente»).
     /// </summary>
-    Task<string> LeerLeyAsync(string clave, int desde, int n, CancellationToken cancellationToken = default);
+    Task<string> LeerLeyAsync(string clave, int desde, int n, string? articulo = null, CancellationToken cancellationToken = default);
 
     /// <summary>Nómina de un periodo: percepciones, ISR con subsidio, IMSS, INFONAVIT, FONACOT, ISN, neto y póliza.</summary>
     Task<NominaDelMotor> CalcularNominaAsync(
@@ -419,7 +419,7 @@ public class MotorFiscalSinConfigurar : IMotorFiscal, ISingletonDependency
     public Task<string> TarifaIsrAsync(int dias, decimal? baseGravable, int? mes, CancellationToken cancellationToken = default) =>
         throw new MotorFiscalNoDisponibleException("No hay motor fiscal en este proceso.");
 
-    public Task<string> LeerLeyAsync(string clave, int desde, int n, CancellationToken cancellationToken = default) =>
+    public Task<string> LeerLeyAsync(string clave, int desde, int n, string? articulo = null, CancellationToken cancellationToken = default) =>
         throw new MotorFiscalNoDisponibleException("No hay motor fiscal en este proceso.");
 
     public Task<NominaDelMotor> CalcularNominaAsync(

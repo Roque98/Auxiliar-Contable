@@ -85,9 +85,10 @@ public class HerramientasDelAsistente : ITransientDependency
     private static readonly HerramientaDelModelo DeLeerLey = new(LeerLey,
         "Lee un ordenamiento SEGUIDO, por partes (3 fragmentos por vez): las tablas completas de un anexo, un capítulo, lo que " +
         "sigue de un artículo. «clave» son las siglas que devuelve consultar_leyes (LISR, RMF, RMF-A8, Reg_LISR_060516…); " +
-        "«desde» el fragmento por el que empiezas (0 = el inicio; usa «siguiente» para continuar). Úsala cuando consultar_leyes " +
-        "te dé un trozo y necesites la tabla o el texto completo.",
-        """{"type":"object","properties":{"clave":{"type":"string","minLength":2,"maxLength":40},"desde":{"type":"integer","minimum":0}},"required":["clave"]}""");
+        "«articulo» empieza en ese artículo con TODAS sus partes (los largos vienen en «parte 1 de 3»: léelo completo antes de " +
+        "concluir, las últimas fracciones traen topes, excepciones y multas); «desde» el fragmento por el que empiezas (usa " +
+        "«siguiente» para continuar). Úsala cuando consultar_leyes te dé un trozo y necesites el artículo o la tabla completa.",
+        """{"type":"object","properties":{"clave":{"type":"string","minLength":2,"maxLength":40},"articulo":{"type":"string","maxLength":30},"desde":{"type":"integer","minimum":0}},"required":["clave"]}""");
 
     /// <summary>La tarifa de ISR tampoco es de nadie: vale en el chat de un cliente y en el de la cartera.</summary>
     private static readonly HerramientaDelModelo DeTarifa = new(TarifaIsr,
@@ -407,7 +408,8 @@ public class HerramientasDelAsistente : ITransientDependency
                         Respuesta = Opcional(uso.Entrada, "respuesta"),
                     })]),
                 SolicitudesPendientes => SolicitudesJson(await _solicitudes.GetPendientesDelDespachoAsync()),
-                LeerLey => await _motor.LeerLeyAsync(Texto(uso.Entrada, "clave"), Entero(uso.Entrada, "desde") ?? 0, 3),
+                LeerLey => await _motor.LeerLeyAsync(Texto(uso.Entrada, "clave"), Entero(uso.Entrada, "desde") ?? 0, 3,
+                    Opcional(uso.Entrada, "articulo")),
                 TarifaIsr => await _motor.TarifaIsrAsync(
                     Texto(uso.Entrada, "periodo") switch
                     {
@@ -638,7 +640,8 @@ public class HerramientasDelAsistente : ITransientDependency
             ubicacion = r.Ubicacion,
             ultimaReformaDof = r.UltimaReformaDof,
             url = r.Url,
-            vigencia = r.NotaDeVigencia,
+            // Avisos del motor: «parte 1 de 3» (leer el resto) y decretos que aún no entran en vigor.
+            aviso = r.NotaDeVigencia,
             texto = r.Texto.Length > MaxCaracteresPorArticulo ? r.Texto[..MaxCaracteresPorArticulo] + " […]" : r.Texto,
         }), Json);
     }
