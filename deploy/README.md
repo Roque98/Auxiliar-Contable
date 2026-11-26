@@ -135,9 +135,7 @@ sigue necesitando `Claude__ApiKey`). La clave se crea una vez para esta app (`cl
 se muestra una sola vez) y se escribe directo al `env` sin que pase por la pantalla:
 
 ```bash
-ssh -t vps 'K=$(sudo claude-gw-claves nueva auxiliar-contable | grep -o "cgw_[A-Za-z0-9_-]*" | head -1);   [ -n "$K" ] || { echo "no salió la clave"; exit 1; };   sudo sed -i "/^ClaudeGateway__Clave=/d;/^Settings__AuxiliarContable.Asistente.Habilitado=/d" /etc/auxiliar-contable/env;   printf "ClaudeGateway__Clave=%s
-Settings__AuxiliarContable.Asistente.Habilitado=true
-" "$K" | sudo tee -a /etc/auxiliar-contable/env >/dev/null;   unset K; sudo systemctl restart auxiliar-contable && systemctl is-active auxiliar-contable'
+ssh -t vps 'K=$(sudo claude-gw-claves nueva auxiliar-contable | grep -o "cgw_[A-Za-z0-9_-]*" | head -1); [ -n "$K" ] || exit 1; sudo sed -i "/^ClaudeGateway__Clave=/d;/^Asistente__Habilitado=/d" /etc/auxiliar-contable/env; printf "ClaudeGateway__Clave=%s\nAsistente__Habilitado=true\n" "$K" | sudo tee -a /etc/auxiliar-contable/env >/dev/null; unset K; sudo systemctl restart auxiliar-contable && systemctl is-active auxiliar-contable'
 ```
 
 Opcional: `ClaudeGateway__Modelo` (`sonnet` por defecto; `haiku` es más rápido). Cada turno tarda de 3 s en adelante y
