@@ -409,6 +409,9 @@ public class MotorFiscalSinConfigurar : IMotorFiscal, ISingletonDependency
         CancellationToken cancellationToken = default) =>
         throw new MotorFiscalNoDisponibleException("No hay motor fiscal en este proceso.");
 
+    public Task<string> TarifaIsrAsync(int dias, decimal? baseGravable, int? mes, CancellationToken cancellationToken = default) =>
+        throw new MotorFiscalNoDisponibleException("No hay motor fiscal en este proceso.");
+
     public Task<NominaDelMotor> CalcularNominaAsync(
         PatronParaNomina patron, PeriodoParaNomina periodo, IReadOnlyList<TrabajadorParaNomina> trabajadores,
         CancellationToken cancellationToken = default) =>
