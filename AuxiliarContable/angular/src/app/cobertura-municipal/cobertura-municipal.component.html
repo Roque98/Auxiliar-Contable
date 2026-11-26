@@ -24,7 +24,7 @@
     <ul>
       <li><i class="cm-c cm-c-tenemos"></i><strong>Tenemos:</strong> el texto vigente está en la plataforma.</li>
       <li><i class="cm-c cm-c-no_aplica"></i><strong>No aplica:</strong> A) lo regula el estado, la federación o el municipio; B) no existe en ese lugar o lo cubre otra norma.</li>
-      <li><i class="cm-c cm-c-no_encontrado"></i><strong>No encontrado:</strong> C) debería existir y no se encontró el texto oficial.</li>
+      <li><i class="cm-c cm-c-no_encontrado"></i><strong>No la encontramos en línea:</strong> C) debería existir y no la hallamos en ninguna fuente oficial de internet (cada caso dice qué fuentes se revisaron); puede existir sin estar publicada.</li>
       <li><i class="cm-c cm-c-sin_revisar"></i><strong>Sin revisar:</strong> nadie lo ha buscado todavía.</li>
       <li><strong>Municipio cubierto:</strong> al menos {{ d.minimoCubierto }} reglamentos propios, o ya tiene todo lo que le aplica. <strong>Parcial:</strong> solo algunos.</li>
     </ul>
@@ -96,7 +96,7 @@
                 <span class="ig-etiqueta" [class.ig-etiqueta-exito]="m.completo || m.nivel === 'cubierto'" [class.ig-etiqueta-alerta]="!m.completo && m.nivel !== 'cubierto'">
                   {{ textoDeNivel(m.nivel, m.completo) }}</span>
                 <span class="cm-barra cm-barra-chica">@for (t of tramos(m); track t.clase) { <b class="cm-c-{{ t.clase }}" [style.width.%]="t.pct"></b> }</span>
-                <span class="cm-cuenta">{{ m.tenemos }} tenemos · {{ m.noAplica }} no aplican · {{ m.noEncontrado }} no encontrados · {{ m.sinRevisar }} sin revisar</span>
+                <span class="cm-cuenta">{{ m.tenemos }} tenemos · {{ m.noAplica }} no aplican · {{ m.noEncontrado }} no encontrados en línea · {{ m.sinRevisar }} sin revisar</span>
               </button>
               @if (abierto() === m.cvegeo) {
                 @if (expediente(); as x) {

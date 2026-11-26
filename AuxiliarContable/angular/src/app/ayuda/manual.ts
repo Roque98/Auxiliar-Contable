@@ -295,7 +295,7 @@ export const SECCIONES: Seccion[] = [
         ruta: '/cobertura-municipal',
         texto: [
           'Mapa de control: qué leyes estatales y qué reglamentos municipales tenemos de cada estado y municipio, medidos contra todo el catálogo (72 leyes estatales y 40 reglamentos municipales).',
-          'Cada norma cae en una clase: tenemos; no aplica (A: lo regula el estado, la federación o el municipio; B: no existe ahí o la cubre otra norma); no encontrado (C: debería existir y no hay texto oficial); o sin revisar.',
+          'Cada norma cae en una clase: tenemos; no aplica (A: lo regula el estado, la federación o el municipio; B: no existe ahí o la cubre otra norma); no la encontramos en línea (C: debería existir y no está en ninguna fuente oficial de internet; puede existir sin publicarse); o sin revisar.',
         ],
         pasos: [
           'Abre «Cobertura municipal» en el menú (solo el equipo del despacho).',

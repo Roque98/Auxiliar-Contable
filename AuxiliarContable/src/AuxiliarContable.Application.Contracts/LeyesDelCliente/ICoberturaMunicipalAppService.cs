@@ -111,7 +111,7 @@ public class BalanceDto
     /// <summary>B) no existe en ese lugar o la cubre otra norma.</summary>
     public int NoAplicaPorNoExistir { get; set; }
 
-    /// <summary>C) debería existir y no se encontró el texto oficial.</summary>
+    /// <summary>C) debería existir y no la encontramos en línea (puede existir sin publicarse).</summary>
     public int NoEncontrado { get; set; }
 
     public int SinRevisar { get; set; }
