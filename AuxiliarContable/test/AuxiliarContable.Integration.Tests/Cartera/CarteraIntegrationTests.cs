@@ -108,8 +108,8 @@ public class CarteraIntegrationTests : ConJerarquiaTestBase
         _modelo.Solicitudes[0].Herramientas.Select(h => h.Nombre)
             .ShouldBe([HerramientasDelAsistente.ResumenDeCartera, HerramientasDelAsistente.CrearCliente,
                     HerramientasDelAsistente.SolicitudesPendientes, HerramientasDelAsistente.ConsultarLeyes,
-                    HerramientasDelAsistente.ConsultarSentencias],
-                "el resumen, el alta, la bandeja de solicitudes, la ley y las sentencias (que no son de ningún cliente)");
+                    HerramientasDelAsistente.ConsultarSentencias, HerramientasDelAsistente.TarifaIsr],
+                "el resumen, el alta, la bandeja de solicitudes, la ley, las sentencias y la tarifa de ISR (que no son de ningún cliente)");
         var resumen = _modelo.Solicitudes[1].Turnos.Last().Bloques.Single().ShouldBeOfType<BloqueDeResultadoDeHerramienta>();
         resumen.Contenido.ShouldContain("Taller Pepe");
         var perfil = _modelo.Solicitudes[2].Turnos.Last().Bloques.Single().ShouldBeOfType<BloqueDeResultadoDeHerramienta>();

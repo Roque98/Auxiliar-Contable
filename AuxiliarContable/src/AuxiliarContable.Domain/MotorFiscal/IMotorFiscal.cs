@@ -145,6 +145,13 @@ public interface IMotorFiscal
     Task<string> ExpedienteNormativoAsync(PerfilParaNormativa perfil, OperacionParaNormativa operacion,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Tarifa del art. 96 LISR / Anexo 8 RMF del periodo (<paramref name="dias"/>: 7 semanal, 15 quincenal, 30 mensual…)
+    /// y, con <paramref name="baseGravable"/>, la retención paso a paso con el subsidio para el empleo (motor:
+    /// <c>/nomina/tarifa-isr</c>, sin IA). El JSON del motor.
+    /// </summary>
+    Task<string> TarifaIsrAsync(int dias, decimal? baseGravable, int? mes, CancellationToken cancellationToken = default);
+
     /// <summary>Nómina de un periodo: percepciones, ISR con subsidio, IMSS, INFONAVIT, FONACOT, ISN, neto y póliza.</summary>
     Task<NominaDelMotor> CalcularNominaAsync(
         PatronParaNomina patron, PeriodoParaNomina periodo, IReadOnlyList<TrabajadorParaNomina> trabajadores,
@@ -400,6 +407,9 @@ public class MotorFiscalSinConfigurar : IMotorFiscal, ISingletonDependency
 
     public Task<string> ExpedienteNormativoAsync(PerfilParaNormativa perfil, OperacionParaNormativa operacion,
         CancellationToken cancellationToken = default) =>
+        throw new MotorFiscalNoDisponibleException("No hay motor fiscal en este proceso.");
+
+    public Task<string> TarifaIsrAsync(int dias, decimal? baseGravable, int? mes, CancellationToken cancellationToken = default) =>
         throw new MotorFiscalNoDisponibleException("No hay motor fiscal en este proceso.");
 
     public Task<NominaDelMotor> CalcularNominaAsync(

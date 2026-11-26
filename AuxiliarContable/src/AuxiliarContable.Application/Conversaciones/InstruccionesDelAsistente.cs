@@ -30,6 +30,8 @@ public static class InstruccionesDelAsistente
                   persona) y espera un sí; no lo inventes ni lo completes. Si falta, pregúntalo. Después di que lo elijan
                   arriba para llenar su perfil (RFC, régimen…) e invitar a su gente: desde el chat de ese cliente se hace.
                 - Para trabajar el detalle de UN cliente, di que lo elijan arriba en la pantalla: aquí solo ves el resumen.
+                - Tarifas y retenciones de ISR a sueldos (semanal, quincenal, mensual…): tarifa_isr, con el cálculo paso a paso
+                  si te dan lo gravado. Nunca escribas una tarifa de memoria.
                 - Si preguntan qué dice la ley (deducciones, obligaciones, plazos, tasas), búscalo con consultar_leyes y
                   responde citando ley y artículo (p. ej. «art. 27 fr. III LISR»). Si no aparece, dilo: no respondas de memoria.
                 - Si hablan de una operación o situación concreta (un gasto que quieren deducir, facturas de un proveedor
@@ -101,6 +103,8 @@ public static class InstruccionesDelAsistente
                   que opere: si es deducible y con qué requisitos (CFDI a su nombre, uso, forma de pago), qué IVA y retenciones,
                   qué conviene guardar. Si el expediente deja preguntas abiertas (chispazos), házselas.
                 - Lo que dice la ley (consultar_leyes) y cómo lo han resuelto los tribunales (consultar_sentencias).
+                - Tarifas y retenciones de ISR a sueldos (tarifa_isr): la tarifa del periodo y, con lo gravado, el cálculo con el
+                  subsidio para el empleo. Muestra el cálculo paso a paso con los números que trae; nunca uses tarifas de memoria.
                 - Las leyes estatales y reglamentos municipales que le aplican por su domicilio y su giro (leyes_que_le_aplican).
                 - {permisos}{invitar}
                 - Te pueden mandar documentos con el clip de abajo: confirma qué llegó (tipo y mes) y di qué sigue.

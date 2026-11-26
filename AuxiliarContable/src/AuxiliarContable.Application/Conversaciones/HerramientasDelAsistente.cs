@@ -57,6 +57,7 @@ public class HerramientasDelAsistente : ITransientDependency
     public const string LeyesQueLeAplican = "leyes_que_le_aplican";
     public const string AnalizarOperacion = "analizar_operacion";
     public const string Solicitar = "solicitar";
+    public const string TarifaIsr = "tarifa_isr";
     public const string VerSolicitudes = "ver_solicitudes";
     public const string ResolverSolicitud = "resolver_solicitud";
     public const string SolicitudesPendientes = "solicitudes_pendientes";
@@ -75,6 +76,15 @@ public class HerramientasDelAsistente : ITransientDependency
         "ley y artículo. «ley» acota a unas siglas; omítela si no estás seguro. Pregunta con términos de la ley o con la cita " +
         "(«artículo 27 LISR», «deducción de automóviles personas morales»).",
         """{"type":"object","properties":{"pregunta":{"type":"string","minLength":2,"maxLength":300},"ley":{"type":"string","maxLength":20}},"required":["pregunta"]}""");
+
+    /// <summary>La tarifa de ISR tampoco es de nadie: vale en el chat de un cliente y en el de la cartera.</summary>
+    private static readonly HerramientaDelModelo DeTarifa = new(TarifaIsr,
+            "Tarifa de ISR para retener a salarios (art. 96 LISR y Anexo 8 de la RMF 2026) de un periodo de pago: diario, " +
+            "semanal, decenal, catorcenal, quincenal o mensual, con sus renglones (límite inferior y superior, cuota fija, " +
+            "% sobre el excedente). Con «base» (lo GRAVADO del periodo, sin lo exento) devuelve además el cálculo paso a paso: " +
+            "excedente, impuesto marginal, ISR de la tarifa, subsidio para el empleo 2026 e ISR a retener. Úsala SIEMPRE para " +
+            "tarifas o retenciones de sueldos: no las calcules de memoria. «mes» (1-12) cambia el subsidio de enero.",
+            """{"type":"object","properties":{"periodo":{"type":"string","enum":["diario","semanal","decenal","catorcenal","quincenal","mensual"]},"base":{"type":"number","minimum":0},"mes":{"type":"integer","minimum":1,"maximum":12}},"required":["periodo"]}""");
 
     /// <summary>Las sentencias tampoco son de nadie: valen en las dos clases de conversación, como las leyes.</summary>
     private static readonly HerramientaDelModelo DeSentencias = new(ConsultarSentencias,
@@ -196,6 +206,7 @@ public class HerramientasDelAsistente : ITransientDependency
                 "cita ley y artículo, y pregunta lo que los chispazos dejan abierto. descripcion: qué, con quién, monto aproximado " +
                 "y cómo se pagaría. disparadores: solo los que la persona dijo o son obvios.",
                 EsquemaDeAnalizarOperacion),
+            DeTarifa,
             new(Solicitar,
                 "Deja una SOLICITUD registrada. Si escribe el cliente, va al despacho: un cambio o corrección que él no puede " +
                 "hacer (su contabilidad la cambia el despacho), o una aclaración. Si escribe el despacho, va al cliente: un " +
@@ -298,6 +309,7 @@ public class HerramientasDelAsistente : ITransientDependency
             ImpuestosDelMes => "Consultó los impuestos",
             LeyesQueLeAplican => "Revisó las leyes que te aplican",
             AnalizarOperacion => "Analizó la operación con la ley",
+            TarifaIsr => "Consultó la tarifa de ISR",
             Solicitar => "Dejó una solicitud",
             VerSolicitudes or SolicitudesPendientes => "Revisó las solicitudes",
             ResolverSolicitud when uso.Entrada.ValueKind == JsonValueKind.Object && uso.Entrada.TryGetProperty("estado", out var es) =>
@@ -324,13 +336,14 @@ public class HerramientasDelAsistente : ITransientDependency
             """{"type":"object","properties":{}}"""),
         DeLeyes,
         DeSentencias,
+        DeTarifa,
     ];
 
     public async Task<BloqueDeResultadoDeHerramienta> EjecutarAsync(Guid organizacionId, BloqueDeUsoDeHerramienta uso)
     {
         // El candado entre las dos clases de conversación: en la de la cartera (Guid.Empty) solo sus
         // herramientas (resumen y alta); en la de un cliente, nunca esas. Lo que pida el modelo no lo salta.
-        if (uso.Nombre is not (ConsultarLeyes or ConsultarSentencias) && (organizacionId == Guid.Empty) != (uso.Nombre is ResumenDeCartera or CrearCliente or SolicitudesPendientes))
+        if (uso.Nombre is not (ConsultarLeyes or ConsultarSentencias or TarifaIsr) && (organizacionId == Guid.Empty) != (uso.Nombre is ResumenDeCartera or CrearCliente or SolicitudesPendientes))
         {
             return new BloqueDeResultadoDeHerramienta(uso.Id, $"La herramienta «{uso.Nombre}» no está disponible en esta conversación.", EsError: true);
         }
@@ -379,6 +392,18 @@ public class HerramientasDelAsistente : ITransientDependency
                         Respuesta = Opcional(uso.Entrada, "respuesta"),
                     })]),
                 SolicitudesPendientes => SolicitudesJson(await _solicitudes.GetPendientesDelDespachoAsync()),
+                TarifaIsr => await _motor.TarifaIsrAsync(
+                    Texto(uso.Entrada, "periodo") switch
+                    {
+                        "diario" => 1,
+                        "semanal" => 7,
+                        "decenal" => 10,
+                        "catorcenal" => 14,
+                        "quincenal" => 15,
+                        "mensual" => 30,
+                        var p => throw new UserFriendlyException($"Periodo desconocido: «{p}»."),
+                    },
+                    Decimal(uso.Entrada, "base"), Entero(uso.Entrada, "mes")),
                 AnalizarOperacion => await _consultas.AnalizarOperacionAsync(organizacionId, Texto(uso.Entrada, "descripcion"),
                     Opcional(uso.Entrada, "fecha") is { } f
                         ? DateTime.TryParse(f, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var d)
@@ -415,6 +440,7 @@ public class HerramientasDelAsistente : ITransientDependency
                 {
                     ConsultarSentencias => "La librería de sentencias no está disponible en este momento. Dilo así y no cites tesis de memoria.",
                     ConciliarMes => "El motor fiscal no responde en este momento: no se pudo conciliar. Dilo así.",
+                    TarifaIsr => "La tarifa de ISR no está disponible en este momento. Dilo así y no la escribas de memoria.",
                     _ => "La consulta de leyes no está disponible en este momento. Dilo así y no respondas de memoria sobre lo que dice la ley.",
                 },
                 EsError: true);
