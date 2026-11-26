@@ -299,6 +299,19 @@ public class ConsultasDelAsistenteIntegrationTests : ConJerarquiaTestBase
         conversacion.Mensajes.Last().Acciones.ShouldBe(["Consultó la tarifa de ISR"]);
     }
 
+    [Fact]
+    public async Task Lee_un_anexo_seguido_cuando_la_busqueda_solo_trae_un_trozo()
+    {
+        _modelo.UsarHerramienta(HerramientasDelAsistente.LeerLey, new { clave = "RMF-A8", desde = 3 });
+        _modelo.Contestar("La tarifa diaria empieza en 0.01 a 27.78 con 1.92 %.");
+
+        var conversacion = await ComoAsync(Administrador, () => _asistente.EnviarAsync(Guid.Empty, Mensaje("Dame la tabla del Anexo 8")));
+
+        Resultado().Contenido.ShouldContain("calculada en días");
+        _motor.LeyesLeidasSeguidas.ShouldHaveSingleItem().ShouldBe(("RMF-A8", 3));
+        conversacion.Mensajes.Last().Acciones.ShouldBe(["Leyó la ley"]);
+    }
+
     [Theory]
     [InlineData("PANADERIA LUPITA S.A. DE C.V.", "S.A.")]
     [InlineData("CONSTRUCTORA DEL SUR S. DE R.L. DE C.V.", "S. DE R.L.")]
