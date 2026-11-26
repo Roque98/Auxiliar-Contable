@@ -136,7 +136,7 @@ public class ConsultarLeyesIntegrationTests : ConJerarquiaTestBase
     [Fact]
     public async Task Tambien_se_consulta_desde_la_conversacion_de_toda_la_cartera()
     {
-        _motor.Resultados.Add(Articulo("Las personas morales deberán presentar declaración anual …"));
+        _motor.Resultados.Add(Articulo("Las personas morales deberán presentar declaración anual …") with { Articulo = "76" });
         _modelo.UsarHerramienta(HerramientasDelAsistente.ConsultarLeyes, new { pregunta = "plazo declaración anual personas morales" });
         _modelo.Contestar("A más tardar el 31 de marzo. Fuente: art. 76 fr. V LISR.");
 
