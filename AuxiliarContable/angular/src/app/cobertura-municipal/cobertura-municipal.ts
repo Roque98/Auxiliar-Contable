@@ -166,7 +166,7 @@ export function nivelEstatal(b: BalanceDto | null | undefined): number {
 export const CLASES: readonly { clase: ClaseDeNorma; titulo: string }[] = [
   { clase: 'tenemos', titulo: 'Tenemos' },
   { clase: 'no_aplica', titulo: 'No aplica' },
-  { clase: 'no_encontrado', titulo: 'No se encontró el texto oficial' },
+  { clase: 'no_encontrado', titulo: 'No la encontramos en línea' },
   { clase: 'sin_revisar', titulo: 'Sin revisar' },
 ];
 

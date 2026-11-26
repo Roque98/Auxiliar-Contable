@@ -110,7 +110,7 @@ export class MisLeyesComponent implements OnChanges {
       case 'local':
         return l.enMisLeyes ? 'En tus leyes' : 'La tenemos';
       case 'pendiente':
-        return 'Aún no la tenemos';
+        return 'No la encontramos en línea';
       case 'no_existe':
         return l.ambito === 'municipal' ? 'Tu municipio no tiene este reglamento' : 'Tu estado no tiene esta ley';
       case 'federal':
