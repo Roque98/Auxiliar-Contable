@@ -56,6 +56,10 @@ public class HerramientasDelAsistente : ITransientDependency
     public const string ImpuestosDelMes = "impuestos_del_mes";
     public const string LeyesQueLeAplican = "leyes_que_le_aplican";
     public const string AnalizarOperacion = "analizar_operacion";
+    public const string Solicitar = "solicitar";
+    public const string VerSolicitudes = "ver_solicitudes";
+    public const string ResolverSolicitud = "resolver_solicitud";
+    public const string SolicitudesPendientes = "solicitudes_pendientes";
 
     /// <summary>De la conciliación, el modelo recibe un resumen y hasta este número de pendientes por lista.</summary>
     private const int MaxPendientesPorLista = 15;
@@ -105,6 +109,7 @@ public class HerramientasDelAsistente : ITransientDependency
     private readonly IMotorFiscal _motor;
     private readonly IBancosAppService _bancos;
     private readonly ConsultasDelAsistente _consultas;
+    private readonly ISolicitudesAppService _solicitudes;
 
     public HerramientasDelAsistente(
         IPerfilFiscalAppService perfiles,
@@ -114,8 +119,10 @@ public class HerramientasDelAsistente : ITransientDependency
         IInvitacionAppService invitaciones,
         IMotorFiscal motor,
         IBancosAppService bancos,
-        ConsultasDelAsistente consultas)
+        ConsultasDelAsistente consultas,
+        ISolicitudesAppService solicitudes)
     {
+        _solicitudes = solicitudes;
         _consultas = consultas;
         _motor = motor;
         _bancos = bancos;
@@ -189,6 +196,22 @@ public class HerramientasDelAsistente : ITransientDependency
                 "cita ley y artículo, y pregunta lo que los chispazos dejan abierto. descripcion: qué, con quién, monto aproximado " +
                 "y cómo se pagaría. disparadores: solo los que la persona dijo o son obvios.",
                 EsquemaDeAnalizarOperacion),
+            new(Solicitar,
+                "Deja una SOLICITUD registrada. Si escribe el cliente, va al despacho: un cambio o corrección que él no puede " +
+                "hacer (su contabilidad la cambia el despacho), o una aclaración. Si escribe el despacho, va al cliente: un " +
+                "documento, un dato o una aclaración. tipo: cambio, documento o aclaracion. texto: qué se pide y por qué, claro y " +
+                "completo para quien lo lea sin la plática (montos, fechas, UUID si los hay). operacionId si es sobre una " +
+                "operación. Úsala SOLO después de proponerle el texto a la persona y que diga que sí.",
+                """{"type":"object","properties":{"tipo":{"type":"string","enum":["cambio","documento","aclaracion"]},"texto":{"type":"string","minLength":5,"maxLength":1000},"operacionId":{"type":"string","format":"uuid"}},"required":["tipo","texto"]}"""),
+            new(VerSolicitudes,
+                "Las solicitudes del cliente activo (al despacho y del despacho), las pendientes primero, con su respuesta si ya " +
+                "se atendió. Úsala para «¿qué me pidió el despacho?», «¿ya vieron lo que pedí?».",
+                """{"type":"object","properties":{"solo_pendientes":{"type":"boolean"}}}"""),
+            new(ResolverSolicitud,
+                "Marca una solicitud como atendida o rechazada, con una respuesta (rechazar exige decir por qué). Lo que el " +
+                "cliente le pidió al despacho solo lo resuelve el despacho; lo que el despacho le pidió al cliente, el cliente " +
+                "(p. ej. «ya subí el estado de cuenta»). Úsala SOLO cuando la persona lo diga.",
+                """{"type":"object","properties":{"solicitudId":{"type":"string","format":"uuid"},"estado":{"type":"string","enum":["atendida","rechazada"]},"respuesta":{"type":"string","maxLength":1000}},"required":["solicitudId","estado"]}"""),
             DeLeyes,
             DeSentencias,
         };
@@ -275,6 +298,10 @@ public class HerramientasDelAsistente : ITransientDependency
             ImpuestosDelMes => "Consultó los impuestos",
             LeyesQueLeAplican => "Revisó las leyes que te aplican",
             AnalizarOperacion => "Analizó la operación con la ley",
+            Solicitar => "Dejó una solicitud",
+            VerSolicitudes or SolicitudesPendientes => "Revisó las solicitudes",
+            ResolverSolicitud when uso.Entrada.ValueKind == JsonValueKind.Object && uso.Entrada.TryGetProperty("estado", out var es) =>
+                es.GetString() == "rechazada" ? "Rechazó una solicitud" : "Marcó una solicitud como atendida",
             _ => null,
         };
     }
@@ -291,6 +318,10 @@ public class HerramientasDelAsistente : ITransientDependency
             "confirme el nombre exacto que le propusiste. Después, el cliente aparece en la lista de arriba para elegirlo, llenar su " +
             "perfil e invitarlo. Si ya existe uno con ese nombre, devuelve error.",
             """{"type":"object","properties":{"nombre":{"type":"string","minLength":2,"maxLength":128},"descripcion":{"type":"string","maxLength":256}},"required":["nombre"]}"""),
+        new(SolicitudesPendientes,
+            "La bandeja del despacho: lo que los clientes han pedido (cambios, correcciones, aclaraciones) y sigue pendiente, " +
+            "de toda la cartera, lo más viejo primero, con el nombre del cliente. Para atender una, di que elijan a ese cliente.",
+            """{"type":"object","properties":{}}"""),
         DeLeyes,
         DeSentencias,
     ];
@@ -299,7 +330,7 @@ public class HerramientasDelAsistente : ITransientDependency
     {
         // El candado entre las dos clases de conversación: en la de la cartera (Guid.Empty) solo sus
         // herramientas (resumen y alta); en la de un cliente, nunca esas. Lo que pida el modelo no lo salta.
-        if (uso.Nombre is not (ConsultarLeyes or ConsultarSentencias) && (organizacionId == Guid.Empty) != (uso.Nombre is ResumenDeCartera or CrearCliente))
+        if (uso.Nombre is not (ConsultarLeyes or ConsultarSentencias) && (organizacionId == Guid.Empty) != (uso.Nombre is ResumenDeCartera or CrearCliente or SolicitudesPendientes))
         {
             return new BloqueDeResultadoDeHerramienta(uso.Id, $"La herramienta «{uso.Nombre}» no está disponible en esta conversación.", EsError: true);
         }
@@ -326,6 +357,28 @@ public class HerramientasDelAsistente : ITransientDependency
                     Entero(uso.Entrada, "anio") ?? throw new UserFriendlyException("Falta «anio»."),
                     Entero(uso.Entrada, "mes") ?? throw new UserFriendlyException("Falta «mes».")),
                 LeyesQueLeAplican => await _consultas.LeyesQueLeAplicanAsync(organizacionId, Opcional(uso.Entrada, "tema")),
+                Solicitar => SolicitudesJson([await _solicitudes.CrearAsync(organizacionId, new CrearSolicitudDto
+                {
+                    Tipo = Texto(uso.Entrada, "tipo") switch
+                    {
+                        "cambio" => TipoDeSolicitud.Cambio,
+                        "documento" => TipoDeSolicitud.Documento,
+                        "aclaracion" => TipoDeSolicitud.Aclaracion,
+                        var t => throw new UserFriendlyException($"Tipo desconocido: «{t}». Usa cambio, documento o aclaracion."),
+                    },
+                    Texto = Texto(uso.Entrada, "texto"),
+                    OperacionId = Opcional(uso.Entrada, "operacionId") != null ? Id(uso.Entrada, "operacionId") : (Guid?)null,
+                })]),
+                VerSolicitudes => SolicitudesJson(await _solicitudes.GetListAsync(organizacionId,
+                    uso.Entrada.ValueKind == JsonValueKind.Object && uso.Entrada.TryGetProperty("solo_pendientes", out var sp)
+                    && sp.ValueKind == JsonValueKind.True)),
+                ResolverSolicitud => SolicitudesJson([await _solicitudes.ResolverAsync(organizacionId, Id(uso.Entrada, "solicitudId"),
+                    new ResolverSolicitudDto
+                    {
+                        Estado = Texto(uso.Entrada, "estado") == "rechazada" ? EstadoDeSolicitud.Rechazada : EstadoDeSolicitud.Atendida,
+                        Respuesta = Opcional(uso.Entrada, "respuesta"),
+                    })]),
+                SolicitudesPendientes => SolicitudesJson(await _solicitudes.GetPendientesDelDespachoAsync()),
                 AnalizarOperacion => await _consultas.AnalizarOperacionAsync(organizacionId, Texto(uso.Entrada, "descripcion"),
                     Opcional(uso.Entrada, "fecha") is { } f
                         ? DateTime.TryParse(f, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var d)
@@ -658,6 +711,22 @@ public class HerramientasDelAsistente : ITransientDependency
         entrada.ValueKind == JsonValueKind.Object && entrada.TryGetProperty(propiedad, out var v) && v.ValueKind == JsonValueKind.String
             ? v.GetString()!
             : throw new UserFriendlyException($"Falta «{propiedad}».");
+
+    private static string SolicitudesJson(IReadOnlyList<SolicitudDto> lista) => lista.Count == 0
+        ? "No hay solicitudes."
+        : JsonSerializer.Serialize(lista.Take(SolicitudConsts.MaxEnLista).Select(s => new
+        {
+            id = s.Id,
+            cliente = s.NombreDelCliente,
+            de = s.Sentido == SentidoDeSolicitud.AlDespacho ? "del cliente al despacho" : "del despacho al cliente",
+            tipo = s.Tipo switch { TipoDeSolicitud.Cambio => "cambio", TipoDeSolicitud.Documento => "documento", _ => "aclaración" },
+            texto = s.Texto,
+            operacionId = s.OperacionId,
+            estado = s.Estado switch { EstadoDeSolicitud.Atendida => "atendida", EstadoDeSolicitud.Rechazada => "rechazada", _ => "pendiente" },
+            respuesta = s.Respuesta,
+            fecha = s.CreationTime.ToString("yyyy-MM-dd"),
+            puedesResolverla = s.PuedeResolver,
+        }), Json);
 
     private static List<string> Lista(JsonElement entrada, string propiedad) =>
         entrada.ValueKind == JsonValueKind.Object && entrada.TryGetProperty(propiedad, out var v) && v.ValueKind == JsonValueKind.Array
