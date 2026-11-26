@@ -55,6 +55,7 @@ public class HerramientasDelAsistente : ITransientDependency
     public const string PolizasDelMes = "polizas_del_mes";
     public const string ImpuestosDelMes = "impuestos_del_mes";
     public const string LeyesQueLeAplican = "leyes_que_le_aplican";
+    public const string AnalizarOperacion = "analizar_operacion";
 
     /// <summary>De la conciliación, el modelo recibe un resumen y hasta este número de pendientes por lista.</summary>
     private const int MaxPendientesPorLista = 15;
@@ -80,6 +81,16 @@ public class HerramientasDelAsistente : ITransientDependency
         "tomar en cuenta cómo la han resuelto los tribunales. Describe la situación con palabras («deducción de servicios sin " +
         "evidencia de que se prestaron»). «fuente» acota a TFJA o SCJN.",
         """{"type":"object","properties":{"situacion":{"type":"string","minLength":2,"maxLength":300},"fuente":{"type":"string","enum":["TFJA","SCJN"]}},"required":["situacion"]}""");
+
+    private static readonly string EsquemaDeAnalizarOperacion =
+        "{\"type\":\"object\",\"properties\":{" +
+        "\"descripcion\":{\"type\":\"string\",\"minLength\":10,\"maxLength\":600}," +
+        "\"fecha\":{\"type\":\"string\",\"format\":\"date\"}," +
+        "\"contraparte_tipo\":{\"type\":\"string\",\"enum\":[\"fisica\",\"moral\"]}," +
+        "\"contraparte_residencia\":{\"type\":\"string\",\"maxLength\":3,\"description\":\"MEX o clave del país\"}," +
+        "\"disparadores\":{\"type\":\"array\",\"items\":{\"type\":\"string\",\"enum\":[" +
+        string.Join(",", AuxiliarContable.Normativa.NormativaAppService.ListaDeDisparadores.Select(d => "\"" + d.Clave + "\"")) +
+        "]}}},\"required\":[\"descripcion\"]}";
 
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
     {
@@ -169,6 +180,15 @@ public class HerramientasDelAsistente : ITransientDependency
                 "qué, qué le piden, si la tenemos, si no la encontramos en línea, si la rige la ley estatal, y qué otros reglamentos " +
                 "tratan el tema cuando no hay uno propio. «tema» filtra (licencia, protección civil, anuncios, predial…).",
                 """{"type":"object","properties":{"tema":{"type":"string","maxLength":60}}}"""),
+            new(AnalizarOperacion,
+                "Arma lo que hay que revisar de una operación que el cliente PIENSA hacer o ya hizo («voy a comprar una camioneta», " +
+                "«me van a pagar desde Estados Unidos», «quiero rentar un local»): con su perfil fiscal, el índice de leyes saca el " +
+                "núcleo fiscal, las leyes que activa su perfil (y las descartadas con su motivo), las PREGUNTAS OBLIGATORIAS que hay " +
+                "que resolver (chispazos) con sus fuentes, los artículos que aplican y fragmentos de la ley. Úsala para orientar " +
+                "ANTES de operar: requisitos para deducir, retenciones, IVA, a nombre de quién facturar. Razona con lo que trae, " +
+                "cita ley y artículo, y pregunta lo que los chispazos dejan abierto. descripcion: qué, con quién, monto aproximado " +
+                "y cómo se pagaría. disparadores: solo los que la persona dijo o son obvios.",
+                EsquemaDeAnalizarOperacion),
             DeLeyes,
             DeSentencias,
         };
@@ -254,6 +274,7 @@ public class HerramientasDelAsistente : ITransientDependency
             PolizasDelMes => "Consultó las pólizas",
             ImpuestosDelMes => "Consultó los impuestos",
             LeyesQueLeAplican => "Revisó las leyes que te aplican",
+            AnalizarOperacion => "Analizó la operación con la ley",
             _ => null,
         };
     }
@@ -305,6 +326,14 @@ public class HerramientasDelAsistente : ITransientDependency
                     Entero(uso.Entrada, "anio") ?? throw new UserFriendlyException("Falta «anio»."),
                     Entero(uso.Entrada, "mes") ?? throw new UserFriendlyException("Falta «mes».")),
                 LeyesQueLeAplican => await _consultas.LeyesQueLeAplicanAsync(organizacionId, Opcional(uso.Entrada, "tema")),
+                AnalizarOperacion => await _consultas.AnalizarOperacionAsync(organizacionId, Texto(uso.Entrada, "descripcion"),
+                    Opcional(uso.Entrada, "fecha") is { } f
+                        ? DateTime.TryParse(f, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var d)
+                            ? d.Date
+                            : throw new UserFriendlyException("«fecha» va como AAAA-MM-DD.")
+                        : null,
+                    Opcional(uso.Entrada, "contraparte_tipo"), Opcional(uso.Entrada, "contraparte_residencia"),
+                    Lista(uso.Entrada, "disparadores")),
                 ResumenDeCartera => await CarteraAsync(uso.Entrada),
                 CrearCliente => await CrearClienteAsync(uso.Entrada),
                 InvitarPersona => await InvitarAsync(organizacionId, uso.Entrada),
@@ -329,9 +358,12 @@ public class HerramientasDelAsistente : ITransientDependency
         {
             // Sin detalles técnicos: el modelo solo tiene que decir que ahora no pudo consultar.
             return new BloqueDeResultadoDeHerramienta(uso.Id,
-                uso.Nombre == ConsultarSentencias
-                    ? "La librería de sentencias no está disponible en este momento. Dilo así y no cites tesis de memoria."
-                    : "La consulta de leyes no está disponible en este momento. Dilo así y no respondas de memoria sobre lo que dice la ley.",
+                uso.Nombre switch
+                {
+                    ConsultarSentencias => "La librería de sentencias no está disponible en este momento. Dilo así y no cites tesis de memoria.",
+                    ConciliarMes => "El motor fiscal no responde en este momento: no se pudo conciliar. Dilo así.",
+                    _ => "La consulta de leyes no está disponible en este momento. Dilo así y no respondas de memoria sobre lo que dice la ley.",
+                },
                 EsError: true);
         }
         catch (Volo.Abp.Authorization.AbpAuthorizationException)
@@ -626,6 +658,11 @@ public class HerramientasDelAsistente : ITransientDependency
         entrada.ValueKind == JsonValueKind.Object && entrada.TryGetProperty(propiedad, out var v) && v.ValueKind == JsonValueKind.String
             ? v.GetString()!
             : throw new UserFriendlyException($"Falta «{propiedad}».");
+
+    private static List<string> Lista(JsonElement entrada, string propiedad) =>
+        entrada.ValueKind == JsonValueKind.Object && entrada.TryGetProperty(propiedad, out var v) && v.ValueKind == JsonValueKind.Array
+            ? [.. v.EnumerateArray().Where(x => x.ValueKind == JsonValueKind.String).Select(x => x.GetString()!.Trim())]
+            : [];
 
     private static decimal? Decimal(JsonElement entrada, string propiedad) =>
         entrada.ValueKind == JsonValueKind.Object && entrada.TryGetProperty(propiedad, out var v) && v.ValueKind == JsonValueKind.Number

@@ -144,7 +144,7 @@ public class NormativaAppService : AuxiliarContableAppService, INormativaAppServ
 /// <summary>
 /// Hace los análisis pedidos (lo llama <c>AnalisisNormativoWorker</c>): arma el perfil del cliente con su perfil
 /// fiscal —tipo de persona, regímenes, actividades de la constancia, código postal, trabajadores— y llama al motor.
-/// El RFC no viaja; el nombre sólo sirve al motor para la forma jurídica.
+/// Ni el RFC ni el nombre viajan: del nombre solo sale la forma jurídica (<see cref="FormaJuridica"/>).
 /// </summary>
 public class AnalizadorNormativo : ITransientDependency
 {
@@ -246,6 +246,37 @@ public class AnalizadorNormativo : ITransientDependency
         fila.Terminar(json, conclusion, confianza, _reloj.Now.ToUniversalTime());
     }
 
+    /// <summary>
+    /// Las mismas formas que reconoce el motor (leyesmx/vocab_fiscal.py LEYES_POR_FORMA), en el mismo orden: devuelve solo
+    /// la sigla de la sociedad («S.A. DE C.V.», «A.C.»…) o null. Nunca el nombre.
+    /// </summary>
+    public static string? FormaJuridica(string? nombre)
+    {
+        if (string.IsNullOrWhiteSpace(nombre))
+        {
+            return null;
+        }
+
+        var n = nombre.ToUpperInvariant();
+        (string Patron, string Forma)[] formas =
+        [
+            (@"\bS\.?\s*C\.?\s*DE\s*R\.?\s*L|\bSOCIEDAD\s+COOPERATIVA", "S.C. DE R.L."),
+            (@"\bS\.?\s*A\.?\s*P\.?\s*I\b", "S.A.P.I."),
+            (@"\bS\.?\s*A\.?\s*B\b", "S.A.B."),
+            (@"\bSOFOM\b|\bS\.?\s*O\.?\s*F\.?\s*O\.?\s*M", "SOFOM"),
+            (@"\bS\.?\s*A\.?\s*S\b", "S.A.S."),
+            (@"\bS\.?\s*DE\s*R\.?\s*L", "S. DE R.L."),
+            (@"\bS\.?\s*EN\s*N\.?\s*C", "S. EN N.C."),
+            (@"\bS\.?\s*EN\s*C\b", "S. EN C."),
+            (@"\bS\.?\s*A\b", "S.A."),
+            (@"\bA\.?\s*C\b|\bASOCIACI[OÓ]N\s+CIVIL", "A.C."),
+            (@"\bS\.?\s*C\b|\bSOCIEDAD\s+CIVIL", "S.C."),
+            (@"\bI\.?\s*A\.?\s*P\b|\bI\.?\s*B\.?\s*P\b", "I.A.P."),
+            (@"\bA\.?\s*R\b|\bASOCIACI[OÓ]N\s+RELIGIOSA", "A.R."),
+        ];
+        return formas.FirstOrDefault(f => System.Text.RegularExpressions.Regex.IsMatch(n, f.Patron)).Forma;
+    }
+
     public async Task<PerfilParaNormativa> PerfilAsync(Guid organizacionId, int? ejercicio)
     {
         var p = await _perfiles.FirstOrDefaultAsync(x => x.OrganizacionId == organizacionId)
@@ -287,7 +318,10 @@ public class AnalizadorNormativo : ITransientDependency
         return new PerfilParaNormativa
         {
             TipoPersona = Campo(CamposDelPerfil.TipoDePersona),
-            Nombre = Campo(CamposDelPerfil.Nombre),
+            // Solo la forma jurídica (S.A. de C.V., A.C.…): el nombre del cliente no sale de la plataforma.
+            Nombre = (Campo(CamposDelPerfil.TipoDePersona) ?? "").Contains("moral", StringComparison.OrdinalIgnoreCase)
+                ? FormaJuridica(Campo(CamposDelPerfil.Nombre))
+                : null,
             Regimenes = Lista(Campo(CamposDelPerfil.Regimenes)),
             Actividades = actividades,
             CodigoPostal = Campo(CamposDelPerfil.CodigoPostal),

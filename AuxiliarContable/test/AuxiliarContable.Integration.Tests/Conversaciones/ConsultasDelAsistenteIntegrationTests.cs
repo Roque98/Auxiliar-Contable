@@ -6,7 +6,9 @@ using AuxiliarContable.Contabilidad;
 using AuxiliarContable.Conversaciones;
 using AuxiliarContable.IA;
 using AuxiliarContable.MotorFiscal;
+using AuxiliarContable.Normativa;
 using AuxiliarContable.Organizaciones;
+using AuxiliarContable.PerfilesFiscales;
 using Shouldly;
 using Volo.Abp.Domain.Repositories;
 using Xunit;
@@ -24,6 +26,7 @@ public class ConsultasDelAsistenteIntegrationTests : ConJerarquiaTestBase
 
     private readonly IAsistenteAppService _asistente;
     private readonly ModeloConversacionalDePrueba _modelo;
+    private readonly MotorFiscalDePrueba _motor;
     private Guid _cliente;
     private Guid _otroCliente;
     private Guid _telmex;
@@ -32,12 +35,14 @@ public class ConsultasDelAsistenteIntegrationTests : ConJerarquiaTestBase
     {
         _asistente = GetRequiredService<IAsistenteAppService>();
         _modelo = (ModeloConversacionalDePrueba)GetRequiredService<IModeloConversacional>();
+        _motor = (MotorFiscalDePrueba)GetRequiredService<IMotorFiscal>();
     }
 
     public override async Task InitializeAsync()
     {
         await base.InitializeAsync();
         _modelo.Reiniciar();
+        _motor.Reiniciar();
         _cliente = await CrearOrganizacionAsync("Panadería Lupita");
         _otroCliente = await CrearOrganizacionAsync("Otro cliente");
         await WithUnitOfWorkAsync(() =>
@@ -238,4 +243,52 @@ public class ConsultasDelAsistenteIntegrationTests : ConJerarquiaTestBase
         polizas.Contenido.ShouldContain("Caja");
         conversacion.Mensajes.Last().Acciones.ShouldBe(["Consultó los impuestos", "Consultó las pólizas"]);
     }
+
+    [Fact]
+    public async Task Antes_de_operar_el_cliente_pregunta_y_el_asistente_recibe_el_expediente_sin_su_nombre()
+    {
+        foreach (var (campo, valor) in new[]
+                 {
+                     (CamposDelPerfil.TipoDePersona, "moral"),
+                     (CamposDelPerfil.Nombre, "PANADERIA LUPITA S.A. DE C.V."),
+                 })
+        {
+            await ComoAsync(Administrador, () => GetRequiredService<IPerfilFiscalAppService>().ResponderAsync(_cliente,
+                new ResponderDatoDelPerfilDto { Campo = campo, Valor = valor }));
+        }
+
+        _modelo.UsarHerramienta(HerramientasDelAsistente.AnalizarOperacion, new
+        {
+            descripcion = "Voy a vender pan a un cliente de Estados Unidos y me pagaría por transferencia",
+            contraparte_tipo = "moral",
+            contraparte_residencia = "usa",
+            disparadores = new[] { "extranjero", "inventado" },
+        });
+        _modelo.Contestar("Puede ser exportación (art. 29 LIVA): ¿el pan sale del país?");
+
+        var conversacion = await ComoAsync(Usuario, () =>
+            _asistente.EnviarAsync(_cliente, Mensaje("Me salió un cliente en Estados Unidos, ¿qué tengo que cuidar?")));
+
+        var r = Resultado();
+        r.EsError.ShouldBeFalse();
+        r.Contenido.ShouldContain("¿Califica como exportación?");
+        var operacion = _motor.ExpedientesPedidos.ShouldHaveSingleItem();
+        operacion.Descripcion.ShouldContain("Estados Unidos");
+        operacion.Contraparte!.Residencia.ShouldBe("USA");
+        operacion.Disparadores.ShouldBe(["extranjero"], "lo que el motor no conoce no viaja");
+        var perfil = _motor.PerfilesDeExpediente.ShouldHaveSingleItem();
+        perfil.TipoPersona.ShouldBe("moral");
+        perfil.Nombre.ShouldBe("S.A.", "al motor solo va la forma jurídica, nunca el nombre del cliente");
+        conversacion.Mensajes.Last().Acciones.ShouldBe(["Analizó la operación con la ley"]);
+    }
+
+    [Theory]
+    [InlineData("PANADERIA LUPITA S.A. DE C.V.", "S.A.")]
+    [InlineData("CONSTRUCTORA DEL SUR S. DE R.L. DE C.V.", "S. DE R.L.")]
+    [InlineData("DESARROLLOS NORTE SAPI DE CV", "S.A.P.I.")]
+    [InlineData("FUNDACION AYUDA A.C.", "A.C.")]
+    [InlineData("JUAN PEREZ LOPEZ", null)]
+    [InlineData("", null)]
+    public void Del_nombre_solo_sale_la_forma_juridica(string nombre, string? forma) =>
+        AnalizadorNormativo.FormaJuridica(nombre).ShouldBe(forma);
 }

@@ -98,6 +98,8 @@ public class MotorFiscalDePrueba : IMotorFiscal
         NominaContabilizada = null;
         Provisionales = null;
         AdeudosRecibidos.Clear();
+        ExpedientesPedidos.Clear();
+        PerfilesDeExpediente.Clear();
         DetalleDeProvisionales = null;
         TodosLosMeses = false;
         IepsDelMes = null;
@@ -296,6 +298,8 @@ public class MotorFiscalDePrueba : IMotorFiscal
 
     public List<OperacionParaNormativa> ExpedientesPedidos { get; } = [];
 
+    public List<PerfilParaNormativa> PerfilesDeExpediente { get; } = [];
+
     public Task<string> ExpedienteNormativoAsync(PerfilParaNormativa perfil, OperacionParaNormativa operacion,
         CancellationToken cancellationToken = default)
     {
@@ -305,6 +309,7 @@ public class MotorFiscalDePrueba : IMotorFiscal
         }
 
         ExpedientesPedidos.Add(operacion);
+        PerfilesDeExpediente.Add(perfil);
         return Task.FromResult(
             "{\"chispazos\":[{\"disparador\":\"extranjero\",\"pregunta\":\"¿Califica como exportación?\","
             + "\"fuentes\":[{\"clave\":\"LIVA\",\"articulo\":\"29\",\"url\":\"\"}]}],\"avisos\":[]}");
