@@ -282,6 +282,23 @@ public class ConsultasDelAsistenteIntegrationTests : ConJerarquiaTestBase
         conversacion.Mensajes.Last().Acciones.ShouldBe(["Analizó la operación con la ley"]);
     }
 
+    [Fact]
+    public async Task La_tarifa_semanal_de_isr_sale_del_motor_tambien_en_la_conversacion_de_la_cartera()
+    {
+        _modelo.UsarHerramienta(HerramientasDelAsistente.TarifaIsr, new { periodo = "semanal", @base = 2500 });
+        _modelo.Contestar("Con 2,500 gravados a la semana se retienen 66.02.");
+
+        var conversacion = await ComoAsync(Administrador, () =>
+            _asistente.EnviarAsync(Guid.Empty, Mensaje("¿Cuánto ISR retengo a un sueldo semanal de 2,500 en 2026?")));
+
+        var r = Resultado();
+        r.EsError.ShouldBeFalse();
+        r.Contenido.ShouldContain("Anexo 8");
+        r.Contenido.ShouldContain("isr_a_retener");
+        _motor.TarifasPedidas.ShouldHaveSingleItem().ShouldBe((7, 2500m, (int?)null));
+        conversacion.Mensajes.Last().Acciones.ShouldBe(["Consultó la tarifa de ISR"]);
+    }
+
     [Theory]
     [InlineData("PANADERIA LUPITA S.A. DE C.V.", "S.A.")]
     [InlineData("CONSTRUCTORA DEL SUR S. DE R.L. DE C.V.", "S. DE R.L.")]

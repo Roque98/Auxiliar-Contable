@@ -99,6 +99,7 @@ public class MotorFiscalDePrueba : IMotorFiscal
         Provisionales = null;
         AdeudosRecibidos.Clear();
         ExpedientesPedidos.Clear();
+        TarifasPedidas.Clear();
         PerfilesDeExpediente.Clear();
         DetalleDeProvisionales = null;
         TodosLosMeses = false;
@@ -313,6 +314,22 @@ public class MotorFiscalDePrueba : IMotorFiscal
         return Task.FromResult(
             "{\"chispazos\":[{\"disparador\":\"extranjero\",\"pregunta\":\"¿Califica como exportación?\","
             + "\"fuentes\":[{\"clave\":\"LIVA\",\"articulo\":\"29\",\"url\":\"\"}]}],\"avisos\":[]}");
+    }
+
+    public List<(int Dias, decimal? Base, int? Mes)> TarifasPedidas { get; } = [];
+
+    public Task<string> TarifaIsrAsync(int dias, decimal? baseGravable, int? mes, CancellationToken cancellationToken = default)
+    {
+        if (Caido)
+        {
+            throw new MotorFiscalNoDisponibleException("El motor fiscal no responde.");
+        }
+
+        TarifasPedidas.Add((dias, baseGravable, mes));
+        return Task.FromResult(
+            "{\"periodo\":\"semanal\",\"dias\":7,\"fundamento\":\"Art. 96 LISR y Anexo 8 de la RMF 2026\","
+            + "\"tarifa\":[{\"limite_inferior\":0.01,\"limite_superior\":194.46,\"cuota_fija\":0.0,\"porcentaje_excedente\":1.92}],"
+            + "\"calculo\":{\"isr_tarifa\":189.36,\"subsidio_para_el_empleo\":123.34,\"isr_a_retener\":66.02}}");
     }
 
     public Task<string> AnalizarNormativaAsync(PerfilParaNormativa perfil, OperacionParaNormativa operacion,
