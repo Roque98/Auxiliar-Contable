@@ -106,6 +106,8 @@ public class AuxiliarContableDbContext :
 
     public DbSet<MensajeDeConversacion> MensajesDeConversaciones { get; set; }
 
+    public DbSet<Solicitud> Solicitudes { get; set; }
+
     // ⚠️ ESTOS DbSet NO SON DECORATIVOS. ABP aplica sus filtros globales (multi-tenancy y
     // soft delete) recorriendo las entidades que YA ESTAN en el modelo en el momento en que
     // se llama a base.OnModelCreating(), que aqui es la PRIMERA linea de OnModelCreating.
@@ -721,6 +723,17 @@ public class AuxiliarContableDbContext :
             b.Property(x => x.Bloques).IsRequired();
             b.HasIndex(x => new { x.ConversacionId, x.Numero }).IsUnique();
             b.HasIndex(x => x.CreadoUtc);
+        });
+
+        // AppSolicitudes: lo que el cliente le pide al despacho (un cambio que él no puede hacer) y al revés (un documento).
+        builder.Entity<Solicitud>(b =>
+        {
+            b.ToTable(AuxiliarContableConsts.DbTablePrefix + "Solicitudes", AuxiliarContableConsts.DbSchema);
+            b.ConfigureByConvention();
+            b.Property(x => x.Texto).IsRequired().HasMaxLength(SolicitudConsts.MaxTextoLength);
+            b.Property(x => x.Respuesta).HasMaxLength(SolicitudConsts.MaxRespuestaLength);
+            b.HasIndex(x => new { x.OrganizacionId, x.Estado });
+            b.HasIndex(x => new { x.Sentido, x.Estado });
         });
 
         // Intentos fallidos de un trabajo en segundo plano — tabla AppJobFailures.
