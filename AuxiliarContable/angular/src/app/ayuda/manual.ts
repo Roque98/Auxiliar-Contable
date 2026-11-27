@@ -115,7 +115,7 @@ export const SECCIONES: Seccion[] = [
           'Lo que le digas de tu negocio lo anota en tu perfil fiscal; abajo de su respuesta ves qué guardó.',
           'Si algo quedó mal, díselo o corrígelo en Perfil fiscal.',
           'Pregúntale qué dice la ley («¿puedo deducir mi coche?»): busca en las leyes fiscales vigentes y te contesta con los artículos al final, en «Fundamento».',
-          'Pregúntale «¿qué clave uso para…?» o «¿está bien la clave de esta factura que me llegó?»: busca la clave por lo que es el producto, revisa la clave, la unidad y la descripción de cada concepto y te avisa si algo no cuadra (en una recibida, te dice qué pedirle al proveedor).',
+          'Pregúntale «¿qué clave uso para…?» o «¿está bien la clave de esta factura que me llegó?»: busca la clave por lo que es el producto, revisa la clave, la unidad y la descripción de cada concepto y te avisa si algo no cuadra (en una recibida, te dice qué pedirle al proveedor). En el chat de toda la cartera también busca claves, sin revisar la constancia de nadie; para revisar una factura por su folio, elige al cliente.',
           'Si le pides un cálculo, te lo muestra en una tabla paso por paso (concepto, operación e importe); en el teléfono la tabla se desliza de lado.',
           'Si le cuentas una situación (un proveedor, una carta del SAT, una devolución), también revisa cómo la han resuelto los tribunales y te dice qué conviene guardar.',
           'Pregúntale por tus cobros y pagos: «¿ya pagué la factura de Telmex?», «¿qué gastos de octubre no tienen factura?». Busca en tu información y te da fechas, importes y si falta la factura o el pago.',

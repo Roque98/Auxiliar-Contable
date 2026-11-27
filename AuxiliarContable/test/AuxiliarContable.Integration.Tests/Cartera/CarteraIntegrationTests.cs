@@ -108,12 +108,33 @@ public class CarteraIntegrationTests : ConJerarquiaTestBase
         _modelo.Solicitudes[0].Herramientas.Select(h => h.Nombre)
             .ShouldBe([HerramientasDelAsistente.ResumenDeCartera, HerramientasDelAsistente.CrearCliente,
                     HerramientasDelAsistente.SolicitudesPendientes, HerramientasDelAsistente.ConsultarLeyes,
-                    HerramientasDelAsistente.ConsultarSentencias, HerramientasDelAsistente.TarifaIsr, HerramientasDelAsistente.LeerLey],
-                "el resumen, el alta, la bandeja de solicitudes, la ley, las sentencias y la tarifa de ISR (que no son de ningún cliente)");
+                    HerramientasDelAsistente.ConsultarSentencias, HerramientasDelAsistente.TarifaIsr, HerramientasDelAsistente.LeerLey,
+                    HerramientasDelAsistente.BuscarClaveSat, HerramientasDelAsistente.RevisarClaves],
+                "el resumen, el alta, la bandeja de solicitudes, la ley, las sentencias, la tarifa de ISR y las claves SAT (que no son de ningún cliente)");
         var resumen = _modelo.Solicitudes[1].Turnos.Last().Bloques.Single().ShouldBeOfType<BloqueDeResultadoDeHerramienta>();
         resumen.Contenido.ShouldContain("Taller Pepe");
         var perfil = _modelo.Solicitudes[2].Turnos.Last().Bloques.Single().ShouldBeOfType<BloqueDeResultadoDeHerramienta>();
         perfil.EsError.ShouldBeTrue("en la cartera no se consulta el perfil de nadie");
+    }
+
+    [Fact]
+    public async Task En_la_cartera_busca_la_clave_sin_la_constancia_de_nadie()
+    {
+        var motor = (MotorFiscalDePrueba)GetRequiredService<AuxiliarContable.MotorFiscal.IMotorFiscal>();
+        motor.Reiniciar();
+        _modelo.UsarHerramienta(HerramientasDelAsistente.BuscarClaveSat, new { descripcion = "guantes para motociclista" });
+        _modelo.UsarHerramienta(HerramientasDelAsistente.RevisarClaves, new { uuid = "6F2A1B3C-4D5E-4F60-8A7B-9C0D1E2F3A4B" });
+        _modelo.Contestar("Usa la clave de guantes.");
+
+        await ComoAsync(Administrador, () => _asistente.EnviarAsync(Guid.Empty, new EnviarMensajeDto { Texto = "¿Qué clave uso para guantes de moto?" }));
+
+        var (descripcion, actividades) = motor.ClavesBuscadas.ShouldHaveSingleItem();
+        descripcion.ShouldBe("guantes para motociclista");
+        actividades.ShouldBeEmpty();
+        _modelo.Solicitudes[1].Turnos.Last().Bloques.Single().ShouldBeOfType<BloqueDeResultadoDeHerramienta>().EsError.ShouldBeFalse();
+        var porUuid = _modelo.Solicitudes[2].Turnos.Last().Bloques.Single().ShouldBeOfType<BloqueDeResultadoDeHerramienta>();
+        porUuid.EsError.ShouldBeTrue("en la cartera no se ven las facturas de ningún cliente");
+        motor.Reiniciar();
     }
 
     [Fact]

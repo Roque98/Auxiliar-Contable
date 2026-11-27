@@ -55,19 +55,36 @@ public class RevisorDeClaves : ITransientDependency
     public async Task<string> BuscarAsync(Guid organizacionId, string descripcion, int cuantas = 8)
     {
         await _autorizador.ExigirAsync(organizacionId, AccionEnOrganizacion.Ver);
+        return await BuscarConAsync(descripcion, await ActividadesAsync(organizacionId), cuantas);
+    }
+
+    /// <summary>
+    /// Desde la conversación de la cartera (solo el equipo; el asistente lo garantiza): sin cliente, sin constancia que
+    /// revisar contra el Anexo 6.
+    /// </summary>
+    public Task<string> BuscarSinClienteAsync(string descripcion) => BuscarConAsync(descripcion, [], 8);
+
+    public Task<string> RevisarSinClienteAsync(IReadOnlyList<ConceptoParaRevisar> conceptos) => RevisarConAsync(conceptos, []);
+
+    private async Task<string> BuscarConAsync(string descripcion, IReadOnlyList<string> actividades, int cuantas)
+    {
         descripcion = (descripcion ?? "").Trim();
         if (descripcion.Length < 2)
         {
             throw new UserFriendlyException("Describe el producto o servicio (por ejemplo «reflector LED 50 W»).");
         }
 
-        return await _motor.BuscarClavesAsync(descripcion.Length > 300 ? descripcion[..300] : descripcion,
-            await ActividadesAsync(organizacionId), cuantas);
+        return await _motor.BuscarClavesAsync(descripcion.Length > 300 ? descripcion[..300] : descripcion, actividades, cuantas);
     }
 
     public async Task<string> RevisarAsync(Guid organizacionId, IReadOnlyList<ConceptoParaRevisar> conceptos)
     {
         await _autorizador.ExigirAsync(organizacionId, AccionEnOrganizacion.Ver);
+        return await RevisarConAsync(conceptos, await ActividadesAsync(organizacionId));
+    }
+
+    private async Task<string> RevisarConAsync(IReadOnlyList<ConceptoParaRevisar> conceptos, IReadOnlyList<string> actividades)
+    {
         var limpios = conceptos
             .Where(c => !string.IsNullOrWhiteSpace(c.Clave) || !string.IsNullOrWhiteSpace(c.Descripcion))
             .Take(ConceptosDelCfdi.Max)
@@ -78,7 +95,7 @@ public class RevisorDeClaves : ITransientDependency
             throw new UserFriendlyException("No hay conceptos que revisar: hace falta la clave SAT y la descripción.");
         }
 
-        return await _motor.RevisarClavesAsync(limpios, await ActividadesAsync(organizacionId));
+        return await _motor.RevisarClavesAsync(limpios, actividades);
     }
 
     /// <summary>

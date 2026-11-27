@@ -74,6 +74,30 @@ public class HerramientasDelAsistente : ITransientDependency
     private const int MaxCaracteresPorArticulo = 3000;
 
     /// <summary>Consultar leyes no toca datos de nadie: vale igual en la conversación de un cliente y en la de la cartera.</summary>
+    private static readonly HerramientaDelModelo DeBuscarClave = new(BuscarClaveSat,
+                "La clave SAT (c_ClaveProdServ) y la unidad para FACTURAR o registrar un producto o servicio: «¿qué clave uso " +
+                "para reflectores LED?», «clave para servicio de instalación eléctrica». Pásale cómo se llama la cosa (puede traer " +
+                "marca, color y medidas: las quita). Devuelve claves candidatas con su descripción oficial, la unidad sugerida y " +
+                "si las actividades de SU constancia describen esa venta según el Anexo 6 RMF (y cuál sí, si no). Explica por qué " +
+                "la primera es la mejor por lo que ES el objeto; si dos son defendibles, dilo. La clave la decide el objeto, no la " +
+                "actividad. Avísale si su constancia no cubre la venta.",
+                """{"type":"object","properties":{"descripcion":{"type":"string","minLength":2,"maxLength":300}},"required":["descripcion"]}""");
+
+    private static readonly HerramientaDelModelo DeRevisarClaves = new(RevisarClaves,
+                "¿Está bien la clave SAT de una factura? Con uuid revisa todos los conceptos de esa factura de su bóveda " +
+                "(emitida o recibida); sin uuid, los conceptos que te dé (clave, unidad, descripción). Señala inconsistencias: " +
+                "clave o unidad inexistentes, servicio con unidad de bien (o al revés), descripción que no corresponde a la clave " +
+                "o tan genérica que no dice qué se compró, y propone claves por el objeto. En una RECIBIDA, una clave que no " +
+                "corresponde a lo que realmente se compró hay que aclararla con el proveedor (puede pedir que la cancele y la " +
+                "reexpida); no la corrige el cliente. Usa buscar_operaciones para encontrar el uuid si no lo tiene.",
+                """
+                {"type":"object","properties":{
+                  "uuid":{"type":"string","minLength":36,"maxLength":36},
+                  "conceptos":{"type":"array","maxItems":60,"items":{"type":"object","properties":{
+                    "clave":{"type":"string","maxLength":12},"unidad":{"type":"string","maxLength":6},
+                    "descripcion":{"type":"string","maxLength":1000}}}}}}
+                """);
+
     private static readonly HerramientaDelModelo DeLeyes = new(ConsultarLeyes,
         "Busca en las leyes federales vigentes (LISR, LIVA, CFF, LIEPS, LFT, LSS, Ley del INFONAVIT…), sus reglamentos, la " +
         "Resolución Miscelánea Fiscal 2026 con TODOS sus anexos, las RGCE y las NIF. Devuelve los fragmentos más relevantes con " +
@@ -198,28 +222,8 @@ public class HerramientasDelAsistente : ITransientDependency
                 "(términos y periodo para buscar_operaciones) y SOLO los datos que faltan y cambian la respuesta (preguntar_antes). " +
                 "Si preguntar_antes viene vacío, NO digas que faltan datos: trabaja la respuesta. Pásale la pregunta tal cual.",
                 """{"type":"object","properties":{"pregunta":{"type":"string","minLength":2,"maxLength":600}},"required":["pregunta"]}"""),
-            new(BuscarClaveSat,
-                "La clave SAT (c_ClaveProdServ) y la unidad para FACTURAR o registrar un producto o servicio: «¿qué clave uso " +
-                "para reflectores LED?», «clave para servicio de instalación eléctrica». Pásale cómo se llama la cosa (puede traer " +
-                "marca, color y medidas: las quita). Devuelve claves candidatas con su descripción oficial, la unidad sugerida y " +
-                "si las actividades de SU constancia describen esa venta según el Anexo 6 RMF (y cuál sí, si no). Explica por qué " +
-                "la primera es la mejor por lo que ES el objeto; si dos son defendibles, dilo. La clave la decide el objeto, no la " +
-                "actividad. Avísale si su constancia no cubre la venta.",
-                """{"type":"object","properties":{"descripcion":{"type":"string","minLength":2,"maxLength":300}},"required":["descripcion"]}"""),
-            new(RevisarClaves,
-                "¿Está bien la clave SAT de una factura? Con uuid revisa todos los conceptos de esa factura de su bóveda " +
-                "(emitida o recibida); sin uuid, los conceptos que te dé (clave, unidad, descripción). Señala inconsistencias: " +
-                "clave o unidad inexistentes, servicio con unidad de bien (o al revés), descripción que no corresponde a la clave " +
-                "o tan genérica que no dice qué se compró, y propone claves por el objeto. En una RECIBIDA, una clave que no " +
-                "corresponde a lo que realmente se compró hay que aclararla con el proveedor (puede pedir que la cancele y la " +
-                "reexpida); no la corrige el cliente. Usa buscar_operaciones para encontrar el uuid si no lo tiene.",
-                """
-                {"type":"object","properties":{
-                  "uuid":{"type":"string","minLength":36,"maxLength":36},
-                  "conceptos":{"type":"array","maxItems":60,"items":{"type":"object","properties":{
-                    "clave":{"type":"string","maxLength":12},"unidad":{"type":"string","maxLength":6},
-                    "descripcion":{"type":"string","maxLength":1000}}}}}}
-                """),
+            DeBuscarClave,
+            DeRevisarClaves,
             new(BuscarOperaciones,
                 "Busca en las operaciones del cliente activo (cada una junta su factura, su pago y su control interno). Filtros " +
                 "opcionales: texto (proveedor o cliente, concepto, UUID o referencia del pago), terminos (varias palabras: trae las " +
@@ -397,9 +401,14 @@ public class HerramientasDelAsistente : ITransientDependency
         DeSentencias,
         DeTarifa,
         DeLeerLey,
+        DeBuscarClave,
+        DeRevisarClaves,
     ];
 
     /// <summary>Las que solo consultan al motor (sin base ni cliente): sirven en las dos conversaciones y pueden correr a la vez.</summary>
+    /// <summary>Las de claves SAT: en la cartera van sin la constancia de un cliente.</summary>
+    public static bool EnAmbas(string nombre) => nombre is BuscarClaveSat or RevisarClaves;
+
     public static bool SoloConsultaAlMotor(string nombre) => nombre is ConsultarLeyes or ConsultarSentencias or TarifaIsr or LeerLey;
 
     /// <summary>Los conceptos que dio el modelo (clave, unidad, descripción).</summary>
@@ -417,7 +426,7 @@ public class HerramientasDelAsistente : ITransientDependency
     {
         // El candado entre las dos clases de conversación: en la de la cartera (Guid.Empty) solo sus
         // herramientas (resumen y alta); en la de un cliente, nunca esas. Lo que pida el modelo no lo salta.
-        if (!SoloConsultaAlMotor(uso.Nombre) && (organizacionId == Guid.Empty) != (uso.Nombre is ResumenDeCartera or CrearCliente or SolicitudesPendientes))
+        if (!SoloConsultaAlMotor(uso.Nombre) && !EnAmbas(uso.Nombre) && (organizacionId == Guid.Empty) != (uso.Nombre is ResumenDeCartera or CrearCliente or SolicitudesPendientes))
         {
             return new BloqueDeResultadoDeHerramienta(uso.Id, $"La herramienta «{uso.Nombre}» no está disponible en esta conversación.", EsError: true);
         }
@@ -434,10 +443,16 @@ public class HerramientasDelAsistente : ITransientDependency
                     Decimal(uso.Entrada, "importe_minimo"), Decimal(uso.Entrada, "importe_maximo"),
                     Opcional(uso.Entrada, "sentido"), Opcional(uso.Entrada, "falta"), Lista(uso.Entrada, "terminos"))),
                 EncuadrarPregunta => await _consultas.EncuadrarPreguntaAsync(organizacionId, Texto(uso.Entrada, "pregunta")),
-                BuscarClaveSat => Recortado(await _claves.BuscarAsync(organizacionId, Texto(uso.Entrada, "descripcion"))),
+                BuscarClaveSat => Recortado(organizacionId == Guid.Empty
+                    ? await _claves.BuscarSinClienteAsync(Texto(uso.Entrada, "descripcion"))
+                    : await _claves.BuscarAsync(organizacionId, Texto(uso.Entrada, "descripcion"))),
                 RevisarClaves => Recortado(Opcional(uso.Entrada, "uuid") is { Length: > 0 } uuid
-                    ? await _claves.RevisarFacturaAsync(organizacionId, uuid)
-                    : await _claves.RevisarAsync(organizacionId, ConceptosDe(uso.Entrada))),
+                    ? organizacionId == Guid.Empty
+                        ? throw new UserFriendlyException("Para revisar una factura por su folio fiscal, elige arriba al cliente: aquí no se ven sus documentos.")
+                        : await _claves.RevisarFacturaAsync(organizacionId, uuid)
+                    : organizacionId == Guid.Empty
+                        ? await _claves.RevisarSinClienteAsync(ConceptosDe(uso.Entrada))
+                        : await _claves.RevisarAsync(organizacionId, ConceptosDe(uso.Entrada))),
                 ExplicarOperacion => await _consultas.ExplicarOperacionAsync(organizacionId,
                     Opcional(uso.Entrada, "operacionId") != null ? Id(uso.Entrada, "operacionId") : (Guid?)null,
                     Opcional(uso.Entrada, "uuid")),
