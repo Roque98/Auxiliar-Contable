@@ -176,10 +176,18 @@ public class AsistenteAppService : AuxiliarContableAppService, IAsistenteAppServ
                 break;
             }
 
+            // Las consultas que solo van al motor (leyes, sentencias, tarifa) corren a la vez; las que tocan la base, una por una.
             var resultados = new List<BloqueDeTurno>();
-            foreach (var uso in usos)
+            if (usos.All(u => HerramientasDelAsistente.SoloConsultaAlMotor(u.Nombre)))
             {
-                resultados.Add(await _herramientas.EjecutarAsync(organizacionId, uso));
+                resultados.AddRange(await Task.WhenAll(usos.Select(u => _herramientas.EjecutarAsync(organizacionId, u))));
+            }
+            else
+            {
+                foreach (var uso in usos)
+                {
+                    resultados.Add(await _herramientas.EjecutarAsync(organizacionId, uso));
+                }
             }
 
             await GuardarAsync(RolDelMensaje.Herramientas, string.Empty, resultados);
@@ -200,14 +208,39 @@ public class AsistenteAppService : AuxiliarContableAppService, IAsistenteAppServ
     }
 
     /// <summary>
-    /// Los últimos mensajes como turnos para el modelo. Empieza siempre en un mensaje de la
-    /// persona: cortar en medio de un uso de herramienta dejaría un resultado sin su llamada.
+    /// La conversación como turnos para el modelo. El turno en curso va completo (sus búsquedas y resultados);
+    /// los anteriores, solo lo que se dijo: la pregunta y la respuesta que vio la persona. Sin sus búsquedas ni
+    /// borradores, porque con ellos el modelo retomaba la investigación anterior en lugar de contestar la pregunta
+    /// nueva, y cada vuelta reenviaba decenas de miles de caracteres (más lento). Si necesita algo de antes, lo vuelve a consultar.
     /// </summary>
     public static List<TurnoDeConversacion> Turnos(IEnumerable<MensajeDeConversacion> historial)
     {
-        var ultimos = historial.OrderBy(m => m.Numero).TakeLast(ConversacionConsts.MensajesDeHistorial).ToList();
-        var inicio = ultimos.FindIndex(m => m.Rol == RolDelMensaje.Usuario);
-        return inicio < 0 ? [] : ultimos.Skip(inicio).Select(m => m.ATurno()).ToList();
+        var todos = historial.OrderBy(m => m.Numero).ToList();
+        var actual = todos.FindLastIndex(m => m.Rol == RolDelMensaje.Usuario);
+        if (actual < 0)
+        {
+            return [];
+        }
+
+        var antes = new List<TurnoDeConversacion>();
+        for (var i = 0; i < actual; i++)
+        {
+            if (todos[i].Rol != RolDelMensaje.Usuario)
+            {
+                continue;
+            }
+
+            var siguiente = todos.FindIndex(i + 1, m => m.Rol == RolDelMensaje.Usuario);
+            var respuesta = todos.Skip(i + 1).Take(siguiente - i - 1)
+                .LastOrDefault(m => m.Rol == RolDelMensaje.Asistente && !string.IsNullOrWhiteSpace(m.Texto));
+            antes.Add(new TurnoDeConversacion(RolDelTurno.Usuario, [new BloqueDeTexto(todos[i].Texto)]));
+            antes.Add(new TurnoDeConversacion(RolDelTurno.Asistente, [new BloqueDeTexto(respuesta?.Texto ?? "(Sin respuesta.)")]));
+        }
+
+        // Pares completos (pregunta y respuesta), los más recientes.
+        var desde = Math.Max(0, antes.Count - ConversacionConsts.MensajesDeHistorial);
+        desde += desde % 2;
+        return antes.Skip(desde).Concat(todos.Skip(actual).Select(m => m.ATurno())).ToList();
     }
 
     private async Task ExigirCupoAsync(Guid yo)

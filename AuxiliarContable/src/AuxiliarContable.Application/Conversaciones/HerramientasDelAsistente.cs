@@ -369,11 +369,14 @@ public class HerramientasDelAsistente : ITransientDependency
         DeLeerLey,
     ];
 
+    /// <summary>Las que solo consultan al motor (sin base ni cliente): sirven en las dos conversaciones y pueden correr a la vez.</summary>
+    public static bool SoloConsultaAlMotor(string nombre) => nombre is ConsultarLeyes or ConsultarSentencias or TarifaIsr or LeerLey;
+
     public async Task<BloqueDeResultadoDeHerramienta> EjecutarAsync(Guid organizacionId, BloqueDeUsoDeHerramienta uso)
     {
         // El candado entre las dos clases de conversación: en la de la cartera (Guid.Empty) solo sus
         // herramientas (resumen y alta); en la de un cliente, nunca esas. Lo que pida el modelo no lo salta.
-        if (uso.Nombre is not (ConsultarLeyes or ConsultarSentencias or TarifaIsr or LeerLey) && (organizacionId == Guid.Empty) != (uso.Nombre is ResumenDeCartera or CrearCliente or SolicitudesPendientes))
+        if (!SoloConsultaAlMotor(uso.Nombre) && (organizacionId == Guid.Empty) != (uso.Nombre is ResumenDeCartera or CrearCliente or SolicitudesPendientes))
         {
             return new BloqueDeResultadoDeHerramienta(uso.Id, $"La herramienta «{uso.Nombre}» no está disponible en esta conversación.", EsError: true);
         }

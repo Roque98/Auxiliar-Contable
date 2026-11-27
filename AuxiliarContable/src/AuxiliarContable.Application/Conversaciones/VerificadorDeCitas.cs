@@ -63,5 +63,7 @@ public static class VerificadorDeCitas
         "[VERIFICACIÓN AUTOMÁTICA DEL SISTEMA — no lo escribió la persona] Tu respuesta cita " + string.Join(", ", faltan) +
         ", pero eso NO viene en nada de lo que consultaste en esta conversación (puede ser de memoria o estar mal). " +
         "Verifícalo ahora con consultar_leyes o leer_ley y corrige la cita, o quítala. No respondas de memoria. " +
+        "Después escribe la respuesta completa para la persona como si fuera la primera: empieza por lo que preguntó y " +
+        "no menciones esta verificación, tu borrador ni que revisaste la cita. " +
         "Tu borrador fue: «" + (borrador.Length > 1500 ? borrador[..1500] + "…" : borrador) + "»";
 }

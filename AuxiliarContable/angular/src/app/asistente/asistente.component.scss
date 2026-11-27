@@ -494,6 +494,86 @@
   box-shadow: var(--ig-sombra-sutil);
 }
 
+/* La respuesta del asistente, en bloques (formato.ts): sin HTML del modelo. */
+.as-formato {
+  white-space: normal;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.as-f-parrafo,
+.as-f-titulo {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.as-f-titulo {
+  font-weight: 600;
+  margin-top: 0.25rem;
+}
+
+.as-f-negrita {
+  font-weight: 600;
+}
+
+/* El fundamento va al final y más discreto: está para quien quiera revisarlo. */
+.as-f-fundamento {
+  border-top: 1px solid var(--bs-border-color, #dee2e6);
+  padding-top: 0.5rem;
+  font-size: 0.9em;
+  color: var(--bs-secondary-color, #6c757d);
+}
+
+.as-f-fundamento ~ .as-f-lista,
+.as-f-fundamento ~ .as-f-parrafo {
+  font-size: 0.9em;
+  color: var(--bs-secondary-color, #6c757d);
+}
+
+.as-f-lista {
+  margin: 0;
+  padding-left: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+/* En el teléfono la tabla se desliza de lado sin ensanchar la pantalla. */
+.as-f-tabla-marco {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.as-f-tabla {
+  border-collapse: collapse;
+  font-size: 0.9em;
+  width: 100%;
+}
+
+.as-f-tabla th,
+.as-f-tabla td {
+  border-bottom: 1px solid var(--bs-border-color, #dee2e6);
+  padding: 0.3rem 0.5rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.as-f-tabla th {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.as-f-tabla .as-f-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.as-f-tabla tbody tr:last-child td {
+  border-bottom: 0;
+}
+
 .as-texto {
   margin: 0;
   /* Texto plano del modelo: se respetan sus saltos de línea sin interpretar nada como HTML. */
