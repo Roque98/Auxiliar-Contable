@@ -115,7 +115,7 @@ export const SECCIONES: Seccion[] = [
           'Lo que le digas de tu negocio lo anota en tu perfil fiscal; abajo de su respuesta ves qué guardó.',
           'Si algo quedó mal, díselo o corrígelo en Perfil fiscal.',
           'Pregúntale qué dice la ley («¿puedo deducir mi coche?»): busca en las leyes fiscales vigentes y te contesta con los artículos al final, en «Fundamento».',
-          'Pregúntale «¿qué clave uso para…?» o «¿está bien la clave de esta factura que me llegó?»: busca la clave por lo que es el producto, revisa la clave, la unidad y la descripción de cada concepto y te avisa si algo no cuadra (en una recibida, te dice qué pedirle al proveedor). En el chat de toda la cartera también busca claves, sin revisar la constancia de nadie; para revisar una factura por su folio, elige al cliente.',
+          'Pregúntale «¿qué clave uso para…?» o «¿está bien la clave de esta factura que me llegó?»: busca la clave por lo que es el producto, revisa la clave, la unidad y la descripción de cada concepto y te avisa si algo no cuadra (en una recibida, te dice qué pedirle al proveedor). En «Toda la cartera» también: si no dices de qué cliente, busca la clave sin revisar la constancia de nadie.',
           'Si le pides un cálculo, te lo muestra en una tabla paso por paso (concepto, operación e importe); en el teléfono la tabla se desliza de lado.',
           'Si le cuentas una situación (un proveedor, una carta del SAT, una devolución), también revisa cómo la han resuelto los tribunales y te dice qué conviene guardar.',
           'Pregúntale por tus cobros y pagos: «¿ya pagué la factura de Telmex?», «¿qué gastos de octubre no tienen factura?». Busca en tu información y te da fechas, importes y si falta la factura o el pago.',
@@ -144,7 +144,7 @@ export const SECCIONES: Seccion[] = [
         chat: true,
         permisos: ['AuxiliarContable.Organizaciones'],
         texto: [
-          'Al entrar abre «Toda la cartera» con el semáforo del mes. Toca la pastilla de arriba para cambiar a un cliente: queda siempre a la vista con quién estás platicando.',
+          'Al entrar abre «Toda la cartera» con el semáforo del mes. Ahí el equipo (auxiliar, administrador, despacho) le pide lo que sea de cualquier cliente diciendo cuál («¿cómo va la conciliación de octubre de Panadería Lupita?», «guárdale su régimen a Taller Pepe»): no hace falta elegirlo antes. Para subir documentos o platicar solo de uno, toca la pastilla de arriba y cambia a ese cliente: queda siempre a la vista con quién estás platicando.',
           'Pídele un resumen del perfil, qué falta o un borrador de mensaje para el cliente (no lo envía: lo copias tú).',
           'Pídele «¿qué falta conciliar de octubre?»: cruza sus estados de cuenta con sus facturas y te dice qué depósitos y pagos no tienen factura.',
           'Pregúntale por la ley (deducciones, plazos, tasas): contesta citando ley y artículo.',

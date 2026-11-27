@@ -95,27 +95,35 @@ public class CarteraIntegrationTests : ConJerarquiaTestBase
     }
 
     [Fact]
-    public async Task El_chat_de_la_cartera_solo_ve_el_resumen()
+    public async Task En_el_chat_de_la_cartera_el_equipo_trabaja_cualquier_cliente_diciendo_cual()
     {
         _modelo.UsarHerramienta(HerramientasDelAsistente.ResumenDeCartera, new { anio = 2026, mes = 9 });
         _modelo.UsarHerramienta(HerramientasDelAsistente.ConsultarPerfil, new { });
+        _modelo.UsarHerramienta(HerramientasDelAsistente.ConsultarPerfil, new { cliente = "panaderia lupita" });
+        _modelo.UsarHerramienta(HerramientasDelAsistente.ConsultarPerfil, new { cliente = "Cliente que no existe" });
         _modelo.Contestar("Taller Pepe está urgente: no tiene RFC.");
 
         var conversacion = await ComoAsync(Administrador, () => _asistente.EnviarAsync(Guid.Empty, new EnviarMensajeDto { Texto = "¿Quién está urgente?" }));
 
         conversacion.NombreDelCliente.ShouldBe(AsistenteAppService.NombreDeLaCartera);
-        conversacion.PuedeEditar.ShouldBeFalse();
-        _modelo.Solicitudes[0].Herramientas.Select(h => h.Nombre)
-            .ShouldBe([HerramientasDelAsistente.ResumenDeCartera, HerramientasDelAsistente.CrearCliente,
-                    HerramientasDelAsistente.SolicitudesPendientes, HerramientasDelAsistente.ConsultarLeyes,
-                    HerramientasDelAsistente.ConsultarSentencias, HerramientasDelAsistente.TarifaIsr, HerramientasDelAsistente.LeerLey,
-                    HerramientasDelAsistente.BuscarClaveSat, HerramientasDelAsistente.RevisarClaves],
-                "el resumen, el alta, la bandeja de solicitudes, la ley, las sentencias, la tarifa de ISR y las claves SAT (que no son de ningún cliente)");
-        var resumen = _modelo.Solicitudes[1].Turnos.Last().Bloques.Single().ShouldBeOfType<BloqueDeResultadoDeHerramienta>();
-        resumen.Contenido.ShouldContain("Taller Pepe");
-        var perfil = _modelo.Solicitudes[2].Turnos.Last().Bloques.Single().ShouldBeOfType<BloqueDeResultadoDeHerramienta>();
-        perfil.EsError.ShouldBeTrue("en la cartera no se consulta el perfil de nadie");
+        var herramientas = _modelo.Solicitudes[0].Herramientas;
+        herramientas.Take(3).Select(h => h.Nombre).ShouldBe([HerramientasDelAsistente.ResumenDeCartera,
+            HerramientasDelAsistente.CrearCliente, HerramientasDelAsistente.SolicitudesPendientes]);
+        herramientas.Select(h => h.Nombre).ShouldContain(HerramientasDelAsistente.GuardarDato);
+        herramientas.Select(h => h.Nombre).ShouldContain(HerramientasDelAsistente.ConciliarMes);
+        herramientas.Single(h => h.Nombre == HerramientasDelAsistente.ConsultarPerfil).JsonSchema.ShouldContain("\"required\":[\"cliente\"]");
+        herramientas.Single(h => h.Nombre == HerramientasDelAsistente.ConsultarLeyes).JsonSchema.ShouldNotContain("cliente");
+
+        Resultado(1).Contenido.ShouldContain("Taller Pepe");
+        Resultado(1).Contenido.ShouldContain(_alDia.ToString());
+        Resultado(2).EsError.ShouldBeTrue("sin «cliente» no sabe de quién");
+        Resultado(3).EsError.ShouldBeFalse();
+        Resultado(3).Contenido.ShouldContain("GODE561231GR8");
+        Resultado(4).EsError.ShouldBeTrue();
     }
+
+    private BloqueDeResultadoDeHerramienta Resultado(int solicitud) =>
+        _modelo.Solicitudes[solicitud].Turnos.Last().Bloques.Single().ShouldBeOfType<BloqueDeResultadoDeHerramienta>();
 
     [Fact]
     public async Task En_la_cartera_busca_la_clave_sin_la_constancia_de_nadie()
