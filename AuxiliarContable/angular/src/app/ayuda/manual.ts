@@ -117,6 +117,7 @@ export const SECCIONES: Seccion[] = [
           'Pregúntale qué dice la ley («¿puedo deducir mi coche?»): busca en las leyes fiscales vigentes y te contesta citando el artículo.',
           'Si le cuentas una situación (un proveedor, una carta del SAT, una devolución), también revisa cómo la han resuelto los tribunales y te dice qué conviene guardar.',
           'Pregúntale por tus cobros y pagos: «¿ya pagué la factura de Telmex?», «¿qué gastos de octubre no tienen factura?». Busca en tu información y te da fechas, importes y si falta la factura o el pago.',
+          'Pregúntale con tus palabras «¿cuánto gasté de gasolina este mes?» o «compré un refrigerador, ¿es deducible?»: con tu giro y tu régimen te dice qué es eso para ti (mercancía que revendes, inversión, gasto o gasto personal), te suma lo que llevas y cuánto no tiene factura, y solo te pregunta lo que de verdad le falta.',
           'Pregúntale por qué un gasto no se dedujo: te explica el motivo con su artículo y, si se puede, cómo corregirlo.',
           'También te dice qué leyes estatales y reglamentos de tu municipio te aplican por tu giro. Puede consultar, pero no cambia tu contabilidad: eso lo hace el despacho.',
           'Si algo quedó mal, pídeselo: te propone el texto y, si le dices que sí, le deja la solicitud al despacho. Ahí mismo ves la respuesta y lo que el despacho te ha pedido; cuando lo subas, díselo y lo marca como atendido.',

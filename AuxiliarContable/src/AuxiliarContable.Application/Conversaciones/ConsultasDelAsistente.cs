@@ -75,7 +75,8 @@ public class ConsultasDelAsistente : ITransientDependency
 
     /// <summary>Filtros de <see cref="BuscarOperacionesAsync"/>; todos opcionales.</summary>
     public sealed record FiltroDeOperaciones(
-        string? Texto, int? Anio, int? Mes, decimal? ImporteMinimo, decimal? ImporteMaximo, string? Sentido, string? Falta);
+        string? Texto, int? Anio, int? Mes, decimal? ImporteMinimo, decimal? ImporteMaximo, string? Sentido, string? Falta,
+        IReadOnlyList<string>? Terminos = null);
 
     public async Task<string> BuscarOperacionesAsync(Guid organizacionId, FiltroDeOperaciones f)
     {
@@ -112,6 +113,22 @@ public class ConsultasDelAsistente : ITransientDependency
                              || (o.Referencia != null && o.Referencia.ToLower().Contains(t)));
         }
 
+        // Varios términos: las que tengan CUALQUIERA («gasolina», «magna», «pemex»). Se juntan por id para no contar dos veces.
+        var terminos = (f.Terminos ?? []).Select(x => x.Trim().ToLower()).Where(x => x.Length >= 2).Distinct().Take(10).ToList();
+        if (terminos.Count > 0)
+        {
+            var ids = new HashSet<Guid>();
+            foreach (var t in terminos)
+            {
+                ids.UnionWith(await _async.ToListAsync(q.Where(o => o.Descripcion.ToLower().Contains(t)
+                                                                    || (o.Contraparte != null && o.Contraparte.ToLower().Contains(t))
+                                                                    || (o.Referencia != null && o.Referencia.ToLower().Contains(t)))
+                    .Select(o => o.Id)));
+            }
+
+            q = q.Where(o => ids.Contains(o.Id));
+        }
+
         if (f.ImporteMinimo is { } min)
         {
             q = q.Where(o => o.Importe >= min);
@@ -140,6 +157,8 @@ public class ConsultasDelAsistente : ITransientDependency
         };
 
         var total = await _async.CountAsync(q);
+        var importeTotal = total == 0 ? 0m : await _async.SumAsync(q, o => o.Importe);
+        var sinFactura = total == 0 ? 0m : await _async.SumAsync(q.Where(o => o.FacturaEstado != EstadoDePata.Ligada), o => o.Importe);
         var lista = await _async.ToListAsync(q.OrderByDescending(o => o.Fecha).ThenByDescending(o => o.Importe).Take(MaxResultados));
         if (total == 0)
         {
@@ -149,6 +168,8 @@ public class ConsultasDelAsistente : ITransientDependency
         return JsonSerializer.Serialize(new
         {
             total,
+            importeTotal,
+            importeSinFactura = sinFactura,
             mostradas = lista.Count,
             operaciones = lista.Select(Resumen),
         }, Json);
@@ -509,6 +530,26 @@ public class ConsultasDelAsistente : ITransientDependency
                 loTratan = l.LoTratan.Count == 0 ? null : l.LoTratan.Select(x => x.Donde == null ? x.Nombre : $"{x.Nombre} ({x.Donde})"),
             }),
         }, Json);
+    }
+
+    // ---------------------------------------------------------------- encuadre de la pregunta
+
+    /// <summary>
+    /// Qué es de verdad lo que pregunta el cliente para SU giro y régimen (motor, sin IA): intención, objeto, naturaleza,
+    /// cómo se deduce, requisitos, artículos, cómo buscarlo en sus operaciones y solo los datos que faltan. Al motor viaja
+    /// el perfil sin RFC, sin nombre y sin domicilio.
+    /// </summary>
+    public async Task<string> EncuadrarPreguntaAsync(Guid organizacionId, string pregunta)
+    {
+        await _autorizador.ExigirAsync(organizacionId, AccionEnOrganizacion.Ver);
+        pregunta = pregunta.Trim();
+        if (pregunta.Length < 2)
+        {
+            throw new UserFriendlyException("Falta la pregunta.");
+        }
+
+        var perfil = await _normativa.PerfilParaEncuadreAsync(organizacionId);
+        return Corto(await _motor.EncuadrarPreguntaAsync(perfil, Corto(pregunta, 600)), 8_000);
     }
 
     // ---------------------------------------------------------------- antes de operar

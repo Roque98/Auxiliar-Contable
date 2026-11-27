@@ -100,6 +100,7 @@ public class MotorFiscalDePrueba : IMotorFiscal
         AdeudosRecibidos.Clear();
         ExpedientesPedidos.Clear();
         TarifasPedidas.Clear();
+        EncuadresPedidos.Clear();
         LeyesLeidasSeguidas.Clear();
         PerfilesDeExpediente.Clear();
         DetalleDeProvisionales = null;
@@ -315,6 +316,17 @@ public class MotorFiscalDePrueba : IMotorFiscal
         return Task.FromResult(
             "{\"chispazos\":[{\"disparador\":\"extranjero\",\"pregunta\":\"¿Califica como exportación?\","
             + "\"fuentes\":[{\"clave\":\"LIVA\",\"articulo\":\"29\",\"url\":\"\"}]}],\"avisos\":[]}");
+    }
+
+    public List<(PerfilParaEncuadre Perfil, string Pregunta)> EncuadresPedidos { get; } = [];
+
+    public Task<string> EncuadrarPreguntaAsync(PerfilParaEncuadre perfil, string pregunta, CancellationToken cancellationToken = default)
+    {
+        EncuadresPedidos.Add((perfil, pregunta));
+        return Task.FromResult(
+            "{\"intencion\":\"cuanto_gaste\",\"concepto\":{\"id\":\"ingredientes\"},\"naturaleza\":\"insumo\","
+            + "\"que_es_para_el\":\"INSUMO o materia prima de lo que vende\",\"preguntar_antes\":[],"
+            + "\"buscar_en_operaciones\":{\"sentido\":\"salida\",\"terminos\":[\"harina\"],\"anio\":2026}}");
     }
 
     public List<(int Dias, decimal? Base, int? Mes)> TarifasPedidas { get; } = [];

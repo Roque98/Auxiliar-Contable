@@ -283,6 +283,54 @@ public class ConsultasDelAsistenteIntegrationTests : ConJerarquiaTestBase
     }
 
     [Fact]
+    public async Task Encuadra_la_pregunta_con_su_perfil_sin_rfc_ni_nombre_ni_domicilio()
+    {
+        foreach (var (campo, valor) in new[]
+                 {
+                     (CamposDelPerfil.TipoDePersona, "fisica"),
+                     (CamposDelPerfil.Nombre, "LUPITA PEREZ"),
+                     (CamposDelPerfil.Giro, "panadería"),
+                     (CamposDelPerfil.DomicilioFiscal, "Calle Uno 5, Centro, Cuernavaca, Morelos"),
+                 })
+        {
+            await ComoAsync(Administrador, () => GetRequiredService<IPerfilFiscalAppService>().ResponderAsync(_cliente,
+                new ResponderDatoDelPerfilDto { Campo = campo, Valor = valor }));
+        }
+
+        _modelo.UsarHerramienta(HerramientasDelAsistente.EncuadrarPregunta, new { pregunta = "¿Cuánto gasté de harina este año?" });
+        _modelo.Contestar("Para tu panadería la harina es materia prima.");
+
+        var conversacion = await ComoAsync(Usuario, () => _asistente.EnviarAsync(_cliente, Mensaje("¿Cuánto gasté de harina este año?")));
+
+        Resultado().Contenido.ShouldContain("INSUMO");
+        var (perfil, pregunta) = _motor.EncuadresPedidos.ShouldHaveSingleItem();
+        pregunta.ShouldBe("¿Cuánto gasté de harina este año?");
+        perfil.TipoPersona.ShouldBe("fisica");
+        perfil.Giro.ShouldBe("panadería");
+        perfil.Municipio.ShouldBe("conocido", "del domicilio solo viaja que lo tenemos, nunca la dirección");
+        JsonSerializer.Serialize(perfil).ShouldNotContain("LUPITA");
+        JsonSerializer.Serialize(perfil).ShouldNotContain("Calle");
+        conversacion.Mensajes.Last().Acciones.ShouldBe(["Encuadró la pregunta con tu perfil"]);
+    }
+
+    [Fact]
+    public async Task Suma_lo_que_gasto_con_varios_terminos_y_separa_lo_que_no_tiene_factura()
+    {
+        _modelo.UsarHerramienta(HerramientasDelAsistente.BuscarOperaciones,
+            new { terminos = new[] { "harina", "internet" }, sentido = "salida", anio = 2026 });
+        _modelo.Contestar("Llevas 1,610.");
+
+        await ComoAsync(Usuario, () => _asistente.EnviarAsync(_cliente, Mensaje("¿Cuánto llevo de harina e internet?")));
+
+        var r = Resultado();
+        r.EsError.ShouldBeFalse();
+        r.Contenido.ShouldContain("\"total\":2");
+        r.Contenido.ShouldContain("\"importeTotal\":1610");
+        r.Contenido.ShouldContain("\"importeSinFactura\":450", Case.Sensitive, "la harina no tiene factura");
+        r.Contenido.ShouldNotContain("999", Case.Sensitive, "lo del otro cliente no se suma");
+    }
+
+    [Fact]
     public async Task La_tarifa_semanal_de_isr_sale_del_motor_tambien_en_la_conversacion_de_la_cartera()
     {
         _modelo.UsarHerramienta(HerramientasDelAsistente.TarifaIsr, new { periodo = "semanal", @base = 2500 });
