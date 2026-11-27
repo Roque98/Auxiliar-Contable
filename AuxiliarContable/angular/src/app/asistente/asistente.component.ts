@@ -18,6 +18,7 @@ import { CarteraService, SemaforoDeCliente } from '../cartera/cartera.service';
 import { DocumentosService, MESES, NOMBRES_DE_TIPO } from '../documentos/documentos.service';
 import { mensajeDeError } from '../invitaciones/invitaciones.service';
 import { ClienteVisibleDto, PerfilFiscalService } from '../perfil-fiscal/perfil-fiscal.service';
+import { Bloque, bloquesDeRespuesta } from './formato';
 import { TIPOS_PARA_ADJUNTAR, TipoParaAdjuntar, tipoProbable } from './adjuntos';
 import { AsistenteService, CARTERA, ConversacionDto, MAX_TEXTO, MensajeDto, RolDelMensaje } from './asistente.service';
 
@@ -499,6 +500,18 @@ export class AsistenteComponent implements OnInit {
   }
 
   // ---- Utilidades -----------------------------------------------------------------------------
+
+  /** La respuesta en bloques (títulos, listas, tablas), una vez por mensaje. */
+  private readonly formatos = new Map<string, Bloque[]>();
+
+  formato(m: MensajeDto): Bloque[] {
+    let b = this.formatos.get(m.id);
+    if (!b) {
+      b = bloquesDeRespuesta(m.texto);
+      this.formatos.set(m.id, b);
+    }
+    return b;
+  }
 
   hora(utc: string): string {
     return utc ? new Date(utc).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }) : '';

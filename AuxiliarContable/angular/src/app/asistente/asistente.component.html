@@ -166,7 +166,57 @@
               (touchend)="alSoltarDedo($event)"
               (touchcancel)="alSoltarDedo()"
               (contextmenu)="abrirMenu($event, m)">
-              <p class="as-texto">{{ m.texto }}</p>
+              <div class="as-texto as-formato">
+                @for (b of formato(m); track $index) {
+                  @switch (b.tipo) {
+                    @case ('titulo') {
+                      <p class="as-f-titulo" [class.as-f-fundamento]="b.fundamento">
+                        @for (t of b.trozos; track $index) {<span [class.as-f-negrita]="t.negrita">{{ t.texto }}</span>}
+                      </p>
+                    }
+                    @case ('parrafo') {
+                      <p class="as-f-parrafo">@for (t of b.trozos; track $index) {<span [class.as-f-negrita]="t.negrita">{{ t.texto }}</span>}</p>
+                    }
+                    @case ('lista') {
+                      @if (b.ordenada) {
+                        <ol class="as-f-lista">
+                          @for (item of b.items; track $index) {
+                            <li>@for (t of item; track $index) {<span [class.as-f-negrita]="t.negrita">{{ t.texto }}</span>}</li>
+                          }
+                        </ol>
+                      } @else {
+                        <ul class="as-f-lista">
+                          @for (item of b.items; track $index) {
+                            <li>@for (t of item; track $index) {<span [class.as-f-negrita]="t.negrita">{{ t.texto }}</span>}</li>
+                          }
+                        </ul>
+                      }
+                    }
+                    @case ('tabla') {
+                      <div class="as-f-tabla-marco">
+                        <table class="as-f-tabla">
+                          <thead>
+                            <tr>
+                              @for (c of b.encabezado; track $index; let ci = $index) {
+                                <th [class.as-f-num]="b.numericas?.[ci]">@for (t of c; track $index) {<span>{{ t.texto }}</span>}</th>
+                              }
+                            </tr>
+                          </thead>
+                          <tbody>
+                            @for (f of b.filas; track $index) {
+                              <tr>
+                                @for (c of f; track $index; let ci = $index) {
+                                  <td [class.as-f-num]="b.numericas?.[ci]">@for (t of c; track $index) {<span [class.as-f-negrita]="t.negrita">{{ t.texto }}</span>}</td>
+                                }
+                              </tr>
+                            }
+                          </tbody>
+                        </table>
+                      </div>
+                    }
+                  }
+                }
+              </div>
               @if (m.acciones.length) {
                 <ul class="as-acciones">
                   @for (a of m.acciones; track a) {
