@@ -64,6 +64,25 @@ export interface CrearSolicitudDto {
   nota: string | null;
 }
 
+export interface ClaveSugeridaDto {
+  clave: string;
+  descripcion: string;
+  unidades: { clave: string; nombre: string }[];
+}
+
+export interface BusquedaDeClaveDto {
+  claves: ClaveSugeridaDto[];
+  aviso: string | null;
+  ignoradas: string[];
+}
+
+export interface AlertaDeConceptoDto {
+  /** Índice del concepto (desde 0). */
+  concepto: number;
+  nivel: 'alto' | 'medio' | 'bajo';
+  texto: string;
+}
+
 /** `SolicitudesDeFacturaAppService` (`/api/app/solicitudes-de-factura`). */
 @Injectable({ providedIn: 'root' })
 export class FacturarService {
@@ -97,6 +116,16 @@ export class FacturarService {
   rechazar(organizacionId: string, solicitudId: string, respuesta: string) {
     return this.rest.request<unknown, SolicitudDto>(
       { method: 'POST', url: `${this.base}/rechazar`, params: { organizacionId, solicitudId }, body: { respuesta } }, this.opciones);
+  }
+
+  buscarClave(organizacionId: string, descripcion: string): Observable<BusquedaDeClaveDto> {
+    return this.rest.request<unknown, BusquedaDeClaveDto>(
+      { method: 'POST', url: `${this.base}/buscar-clave/${organizacionId}`, body: { descripcion } }, this.opciones);
+  }
+
+  revisarConceptos(organizacionId: string, conceptos: { claveProdServ: string; claveUnidad: string; descripcion: string }[]): Observable<AlertaDeConceptoDto[]> {
+    return this.rest.request<unknown, AlertaDeConceptoDto[]>(
+      { method: 'POST', url: `${this.base}/revisar-conceptos/${organizacionId}`, body: { conceptos } }, this.opciones);
   }
 
   leerConstancia(organizacionId: string, pdfBase64: string): Observable<ReceptorDto> {

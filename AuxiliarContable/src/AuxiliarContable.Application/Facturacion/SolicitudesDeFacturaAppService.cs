@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
 using System.Threading.Tasks;
 using AuxiliarContable.Autorizacion;
 using AuxiliarContable.Documentos;
@@ -24,14 +25,17 @@ public class SolicitudesDeFacturaAppService : AuxiliarContableAppService, ISolic
     private readonly IRepository<Organizacion, Guid> _organizaciones;
     private readonly IMotorFiscal _motor;
     private readonly Autorizador _autorizador;
+    private readonly RevisorDeClaves _claves;
 
     public SolicitudesDeFacturaAppService(
         IRepository<SolicitudDeFactura, Guid> solicitudes,
         IRepository<Documento, Guid> documentos,
         IRepository<Organizacion, Guid> organizaciones,
         IMotorFiscal motor,
-        Autorizador autorizador)
+        Autorizador autorizador,
+        RevisorDeClaves claves)
     {
+        _claves = claves;
         _solicitudes = solicitudes;
         _documentos = documentos;
         _organizaciones = organizaciones;
@@ -215,4 +219,81 @@ public class SolicitudesDeFacturaAppService : AuxiliarContableAppService, ISolic
         PdfDocumentoId = s.PdfDocumentoId,
         NombreDelPdf = s.PdfDocumentoId is { } p ? nombres.GetValueOrDefault(p) : null,
     };
+
+    public async Task<BusquedaDeClaveDto> BuscarClaveAsync(Guid organizacionId, BuscarClaveDto input)
+    {
+        var json = await ConMotorAsync(() => _claves.BuscarAsync(organizacionId, input.Descripcion));
+        using var doc = JsonDocument.Parse(json);
+        var r = doc.RootElement;
+        var fuera = new BusquedaDeClaveDto { Aviso = Texto(r, "aviso") };
+        if (r.TryGetProperty("resultados", out var lista) && lista.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var x in lista.EnumerateArray())
+            {
+                var clave = new ClaveSugeridaDto { Clave = Texto(x, "clave") ?? "", Descripcion = Texto(x, "descripcion") ?? "" };
+                if (x.TryGetProperty("unidades", out var us) && us.ValueKind == JsonValueKind.Array)
+                {
+                    clave.Unidades = us.EnumerateArray()
+                        .Select(u => new UnidadSugeridaDto { Clave = Texto(u, "clave") ?? "", Nombre = Texto(u, "nombre") ?? "" })
+                        .Where(u => u.Clave.Length > 0).ToList();
+                }
+
+                fuera.Claves.Add(clave);
+            }
+        }
+
+        if (r.TryGetProperty("entendido", out var e) && e.TryGetProperty("ignoradas", out var ig) && ig.ValueKind == JsonValueKind.Array)
+        {
+            fuera.Ignoradas = ig.EnumerateArray().Select(i => Texto(i, "palabra")).OfType<string>().ToList();
+        }
+
+        return fuera;
+    }
+
+    public async Task<List<AlertaDeConceptoDto>> RevisarConceptosAsync(Guid organizacionId, RevisarConceptosDto input)
+    {
+        var conceptos = input.Conceptos.Select(c => new ConceptoParaRevisar(c.ClaveProdServ, c.ClaveUnidad, c.Descripcion)).ToList();
+        var json = await ConMotorAsync(() => _claves.RevisarAsync(organizacionId, conceptos));
+        using var doc = JsonDocument.Parse(json);
+        var fuera = new List<AlertaDeConceptoDto>();
+        if (doc.RootElement.TryGetProperty("conceptos", out var lista) && lista.ValueKind == JsonValueKind.Array)
+        {
+            // El motor recibe solo los conceptos con clave o descripción: se mapean de vuelta a su índice en la forma.
+            var indices = input.Conceptos.Select((c, i) => (c, i))
+                .Where(x => !string.IsNullOrWhiteSpace(x.c.ClaveProdServ) || !string.IsNullOrWhiteSpace(x.c.Descripcion))
+                .Select(x => x.i).ToList();
+            var n = 0;
+            foreach (var c in lista.EnumerateArray())
+            {
+                var indice = n < indices.Count ? indices[n] : n;
+                n++;
+                if (!c.TryGetProperty("alertas", out var alertas) || alertas.ValueKind != JsonValueKind.Array)
+                {
+                    continue;
+                }
+
+                fuera.AddRange(alertas.EnumerateArray().Select(a => new AlertaDeConceptoDto
+                {
+                    Concepto = indice, Nivel = Texto(a, "nivel") ?? "medio", Texto = Texto(a, "texto") ?? "",
+                }));
+            }
+        }
+
+        return fuera;
+    }
+
+    private static string? Texto(JsonElement e, string propiedad) =>
+        e.ValueKind == JsonValueKind.Object && e.TryGetProperty(propiedad, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() : null;
+
+    private static async Task<string> ConMotorAsync(Func<Task<string>> llamada)
+    {
+        try
+        {
+            return await llamada();
+        }
+        catch (MotorFiscalNoDisponibleException)
+        {
+            throw new UserFriendlyException("La búsqueda de claves no está disponible en este momento. Intenta en unos minutos.");
+        }
+    }
 }

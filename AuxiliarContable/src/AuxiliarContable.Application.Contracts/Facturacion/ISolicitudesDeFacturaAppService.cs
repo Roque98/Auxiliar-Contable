@@ -31,6 +31,78 @@ public interface ISolicitudesDeFacturaAppService : IApplicationService
 
     /// <summary>Lee la Constancia de Situación Fiscal del receptor (PDF en base64) para llenar sus datos.</summary>
     Task<ReceptorDto> LeerConstanciaDelReceptorAsync(Guid organizacionId, LeerConstanciaDelReceptorDto input);
+
+    /// <summary>
+    /// La clave SAT por cómo se llama el producto o servicio, con su unidad, y si las actividades de su constancia
+    /// describen esa venta (Anexo 6 RMF).
+    /// </summary>
+    Task<BusquedaDeClaveDto> BuscarClaveAsync(Guid organizacionId, BuscarClaveDto input);
+
+    /// <summary>Antes de pedir la factura: ¿la clave de cada concepto corresponde a su descripción y a su unidad?</summary>
+    Task<List<AlertaDeConceptoDto>> RevisarConceptosAsync(Guid organizacionId, RevisarConceptosDto input);
+}
+
+public class BuscarClaveDto
+{
+    [Required]
+    [StringLength(300, MinimumLength = 2)]
+    public string Descripcion { get; set; } = "";
+}
+
+public class ClaveSugeridaDto
+{
+    public string Clave { get; set; } = "";
+    public string Descripcion { get; set; } = "";
+
+    /// <summary>Claves de unidad, de la más usual a la menos.</summary>
+    public List<UnidadSugeridaDto> Unidades { get; set; } = [];
+}
+
+public class UnidadSugeridaDto
+{
+    public string Clave { get; set; } = "";
+    public string Nombre { get; set; } = "";
+}
+
+public class BusquedaDeClaveDto
+{
+    public List<ClaveSugeridaDto> Claves { get; set; } = [];
+
+    /// <summary>Si sus actividades de la constancia no describen la venta, cuál sí (Anexo 6 RMF).</summary>
+    public string? Aviso { get; set; }
+
+    /// <summary>Lo que se ignoró por no decir qué es el objeto: marca, color, medidas.</summary>
+    public List<string> Ignoradas { get; set; } = [];
+}
+
+public class ConceptoParaRevisarDto
+{
+    [StringLength(12)]
+    public string ClaveProdServ { get; set; } = "";
+
+    [StringLength(6)]
+    public string ClaveUnidad { get; set; } = "";
+
+    [StringLength(FacturacionConsts.MaxDescripcionLength)]
+    public string Descripcion { get; set; } = "";
+}
+
+public class RevisarConceptosDto
+{
+    [Required]
+    [MaxLength(60)]
+    public List<ConceptoParaRevisarDto> Conceptos { get; set; } = [];
+}
+
+public class AlertaDeConceptoDto
+{
+    /// <summary>Índice del concepto (desde 0).</summary>
+    public int Concepto { get; set; }
+
+    /// <summary>alto, medio o bajo.</summary>
+    public string Nivel { get; set; } = "";
+
+    public string Texto { get; set; } = "";
 }
 
 public class ConceptoDto
