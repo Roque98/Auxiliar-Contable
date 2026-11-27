@@ -278,6 +278,17 @@ public class MotorFiscalHttp : IMotorFiscal, ITransientDependency
         return r.GetRawText();
     }
 
+    public async Task<string> EncuadrarPreguntaAsync(PerfilParaEncuadre perfil, string pregunta, CancellationToken cancellationToken = default)
+    {
+        using var tope = CancelationConTope(_opciones.TimeoutSegundos, cancellationToken);
+        var peticion = new HttpRequestMessage(HttpMethod.Post, "asistente/encuadre")
+        {
+            Content = JsonContent.Create(new { pregunta, perfil }, options: Json),
+        };
+        var r = await EnviarAsync<System.Text.Json.JsonElement>(peticion, tope.Token, cancellationToken);
+        return r.GetRawText();
+    }
+
     public async Task<string> LeerLeyAsync(string clave, int desde, int n, string? articulo = null, CancellationToken cancellationToken = default)
     {
         var ruta = $"rag/documento?clave={Uri.EscapeDataString(clave.Trim())}&desde={Math.Clamp(desde, 0, 20000)}&n={Math.Clamp(n, 1, 6)}";

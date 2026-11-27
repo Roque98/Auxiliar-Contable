@@ -34,3 +34,25 @@ public class OperacionParaNormativa
     public ContraparteParaNormativa? Contraparte { get; set; }
     public List<string> Disparadores { get; set; } = [];
 }
+
+/// <summary>
+/// Lo del cliente que necesita el encuadre de una pregunta (motor: <c>/asistente/encuadre</c>): tipo de persona, régimen,
+/// giro y si sabemos su municipio. Sin RFC, sin nombre y sin domicilio: del domicilio solo viaja si lo tenemos o no.
+/// </summary>
+public class PerfilParaEncuadre
+{
+    public string? TipoPersona { get; set; }
+    public List<string> Regimenes { get; set; } = [];
+    public List<string> Actividades { get; set; } = [];
+    public string? Giro { get; set; }
+    public string? TipoEmpresa { get; set; }
+    public string? CoeficienteUtilidad { get; set; }
+    public string? TieneVehiculos { get; set; }
+    public string? TieneEstablecimiento { get; set; }
+    public string? TieneTrabajadores { get; set; }
+
+    /// <summary>«conocido» si el perfil trae domicilio fiscal o código postal; si no, vacío (el motor lo pregunta).</summary>
+    public string? Municipio { get; set; }
+
+    public string? Estado { get; set; }
+}

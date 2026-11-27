@@ -55,6 +55,7 @@ public class HerramientasDelAsistente : ITransientDependency
     public const string PolizasDelMes = "polizas_del_mes";
     public const string ImpuestosDelMes = "impuestos_del_mes";
     public const string LeyesQueLeAplican = "leyes_que_le_aplican";
+    public const string EncuadrarPregunta = "encuadrar_pregunta";
     public const string AnalizarOperacion = "analizar_operacion";
     public const string Solicitar = "solicitar";
     public const string TarifaIsr = "tarifa_isr";
@@ -182,15 +183,27 @@ public class HerramientasDelAsistente : ITransientDependency
                   "tipo":{"type":"string","enum":["cfdi","estado_de_cuenta","ticket","comprobante_de_pago","control_interno","constancia","otro"]},
                   "texto":{"type":"string"}}}
                 """),
+            new(EncuadrarPregunta,
+                "ÚSALA PRIMERO con cualquier pregunta de dinero, deducciones, ingresos o permisos del cliente («¿cuánto gasté de " +
+                "dulces?», «¿por qué la gasolina no fue deducible?», «compré un refrigerador, ¿es deducible?», «quiero comprar un " +
+                "carro», «¿por qué salieron altos mis ingresos?»). Con su perfil (giro, régimen, tipo de persona) dice qué quiere " +
+                "saber, de qué objeto habla y QUÉ ES ESO PARA ÉL (mercancía que revende, insumo, activo fijo, gasto, gasto personal, " +
+                "deducción personal), cómo se deduce en su régimen, requisitos, artículos a leer, cómo buscarlo en sus operaciones " +
+                "(términos y periodo para buscar_operaciones) y SOLO los datos que faltan y cambian la respuesta (preguntar_antes). " +
+                "Si preguntar_antes viene vacío, NO digas que faltan datos: trabaja la respuesta. Pásale la pregunta tal cual.",
+                """{"type":"object","properties":{"pregunta":{"type":"string","minLength":2,"maxLength":600}},"required":["pregunta"]}"""),
             new(BuscarOperaciones,
                 "Busca en las operaciones del cliente activo (cada una junta su factura, su pago y su control interno). Filtros " +
-                "opcionales: texto (proveedor o cliente, concepto, UUID o referencia del pago), año, mes, importe mínimo y máximo, " +
+                "opcionales: texto (proveedor o cliente, concepto, UUID o referencia del pago), terminos (varias palabras: trae las " +
+                "que tengan CUALQUIERA, p. ej. [\"gasolina\",\"magna\",\"pemex\"]), año, mes, importe mínimo y máximo, " +
                 "sentido (entrada = cobros e ingresos, salida = pagos y gastos) y falta (factura, pago o control: las que no tienen " +
-                "esa parte). Devuelve hasta 20, las más recientes, con su id y si la factura y el pago están ligados. Úsala para " +
-                "«¿ya se pagó la factura de Telmex?», «¿qué gastos de octubre no tienen factura?» o «dame los datos de …».",
+                "esa parte). Devuelve hasta 20, las más recientes, con su id y si la factura y el pago están ligados, y la SUMA de " +
+                "TODAS las que coinciden (importeTotal y cuánto de eso no tiene factura): con eso contestas «¿cuánto gasté de…?». " +
+                "Úsala para «¿ya se pagó la factura de Telmex?», «¿qué gastos de octubre no tienen factura?» o «dame los datos de …».",
                 """
                 {"type":"object","properties":{
                   "texto":{"type":"string","maxLength":100},
+                  "terminos":{"type":"array","maxItems":10,"items":{"type":"string","minLength":2,"maxLength":40}},
                   "anio":{"type":"integer","minimum":2000,"maximum":2100},
                   "mes":{"type":"integer","minimum":1,"maximum":12},
                   "importe_minimo":{"type":"number","minimum":0},
@@ -322,6 +335,7 @@ public class HerramientasDelAsistente : ITransientDependency
             PolizasDelMes => "Consultó las pólizas",
             ImpuestosDelMes => "Consultó los impuestos",
             LeyesQueLeAplican => "Revisó las leyes que te aplican",
+            EncuadrarPregunta => "Encuadró la pregunta con tu perfil",
             AnalizarOperacion => "Analizó la operación con la ley",
             TarifaIsr => "Consultó la tarifa de ISR",
             LeerLey => "Leyó la ley",
@@ -374,7 +388,8 @@ public class HerramientasDelAsistente : ITransientDependency
                 BuscarOperaciones => await _consultas.BuscarOperacionesAsync(organizacionId, new ConsultasDelAsistente.FiltroDeOperaciones(
                     Opcional(uso.Entrada, "texto"), Entero(uso.Entrada, "anio"), Entero(uso.Entrada, "mes"),
                     Decimal(uso.Entrada, "importe_minimo"), Decimal(uso.Entrada, "importe_maximo"),
-                    Opcional(uso.Entrada, "sentido"), Opcional(uso.Entrada, "falta"))),
+                    Opcional(uso.Entrada, "sentido"), Opcional(uso.Entrada, "falta"), Lista(uso.Entrada, "terminos"))),
+                EncuadrarPregunta => await _consultas.EncuadrarPreguntaAsync(organizacionId, Texto(uso.Entrada, "pregunta")),
                 ExplicarOperacion => await _consultas.ExplicarOperacionAsync(organizacionId,
                     Opcional(uso.Entrada, "operacionId") != null ? Id(uso.Entrada, "operacionId") : (Guid?)null,
                     Opcional(uso.Entrada, "uuid")),

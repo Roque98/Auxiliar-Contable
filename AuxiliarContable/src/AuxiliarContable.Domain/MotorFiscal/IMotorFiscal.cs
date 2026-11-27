@@ -146,6 +146,13 @@ public interface IMotorFiscal
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Encuadre de una pregunta del cliente sin IA (motor: <c>/asistente/encuadre</c>): qué quiere saber, de qué objeto
+    /// habla, qué es ese objeto para su giro y régimen (mercancía, activo fijo, gasto, personal…), requisitos, artículos a
+    /// leer, cómo buscarlo en sus operaciones y solo los datos que faltan. El JSON del motor.
+    /// </summary>
+    Task<string> EncuadrarPreguntaAsync(PerfilParaEncuadre perfil, string pregunta, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Tarifa del art. 96 LISR / Anexo 8 RMF del periodo (<paramref name="dias"/>: 7 semanal, 15 quincenal, 30 mensual…)
     /// y, con <paramref name="baseGravable"/>, la retención paso a paso con el subsidio para el empleo (motor:
     /// <c>/nomina/tarifa-isr</c>, sin IA). El JSON del motor.
@@ -417,6 +424,9 @@ public class MotorFiscalSinConfigurar : IMotorFiscal, ISingletonDependency
         throw new MotorFiscalNoDisponibleException("No hay motor fiscal en este proceso.");
 
     public Task<string> TarifaIsrAsync(int dias, decimal? baseGravable, int? mes, CancellationToken cancellationToken = default) =>
+        throw new MotorFiscalNoDisponibleException("No hay motor fiscal en este proceso.");
+
+    public Task<string> EncuadrarPreguntaAsync(PerfilParaEncuadre perfil, string pregunta, CancellationToken cancellationToken = default) =>
         throw new MotorFiscalNoDisponibleException("No hay motor fiscal en este proceso.");
 
     public Task<string> LeerLeyAsync(string clave, int desde, int n, string? articulo = null, CancellationToken cancellationToken = default) =>

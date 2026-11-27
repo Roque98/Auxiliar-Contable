@@ -277,6 +277,37 @@ public class AnalizadorNormativo : ITransientDependency
         return formas.FirstOrDefault(f => System.Text.RegularExpressions.Regex.IsMatch(n, f.Patron)).Forma;
     }
 
+    /// <summary>
+    /// El perfil para el encuadre de preguntas del asistente: sin RFC, sin nombre y sin domicilio (del domicilio solo
+    /// si lo tenemos). Sin perfil, va vacío y el motor pregunta lo básico.
+    /// </summary>
+    public async Task<PerfilParaEncuadre> PerfilParaEncuadreAsync(Guid organizacionId)
+    {
+        var p = await _perfiles.FirstOrDefaultAsync(x => x.OrganizacionId == organizacionId);
+        if (p == null)
+        {
+            return new PerfilParaEncuadre();
+        }
+
+        var base_ = await PerfilAsync(organizacionId, null);
+        string? Campo(string clave) => p.Dato(clave)?.Valor?.Trim() is { Length: > 0 } v ? v : null;
+        var conDomicilio = Campo(CamposDelPerfil.DomicilioFiscal) != null || Campo(CamposDelPerfil.CodigoPostal) != null;
+        return new PerfilParaEncuadre
+        {
+            TipoPersona = base_.TipoPersona,
+            Regimenes = base_.Regimenes,
+            Actividades = base_.Actividades,
+            Giro = Campo(CamposDelPerfil.Giro),
+            TipoEmpresa = Campo(CamposDelPerfil.TipoDeEmpresa),
+            CoeficienteUtilidad = Campo(CamposDelPerfil.CoeficienteDeUtilidad),
+            TieneVehiculos = Campo(CamposDelPerfil.TieneVehiculos),
+            TieneEstablecimiento = Campo(CamposDelPerfil.TieneEstablecimiento),
+            TieneTrabajadores = Campo(CamposDelPerfil.TieneTrabajadores),
+            Municipio = conDomicilio ? "conocido" : null,
+            Estado = conDomicilio ? "conocido" : null,
+        };
+    }
+
     public async Task<PerfilParaNormativa> PerfilAsync(Guid organizacionId, int? ejercicio)
     {
         var p = await _perfiles.FirstOrDefaultAsync(x => x.OrganizacionId == organizacionId)
