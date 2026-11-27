@@ -126,15 +126,64 @@
           <legend>Concepto {{ i + 1 }}</legend>
           <div class="fc-renglon">
             <label class="fc-campo"><span>Clave SAT (8 dígitos)</span>
-              <input class="ig-control" [name]="'clave' + i" [(ngModel)]="c.claveProdServ" maxlength="8" inputmode="numeric" required /></label>
+              <span class="fc-clave">
+                <input class="ig-control" [name]="'clave' + i" [(ngModel)]="c.claveProdServ" (ngModelChange)="alertas.set(null)"
+                  maxlength="8" inputmode="numeric" required />
+                <button type="button" class="btn btn-outline-secondary btn-sm" (click)="abrirBusqueda(i)" title="Buscar la clave por cómo se llama el producto">
+                  <i class="bi bi-search" aria-hidden="true"></i> Buscar clave
+                </button>
+              </span></label>
             <label class="fc-campo fc-ancho"><span>Descripción</span>
-              <input class="ig-control" [name]="'desc' + i" [(ngModel)]="c.descripcion" maxlength="1000" required /></label>
+              <input class="ig-control" [name]="'desc' + i" [(ngModel)]="c.descripcion" (ngModelChange)="alertas.set(null)" maxlength="1000" required /></label>
           </div>
+          @if (buscando(); as b) {
+            @if (b.i === i) {
+              <div class="fc-buscador" role="region" aria-label="Buscar clave SAT">
+                <div class="fc-renglon">
+                  <label class="fc-campo fc-ancho"><span>¿Qué vendes? Escríbelo como lo llamas (marca y medidas no importan)</span>
+                    <input class="ig-control" name="buscarClave" [ngModel]="b.texto" (ngModelChange)="buscando.set({ i: b.i, texto: $event, resultado: b.resultado, cargando: b.cargando })"
+                      (keydown.enter)="$event.preventDefault(); buscarClave()" maxlength="300" placeholder="p. ej. reflector LED 50 W" /></label>
+                  <button type="button" class="btn btn-primary btn-sm fc-abajo" (click)="buscarClave()" [disabled]="b.cargando || b.texto.trim().length < 2">
+                    @if (b.cargando) { <span class="ig-girando" aria-hidden="true"></span> } Buscar
+                  </button>
+                  <button type="button" class="btn btn-link btn-sm fc-abajo" (click)="buscando.set(null)">Cerrar</button>
+                </div>
+                @if (b.resultado; as r) {
+                  @if (r.ignoradas.length) {
+                    <p class="fc-nota">No tomé en cuenta: {{ r.ignoradas.join(', ') }} (marca, color o medida).</p>
+                  }
+                  @if (r.claves.length) {
+                    <ul class="fc-claves">
+                      @for (k of r.claves; track k.clave) {
+                        <li>
+                          <button type="button" class="fc-clave-opcion" (click)="usarClave(k)">
+                            <strong>{{ k.clave }}</strong> {{ k.descripcion }}
+                            @if (k.unidades.length) { <span class="fc-nota">· unidad {{ k.unidades[0].clave }} {{ k.unidades[0].nombre }}</span> }
+                          </button>
+                        </li>
+                      }
+                    </ul>
+                    <p class="fc-nota">La clave la decide lo que ES el producto. Toca una para usarla con su unidad.</p>
+                  } @else {
+                    <p class="fc-nota">No encontré claves con eso. Describe qué es (p. ej. «lámpara», «tornillo», «servicio de instalación»).</p>
+                  }
+                  @if (r.aviso) {
+                    <p class="fc-alerta fc-alerta-medio"><i class="bi bi-info-circle" aria-hidden="true"></i> {{ r.aviso }}</p>
+                  }
+                }
+              </div>
+            }
+          }
+          @for (a of alertasDe(i); track $index) {
+            <p class="fc-alerta" [class.fc-alerta-alto]="a.nivel === 'alto'" [class.fc-alerta-medio]="a.nivel === 'medio'">
+              <i class="bi bi-exclamation-triangle" aria-hidden="true"></i> {{ a.texto }}
+            </p>
+          }
           <div class="fc-renglon">
             <label class="fc-campo"><span>Cantidad</span>
               <input class="ig-control" type="number" [name]="'cant' + i" [(ngModel)]="c.cantidad" min="0.000001" step="any" required /></label>
             <label class="fc-campo"><span>Unidad</span>
-              <select class="ig-control" [name]="'unidad' + i" [(ngModel)]="c.claveUnidad">
+              <select class="ig-control" [name]="'unidad' + i" [(ngModel)]="c.claveUnidad" (ngModelChange)="alertas.set(null)">
                 @for (u of unidades; track u[0]) {
                   <option [value]="u[0]">{{ u[0] }} · {{ u[1] }}</option>
                 }
@@ -165,9 +214,12 @@
 
       <label class="fc-campo"><span>Nota para el despacho (opcional)</span>
         <input class="ig-control" name="nota" [(ngModel)]="nota" maxlength="1000" placeholder="p. ej. que diga el número de pedido" /></label>
+      @if (alertas()?.length) {
+        <p class="fc-alerta fc-alerta-medio" role="status">Revisé las claves y hay avisos en los conceptos de arriba. Corrígelos, o si estás seguro, envía así.</p>
+      }
       <div class="fc-botones">
         <button type="submit" class="btn btn-primary" [disabled]="ocupado()">
-          @if (ocupado()) { <span class="ig-girando" aria-hidden="true"></span> } Enviar al despacho
+          @if (ocupado()) { <span class="ig-girando" aria-hidden="true"></span> } {{ alertas()?.length ? 'Enviar así' : 'Enviar al despacho' }}
         </button>
         <button type="button" class="btn btn-link" (click)="pidiendo.set(false)">Cancelar</button>
       </div>

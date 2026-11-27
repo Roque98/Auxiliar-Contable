@@ -289,6 +289,34 @@ public class MotorFiscalHttp : IMotorFiscal, ITransientDependency
         return r.GetRawText();
     }
 
+    public async Task<string> BuscarClavesAsync(string descripcion, IReadOnlyList<string> actividades, int cuantas = 8, CancellationToken cancellationToken = default)
+    {
+        var ruta = $"claves/buscar?q={Uri.EscapeDataString(descripcion.Trim())}&k={Math.Clamp(cuantas, 1, 20)}";
+        foreach (var a in actividades.Take(30))
+        {
+            ruta += "&actividades=" + Uri.EscapeDataString(a);
+        }
+
+        using var tope = CancelationConTope(_opciones.TimeoutSegundos, cancellationToken);
+        var r = await EnviarAsync<System.Text.Json.JsonElement>(new HttpRequestMessage(HttpMethod.Get, ruta), tope.Token, cancellationToken);
+        return r.GetRawText();
+    }
+
+    public async Task<string> RevisarClavesAsync(IReadOnlyList<ConceptoParaRevisar> conceptos, IReadOnlyList<string> actividades, CancellationToken cancellationToken = default)
+    {
+        using var tope = CancelationConTope(_opciones.TimeoutSegundos, cancellationToken);
+        var peticion = new HttpRequestMessage(HttpMethod.Post, "claves/revisar")
+        {
+            Content = JsonContent.Create(new
+            {
+                conceptos = conceptos.Take(60).Select(c => new { clave = c.Clave, unidad = c.Unidad, descripcion = c.Descripcion }),
+                actividades = actividades.Take(30),
+            }, options: Json),
+        };
+        var r = await EnviarAsync<System.Text.Json.JsonElement>(peticion, tope.Token, cancellationToken);
+        return r.GetRawText();
+    }
+
     public async Task<string> LeerLeyAsync(string clave, int desde, int n, string? articulo = null, CancellationToken cancellationToken = default)
     {
         var ruta = $"rag/documento?clave={Uri.EscapeDataString(clave.Trim())}&desde={Math.Clamp(desde, 0, 20000)}&n={Math.Clamp(n, 1, 6)}";

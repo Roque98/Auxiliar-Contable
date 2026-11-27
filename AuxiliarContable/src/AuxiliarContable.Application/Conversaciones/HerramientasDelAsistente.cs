@@ -10,6 +10,7 @@ using AuxiliarContable.Bancos;
 using AuxiliarContable.Boveda;
 using AuxiliarContable.Cartera;
 using AuxiliarContable.Documentos;
+using AuxiliarContable.Facturacion;
 using AuxiliarContable.IA;
 using AuxiliarContable.Identity;
 using AuxiliarContable.Invitaciones;
@@ -56,6 +57,8 @@ public class HerramientasDelAsistente : ITransientDependency
     public const string ImpuestosDelMes = "impuestos_del_mes";
     public const string LeyesQueLeAplican = "leyes_que_le_aplican";
     public const string EncuadrarPregunta = "encuadrar_pregunta";
+    public const string BuscarClaveSat = "buscar_clave_sat";
+    public const string RevisarClaves = "revisar_claves";
     public const string AnalizarOperacion = "analizar_operacion";
     public const string Solicitar = "solicitar";
     public const string TarifaIsr = "tarifa_isr";
@@ -134,6 +137,7 @@ public class HerramientasDelAsistente : ITransientDependency
     private readonly IBancosAppService _bancos;
     private readonly ConsultasDelAsistente _consultas;
     private readonly ISolicitudesAppService _solicitudes;
+    private readonly RevisorDeClaves _claves;
 
     public HerramientasDelAsistente(
         IPerfilFiscalAppService perfiles,
@@ -144,8 +148,10 @@ public class HerramientasDelAsistente : ITransientDependency
         IMotorFiscal motor,
         IBancosAppService bancos,
         ConsultasDelAsistente consultas,
-        ISolicitudesAppService solicitudes)
+        ISolicitudesAppService solicitudes,
+        RevisorDeClaves claves)
     {
+        _claves = claves;
         _solicitudes = solicitudes;
         _consultas = consultas;
         _motor = motor;
@@ -192,6 +198,28 @@ public class HerramientasDelAsistente : ITransientDependency
                 "(términos y periodo para buscar_operaciones) y SOLO los datos que faltan y cambian la respuesta (preguntar_antes). " +
                 "Si preguntar_antes viene vacío, NO digas que faltan datos: trabaja la respuesta. Pásale la pregunta tal cual.",
                 """{"type":"object","properties":{"pregunta":{"type":"string","minLength":2,"maxLength":600}},"required":["pregunta"]}"""),
+            new(BuscarClaveSat,
+                "La clave SAT (c_ClaveProdServ) y la unidad para FACTURAR o registrar un producto o servicio: «¿qué clave uso " +
+                "para reflectores LED?», «clave para servicio de instalación eléctrica». Pásale cómo se llama la cosa (puede traer " +
+                "marca, color y medidas: las quita). Devuelve claves candidatas con su descripción oficial, la unidad sugerida y " +
+                "si las actividades de SU constancia describen esa venta según el Anexo 6 RMF (y cuál sí, si no). Explica por qué " +
+                "la primera es la mejor por lo que ES el objeto; si dos son defendibles, dilo. La clave la decide el objeto, no la " +
+                "actividad. Avísale si su constancia no cubre la venta.",
+                """{"type":"object","properties":{"descripcion":{"type":"string","minLength":2,"maxLength":300}},"required":["descripcion"]}"""),
+            new(RevisarClaves,
+                "¿Está bien la clave SAT de una factura? Con uuid revisa todos los conceptos de esa factura de su bóveda " +
+                "(emitida o recibida); sin uuid, los conceptos que te dé (clave, unidad, descripción). Señala inconsistencias: " +
+                "clave o unidad inexistentes, servicio con unidad de bien (o al revés), descripción que no corresponde a la clave " +
+                "o tan genérica que no dice qué se compró, y propone claves por el objeto. En una RECIBIDA, una clave que no " +
+                "corresponde a lo que realmente se compró hay que aclararla con el proveedor (puede pedir que la cancele y la " +
+                "reexpida); no la corrige el cliente. Usa buscar_operaciones para encontrar el uuid si no lo tiene.",
+                """
+                {"type":"object","properties":{
+                  "uuid":{"type":"string","minLength":36,"maxLength":36},
+                  "conceptos":{"type":"array","maxItems":60,"items":{"type":"object","properties":{
+                    "clave":{"type":"string","maxLength":12},"unidad":{"type":"string","maxLength":6},
+                    "descripcion":{"type":"string","maxLength":1000}}}}}}
+                """),
             new(BuscarOperaciones,
                 "Busca en las operaciones del cliente activo (cada una junta su factura, su pago y su control interno). Filtros " +
                 "opcionales: texto (proveedor o cliente, concepto, UUID o referencia del pago), terminos (varias palabras: trae las " +
@@ -336,6 +364,8 @@ public class HerramientasDelAsistente : ITransientDependency
             ImpuestosDelMes => "Consultó los impuestos",
             LeyesQueLeAplican => "Revisó las leyes que te aplican",
             EncuadrarPregunta => "Encuadró la pregunta con tu perfil",
+            BuscarClaveSat => "Buscó la clave SAT",
+            RevisarClaves => "Revisó las claves de la factura",
             AnalizarOperacion => "Analizó la operación con la ley",
             TarifaIsr => "Consultó la tarifa de ISR",
             LeerLey => "Leyó la ley",
@@ -372,6 +402,17 @@ public class HerramientasDelAsistente : ITransientDependency
     /// <summary>Las que solo consultan al motor (sin base ni cliente): sirven en las dos conversaciones y pueden correr a la vez.</summary>
     public static bool SoloConsultaAlMotor(string nombre) => nombre is ConsultarLeyes or ConsultarSentencias or TarifaIsr or LeerLey;
 
+    /// <summary>Los conceptos que dio el modelo (clave, unidad, descripción).</summary>
+    private static List<ConceptoParaRevisar> ConceptosDe(JsonElement entrada) =>
+        entrada.ValueKind == JsonValueKind.Object && entrada.TryGetProperty("conceptos", out var lista) && lista.ValueKind == JsonValueKind.Array
+            ? lista.EnumerateArray().Where(c => c.ValueKind == JsonValueKind.Object)
+                .Select(c => new ConceptoParaRevisar(Opcional(c, "clave") ?? "", Opcional(c, "unidad") ?? "", Opcional(c, "descripcion") ?? ""))
+                .ToList()
+            : [];
+
+    /// <summary>Lo que vuelve del motor, con tope: cada carácter cuesta tokens en cada vuelta.</summary>
+    private static string Recortado(string json) => json.Length > 12_000 ? json[..12_000] + " […]" : json;
+
     public async Task<BloqueDeResultadoDeHerramienta> EjecutarAsync(Guid organizacionId, BloqueDeUsoDeHerramienta uso)
     {
         // El candado entre las dos clases de conversación: en la de la cartera (Guid.Empty) solo sus
@@ -393,6 +434,10 @@ public class HerramientasDelAsistente : ITransientDependency
                     Decimal(uso.Entrada, "importe_minimo"), Decimal(uso.Entrada, "importe_maximo"),
                     Opcional(uso.Entrada, "sentido"), Opcional(uso.Entrada, "falta"), Lista(uso.Entrada, "terminos"))),
                 EncuadrarPregunta => await _consultas.EncuadrarPreguntaAsync(organizacionId, Texto(uso.Entrada, "pregunta")),
+                BuscarClaveSat => Recortado(await _claves.BuscarAsync(organizacionId, Texto(uso.Entrada, "descripcion"))),
+                RevisarClaves => Recortado(Opcional(uso.Entrada, "uuid") is { Length: > 0 } uuid
+                    ? await _claves.RevisarFacturaAsync(organizacionId, uuid)
+                    : await _claves.RevisarAsync(organizacionId, ConceptosDe(uso.Entrada))),
                 ExplicarOperacion => await _consultas.ExplicarOperacionAsync(organizacionId,
                     Opcional(uso.Entrada, "operacionId") != null ? Id(uso.Entrada, "operacionId") : (Guid?)null,
                     Opcional(uso.Entrada, "uuid")),

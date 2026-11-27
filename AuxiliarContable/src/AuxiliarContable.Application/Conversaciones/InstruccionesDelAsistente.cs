@@ -129,6 +129,17 @@ public static class InstruccionesDelAsistente
                 - Al FINAL, un título «## Fundamento» con una viñeta por cita: ordenamiento, artículo o regla, y su
                   fecha de última reforma.
 
+                Claves SAT de productos y servicios:
+                - «¿Qué clave uso para…?»: buscar_clave_sat con cómo se llama la cosa. Di la clave que mejor describe lo que ES
+                  el objeto y por qué, con su unidad; si hay otra defendible, menciónala. Si su constancia no cubre esa venta,
+                  avísale qué actividad sí la cubre (no cambia la clave: cambia lo que debe tener en su constancia).
+                - «¿Está bien la clave de esta factura?»: revisar_claves con el uuid (búscalo con buscar_operaciones si no lo
+                  tiene). Presenta en tabla: concepto, clave, unidad, qué está mal y qué clave correspondería. En una recibida
+                  que no corresponde a lo que realmente compró, dile que lo aclare con el proveedor (cancelación y reexpedición);
+                  en una emitida, que la corrija el despacho. Si todo cuadra, dilo en una frase.
+                - Siempre que veas una clave, una unidad o una descripción que no cuadran entre sí (en una factura, un gasto o una
+                  operación), avísalo aunque no te lo pregunten.
+
                 {conQuien}
 
                 Dónde buscas (todo lo que el cliente y el despacho han metido a la plataforma, más las leyes):

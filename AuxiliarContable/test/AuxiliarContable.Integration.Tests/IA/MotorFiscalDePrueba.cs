@@ -101,6 +101,8 @@ public class MotorFiscalDePrueba : IMotorFiscal
         ExpedientesPedidos.Clear();
         TarifasPedidas.Clear();
         EncuadresPedidos.Clear();
+        ClavesBuscadas.Clear();
+        ClavesRevisadas.Clear();
         LeyesLeidasSeguidas.Clear();
         PerfilesDeExpediente.Clear();
         DetalleDeProvisionales = null;
@@ -327,6 +329,29 @@ public class MotorFiscalDePrueba : IMotorFiscal
             "{\"intencion\":\"cuanto_gaste\",\"concepto\":{\"id\":\"ingredientes\"},\"naturaleza\":\"insumo\","
             + "\"que_es_para_el\":\"INSUMO o materia prima de lo que vende\",\"preguntar_antes\":[],"
             + "\"buscar_en_operaciones\":{\"sentido\":\"salida\",\"terminos\":[\"harina\"],\"anio\":2026}}");
+    }
+
+    public List<(string Descripcion, IReadOnlyList<string> Actividades)> ClavesBuscadas { get; } = [];
+
+    public Task<string> BuscarClavesAsync(string descripcion, IReadOnlyList<string> actividades, int cuantas = 8, CancellationToken cancellationToken = default)
+    {
+        ClavesBuscadas.Add((descripcion, actividades));
+        return Task.FromResult(
+            "{\"modo\":\"palabras\",\"entendido\":{\"ideas\":[],\"ignoradas\":[{\"palabra\":\"nova\",\"por\":\"marca\"}]},"
+            + "\"resultados\":[{\"clave\":\"39111611\",\"descripcion\":\"Reflectores\",\"unidades\":[{\"clave\":\"H87\",\"nombre\":\"Pieza\"}]}],"
+            + "\"aviso\":\"Ninguna de sus actividades describe esta venta; la 546 sí.\"}");
+    }
+
+    public List<(IReadOnlyList<ConceptoParaRevisar> Conceptos, IReadOnlyList<string> Actividades)> ClavesRevisadas { get; } = [];
+
+    public Task<string> RevisarClavesAsync(IReadOnlyList<ConceptoParaRevisar> conceptos, IReadOnlyList<string> actividades, CancellationToken cancellationToken = default)
+    {
+        ClavesRevisadas.Add((conceptos, actividades));
+        // Cada concepto con unidad E48 y clave de producto (39…) trae la alerta de unidad.
+        var partes = conceptos.Select(c => c.Clave.StartsWith("39") && c.Unidad == "E48"
+            ? "{\"clave\":\"" + c.Clave + "\",\"alertas\":[{\"nivel\":\"alto\",\"tipo\":\"unidad\",\"texto\":\"La clave es de un PRODUCTO y la unidad E48 es de servicio.\"}]}"
+            : "{\"clave\":\"" + c.Clave + "\",\"alertas\":[]}");
+        return Task.FromResult("{\"conceptos\":[" + string.Join(",", partes) + "],\"resumen\":\"x\"}");
     }
 
     public List<(int Dias, decimal? Base, int? Mes)> TarifasPedidas { get; } = [];

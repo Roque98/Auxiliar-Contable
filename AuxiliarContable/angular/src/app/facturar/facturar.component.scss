@@ -106,3 +106,71 @@ h2 { font-size: var(--ig-texto-lg); font-weight: var(--ig-peso-semi); margin: 0;
 
   h2 { margin: 0; }
 }
+
+/* Clave SAT: el campo con su botón de búsqueda; en el teléfono el botón baja. */
+.fc-clave {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  align-items: center;
+}
+
+.fc-clave input {
+  flex: 1 1 8rem;
+  min-width: 0;
+}
+
+.fc-buscador {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border: 1px solid var(--bs-border-color, #dee2e6);
+  border-radius: 0.5rem;
+}
+
+.fc-abajo {
+  align-self: flex-end;
+}
+
+.fc-claves {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.fc-clave-opcion {
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: 1px solid var(--bs-border-color, #dee2e6);
+  border-radius: 0.375rem;
+  padding: 0.5rem 0.625rem;
+  color: inherit;
+  overflow-wrap: anywhere;
+}
+
+.fc-clave-opcion:hover,
+.fc-clave-opcion:focus-visible {
+  border-color: var(--bs-primary, #0d6efd);
+}
+
+.fc-alerta {
+  margin: 0;
+  padding: 0.5rem 0.625rem;
+  border-radius: 0.375rem;
+  font-size: 0.9em;
+  background: var(--bs-secondary-bg, #f1f3f5);
+  overflow-wrap: anywhere;
+}
+
+.fc-alerta-medio {
+  background: var(--bs-warning-bg-subtle, #fff3cd);
+}
+
+.fc-alerta-alto {
+  background: var(--bs-danger-bg-subtle, #f8d7da);
+}

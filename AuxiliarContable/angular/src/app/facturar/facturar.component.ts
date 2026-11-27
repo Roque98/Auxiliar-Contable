@@ -8,6 +8,9 @@ import { DocumentosService, TipoDeDocumento } from '../documentos/documentos.ser
 import { mensajeDeError } from '../invitaciones/invitaciones.service';
 import { ClienteVisibleDto, PerfilFiscalService } from '../perfil-fiscal/perfil-fiscal.service';
 import {
+  AlertaDeConceptoDto,
+  BusquedaDeClaveDto,
+  ClaveSugeridaDto,
   ConceptoDto,
   CrearSolicitudDto,
   EstadoDeSolicitud,
@@ -63,7 +66,8 @@ export class FacturarComponent implements OnInit {
   readonly usos = USOS_CFDI;
   readonly formas = FORMAS_DE_PAGO;
   readonly regimenes = REGIMENES;
-  readonly unidades = UNIDADES;
+  /** Las del catálogo corto más las que haya sugerido la búsqueda de clave. */
+  unidades: [string, string][] = [...UNIDADES];
   readonly tasas = TASAS;
   readonly estados = ESTADOS;
   readonly Estado = EstadoDeSolicitud;
@@ -86,6 +90,10 @@ export class FacturarComponent implements OnInit {
   conceptos: ConceptoDto[] = [this.conceptoVacio()];
   incluyeIva = false;
   nota = '';
+  /** Búsqueda de clave abierta: en qué concepto, qué se buscó y qué salió. */
+  readonly buscando = signal<{ i: number; texto: string; resultado: BusquedaDeClaveDto | null; cargando: boolean } | null>(null);
+  /** Lo que salió al revisar las claves antes de enviar; con alertas, el segundo envío ya no revisa. */
+  readonly alertas = signal<AlertaDeConceptoDto[] | null>(null);
   // atender / rechazar
   xml: File | null = null;
   pdf: File | null = null;
@@ -147,6 +155,8 @@ export class FacturarComponent implements OnInit {
     this.conceptos = [this.conceptoVacio()];
     this.incluyeIva = false;
     this.nota = '';
+    this.alertas.set(null);
+    this.buscando.set(null);
     this.error.set(null);
     this.aviso.set(null);
     this.pidiendo.set(true);
@@ -210,11 +220,90 @@ export class FacturarComponent implements OnInit {
     return redondea(this.conceptos.reduce((s, c) => s + this.ivaDe(c), 0));
   }
 
+  // ---- clave SAT
+
+  abrirBusqueda(i: number): void {
+    this.buscando.set({ i, texto: this.conceptos[i].descripcion ?? '', resultado: null, cargando: false });
+    if ((this.conceptos[i].descripcion ?? '').trim().length >= 2) {
+      this.buscarClave();
+    }
+  }
+
+  buscarClave(): void {
+    const b = this.buscando();
+    const id = this.clienteId();
+    if (!b || !id || b.texto.trim().length < 2) {
+      return;
+    }
+    this.buscando.set({ ...b, cargando: true });
+    this.api.buscarClave(id, b.texto.trim()).subscribe({
+      next: r => this.buscando.set({ ...b, resultado: r, cargando: false }),
+      error: e => {
+        this.buscando.set({ ...b, cargando: false });
+        this.error.set(mensajeDeError(e, 'No se pudo buscar la clave.'));
+      },
+    });
+  }
+
+  usarClave(c: ClaveSugeridaDto): void {
+    const b = this.buscando();
+    if (!b) {
+      return;
+    }
+    const concepto = this.conceptos[b.i];
+    concepto.claveProdServ = c.clave;
+    const u = c.unidades[0];
+    if (u) {
+      if (!this.unidades.some(x => x[0] === u.clave)) {
+        this.unidades = [...this.unidades, [u.clave, u.nombre]];
+      }
+      concepto.claveUnidad = u.clave;
+    }
+    if (!concepto.descripcion?.trim()) {
+      concepto.descripcion = b.texto.trim();
+    }
+    this.alertas.set(null);
+    this.buscando.set(null);
+  }
+
+  alertasDe(i: number): AlertaDeConceptoDto[] {
+    return (this.alertas() ?? []).filter(a => a.concepto === i);
+  }
+
   pedir(): void {
     const id = this.clienteId();
     if (!id || this.ocupado()) {
       return;
     }
+    // Primero se revisa que cada clave cuadre con su descripción y su unidad. Si hay alertas se enseñan y el
+    // siguiente envío va tal cual: avisa, no impide.
+    if (this.alertas() === null) {
+      this.ocupado.set(true);
+      this.error.set(null);
+      this.api.revisarConceptos(id, this.conceptos.map(c => ({
+        claveProdServ: c.claveProdServ ?? '', claveUnidad: c.claveUnidad ?? '', descripcion: c.descripcion ?? '',
+      }))).subscribe({
+        next: a => {
+          this.ocupado.set(false);
+          const importantes = a.filter(x => x.nivel !== 'bajo');
+          this.alertas.set(a);
+          if (importantes.length === 0) {
+            this.enviar(id);
+          }
+        },
+        // Si la revisión no responde, no se detiene la solicitud: el despacho revisa al timbrar.
+        error: () => {
+          this.ocupado.set(false);
+          this.alertas.set([]);
+          this.enviar(id);
+        },
+      });
+      return;
+    }
+    this.enviar(id);
+  }
+
+  private enviar(id: string): void {
     this.ocupado.set(true);
     this.error.set(null);
     const s: CrearSolicitudDto = {
@@ -230,6 +319,7 @@ export class FacturarComponent implements OnInit {
         this.ocupado.set(false);
         this.operaciones.deSolicitud(id, creada.id).subscribe({ next: o => this.porAmarrar.set(o), error: () => undefined });
         this.pidiendo.set(false);
+        this.alertas.set(null);
         this.aviso.set('Solicitud enviada: el despacho la timbrará y aquí verás el XML y el PDF.');
         this.cargar();
       },
