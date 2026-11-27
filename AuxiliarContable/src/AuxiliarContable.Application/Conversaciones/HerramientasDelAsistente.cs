@@ -6,6 +6,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Unicode;
 using System.Threading.Tasks;
+using AuxiliarContable.Autorizacion;
 using AuxiliarContable.Bancos;
 using AuxiliarContable.Boveda;
 using AuxiliarContable.Cartera;
@@ -19,6 +20,8 @@ using AuxiliarContable.Organizaciones;
 using AuxiliarContable.PerfilesFiscales;
 using Volo.Abp;
 using Volo.Abp.DependencyInjection;
+using Volo.Abp.Domain.Repositories;
+using Volo.Abp.Linq;
 using Volo.Abp.Domain.Entities;
 
 namespace AuxiliarContable.Conversaciones;
@@ -162,6 +165,9 @@ public class HerramientasDelAsistente : ITransientDependency
     private readonly ConsultasDelAsistente _consultas;
     private readonly ISolicitudesAppService _solicitudes;
     private readonly RevisorDeClaves _claves;
+    private readonly Autorizador _autorizador;
+    private readonly IRepository<Organizacion, Guid> _organizacionesRepo;
+    private readonly IAsyncQueryableExecuter _async;
 
     public HerramientasDelAsistente(
         IPerfilFiscalAppService perfiles,
@@ -173,8 +179,14 @@ public class HerramientasDelAsistente : ITransientDependency
         IBancosAppService bancos,
         ConsultasDelAsistente consultas,
         ISolicitudesAppService solicitudes,
-        RevisorDeClaves claves)
+        RevisorDeClaves claves,
+        Autorizador autorizador,
+        IRepository<Organizacion, Guid> organizacionesRepo,
+        IAsyncQueryableExecuter ejecutor)
     {
+        _autorizador = autorizador;
+        _organizacionesRepo = organizacionesRepo;
+        _async = ejecutor;
         _claves = claves;
         _solicitudes = solicitudes;
         _consultas = consultas;
@@ -381,29 +393,67 @@ public class HerramientasDelAsistente : ITransientDependency
         };
     }
 
-    /// <summary>Las de la conversación de toda la cartera (solo equipo): el resumen, nada del detalle de un cliente.</summary>
-    public static IReadOnlyList<HerramientaDelModelo> DeCartera() =>
-    [
-        new(ResumenDeCartera,
-            "Resumen de TODOS los clientes del despacho para un mes: semáforo (al día, atención, urgente), RFC, perfil completo en %, " +
-            "documentos, facturas y estados de cuenta recibidos en el mes y la lista de pendientes de cada uno.",
-            """{"type":"object","properties":{"anio":{"type":"integer","minimum":2000,"maximum":2100},"mes":{"type":"integer","minimum":1,"maximum":12}},"required":["anio","mes"]}"""),
-        new(CrearCliente,
-            "Da de alta un cliente nuevo del despacho (una organización: 1 cliente = 1 RFC). Úsala SOLO después de que la persona " +
-            "confirme el nombre exacto que le propusiste. Después, el cliente aparece en la lista de arriba para elegirlo, llenar su " +
-            "perfil e invitarlo. Si ya existe uno con ese nombre, devuelve error.",
-            """{"type":"object","properties":{"nombre":{"type":"string","minLength":2,"maxLength":128},"descripcion":{"type":"string","maxLength":256}},"required":["nombre"]}"""),
-        new(SolicitudesPendientes,
-            "La bandeja del despacho: lo que los clientes han pedido (cambios, correcciones, aclaraciones) y sigue pendiente, " +
-            "de toda la cartera, lo más viejo primero, con el nombre del cliente. Para atender una, di que elijan a ese cliente.",
-            """{"type":"object","properties":{}}"""),
-        DeLeyes,
-        DeSentencias,
-        DeTarifa,
-        DeLeerLey,
-        DeBuscarClave,
-        DeRevisarClaves,
-    ];
+    /// <summary>
+    /// La conversación de toda la cartera (solo equipo): sus herramientas (resumen, alta, bandeja) y TODAS las de un
+    /// cliente, cada una con «cliente» para decir sobre cuál. El equipo trabaja ahí cualquier expediente sin elegirlo
+    /// antes; los permisos los vuelve a exigir cada servicio con quien escribe.
+    /// </summary>
+    public static IReadOnlyList<HerramientaDelModelo> DeCartera(bool puedeInvitar = false)
+    {
+        var lista = new List<HerramientaDelModelo>
+        {
+            new(ResumenDeCartera,
+                "Resumen de TODOS los clientes del despacho para un mes: semáforo (al día, atención, urgente), RFC, perfil completo en %, " +
+                "documentos, facturas y estados de cuenta recibidos en el mes y la lista de pendientes de cada uno, con el id de cada cliente.",
+                """{"type":"object","properties":{"anio":{"type":"integer","minimum":2000,"maximum":2100},"mes":{"type":"integer","minimum":1,"maximum":12}},"required":["anio","mes"]}"""),
+            new(CrearCliente,
+                "Da de alta un cliente nuevo del despacho (una organización: 1 cliente = 1 RFC). Úsala SOLO después de que la persona " +
+                "confirme el nombre exacto que le propusiste. Después ya lo puedes trabajar aquí (perfil, invitar a su " +
+                "gente) pasando «cliente». Si ya existe uno con ese nombre, devuelve error.",
+                """{"type":"object","properties":{"nombre":{"type":"string","minLength":2,"maxLength":128},"descripcion":{"type":"string","maxLength":256}},"required":["nombre"]}"""),
+            new(SolicitudesPendientes,
+                "La bandeja del despacho: lo que los clientes han pedido (cambios, correcciones, aclaraciones) y sigue pendiente, " +
+                "de toda la cartera, lo más viejo primero, con el nombre del cliente. Para atender una, resolver_solicitud con «cliente».",
+                """{"type":"object","properties":{}}"""),
+        };
+        foreach (var h in Disponibles(puedeEditar: true, puedeInvitar, esEquipo: true))
+        {
+            lista.Add(SoloConsultaAlMotor(h.Nombre) ? h : ConCliente(h, obligatorio: !EnAmbas(h.Nombre)));
+        }
+
+        return lista;
+    }
+
+    private static HerramientaDelModelo ConCliente(HerramientaDelModelo h, bool obligatorio)
+    {
+        var esquema = JsonNode.Parse(h.JsonSchema)!.AsObject();
+        if (esquema["properties"] is not JsonObject propiedades)
+        {
+            propiedades = new JsonObject();
+            esquema["properties"] = propiedades;
+        }
+
+        propiedades["cliente"] = new JsonObject
+        {
+            ["type"] = "string",
+            ["minLength"] = 2,
+            ["maxLength"] = 128,
+            ["description"] = "El cliente sobre el que trabajas: su id o su nombre como sale en resumen_de_cartera.",
+        };
+        if (obligatorio)
+        {
+            if (esquema["required"] is not JsonArray requeridos)
+            {
+                requeridos = new JsonArray();
+                esquema["required"] = requeridos;
+            }
+
+            requeridos.Add("cliente");
+        }
+
+        var aviso = obligatorio ? " En la cartera, «cliente» dice de cuál." : " En la cartera, «cliente» si es para uno en particular.";
+        return h with { Descripcion = h.Descripcion + aviso, JsonSchema = esquema.ToJsonString() };
+    }
 
     /// <summary>Las que solo consultan al motor (sin base ni cliente): sirven en las dos conversaciones y pueden correr a la vez.</summary>
     /// <summary>Las de claves SAT: en la cartera van sin la constancia de un cliente.</summary>
@@ -424,6 +474,24 @@ public class HerramientasDelAsistente : ITransientDependency
 
     public async Task<BloqueDeResultadoDeHerramienta> EjecutarAsync(Guid organizacionId, BloqueDeUsoDeHerramienta uso)
     {
+        // En la cartera, una herramienta de cliente se ejecuta sobre el que dice «cliente».
+        if (organizacionId == Guid.Empty && !SoloConsultaAlMotor(uso.Nombre)
+            && uso.Nombre is not (ResumenDeCartera or CrearCliente or SolicitudesPendientes))
+        {
+            var cliente = Opcional(uso.Entrada, "cliente");
+            if (cliente is not null || !EnAmbas(uso.Nombre))
+            {
+                try
+                {
+                    return await EjecutarAsync(await ClienteDeLaCarteraAsync(cliente), uso);
+                }
+                catch (UserFriendlyException ex)
+                {
+                    return new BloqueDeResultadoDeHerramienta(uso.Id, ex.Message, EsError: true);
+                }
+            }
+        }
+
         // El candado entre las dos clases de conversación: en la de la cartera (Guid.Empty) solo sus
         // herramientas (resumen y alta); en la de un cliente, nunca esas. Lo que pida el modelo no lo salta.
         if (!SoloConsultaAlMotor(uso.Nombre) && !EnAmbas(uso.Nombre) && (organizacionId == Guid.Empty) != (uso.Nombre is ResumenDeCartera or CrearCliente or SolicitudesPendientes))
@@ -448,7 +516,7 @@ public class HerramientasDelAsistente : ITransientDependency
                     : await _claves.BuscarAsync(organizacionId, Texto(uso.Entrada, "descripcion"))),
                 RevisarClaves => Recortado(Opcional(uso.Entrada, "uuid") is { Length: > 0 } uuid
                     ? organizacionId == Guid.Empty
-                        ? throw new UserFriendlyException("Para revisar una factura por su folio fiscal, elige arriba al cliente: aquí no se ven sus documentos.")
+                        ? throw new UserFriendlyException("Para revisar una factura por su folio fiscal, di de qué cliente es («cliente»).")
                         : await _claves.RevisarFacturaAsync(organizacionId, uuid)
                     : organizacionId == Guid.Empty
                         ? await _claves.RevisarSinClienteAsync(ConceptosDe(uso.Entrada))
@@ -802,6 +870,41 @@ public class HerramientasDelAsistente : ITransientDependency
 
     private static string Corto(string texto, int max) => texto.Length > max ? texto[..max] + "…" : texto;
 
+    /// <summary>El cliente que nombró el modelo en la cartera: por id o por nombre (sin acentos ni mayúsculas). Solo el equipo.</summary>
+    private async Task<Guid> ClienteDeLaCarteraAsync(string? cliente)
+    {
+        if (!(await _autorizador.QuienMiraAsync()).Equipo)
+        {
+            throw new UserFriendlyException("Esta herramienta no está disponible en esta conversación.");
+        }
+
+        if (string.IsNullOrWhiteSpace(cliente))
+        {
+            throw new UserFriendlyException("¿De qué cliente? Pasa «cliente» con su nombre o su id (resumen_de_cartera los trae).");
+        }
+
+        var todos = await _async.ToListAsync((await _organizacionesRepo.GetQueryableAsync()).Select(o => new { o.Id, o.Nombre }));
+        if (Guid.TryParse(cliente, out var id))
+        {
+            return todos.Any(o => o.Id == id) ? id : throw new UserFriendlyException("No encontré ese cliente en la cartera.");
+        }
+
+        var buscado = Plano(cliente);
+        var exactos = todos.Where(o => Plano(o.Nombre) == buscado).ToList();
+        var candidatos = exactos.Count > 0 ? exactos : todos.Where(o => Plano(o.Nombre).Contains(buscado)).ToList();
+        return candidatos.Count switch
+        {
+            1 => candidatos[0].Id,
+            0 => throw new UserFriendlyException($"No encontré a «{cliente}» en la cartera. Revisa el nombre con resumen_de_cartera."),
+            _ => throw new UserFriendlyException("Hay varios clientes con ese nombre: " +
+                                                 string.Join(", ", candidatos.Take(8).Select(o => $"{o.Nombre} ({o.Id})")) + ". ¿Cuál?"),
+        };
+    }
+
+    private static string Plano(string texto) =>
+        new string(texto.Trim().ToLowerInvariant().Normalize(System.Text.NormalizationForm.FormD)
+            .Where(c => System.Globalization.CharUnicodeInfo.GetUnicodeCategory(c) != System.Globalization.UnicodeCategory.NonSpacingMark).ToArray());
+
     private async Task<string> CarteraAsync(JsonElement entrada)
     {
         var anio = Entero(entrada, "anio") ?? throw new UserFriendlyException("Falta «anio».");
@@ -812,6 +915,7 @@ public class HerramientasDelAsistente : ITransientDependency
             periodo = $"{anio}-{mes:00}",
             clientes = clientes.Select(c => new
             {
+                id = c.Id,
                 nombre = c.Nombre,
                 rfc = c.Rfc,
                 semaforo = c.Semaforo switch { SemaforoDeCliente.Urgente => "urgente", SemaforoDeCliente.Atencion => "atención", _ => "al día" },

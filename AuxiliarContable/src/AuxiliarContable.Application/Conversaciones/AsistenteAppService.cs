@@ -116,11 +116,10 @@ public class AsistenteAppService : AuxiliarContableAppService, IAsistenteAppServ
         await GuardarAsync(RolDelMensaje.Usuario, texto, new BloqueDeTurno[] { new BloqueDeTexto(texto) });
 
         // Invitar desde el chat: el equipo con permiso de dar de alta personas, sobre un cliente.
-        var puedeInvitar = organizacionId != Guid.Empty && quien.Equipo
-                           && await AuthorizationService.IsGrantedAsync(IdentityPermissions.Users.Create);
+        var puedeInvitar = quien.Equipo && await AuthorizationService.IsGrantedAsync(IdentityPermissions.Users.Create);
         var instrucciones = await InstruccionesAsync(organizacionId, quien.Equipo, puedeEditar, puedeInvitar);
         var herramientas = organizacionId == Guid.Empty
-            ? HerramientasDelAsistente.DeCartera()
+            ? HerramientasDelAsistente.DeCartera(puedeInvitar)
             : HerramientasDelAsistente.Disponibles(puedeEditar, puedeInvitar, quien.Equipo);
 
         var verificada = false;
@@ -269,9 +268,8 @@ public class AsistenteAppService : AuxiliarContableAppService, IAsistenteAppServ
     }
 
     /// <summary>
-    /// <see cref="Guid.Empty"/> es la conversación de TODA LA CARTERA: solo para el equipo, y en ella el
-    /// modelo solo ve el resumen de la cartera (<see cref="HerramientasDelAsistente.DeCartera"/>), nunca el
-    /// detalle de un cliente. Para eso se elige el cliente.
+    /// <see cref="Guid.Empty"/> es la conversación de TODA LA CARTERA: solo para el equipo. Ahí el modelo ve el
+    /// resumen y trabaja cualquier cliente diciendo cuál (<see cref="HerramientasDelAsistente.DeCartera"/>).
     /// </summary>
     private async Task ExigirVerAsync(Guid organizacionId)
     {
@@ -295,7 +293,7 @@ public class AsistenteAppService : AuxiliarContableAppService, IAsistenteAppServ
 
     private async Task<string> InstruccionesAsync(Guid organizacionId, bool delDespacho, bool puedeEditar, bool puedeInvitar) =>
         organizacionId == Guid.Empty
-            ? InstruccionesDelAsistente.ConstruirParaLaCartera(Clock.Now)
+            ? InstruccionesDelAsistente.ConstruirParaLaCartera(Clock.Now, puedeInvitar)
             : InstruccionesDelAsistente.Construir(await NombreAsync(organizacionId), Clock.Now, delDespacho, puedeEditar, puedeInvitar);
 
     /// <summary>Encendido en la configuración (AuxiliarContableSettings.AsistenteHabilitado) y con API key de Claude.</summary>
