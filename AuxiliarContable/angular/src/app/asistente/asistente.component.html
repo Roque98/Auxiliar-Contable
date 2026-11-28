@@ -335,7 +335,7 @@
           (keydown)="alTeclear($event)"
           [disabled]="!conv.disponible"
           [placeholder]="esCartera() ? 'Pregunta por tu cartera…' : 'Escribe o adjunta…'"
-          enterkeyhint="send"
+          [attr.enterkeyhint]="tactil ? 'enter' : 'send'"
         ></textarea>
         <button
           type="submit"

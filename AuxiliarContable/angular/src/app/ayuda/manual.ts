@@ -111,6 +111,7 @@ export const SECCIONES: Seccion[] = [
           'Al entrar te recibe el asistente: escríbele como a tu contador, con tus palabras y de lo que quieras: «tengo una panadería», «¿qué me falta?», «¿me conviene…?».',
           'Antes de hacer algo, pregúntale: «voy a comprar una camioneta», «me quieren pagar en efectivo», «me salió un cliente en Estados Unidos». Revisa la ley con tu perfil y te dice qué cuidar: si lo puedes deducir, a nombre de quién va la factura, cómo pagar y qué guardar.',
           'Con el clip (o arrastrando) le mandas facturas XML, estados de cuenta, tickets o tu constancia: los guarda en tus documentos y te dice qué llegó.',
+          'En el celular, la tecla Enter baja de renglón y mandas con la flecha; en la computadora, Enter manda y Shift+Enter baja de renglón. Si lo que escribes es largo, desliza dentro de la caja para ver el principio. Si sales del navegador mientras te contesta, la respuesta se termina igual y la ves al volver.',
           'Arriba ves cómo vas (perfil, documentos del mes, constancia): toca una cifra para preguntarle por ella.',
           'Lo que le digas de tu negocio lo anota en tu perfil fiscal; abajo de su respuesta ves qué guardó.',
           'Si algo quedó mal, díselo o corrígelo en Perfil fiscal.',
