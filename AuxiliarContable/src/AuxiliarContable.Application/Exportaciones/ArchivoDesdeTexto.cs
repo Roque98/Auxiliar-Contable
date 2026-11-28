@@ -26,7 +26,7 @@ public enum FormatoDeArchivo
     Csv,
 }
 
-public sealed record ArchivoGenerado(string Nombre, string TipoMime, byte[] Contenido);
+public sealed record ArchivoGenerado(string Nombre, string TipoMime, byte[] Contenido, IReadOnlyList<ResultadoCalculado>? Resultados = null);
 
 /// <summary>
 /// Convierte lo que escribe el asistente (títulos «#», párrafos, listas y tablas markdown) en un archivo:
@@ -74,17 +74,26 @@ public static class ArchivoDesdeTexto
         return $"{NombreDeArchivo(string.IsNullOrWhiteSpace(nombre) ? titulo ?? "archivo" : nombre)}.{Extension(formato)}";
     }
 
-    public static ArchivoGenerado Generar(FormatoDeArchivo formato, string? nombre, string contenido)
+    /// <param name="calculo">En Excel: el desglose con fórmulas (resumen ligado, hoja de cálculo y tablas).</param>
+    /// <param name="formal">En PDF y Word: el documento formal que va en hoja aparte después del resumen (p. ej. el finiquito para firmar).</param>
+    public static ArchivoGenerado Generar(FormatoDeArchivo formato, string? nombre, string contenido, CalculoDeArchivo? calculo = null, string? formal = null)
     {
         var piezas = Leer(contenido.Length > MaxCaracteres ? contenido[..MaxCaracteres] : contenido);
         var titulo = piezas.OfType<Titulo>().FirstOrDefault()?.Texto;
         var limpio = NombreDeArchivo(string.IsNullOrWhiteSpace(nombre) ? titulo ?? "archivo" : nombre);
         var archivo = $"{limpio}.{Extension(formato)}";
+        var piezasFormales = string.IsNullOrWhiteSpace(formal) ? [] : Leer(formal.Length > MaxCaracteres ? formal[..MaxCaracteres] : formal);
+        if (formato == FormatoDeArchivo.Excel && calculo is not null)
+        {
+            var (libro, resultados) = calculo.Excel(titulo ?? limpio, piezas);
+            return new(archivo, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", libro, resultados);
+        }
+
         return formato switch
         {
             FormatoDeArchivo.Excel => new(archivo, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", Excel(piezas, limpio)),
-            FormatoDeArchivo.Pdf => new(archivo, "application/pdf", Pdf(piezas)),
-            FormatoDeArchivo.Word => new(archivo, "application/vnd.openxmlformats-officedocument.wordprocessingml.document", Word(piezas)),
+            FormatoDeArchivo.Pdf => new(archivo, "application/pdf", Pdf(piezas, piezasFormales)),
+            FormatoDeArchivo.Word => new(archivo, "application/vnd.openxmlformats-officedocument.wordprocessingml.document", Word(piezas, piezasFormales)),
             FormatoDeArchivo.PowerPoint => new(archivo, "application/vnd.openxmlformats-officedocument.presentationml.presentation", PowerPoint(piezas, titulo ?? limpio)),
             _ => new(archivo, "text/csv", Csv(piezas)),
         };
@@ -102,8 +111,16 @@ public static class ArchivoDesdeTexto
 
     internal sealed record Tabla(List<string> Encabezados, List<List<string>> Filas) : Pieza;
 
+    /// <summary>«[[firma: Nombre | Puesto]]»: una línea para firmar con el nombre (y el puesto) debajo.</summary>
+    internal sealed record Firma(List<string> Lineas) : Pieza;
+
+    private sealed record SaltoDePagina : Pieza;
+
+    private static readonly Regex DeFirma = new(@"^\[\[\s*firma\s*:\s*(.+?)\s*\]\]$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
     private static readonly Regex Numerado = new(@"^\d{1,3}[.)]\s+", RegexOptions.Compiled);
     private static readonly Regex Separador = new(@"^\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?$", RegexOptions.Compiled);
+    private static readonly Regex DobleGuion = new(@"(?<!_)__(?!_)", RegexOptions.Compiled);
     private static readonly Regex Enlace = new(@"\[([^\]]+)\]\(([^)]+)\)", RegexOptions.Compiled);
 
     internal static List<Pieza> Leer(string texto)
@@ -127,6 +144,13 @@ public static class ArchivoDesdeTexto
             if (l.Length == 0 || l is "---" or "***")
             {
                 CerrarParrafo();
+                continue;
+            }
+
+            if (DeFirma.Match(l) is { Success: true } firma)
+            {
+                CerrarParrafo();
+                piezas.Add(new Firma(firma.Groups[1].Value.Split('|').Select(x => Limpio(x)).Where(x => x.Length > 0).ToList()));
                 continue;
             }
 
@@ -206,7 +230,8 @@ public static class ArchivoDesdeTexto
     private static string Limpio(string texto)
     {
         var t = Enlace.Replace(texto, m => m.Groups[1].Value == m.Groups[2].Value ? m.Groups[1].Value : $"{m.Groups[1].Value} ({m.Groups[2].Value})");
-        return t.Replace("**", "").Replace("__", "").Replace("`", "").Trim();
+        // «__negritas__» se quitan, pero «________» (espacio para llenar a mano) se queda.
+        return DobleGuion.Replace(t.Replace("**", ""), "").Replace("`", "").Trim();
     }
 
     private static string NombreDeArchivo(string nombre)
@@ -336,6 +361,7 @@ public static class ArchivoDesdeTexto
                         fila++;
                     }
 
+                    TotalConFormula(hoja, t, inicio + 1, fila - 1);
                     if (t.Filas.Count > 0)
                     {
                         hoja.Range(inicio, 1, fila - 1, Math.Max(t.Encabezados.Count, 1)).Style
@@ -356,6 +382,47 @@ public static class ArchivoDesdeTexto
         using var ms = new MemoryStream();
         libro.SaveAs(ms);
         return ms.ToArray();
+    }
+
+    private static readonly Regex DeTotal = new(@"^(gran\s+)?(total|totales|suma)\b", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+    /// <summary>
+    /// Si el último renglón de la tabla es «Total» y cada importe es la suma de los de arriba, queda como SUMA(): al
+    /// cambiar un renglón en Excel, el total se mueve. Si no cuadra, se deja el número que se dio (no se corrige a escondidas).
+    /// </summary>
+    private static void TotalConFormula(IXLWorksheet hoja, Tabla t, int primera, int ultima)
+    {
+        if (t.Filas.Count < 2 || !DeTotal.IsMatch(t.Filas[^1].FirstOrDefault() ?? ""))
+        {
+            return;
+        }
+
+        for (var c = 1; c < t.Filas[^1].Count; c++)
+        {
+            if (!ComoNumero(t.Filas[^1][c], out var total, out var porcentaje, out _) || porcentaje)
+            {
+                continue;
+            }
+
+            var suma = 0.0;
+            var alguno = false;
+            foreach (var f in t.Filas.Take(t.Filas.Count - 1))
+            {
+                if (c < f.Count && ComoNumero(f[c], out var v, out var esPorcentaje, out _) && !esPorcentaje)
+                {
+                    suma += v;
+                    alguno = true;
+                }
+            }
+
+            if (alguno && Math.Abs(suma - total) < 0.015)
+            {
+                var letra = hoja.Column(c + 1).ColumnLetter();
+                hoja.Cell(ultima, c + 1).FormulaA1 = $"SUM({letra}{primera}:{letra}{ultima - 1})";
+            }
+        }
+
+        hoja.Row(ultima).Style.Font.SetBold();
     }
 
     private static string NombreDeHoja(string nombre)
@@ -403,91 +470,170 @@ public static class ArchivoDesdeTexto
         Parrafo x => [x.Texto],
         Lista l => l.Elementos.Select((e, i) => (l.Numerada ? $"{i + 1}. " : "• ") + e),
         Tabla t => new[] { string.Join(" | ", t.Encabezados) }.Concat(t.Filas.Select(f => string.Join(" | ", f))),
+        Firma f => ["_____________________________", .. f.Lineas],
         _ => [],
     };
 
     // ---- PDF ---------------------------------------------------------------------------------------
 
-    private static byte[] Pdf(List<Pieza> piezas)
+    private static byte[] Pdf(List<Pieza> piezas, List<Pieza> formales)
     {
         var horizontal = piezas.OfType<Tabla>().Any(t => t.Encabezados.Count > 5);
-        return Document.Create(doc => doc.Page(pagina =>
+        return Document.Create(doc =>
         {
-            pagina.Size(horizontal ? PageSizes.Letter.Landscape() : PageSizes.Letter);
-            pagina.Margin(40);
-            pagina.DefaultTextStyle(x => x.FontSize(10).FontColor("#222222"));
-            pagina.Content().Column(col =>
+            doc.Page(pagina =>
             {
-                col.Spacing(6);
-                foreach (var pieza in piezas)
+                Pagina(pagina, horizontal);
+                pagina.Content().Column(col => Pintar(col, piezas, formal: false));
+            });
+
+            // El documento formal (p. ej. el finiquito para firmar) en sus propias hojas, vertical y sin colores.
+            if (formales.Count > 0)
+            {
+                doc.Page(pagina =>
                 {
-                    switch (pieza)
+                    Pagina(pagina, horizontal: false);
+                    pagina.Content().Column(col => Pintar(col, formales, formal: true));
+                });
+            }
+        }).GeneratePdf();
+    }
+
+    private static void Pagina(PageDescriptor pagina, bool horizontal)
+    {
+        pagina.Size(horizontal ? PageSizes.Letter.Landscape() : PageSizes.Letter);
+        pagina.Margin(40);
+        pagina.DefaultTextStyle(x => x.FontSize(10).FontColor("#222222"));
+        pagina.Footer().AlignCenter().Text(x =>
+        {
+            x.DefaultTextStyle(s => s.FontSize(8).FontColor("#777777"));
+            x.CurrentPageNumber();
+            x.Span(" de ");
+            x.TotalPages();
+        });
+    }
+
+    private static void Pintar(ColumnDescriptor col, List<Pieza> piezas, bool formal)
+    {
+        col.Spacing(formal ? 8 : 6);
+        var color = formal ? "#111111" : "#1F3A5F";
+        for (var n = 0; n < piezas.Count; n++)
+        {
+            switch (piezas[n])
+            {
+                case Titulo t:
+                    var titulo = col.Item().PaddingTop(t.Nivel == 1 ? 0 : 6);
+                    (formal && t.Nivel == 1 ? titulo.AlignCenter() : titulo).Text(t.Texto).Bold()
+                        .FontSize(t.Nivel == 1 ? (formal ? 14 : 17) : t.Nivel == 2 ? (formal ? 12 : 13.5f) : 11.5f).FontColor(color);
+                    break;
+                case Parrafo p:
+                    if (formal)
                     {
-                        case Titulo t:
-                            col.Item().PaddingTop(t.Nivel == 1 ? 0 : 6).Text(t.Texto).Bold()
-                                .FontSize(t.Nivel == 1 ? 17 : t.Nivel == 2 ? 13.5f : 11.5f).FontColor("#1F3A5F");
-                            break;
-                        case Parrafo p:
-                            col.Item().Text(p.Texto).LineHeight(1.3f);
-                            break;
-                        case Lista l:
-                            for (var i = 0; i < l.Elementos.Count; i++)
+                        col.Item().Text(p.Texto).LineHeight(1.45f).Justify();
+                    }
+                    else
+                    {
+                        col.Item().Text(p.Texto).LineHeight(1.3f);
+                    }
+
+                    break;
+                case Lista l:
+                    for (var i = 0; i < l.Elementos.Count; i++)
+                    {
+                        var marca = l.Numerada ? $"{i + 1}." : "•";
+                        var texto = l.Elementos[i];
+                        col.Item().PaddingLeft(8).Row(r =>
+                        {
+                            r.ConstantItem(16).Text(marca);
+                            r.RelativeItem().Text(texto).LineHeight(1.25f);
+                        });
+                    }
+
+                    break;
+                case Tabla t:
+                    col.Item().PaddingVertical(4).Table(tabla =>
+                    {
+                        var columnas = Math.Max(t.Encabezados.Count, 1);
+                        tabla.ColumnsDefinition(c =>
+                        {
+                            for (var i = 0; i < columnas; i++)
                             {
-                                var marca = l.Numerada ? $"{i + 1}." : "•";
-                                var texto = l.Elementos[i];
-                                col.Item().PaddingLeft(8).Row(r =>
+                                c.RelativeColumn();
+                            }
+                        });
+                        tabla.Header(h =>
+                        {
+                            foreach (var e in t.Encabezados)
+                            {
+                                var celda = h.Cell().Background(formal ? "#E6E6E6" : "#1F3A5F").Padding(4).Text(e).Bold().FontSize(9);
+                                if (!formal)
                                 {
-                                    r.ConstantItem(16).Text(marca);
-                                    r.RelativeItem().Text(texto).LineHeight(1.25f);
+                                    celda.FontColor(Colors.White);
+                                }
+                            }
+                        });
+                        var total = t.Filas.Count >= 2 && DeTotal.IsMatch(t.Filas[^1].FirstOrDefault() ?? "");
+                        for (var i = 0; i < t.Filas.Count; i++)
+                        {
+                            foreach (var celda in t.Filas[i])
+                            {
+                                var numero = ComoNumero(celda, out _, out _, out _);
+                                var c = tabla.Cell().BorderBottom(0.5f).BorderColor("#D5DBE3").Padding(4);
+                                var texto = (numero ? c.AlignRight() : c).Text(celda).FontSize(9);
+                                if (total && i == t.Filas.Count - 1)
+                                {
+                                    texto.Bold();
+                                }
+                            }
+                        }
+                    });
+                    break;
+                case Firma:
+                    // Las firmas seguidas van lado a lado (dos por renglón).
+                    var firmas = new List<Firma>();
+                    while (n < piezas.Count && piezas[n] is Firma f)
+                    {
+                        firmas.Add(f);
+                        n++;
+                    }
+
+                    n--;
+                    foreach (var par in firmas.Chunk(2))
+                    {
+                        col.Item().PaddingTop(46).Row(r =>
+                        {
+                            r.Spacing(40);
+                            foreach (var f in par)
+                            {
+                                r.RelativeItem().Column(c =>
+                                {
+                                    c.Item().BorderTop(0.8f).BorderColor("#222222");
+                                    for (var i = 0; i < f.Lineas.Count; i++)
+                                    {
+                                        var linea = c.Item().PaddingTop(i == 0 ? 4 : 0).AlignCenter().Text(f.Lineas[i]).FontSize(i == 0 ? 10 : 9);
+                                        if (i == 0)
+                                        {
+                                            linea.Bold();
+                                        }
+                                    }
                                 });
                             }
 
-                            break;
-                        case Tabla t:
-                            col.Item().PaddingVertical(4).Table(tabla =>
+                            if (par.Length == 1 && firmas.Count > 1)
                             {
-                                var columnas = Math.Max(t.Encabezados.Count, 1);
-                                tabla.ColumnsDefinition(c =>
-                                {
-                                    for (var i = 0; i < columnas; i++)
-                                    {
-                                        c.RelativeColumn();
-                                    }
-                                });
-                                tabla.Header(h =>
-                                {
-                                    foreach (var e in t.Encabezados)
-                                    {
-                                        h.Cell().Background("#1F3A5F").Padding(4).Text(e).Bold().FontColor(Colors.White).FontSize(9);
-                                    }
-                                });
-                                foreach (var f in t.Filas)
-                                {
-                                    foreach (var celda in f)
-                                    {
-                                        var numero = ComoNumero(celda, out _, out _, out _);
-                                        var c = tabla.Cell().BorderBottom(0.5f).BorderColor("#D5DBE3").Padding(4);
-                                        (numero ? c.AlignRight() : c).Text(celda).FontSize(9);
-                                    }
-                                }
-                            });
-                            break;
+                                r.RelativeItem();
+                            }
+                        });
                     }
-                }
-            });
-            pagina.Footer().AlignCenter().Text(x =>
-            {
-                x.DefaultTextStyle(s => s.FontSize(8).FontColor("#777777"));
-                x.CurrentPageNumber();
-                x.Span(" de ");
-                x.TotalPages();
-            });
-        })).GeneratePdf();
+
+                    break;
+            }
+        }
     }
 
     // ---- Word --------------------------------------------------------------------------------------
 
-    private static byte[] Word(List<Pieza> piezas)
+    private static byte[] Word(List<Pieza> piezas, List<Pieza> formales)
     {
         using var ms = new MemoryStream();
         using (var doc = WordprocessingDocument.Create(ms, WordprocessingDocumentType.Document))
@@ -496,7 +642,9 @@ public static class ArchivoDesdeTexto
             var cuerpo = new W.Body();
             principal.Document = new W.Document(cuerpo);
 
-            foreach (var pieza in piezas)
+            // El documento formal va después de un salto de página.
+            var todas = formales.Count == 0 ? piezas : [.. piezas, new SaltoDePagina(), .. formales];
+            foreach (var pieza in todas)
             {
                 switch (pieza)
                 {
@@ -516,6 +664,18 @@ public static class ArchivoDesdeTexto
                     case Tabla t:
                         cuerpo.Append(TablaWord(t));
                         cuerpo.Append(ParrafoWord(""));
+                        break;
+                    case Firma f:
+                        cuerpo.Append(ParrafoWord("", antes: 600, despues: 0));
+                        cuerpo.Append(ParrafoWord("______________________________", despues: 0));
+                        for (var i = 0; i < f.Lineas.Count; i++)
+                        {
+                            cuerpo.Append(ParrafoWord(f.Lineas[i], negrita: i == 0, despues: i == f.Lineas.Count - 1 ? 200 : 0));
+                        }
+
+                        break;
+                    case SaltoDePagina:
+                        cuerpo.Append(new W.Paragraph(new W.Run(new W.Break { Type = W.BreakValues.Page })));
                         break;
                 }
             }
