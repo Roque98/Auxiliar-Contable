@@ -786,6 +786,14 @@ public class MotorFiscalDePrueba : IMotorFiscal
     private const string BalanceDePrueba = "\"universo\":40,\"tenemos\":3,\"no_aplica\":36,\"no_aplica_motivo\":{\"A\":30,\"B\":6}," +
                                            "\"no_encontrado\":1,\"sin_revisar\":0,\"avance_pct\":97.5,\"completo\":false";
 
+    public Task<string> ImpuestosEstatalesAsync(string estado, int? anio, CancellationToken cancellationToken = default) =>
+        Caido ? throw new MotorFiscalNoDisponibleException("El motor fiscal no responde.")
+            : estado.Trim().ToLowerInvariant() is "morelos" or "mor"
+                ? Task.FromResult("{\"estado\":\"MOR\",\"nombre\":\"Morelos\",\"ejercicio\":2026,\"impuesto_sobre_nominas\":{\"tasa\":0.03," +
+                                  "\"fundamento\":\"Ley General de Hacienda del Estado de Morelos, art. 58 BIS-4\",\"verificado\":true}," +
+                                  "\"otros_impuestos\":{},\"leyes_del_estado\":[]}")
+                : throw new MotorFiscalNoDisponibleException("El motor fiscal respondió 404.") { Data = { ["Codigo"] = 404 } };
+
     public Task<string> CoberturaMunicipalAsync(CancellationToken cancellationToken = default) =>
         Caido ? throw new MotorFiscalNoDisponibleException("El motor fiscal no responde.")
             : Task.FromResult("{\"criterio\":\"Criterio de prueba\",\"elegidos\":2,\"completos\":0,\"universo_municipal\":40,\"universo_estatal\":72," +

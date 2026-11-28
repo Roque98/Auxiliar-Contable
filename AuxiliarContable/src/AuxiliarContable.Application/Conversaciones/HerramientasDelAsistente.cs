@@ -70,6 +70,7 @@ public class HerramientasDelAsistente : ITransientDependency
     public const string ResolverSolicitud = "resolver_solicitud";
     public const string SolicitudesPendientes = "solicitudes_pendientes";
     public const string GenerarArchivo = "generar_archivo";
+    public const string ImpuestosEstatales = "impuestos_estatales";
 
     /// <summary>De la conciliación, el modelo recibe un resumen y hasta este número de pendientes por lista.</summary>
     private const int MaxPendientesPorLista = 15;
@@ -101,6 +102,16 @@ public class HerramientasDelAsistente : ITransientDependency
                   "contenido":{"type":"string","minLength":2,"maxLength":60000}},
                  "required":["formato","contenido"]}
                 """);
+
+    /// <summary>Lo estatal de un estado: solo el nombre del estado va al motor; vale en las dos conversaciones.</summary>
+    private static readonly HerramientaDelModelo DeImpuestosEstatales = new(ImpuestosEstatales,
+                "Lo ESTATAL de cualquiera de los 32 estados para un ejercicio: el impuesto sobre nóminas (tasa vigente, artículo, " +
+                "publicación oficial y liga, cotejado con la ley del estado), el día de pago y la tasa de recargos, otros impuestos " +
+                "estatales que tenemos (hospedaje) y las leyes del estado que están en el catálogo con su liga oficial. ÚSALA SIEMPRE " +
+                "que se hable de ISN, impuesto sobre nóminas o impuestos del estado, antes de decir que no lo encontraste. El estado " +
+                "sale del domicilio fiscal del perfil o de lo que diga la persona. Lo municipal (predial, licencia de funcionamiento, " +
+                "anuncios, protección civil) está en leyes_que_le_aplican, con el domicilio del cliente.",
+                """{"type":"object","properties":{"estado":{"type":"string","minLength":2,"maxLength":60},"anio":{"type":"integer","minimum":2000,"maximum":2100}},"required":["estado"]}""");
 
     private static readonly HerramientaDelModelo DeRevisarClaves = new(RevisarClaves,
                 "¿Está bien la clave SAT de una factura? Con uuid revisa todos los conceptos de esa factura de su bóveda " +
@@ -253,6 +264,7 @@ public class HerramientasDelAsistente : ITransientDependency
             DeBuscarClave,
             DeRevisarClaves,
             DeGenerarArchivo,
+            DeImpuestosEstatales,
             new(BuscarOperaciones,
                 "Busca en las operaciones del cliente activo (cada una junta su factura, su pago y su control interno). Filtros " +
                 "opcionales: texto (proveedor o cliente, concepto, UUID o referencia del pago), terminos (varias palabras: trae las " +
@@ -389,6 +401,7 @@ public class HerramientasDelAsistente : ITransientDependency
             CambiarPapel => "Cambió el papel de una persona",
             QuitarPersona => "Quitó el acceso a una persona",
             GenerarArchivo => null,
+            ImpuestosEstatales => "Consultó los impuestos del estado",
             ConsultarLeyes => "Consultó la ley",
             ConsultarSentencias => "Consultó sentencias",
             ConciliarMes => "Concilió el banco",
@@ -478,7 +491,7 @@ public class HerramientasDelAsistente : ITransientDependency
     public static bool EnAmbas(string nombre) => nombre is BuscarClaveSat or RevisarClaves;
 
     /// <remarks>Armar un archivo tampoco toca la base ni a un cliente: va con ellas.</remarks>
-    public static bool SoloConsultaAlMotor(string nombre) => nombre is ConsultarLeyes or ConsultarSentencias or TarifaIsr or LeerLey or GenerarArchivo;
+    public static bool SoloConsultaAlMotor(string nombre) => nombre is ConsultarLeyes or ConsultarSentencias or TarifaIsr or LeerLey or GenerarArchivo or ImpuestosEstatales;
 
     /// <summary>Formato, nombre y contenido de un archivo que pidió armar el asistente.</summary>
     public static (AuxiliarContable.Exportaciones.FormatoDeArchivo Formato, string? Nombre, string Contenido) ArchivoPedido(JsonElement entrada)
@@ -492,6 +505,38 @@ public class HerramientasDelAsistente : ITransientDependency
         }
 
         return (formato, Opcional(entrada, "nombre"), contenido);
+    }
+
+    private async Task<string> EstatalesAsync(JsonElement entrada)
+    {
+        var estado = Texto(entrada, "estado").Trim();
+        var anio = Entero(entrada, "anio");
+        string json;
+        try
+        {
+            json = await _motor.ImpuestosEstatalesAsync(estado, anio);
+        }
+        catch (MotorFiscalNoDisponibleException ex) when (ex.Data["Codigo"] is 404)
+        {
+            throw new UserFriendlyException($"No reconozco el estado «{estado}». Usa su nombre, p. ej. «Morelos» o «Ciudad de México».");
+        }
+
+        var nodo = JsonNode.Parse(json)!.AsObject();
+        // Día de pago y recargos: de la tabla del sistema (leyes de hacienda e ingresos de cada año, con su cita).
+        if (AuxiliarContable.Concentrado.IsnPorEstado.Buscar(nodo["nombre"]?.GetValue<string>() ?? estado, anio) is { } regla)
+        {
+            nodo["pago_y_recargos"] = JsonSerializer.SerializeToNode(new
+            {
+                diaDePagoDelMesSiguiente = regla.Dia,
+                fundamentoDelPlazo = regla.FundamentoPlazo,
+                tasaDeRecargosMensual = regla.Tasa,
+                fundamentoDeRecargos = regla.FundamentoRecargos,
+                ejercicio = regla.Ejercicio,
+                heredadoDe = regla.HeredadoDe,
+            }, Json);
+        }
+
+        return Recortado(nodo.ToJsonString(Json));
     }
 
     private static string ArmarArchivo(JsonElement entrada)
@@ -600,6 +645,7 @@ public class HerramientasDelAsistente : ITransientDependency
                     })]),
                 SolicitudesPendientes => SolicitudesJson(await _solicitudes.GetPendientesDelDespachoAsync()),
                 GenerarArchivo => ArmarArchivo(uso.Entrada),
+                ImpuestosEstatales => await EstatalesAsync(uso.Entrada),
                 LeerLey => await _motor.LeerLeyAsync(Texto(uso.Entrada, "clave"), Entero(uso.Entrada, "desde") ?? 0, 3,
                     Opcional(uso.Entrada, "articulo")),
                 TarifaIsr => await _motor.TarifaIsrAsync(

@@ -618,6 +618,14 @@ public class MotorFiscalHttp : IMotorFiscal, ITransientDependency
         return r.GetRawText();
     }
 
+    public async Task<string> ImpuestosEstatalesAsync(string estado, int? anio, CancellationToken cancellationToken = default)
+    {
+        using var tope = CancelationConTope(_opciones.TimeoutSegundos, cancellationToken);
+        var ruta = "estatales/impuestos?estado=" + Uri.EscapeDataString(estado) + (anio is { } a ? $"&anio={a}" : "");
+        var r = await EnviarAsync<System.Text.Json.JsonElement>(new HttpRequestMessage(HttpMethod.Get, ruta), tope.Token, cancellationToken);
+        return r.GetRawText();
+    }
+
     public async Task<string> ExpedienteDeCoberturaAsync(string estado, CancellationToken cancellationToken = default)
     {
         using var tope = CancelationConTope(_opciones.TimeoutSegundos, cancellationToken);

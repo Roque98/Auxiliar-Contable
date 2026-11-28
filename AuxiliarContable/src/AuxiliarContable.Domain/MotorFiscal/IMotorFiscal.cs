@@ -262,6 +262,11 @@ public interface IMotorFiscal
     /// municipios cubiertos, seleccionados (en proceso) y no cubiertos.</summary>
     Task<string> CoberturaMunicipalAsync(CancellationToken cancellationToken = default);
 
+    /// <summary>Lo estatal de un estado (<c>GET /estatales/impuestos</c>): impuesto sobre nóminas con su artículo y liga
+    /// oficial, otros impuestos estatales y las leyes del estado del catálogo. Solo va el nombre del estado.
+    /// 404 en <c>Data["Codigo"]</c> si no lo reconoce.</summary>
+    Task<string> ImpuestosEstatalesAsync(string estado, int? anio, CancellationToken cancellationToken = default);
+
     /// <summary>Municipio y cobertura de varios domicilios (<c>POST /leyes-estatales/municipios</c>); cada uno
     /// <c>{id, estado, domicilio}</c> con el domicilio ya sin calle ni números.</summary>
     Task<string> MunicipiosDeAsync(IReadOnlyList<IReadOnlyDictionary<string, object?>> domicilios, CancellationToken cancellationToken = default);
@@ -516,6 +521,9 @@ public class MotorFiscalSinConfigurar : IMotorFiscal, ISingletonDependency
         throw new MotorFiscalNoDisponibleException("No hay motor fiscal en este proceso.");
 
     public Task<string> CoberturaMunicipalAsync(CancellationToken cancellationToken = default) =>
+        throw new MotorFiscalNoDisponibleException("No hay motor fiscal en este proceso.");
+
+    public Task<string> ImpuestosEstatalesAsync(string estado, int? anio, CancellationToken cancellationToken = default) =>
         throw new MotorFiscalNoDisponibleException("No hay motor fiscal en este proceso.");
 
     public Task<string> MunicipiosDeAsync(IReadOnlyList<IReadOnlyDictionary<string, object?>> domicilios, CancellationToken cancellationToken = default) =>
