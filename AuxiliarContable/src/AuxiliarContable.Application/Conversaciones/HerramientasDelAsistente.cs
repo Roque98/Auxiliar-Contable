@@ -95,13 +95,53 @@ public class HerramientasDelAsistente : ITransientDependency
                 "Arma un archivo para descargar cuando la persona lo pida: Excel, PDF, Word, PowerPoint o CSV («pásamelo en " +
                 "Excel», «hazme un PDF», «una presentación con esto»). En «contenido» va TODO lo que debe llevar, ya con los datos " +
                 "que consultaste, en markdown: títulos «# …» y «## …» (en PowerPoint cada «##» es una diapositiva), párrafos, " +
-                "listas y tablas «| a | b |». Importes como «$1,234.50» y porcentajes como «16%»: en Excel quedan como números. " +
+                "listas y tablas «| a | b |». Importes como «$1,234.50» y porcentajes como «16%»: en Excel quedan como números, y " +
+                "un último renglón «Total» que cuadra queda como SUMA. " +
+                "EXCEL DE UN CÁLCULO (finiquito, liquidación, retención de ISR, aguinaldo, PTU, pago provisional, conciliación, " +
+                "cualquier cuenta que hiciste): manda además «calculo» para que el Excel lleve el desglose CON FÓRMULAS, no solo " +
+                "cantidades. La primera hoja es el resumen (cada resultado ligado a su renglón), luego tus hojas de cálculo y, si " +
+                "las usas, una hoja de tablas (tarifa del art. 96, tabla de vacaciones, UMA, factores). Cada renglón es un DATO " +
+                "(«valor», queda en amarillo para que lo cambien) o una CUENTA («formula» con los ids de otros renglones o tablas, " +
+                "p. ej. «sd * dias_aguinaldo / 365 * dias_trabajados», «BUSCARV(base, tarifa, 1, VERDADERO)», «SI(x>0; x; 0)»); " +
+                "sin valor ni fórmula es subtítulo. Nunca escribas celdas (B5): solo ids. En «nota» va de dónde sale (artículo). " +
+                "Desglosa paso a paso como lo explicaste en la conversación, y que los resultados coincidan con los que diste. " +
+                "Si una fórmula falla, te digo cuál; corrígela y vuelve a llamar. " +
+                "PDF O WORD FORMAL: «contenido» es el resumen tal cual de la conversación; en «formal» va, en hoja aparte, el " +
+                "documento formal listo para usarse (el finiquito o recibo para que la persona lo firme, una carta, un acuse): " +
+                "redacción formal, lugar y fecha, nombres, importes con letra si aplica, y cada firma como «[[firma: Nombre | Puesto]]». " +
+                "Deja «________» donde falte un dato que no tienes; no lo inventes. " +
                 "Al terminar, dile que el botón para descargarlo quedó debajo de tu respuesta; no pongas enlaces.",
                 """
                 {"type":"object","properties":{
                   "formato":{"type":"string","enum":["excel","pdf","word","powerpoint","csv"]},
                   "nombre":{"type":"string","maxLength":80,"description":"Nombre del archivo sin extensión, p. ej. «Gastos de octubre»."},
-                  "contenido":{"type":"string","minLength":2,"maxLength":60000}},
+                  "contenido":{"type":"string","minLength":2,"maxLength":60000},
+                  "formal":{"type":"string","maxLength":30000,"description":"Solo PDF o Word: el documento formal en markdown que va después del resumen, en hoja aparte."},
+                  "calculo":{"type":"object","description":"Solo Excel: el desglose con fórmulas.","properties":{
+                    "resumen":{"type":"array","maxItems":40,"items":{"type":"object","properties":{
+                      "concepto":{"type":"string"},
+                      "ref":{"type":"string","description":"El id del renglón de donde sale, o una cuenta con ids."},
+                      "formato":{"type":"string","enum":["moneda","porcentaje","numero","entero","dias","factor","texto","fecha"]}},
+                     "required":["concepto","ref"]}},
+                    "hojas":{"type":"array","minItems":1,"maxItems":6,"items":{"type":"object","properties":{
+                      "nombre":{"type":"string","maxLength":31},
+                      "renglones":{"type":"array","maxItems":200,"items":{"type":"object","properties":{
+                        "id":{"type":"string","description":"Letras, números y _; empieza con letra. Solo si otra fórmula lo usa o va al resumen."},
+                        "concepto":{"type":"string"},
+                        "valor":{"type":["number","string"],"description":"Dato de entrada (número, o texto como un nombre o una fecha)."},
+                        "formula":{"type":"string","description":"Cuenta con ids, en español o inglés (SUMA, SI, BUSCARV, REDONDEAR, MAX, MIN). Punto decimal."},
+                        "formato":{"type":"string","enum":["moneda","porcentaje","numero","entero","dias","factor","texto","fecha"]},
+                        "nota":{"type":"string","description":"Cómo se calcula y su fundamento."}},
+                       "required":["concepto"]}}},
+                     "required":["nombre","renglones"]}},
+                    "tablas":{"type":"array","maxItems":8,"items":{"type":"object","properties":{
+                      "id":{"type":"string"},
+                      "titulo":{"type":"string"},
+                      "encabezados":{"type":"array","items":{"type":"string"}},
+                      "filas":{"type":"array","maxItems":400,"items":{"type":"array","items":{"type":["number","string"]}}},
+                      "nota":{"type":"string","description":"Fuente, p. ej. «Anexo 8 RMF 2026, tarifa mensual»."}},
+                     "required":["id","filas"]}}},
+                   "required":["resumen","hojas"]}},
                  "required":["formato","contenido"]}
                 """);
 
@@ -511,8 +551,8 @@ public class HerramientasDelAsistente : ITransientDependency
     /// <remarks>Armar un archivo tampoco toca la base ni a un cliente: va con ellas.</remarks>
     public static bool SoloConsultaAlMotor(string nombre) => nombre is ConsultarLeyes or ConsultarSentencias or TarifaIsr or LeerLey or GenerarArchivo or ImpuestosEstatales;
 
-    /// <summary>Formato, nombre y contenido de un archivo que pidió armar el asistente.</summary>
-    public static (AuxiliarContable.Exportaciones.FormatoDeArchivo Formato, string? Nombre, string Contenido) ArchivoPedido(JsonElement entrada)
+    /// <summary>Formato, nombre y contenido de un archivo que pidió armar el asistente, con su cálculo y su documento formal.</summary>
+    public static ArchivoPedidoAlAsistente ArchivoPedido(JsonElement entrada)
     {
         var formato = AuxiliarContable.Exportaciones.ArchivoDesdeTexto.Formato(Opcional(entrada, "formato"))
                       ?? throw new UserFriendlyException("«formato» va como excel, pdf, word, powerpoint o csv.");
@@ -522,7 +562,9 @@ public class HerramientasDelAsistente : ITransientDependency
             throw new UserFriendlyException("Falta «contenido»: lo que debe llevar el archivo.");
         }
 
-        return (formato, Opcional(entrada, "nombre"), contenido);
+        return new ArchivoPedidoAlAsistente(formato, Opcional(entrada, "nombre"), contenido,
+            formato == AuxiliarContable.Exportaciones.FormatoDeArchivo.Excel ? AuxiliarContable.Exportaciones.CalculoDeArchivo.Leer(entrada) : null,
+            formato is AuxiliarContable.Exportaciones.FormatoDeArchivo.Pdf or AuxiliarContable.Exportaciones.FormatoDeArchivo.Word ? Opcional(entrada, "formal") : null);
     }
 
     private async Task<string> EstatalesAsync(JsonElement entrada)
@@ -559,12 +601,13 @@ public class HerramientasDelAsistente : ITransientDependency
 
     private static string ArmarArchivo(JsonElement entrada)
     {
-        var (formato, nombre, contenido) = ArchivoPedido(entrada);
-        var archivo = AuxiliarContable.Exportaciones.ArchivoDesdeTexto.Generar(formato, nombre, contenido);
+        var archivo = ArchivoPedido(entrada).Generar();
         return JsonSerializer.Serialize(new
         {
             listo = true,
             archivo = archivo.Nombre,
+            // Lo que dio el Excel al calcularse: si no coincide con lo que dijiste, corrige la fórmula o tu respuesta.
+            resultados = archivo.Resultados?.Select(r => new { r.Concepto, r.Valor }),
             nota = "El botón para descargarlo aparece debajo de tu respuesta. No pongas enlaces.",
         }, Json);
     }

@@ -262,8 +262,7 @@ public class AsistenteAppService : AuxiliarContableAppService, IAsistenteAppServ
             var pedido = mensaje.ATurno().Bloques.OfType<BloqueDeUsoDeHerramienta>()
                              .FirstOrDefault(b => b.Id == uso && b.Nombre == HerramientasDelAsistente.GenerarArchivo)
                          ?? throw new EntityNotFoundException(typeof(MensajeDeConversacion), mensajeId);
-            var (f, nombre, contenido) = HerramientasDelAsistente.ArchivoPedido(pedido.Entrada);
-            archivo = Exportaciones.ArchivoDesdeTexto.Generar(f, nombre, contenido);
+            archivo = HerramientasDelAsistente.ArchivoPedido(pedido.Entrada).Generar();
         }
         else
         {
@@ -404,12 +403,12 @@ public class AsistenteAppService : AuxiliarContableAppService, IAsistenteAppServ
                 {
                     try
                     {
-                        var (formato, nombre, contenido) = HerramientasDelAsistente.ArchivoPedido(u.Entrada);
+                        var pedido = HerramientasDelAsistente.ArchivoPedido(u.Entrada);
                         archivos.Add(new ArchivoDelAsistenteDto
                         {
                             MensajeId = m.Id,
                             Uso = u.Id,
-                            Nombre = Exportaciones.ArchivoDesdeTexto.NombrePara(formato, nombre, contenido),
+                            Nombre = pedido.NombreDelArchivo,
                         });
                     }
                     catch (UserFriendlyException)

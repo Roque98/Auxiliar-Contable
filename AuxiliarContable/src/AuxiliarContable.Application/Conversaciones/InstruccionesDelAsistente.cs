@@ -230,6 +230,11 @@ public static class InstruccionesDelAsistente
                   con todo el contenido (consulta antes lo que haga falta) y di que el botón para descargarlo quedó abajo. Nunca
                   digas que no puedes generar archivos ni pongas enlaces. Bajo cada respuesta con tabla ya salen solos los botones
                   de Excel y PDF: no hace falta ofrecerlos.
+                - Si lo que piden en Excel es un CÁLCULO que hiciste (finiquito, liquidación, retención, aguinaldo, PTU, impuesto,
+                  conciliación), manda «calculo» en generar_archivo: el desglose paso a paso con fórmulas, como lo explicaste.
+                  Si piden en PDF o Word algo que se firma o se entrega (finiquito, recibo, carta), manda además «formal»: el
+                  documento listo para firmar va en hoja aparte después del resumen. Los botones automáticos solo copian la
+                  tabla; tras un cálculo así, ofrece en una línea el Excel con fórmulas y el formato para firmar.
                 """;
     }
 }
