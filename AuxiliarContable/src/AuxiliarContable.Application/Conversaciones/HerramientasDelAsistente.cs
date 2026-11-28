@@ -72,6 +72,7 @@ public class HerramientasDelAsistente : ITransientDependency
     public const string GenerarArchivo = "generar_archivo";
     public const string ImpuestosEstatales = "impuestos_estatales";
     public const string BuscarEnMisLeyes = "buscar_en_mis_leyes";
+    public const string PasarAMisLeyes = "pasar_a_mis_leyes";
 
     /// <summary>De la conciliación, el modelo recibe un resumen y hasta este número de pendientes por lista.</summary>
     private const int MaxPendientesPorLista = 15;
@@ -304,6 +305,12 @@ public class HerramientasDelAsistente : ITransientDependency
                 "texto para contestar con la cita (ley, artículo, página). Úsala cuando la pregunta es de un reglamento municipal o " +
                 "ley estatal que él te pasó, y después de que diga que ya lo subió. «texto»: lo que buscas, con palabras de la ley.",
                 """{"type":"object","properties":{"texto":{"type":"string","minLength":3,"maxLength":300}},"required":["texto"]}"""),
+            new(PasarAMisLeyes,
+                "Pasa a «Mis leyes» una ley estatal o reglamento municipal en PDF que la persona te mandó por el chat (con el clip), " +
+                "para que se lea y la puedas consultar con buscar_en_mis_leyes. «archivo»: el nombre del PDF tal como llegó. Di de " +
+                "qué estado y, si es municipal, de qué municipio (los de la plática; si no los sabes, pregúntalos). «materia»: de qué " +
+                "trata (anuncios, protección civil, hacienda…). Úsala cuando te manden un PDF que es una ley o un reglamento.",
+                """{"type":"object","properties":{"archivo":{"type":"string","minLength":2,"maxLength":255},"ambito":{"type":"string","enum":["estatal","municipal"]},"estado":{"type":"string","minLength":2,"maxLength":60},"municipio":{"type":"string","minLength":2,"maxLength":80},"materia":{"type":"string","maxLength":60}},"required":["archivo","ambito","estado"]}"""),
             new(AnalizarOperacion,
                 "Arma lo que hay que revisar de una operación que el cliente PIENSA hacer o ya hizo («voy a comprar una camioneta», " +
                 "«me van a pagar desde Estados Unidos», «quiero rentar un local»): con su perfil fiscal, el índice de leyes saca el " +
@@ -419,6 +426,7 @@ public class HerramientasDelAsistente : ITransientDependency
             ImpuestosDelMes => "Consultó los impuestos",
             LeyesQueLeAplican => "Revisó las leyes que te aplican",
             BuscarEnMisLeyes => "Revisó las leyes que subiste",
+            PasarAMisLeyes => "Pasó la ley a «Mis leyes»",
             EncuadrarPregunta => "Encuadró la pregunta con tu perfil",
             BuscarClaveSat => "Buscó la clave SAT",
             RevisarClaves => "Revisó las claves de la factura",
@@ -634,6 +642,8 @@ public class HerramientasDelAsistente : ITransientDependency
                 LeyesQueLeAplican => await _consultas.LeyesQueLeAplicanAsync(organizacionId, Opcional(uso.Entrada, "tema"),
                     Opcional(uso.Entrada, "estado"), Opcional(uso.Entrada, "municipio")),
                 BuscarEnMisLeyes => await _consultas.BuscarEnMisLeyesAsync(organizacionId, Texto(uso.Entrada, "texto")),
+                PasarAMisLeyes => await _consultas.PasarAMisLeyesAsync(organizacionId, Texto(uso.Entrada, "archivo"), Texto(uso.Entrada, "ambito"),
+                    Opcional(uso.Entrada, "estado"), Opcional(uso.Entrada, "municipio"), Opcional(uso.Entrada, "materia")),
                 Solicitar => SolicitudesJson([await _solicitudes.CrearAsync(organizacionId, new CrearSolicitudDto
                 {
                     Tipo = Texto(uso.Entrada, "tipo") switch

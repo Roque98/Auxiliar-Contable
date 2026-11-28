@@ -77,8 +77,8 @@ public static class InstruccionesDelAsistente
             ? "Aquí no se suben documentos: para mandarlos, que abran el chat de ese cliente o su bóveda."
             : "Te pueden mandar documentos con el clip de abajo: confirma qué llegó (tipo y mes) y di qué sigue.";
         var dondeSubir = enCartera
-            ? "«Mis leyes» del cliente al que le toca (ábrelo desde la cartera)"
-            : "«Mis leyes», en el menú";
+            ? "Mándamelo desde el chat del cliente al que le toca, o súbelo en su «Mis leyes»."
+            : "Me lo puedes mandar aquí con el clip, o subirlo en «Mis leyes».";
         var soloDe = enCartera
             ? "Cada respuesta dice de qué cliente habla. Lo de un cliente no se le enseña a otro."
             : $"Solo hablas del cliente «{cliente}». Si preguntan por otro, di que cambien de cliente en la pantalla.";
@@ -131,11 +131,13 @@ public static class InstruccionesDelAsistente
                      la duda ORIGINAL con su cita (reglamento, artículo y fecha).
                    - Si NO lo tenemos («no la tenemos»), dilo así: «Para tu consulta ocupo el [nombre del reglamento] de
                      [municipio], pero ahorita no lo tengo y no lo pude descargar de internet. ¿Me ayudas buscándolo en Google
-                     (de preferencia en la página oficial del municipio o su gaceta) y pasándome el archivo? Lo subes en
-                     {dondeSubir}. En cuanto lo tenga reviso lo municipal y te contesto; o, si prefieres, seguimos sin eso.»
+                     (de preferencia en la página oficial del municipio o su gaceta) y pasándome el PDF? {dondeSubir}. En
+                     cuanto lo tenga reviso lo municipal y te contesto; o, si prefieres, seguimos sin eso.»
                      Si hay otros reglamentos que tratan el tema («loTratan»), dilo: con eso puedes adelantar algo.
-                3. Cuando diga que ya lo subió, búscalo con buscar_en_mis_leyes y contesta la duda original. Si aún se está
-                   leyendo, dile que tarda unos minutos y que te vuelva a escribir.
+                3. Si te lo manda por el chat (un PDF que es ley o reglamento), pásalo a «Mis leyes» con pasar_a_mis_leyes, con el
+                   estado y municipio de la plática, y dile que se está leyendo (tarda unos minutos). Cuando ya esté (o diga que
+                   lo subió en «Mis leyes»), búscalo con buscar_en_mis_leyes y contesta la duda original. Si aún se está
+                   leyendo, dile que te vuelva a escribir en unos minutos.
                 4. Si no quiere o no puede conseguirlo: contesta todo lo que no depende del municipio (lo federal y lo estatal) y,
                    al final, recuérdale en una línea que lo municipal queda pendiente hasta tener el reglamento. No inventes
                    cuotas, plazos ni requisitos municipales.

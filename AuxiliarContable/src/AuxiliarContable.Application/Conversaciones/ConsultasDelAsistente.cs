@@ -51,6 +51,9 @@ public class ConsultasDelAsistente : ITransientDependency
     private readonly AnalizadorNormativo _normativa;
     private readonly IMotorFiscal _motor;
     private readonly IRepository<LeyDelCliente, Guid> _misLeyes;
+    private readonly IRepository<AuxiliarContable.Documentos.Documento, Guid> _documentos;
+    private readonly Volo.Abp.Guids.IGuidGenerator _guids;
+    private readonly Volo.Abp.Timing.IClock _reloj;
 
     public ConsultasDelAsistente(
         Autorizador autorizador,
@@ -61,9 +64,15 @@ public class ConsultasDelAsistente : ITransientDependency
         IAsyncQueryableExecuter ejecutor,
         AnalizadorNormativo normativa,
         IMotorFiscal motor,
-        IRepository<LeyDelCliente, Guid> misLeyes)
+        IRepository<LeyDelCliente, Guid> misLeyes,
+        IRepository<AuxiliarContable.Documentos.Documento, Guid> documentos,
+        Volo.Abp.Guids.IGuidGenerator guids,
+        Volo.Abp.Timing.IClock reloj)
     {
         _misLeyes = misLeyes;
+        _documentos = documentos;
+        _guids = guids;
+        _reloj = reloj;
         _normativa = normativa;
         _motor = motor;
         _autorizador = autorizador;
@@ -665,6 +674,64 @@ public class ConsultasDelAsistente : ITransientDependency
                 };
             }),
         }, Json), 14_000);
+    }
+
+    /// <summary>
+    /// Pasa a «Mis leyes» una ley o reglamento en PDF que la persona mandó por el chat (ya está en su bóveda): queda como si
+    /// la hubiera subido en esa pantalla y se lee sola en unos minutos. Lo único que escribe este servicio; exige poder subir.
+    /// </summary>
+    public async Task<string> PasarAMisLeyesAsync(Guid organizacionId, string archivo, string ambito, string? estado, string? municipio,
+        string? materia)
+    {
+        await _autorizador.ExigirAsync(organizacionId, AccionEnOrganizacion.Subir);
+        var amb = (ambito ?? "").Trim().ToLowerInvariant() switch
+        {
+            "estatal" => AmbitoDeLey.Estatal,
+            "municipal" => AmbitoDeLey.Municipal,
+            _ => throw new UserFriendlyException("«ambito» va como estatal o municipal."),
+        };
+        var edo = LeyesDelClienteAppService.ClaveDeEstado(estado)
+                  ?? throw new UserFriendlyException("Falta el estado de la ley (p. ej. «Morelos»): pregúntalo si no lo sabes.");
+        var mun = LeyesDelClienteAppService.Limpio(municipio);
+        if (amb == AmbitoDeLey.Municipal && mun == null)
+        {
+            throw new UserFriendlyException("Falta el municipio del reglamento: pregúntalo si no lo sabes.");
+        }
+
+        var nombre = (archivo ?? "").Trim();
+        if (nombre.Length < 2)
+        {
+            throw new UserFriendlyException("Falta «archivo»: el nombre del PDF que mandó.");
+        }
+
+        // El PDF más reciente de ESTE cliente con ese nombre (lo de otro cliente no existe).
+        var candidatos = await _async.ToListAsync((await _documentos.GetQueryableAsync())
+            .Where(d => d.OrganizacionId == organizacionId && d.NombreOriginal.Contains(nombre))
+            .OrderByDescending(d => d.CreationTime).Take(5));
+        var doc = candidatos.FirstOrDefault(d => d.NombreOriginal == nombre) ?? candidatos.FirstOrDefault()
+                  ?? throw new UserFriendlyException($"No encuentro «{nombre}» entre lo que mandó: pídele que lo adjunte con el clip.");
+        if (doc.TipoMime != AuxiliarContable.Documentos.DetectorDeDocumento.Pdf)
+        {
+            throw new UserFriendlyException("La ley tiene que ser PDF (el que publica el periódico oficial, la gaceta o el municipio).");
+        }
+
+        if (await _misLeyes.FirstOrDefaultAsync(x => x.OrganizacionId == organizacionId && x.Sha256 == doc.Sha256) is { } ya)
+        {
+            return JsonSerializer.Serialize(new { listo = true, yaEstaba = true, ley = ya.Titulo ?? ya.NombreDelArchivo, lectura = Lectura(ya.Lectura) }, Json);
+        }
+
+        var ley = new LeyDelCliente(_guids.Create(), organizacionId, doc.Id, doc.Sha256, doc.NombreOriginal, amb, edo, mun,
+            string.IsNullOrWhiteSpace(materia) ? null : Corto(materia.Trim(), 60), _reloj.Now.ToUniversalTime());
+        await _misLeyes.InsertAsync(ley, autoSave: true);
+        return JsonSerializer.Serialize(new
+        {
+            listo = true,
+            ley = doc.NombreOriginal,
+            ambito = amb == AmbitoDeLey.Municipal ? "municipal" : "estatal",
+            lugar = mun ?? edo,
+            lectura = Lectura(ley.Lectura),
+            nota = "Quedó en «Mis leyes». Se lee sola en unos minutos; cuando esté lista, búscala con buscar_en_mis_leyes.",
+        }, Json);
     }
 
     // ---------------------------------------------------------------- encuadre de la pregunta

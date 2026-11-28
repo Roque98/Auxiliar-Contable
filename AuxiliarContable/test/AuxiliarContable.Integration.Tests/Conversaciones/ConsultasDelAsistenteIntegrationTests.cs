@@ -416,6 +416,45 @@ public class ConsultasDelAsistenteIntegrationTests : ConJerarquiaTestBase
     }
 
     [Fact]
+    public async Task El_reglamento_que_mandan_por_el_chat_lo_pasa_a_mis_leyes()
+    {
+        var boveda = GetRequiredService<AuxiliarContable.Boveda.IBovedaAppService>();
+        static Volo.Abp.Content.RemoteStreamContent Pdf(string nombre, string texto) =>
+            new(new System.IO.MemoryStream(System.Text.Encoding.UTF8.GetBytes("%PDF-1.4 " + texto)), nombre, "application/pdf");
+        await ComoAsync(Usuario, () => boveda.SubirAsync(_cliente, AuxiliarContable.Documentos.TipoDeDocumento.LeyLocal,
+            Pdf("Reglamento de Anuncios Guadalajara.pdf", "anuncios")));
+        await ComoAsync(Administrador, () => boveda.SubirAsync(_otroCliente, AuxiliarContable.Documentos.TipoDeDocumento.LeyLocal,
+            Pdf("Reglamento ajeno.pdf", "ajeno")));
+
+        _modelo.UsarHerramienta(HerramientasDelAsistente.PasarAMisLeyes, new
+        {
+            archivo = "Reglamento de Anuncios Guadalajara.pdf", ambito = "municipal", estado = "Jalisco", municipio = "Guadalajara", materia = "anuncios",
+        });
+        _modelo.Contestar("Listo, lo pasé a «Mis leyes»: se está leyendo.");
+        var conversacion = await ComoAsync(Usuario, () => _asistente.EnviarAsync(_cliente, Mensaje("Te acabo de mandar el reglamento")));
+
+        var r = Resultado();
+        r.EsError.ShouldBeFalse();
+        r.Contenido.ShouldContain("Mis leyes");
+        conversacion.Mensajes.Last().Acciones.ShouldBe(["Pasó la ley a «Mis leyes»"]);
+        var ley = (await WithUnitOfWorkAsync(() => GetRequiredService<IRepository<LeyDelCliente, Guid>>().GetListAsync(x => x.OrganizacionId == _cliente)))
+            .ShouldHaveSingleItem();
+        ley.Ambito.ShouldBe(AmbitoDeLey.Municipal);
+        ley.Estado.ShouldBe("JAL");
+        ley.Municipio.ShouldBe("Guadalajara");
+        ley.DocumentoId.ShouldNotBe(Guid.Empty);
+
+        // Lo de otro cliente no se encuentra, y sin municipio un reglamento municipal no se pasa.
+        _modelo.Reiniciar();
+        _modelo.UsarHerramienta(HerramientasDelAsistente.PasarAMisLeyes, new { archivo = "Reglamento ajeno.pdf", ambito = "municipal", estado = "Jalisco", municipio = "Zapopan" });
+        _modelo.UsarHerramienta(HerramientasDelAsistente.PasarAMisLeyes, new { archivo = "Reglamento de Anuncios Guadalajara.pdf", ambito = "municipal", estado = "Jalisco" });
+        _modelo.Contestar("¿De qué municipio es?");
+        await ComoAsync(Usuario, () => _asistente.EnviarAsync(_cliente, Mensaje("Pásalo")));
+        Resultado(1).Contenido.ShouldContain("No encuentro");
+        Resultado(2).Contenido.ShouldContain("Falta el municipio");
+    }
+
+    [Fact]
     public async Task Lee_el_reglamento_que_subio_el_cliente_y_no_el_de_otro()
     {
         var sha = new string('a', 64);
