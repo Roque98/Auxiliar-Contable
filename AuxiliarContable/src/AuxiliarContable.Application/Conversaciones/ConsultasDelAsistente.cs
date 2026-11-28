@@ -504,14 +504,21 @@ public class ConsultasDelAsistente : ITransientDependency
             throw new UserFriendlyException($"No reconozco el estado «{estado.Trim()}». Usa su nombre, p. ej. «Morelos» o «Jalisco».");
         }
 
-        LeyesQueTeAplicanDto r;
-        if (organizacionId == Guid.Empty)
+        LeyesQueTeAplicanDto? r = null;
+        if (organizacionId == Guid.Empty && clave == null)
         {
-            if (clave == null)
-            {
-                throw new UserFriendlyException("Sin cliente, di el estado (y el municipio) de la pregunta, o di de qué cliente es.");
-            }
+            throw new UserFriendlyException("Sin cliente, di el estado (y el municipio) de la pregunta, o di de qué cliente es.");
+        }
 
+        if (organizacionId != Guid.Empty)
+        {
+            // El servicio de la pantalla exige ver al cliente.
+            r = await _leyes.GetQueTeAplicanAsync(organizacionId, clave, municipio);
+        }
+
+        // Sin cliente, o un cliente sin perfil todavía: lo del lugar que dijo la persona, sin perfil.
+        if (clave != null && (r == null || r.Leyes.Count == 0))
+        {
             var lugar = new Dictionary<string, object?> { ["estado"] = clave, ["municipio"] = LeyesDelClienteAppService.Limpio(municipio) };
             try
             {
@@ -523,11 +530,8 @@ public class ConsultasDelAsistente : ITransientDependency
                 return "No pude consultar el catálogo de leyes ahora; intenta en unos minutos.";
             }
         }
-        else
-        {
-            // El servicio de la pantalla exige ver al cliente.
-            r = await _leyes.GetQueTeAplicanAsync(organizacionId, clave, municipio);
-        }
+
+        r ??= new LeyesQueTeAplicanDto();
 
         if (r.Leyes.Count == 0)
         {
