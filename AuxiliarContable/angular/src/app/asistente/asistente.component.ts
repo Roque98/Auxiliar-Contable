@@ -265,9 +265,10 @@ export class AsistenteComponent implements OnInit {
     this.api.enviar(id, limpio).subscribe({
       next: c => this.alResponder(id, c),
       error: e => {
-        // Sin respuesta del servidor (salió del navegador, se fue la señal): el turno sigue allá y
-        // se guarda; se espera a que aparezca en la conversación en vez de darlo por perdido.
-        if (e?.status === 0 && this.enCurso?.id === id) {
+        // Sin respuesta del servidor (salió del navegador, se fue la señal) o el intermediario se
+        // cansó de esperar (Cloudflare corta a los 100 s con 524; 502/503/504 de nginx): el turno
+        // sigue allá y se guarda. Se espera a que aparezca en la conversación en vez de darlo por perdido.
+        if (SIGUE_EN_EL_SERVIDOR.includes(e?.status) && this.enCurso?.id === id) {
           this.esperarRespuesta(id, texto);
           return;
         }
@@ -787,6 +788,9 @@ export class AsistenteComponent implements OnInit {
     setTimeout(() => this.fondo()?.nativeElement.scrollIntoView({ block: 'end', behavior: 'smooth' }));
   }
 }
+
+/** Respuestas que no dicen que el turno falló, sino que nadie esperó a que terminara. */
+const SIGUE_EN_EL_SERVIDOR = [0, 502, 503, 504, 520, 521, 522, 523, 524];
 
 function normalizar(s: string): string {
   return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
