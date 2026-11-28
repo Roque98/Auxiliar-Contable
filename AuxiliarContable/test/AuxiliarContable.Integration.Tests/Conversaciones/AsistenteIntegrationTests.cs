@@ -332,4 +332,22 @@ public class AsistenteIntegrationTests : ConJerarquiaTestBase
         await Should.ThrowAsync<EntityNotFoundException>(() =>
             ComoAsync(_lector, () => _asistente.GetArchivoAsync(respuesta.Id, null, "pdf")));
     }
+
+    [Fact]
+    public async Task Contesta_el_impuesto_sobre_nominas_de_cualquier_estado()
+    {
+        _modelo.UsarHerramienta(HerramientasDelAsistente.ImpuestosEstatales, new { estado = "Morelos", anio = 2026 });
+        _modelo.UsarHerramienta(HerramientasDelAsistente.ImpuestosEstatales, new { estado = "Narnia" });
+        _modelo.Contestar("En Morelos el ISN es de 3 %.");
+
+        var conversacion = await ComoAsync(Usuario, () => _asistente.EnviarAsync(_cliente, Mensaje("¿Cuánto es el ISN en Morelos?")));
+
+        conversacion.Mensajes.Last().Acciones.ShouldContain("Consultó los impuestos del estado");
+        var morelos = _modelo.Solicitudes[1].Turnos.Last().Bloques.Single().ShouldBeOfType<BloqueDeResultadoDeHerramienta>();
+        morelos.EsError.ShouldBeFalse();
+        morelos.Contenido.ShouldContain("58 BIS-4");
+        var narnia = _modelo.Solicitudes[2].Turnos.Last().Bloques.Single().ShouldBeOfType<BloqueDeResultadoDeHerramienta>();
+        narnia.EsError.ShouldBeTrue();
+        narnia.Contenido.ShouldContain("No reconozco");
+    }
 }

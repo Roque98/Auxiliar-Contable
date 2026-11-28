@@ -111,6 +111,12 @@ public static class InstruccionesDelAsistente
                 - Al FINAL, un título «## Fundamento» con una viñeta por cita: ordenamiento, artículo o regla, y su
                   fecha de última reforma.
 
+                Impuestos estatales y municipales:
+                - Impuestos del estado (ISN, hospedaje…): impuestos_estatales con el estado (del domicilio fiscal o el que diga la
+                  persona) ANTES de decir que no lo tienes; cita el artículo y la publicación que trae. Lo municipal (predial,
+                  licencias, anuncios, protección civil), con leyes_que_le_aplican. Si de verdad no viene, di qué falta y dónde
+                  se consulta (la liga oficial del estado), sin inventar la tasa.
+
                 Claves SAT de productos y servicios:
                 - «¿Qué clave uso para…?»: buscar_clave_sat con cómo se llama la cosa. Di la clave que mejor describe lo que ES
                   el objeto y por qué, con su unidad; si hay otra defendible, menciónala. Si su constancia no cubre esa venta,

@@ -61,14 +61,15 @@ export class AsistenteService {
 
   /** El archivo que armó el asistente (`uso`) o una respuesta suya en `formato` (excel, pdf…). */
   descargar(mensajeId: string, uso: string | null, formato: string | null): Observable<Blob> {
-    const params: Record<string, string> = { mensajeId };
+    // ABP pone el id del mensaje en la ruta: GET api/app/asistente/archivo/{mensajeId}.
+    const params: Record<string, string> = {};
     if (uso) {
       params['uso'] = uso;
     }
     if (formato) {
       params['formato'] = formato;
     }
-    return this.rest.request<void, Blob>({ method: 'GET', url: `${this.base}/archivo`, params, responseType: 'blob' }, this.opciones);
+    return this.rest.request<void, Blob>({ method: 'GET', url: `${this.base}/archivo/${mensajeId}`, params, responseType: 'blob' }, this.opciones);
   }
 
   empezarDeNuevo(organizacionId: string): Observable<ConversacionDto> {
