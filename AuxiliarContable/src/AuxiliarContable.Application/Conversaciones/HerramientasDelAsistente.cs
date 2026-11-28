@@ -69,6 +69,7 @@ public class HerramientasDelAsistente : ITransientDependency
     public const string VerSolicitudes = "ver_solicitudes";
     public const string ResolverSolicitud = "resolver_solicitud";
     public const string SolicitudesPendientes = "solicitudes_pendientes";
+    public const string GenerarArchivo = "generar_archivo";
 
     /// <summary>De la conciliación, el modelo recibe un resumen y hasta este número de pendientes por lista.</summary>
     private const int MaxPendientesPorLista = 15;
@@ -85,6 +86,21 @@ public class HerramientasDelAsistente : ITransientDependency
                 "la primera es la mejor por lo que ES el objeto; si dos son defendibles, dilo. La clave la decide el objeto, no la " +
                 "actividad. Avísale si su constancia no cubre la venta.",
                 """{"type":"object","properties":{"descripcion":{"type":"string","minLength":2,"maxLength":300}},"required":["descripcion"]}""");
+
+    /// <summary>Armar un archivo no toca datos de nadie: vale en las dos conversaciones y para cualquiera que escribe.</summary>
+    private static readonly HerramientaDelModelo DeGenerarArchivo = new(GenerarArchivo,
+                "Arma un archivo para descargar cuando la persona lo pida: Excel, PDF, Word, PowerPoint o CSV («pásamelo en " +
+                "Excel», «hazme un PDF», «una presentación con esto»). En «contenido» va TODO lo que debe llevar, ya con los datos " +
+                "que consultaste, en markdown: títulos «# …» y «## …» (en PowerPoint cada «##» es una diapositiva), párrafos, " +
+                "listas y tablas «| a | b |». Importes como «$1,234.50» y porcentajes como «16%»: en Excel quedan como números. " +
+                "Al terminar, dile que el botón para descargarlo quedó debajo de tu respuesta; no pongas enlaces.",
+                """
+                {"type":"object","properties":{
+                  "formato":{"type":"string","enum":["excel","pdf","word","powerpoint","csv"]},
+                  "nombre":{"type":"string","maxLength":80,"description":"Nombre del archivo sin extensión, p. ej. «Gastos de octubre»."},
+                  "contenido":{"type":"string","minLength":2,"maxLength":60000}},
+                 "required":["formato","contenido"]}
+                """);
 
     private static readonly HerramientaDelModelo DeRevisarClaves = new(RevisarClaves,
                 "¿Está bien la clave SAT de una factura? Con uuid revisa todos los conceptos de esa factura de su bóveda " +
@@ -236,6 +252,7 @@ public class HerramientasDelAsistente : ITransientDependency
                 """{"type":"object","properties":{"pregunta":{"type":"string","minLength":2,"maxLength":600}},"required":["pregunta"]}"""),
             DeBuscarClave,
             DeRevisarClaves,
+            DeGenerarArchivo,
             new(BuscarOperaciones,
                 "Busca en las operaciones del cliente activo (cada una junta su factura, su pago y su control interno). Filtros " +
                 "opcionales: texto (proveedor o cliente, concepto, UUID o referencia del pago), terminos (varias palabras: trae las " +
@@ -371,6 +388,7 @@ public class HerramientasDelAsistente : ITransientDependency
                 $"Invitó a {e.GetString()}",
             CambiarPapel => "Cambió el papel de una persona",
             QuitarPersona => "Quitó el acceso a una persona",
+            GenerarArchivo => null,
             ConsultarLeyes => "Consultó la ley",
             ConsultarSentencias => "Consultó sentencias",
             ConciliarMes => "Concilió el banco",
@@ -459,7 +477,34 @@ public class HerramientasDelAsistente : ITransientDependency
     /// <summary>Las de claves SAT: en la cartera van sin la constancia de un cliente.</summary>
     public static bool EnAmbas(string nombre) => nombre is BuscarClaveSat or RevisarClaves;
 
-    public static bool SoloConsultaAlMotor(string nombre) => nombre is ConsultarLeyes or ConsultarSentencias or TarifaIsr or LeerLey;
+    /// <remarks>Armar un archivo tampoco toca la base ni a un cliente: va con ellas.</remarks>
+    public static bool SoloConsultaAlMotor(string nombre) => nombre is ConsultarLeyes or ConsultarSentencias or TarifaIsr or LeerLey or GenerarArchivo;
+
+    /// <summary>Formato, nombre y contenido de un archivo que pidió armar el asistente.</summary>
+    public static (AuxiliarContable.Exportaciones.FormatoDeArchivo Formato, string? Nombre, string Contenido) ArchivoPedido(JsonElement entrada)
+    {
+        var formato = AuxiliarContable.Exportaciones.ArchivoDesdeTexto.Formato(Opcional(entrada, "formato"))
+                      ?? throw new UserFriendlyException("«formato» va como excel, pdf, word, powerpoint o csv.");
+        var contenido = Texto(entrada, "contenido");
+        if (contenido.Trim().Length < 2)
+        {
+            throw new UserFriendlyException("Falta «contenido»: lo que debe llevar el archivo.");
+        }
+
+        return (formato, Opcional(entrada, "nombre"), contenido);
+    }
+
+    private static string ArmarArchivo(JsonElement entrada)
+    {
+        var (formato, nombre, contenido) = ArchivoPedido(entrada);
+        var archivo = AuxiliarContable.Exportaciones.ArchivoDesdeTexto.Generar(formato, nombre, contenido);
+        return JsonSerializer.Serialize(new
+        {
+            listo = true,
+            archivo = archivo.Nombre,
+            nota = "El botón para descargarlo aparece debajo de tu respuesta. No pongas enlaces.",
+        }, Json);
+    }
 
     /// <summary>Los conceptos que dio el modelo (clave, unidad, descripción).</summary>
     private static List<ConceptoParaRevisar> ConceptosDe(JsonElement entrada) =>
@@ -554,6 +599,7 @@ public class HerramientasDelAsistente : ITransientDependency
                         Respuesta = Opcional(uso.Entrada, "respuesta"),
                     })]),
                 SolicitudesPendientes => SolicitudesJson(await _solicitudes.GetPendientesDelDespachoAsync()),
+                GenerarArchivo => ArmarArchivo(uso.Entrada),
                 LeerLey => await _motor.LeerLeyAsync(Texto(uso.Entrada, "clave"), Entero(uso.Entrada, "desde") ?? 0, 3,
                     Opcional(uso.Entrada, "articulo")),
                 TarifaIsr => await _motor.TarifaIsrAsync(

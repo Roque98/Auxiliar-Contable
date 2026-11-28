@@ -301,4 +301,35 @@ public class AsistenteIntegrationTests : ConJerarquiaTestBase
         nombres.ShouldNotContain(HerramientasDelAsistente.PersonasDelCliente);
         nombres.ShouldNotContain(HerramientasDelAsistente.QuitarPersona);
     }
+
+    [Fact]
+    public async Task Arma_el_archivo_que_le_piden_y_solo_lo_baja_quien_platico()
+    {
+        static string Tabla(string antes) => string.Join('\n', antes, "", "| Concepto | Importe |", "|---|---|", "| Luz | $1,200.00 |");
+
+        _modelo.UsarHerramienta(HerramientasDelAsistente.GenerarArchivo, new
+        {
+            formato = "excel",
+            nombre = "Gastos de octubre",
+            contenido = Tabla("# Gastos"),
+        });
+        _modelo.Contestar(Tabla("Listo, abajo está el botón."));
+
+        var conversacion = await ComoAsync(Usuario, () => _asistente.EnviarAsync(_cliente, Mensaje("Pásame mis gastos en Excel")));
+
+        var respuesta = conversacion.Mensajes.Last();
+        respuesta.TieneTabla.ShouldBeTrue();
+        var archivo = respuesta.Archivos.ShouldHaveSingleItem();
+        archivo.Nombre.ShouldBe("Gastos de octubre.xlsx");
+
+        var excel = await ComoAsync(Usuario, () => _asistente.GetArchivoAsync(archivo.MensajeId, archivo.Uso, null));
+        excel.FileName.ShouldBe("Gastos de octubre.xlsx");
+        excel.ContentType.ShouldContain("spreadsheetml");
+        var pdf = await ComoAsync(Usuario, () => _asistente.GetArchivoAsync(respuesta.Id, null, "pdf"));
+        pdf.ContentType.ShouldBe("application/pdf");
+
+        // De la conversación de otra persona, no existe.
+        await Should.ThrowAsync<EntityNotFoundException>(() =>
+            ComoAsync(_lector, () => _asistente.GetArchivoAsync(respuesta.Id, null, "pdf")));
+    }
 }

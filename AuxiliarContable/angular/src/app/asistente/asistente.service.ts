@@ -14,6 +14,16 @@ export interface MensajeDto {
   texto: string;
   creadoUtc: string;
   acciones: string[];
+  /** Los archivos que armó en ese turno. */
+  archivos?: ArchivoDelAsistenteDto[];
+  /** Trae una tabla: se puede bajar en Excel o PDF. */
+  tieneTabla?: boolean;
+}
+
+export interface ArchivoDelAsistenteDto {
+  mensajeId: string;
+  uso: string;
+  nombre: string;
 }
 
 export interface ConversacionDto {
@@ -47,6 +57,18 @@ export class AsistenteService {
       { method: 'POST', url: `${this.base}/enviar/${organizacionId}`, body: { texto } },
       this.opciones,
     );
+  }
+
+  /** El archivo que armó el asistente (`uso`) o una respuesta suya en `formato` (excel, pdf…). */
+  descargar(mensajeId: string, uso: string | null, formato: string | null): Observable<Blob> {
+    const params: Record<string, string> = { mensajeId };
+    if (uso) {
+      params['uso'] = uso;
+    }
+    if (formato) {
+      params['formato'] = formato;
+    }
+    return this.rest.request<void, Blob>({ method: 'GET', url: `${this.base}/archivo`, params, responseType: 'blob' }, this.opciones);
   }
 
   empezarDeNuevo(organizacionId: string): Observable<ConversacionDto> {
