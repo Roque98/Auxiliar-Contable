@@ -113,6 +113,9 @@ export class AsistenteComponent implements OnInit {
   readonly clienteId = signal<string | null>(null);
   readonly conversacion = signal<ConversacionDto | null>(null);
   readonly pendiente = signal<string | null>(null);
+  /** El turno que se está esperando: para reconocerlo en la conversación si se corta la petición. */
+  private enCurso: { id: string; texto: string; antes: number } | null = null;
+  protected readonly tactil = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
   readonly error = signal<string | null>(null);
   readonly pulso = signal<DatoDelPulso[]>([]);
   readonly adjuntos = signal<Adjunto[]>([]);
@@ -258,34 +261,104 @@ export class AsistenteComponent implements OnInit {
     this.frase.set(FRASES_DE_ESPERA[0]);
     this.texto = '';
     this.bajar();
+    this.enCurso = { id, texto: limpio, antes: this.conversacion()?.mensajes.length ?? 0 };
     this.api.enviar(id, limpio).subscribe({
-      next: c => {
-        this.pendiente.set(null);
-        this.adjuntos.set([]);
-        this.mostrar(c);
-        this.cargarPulso(id);
-        // Si dio de alta un cliente, que aparezca ya en la pastilla de arriba.
-        if (c.mensajes.at(-1)?.acciones.some(a => a.startsWith('Dio de alta'))) {
-          this.recargarClientes();
-        }
-      },
+      next: c => this.alResponder(id, c),
       error: e => {
-        // Lo escrito vuelve a la caja: el servidor no guardó nada del turno. Los archivos sí
-        // quedaron en la bóveda, así que no se ofrecen otra vez.
-        this.texto = texto.trim();
-        this.adjuntos.set([]);
-        this.pendiente.set(null);
-        this.error.set(mensajeDeError(e, 'No se pudo enviar. Intenta de nuevo.'));
+        // Sin respuesta del servidor (salió del navegador, se fue la señal): el turno sigue allá y
+        // se guarda; se espera a que aparezca en la conversación en vez de darlo por perdido.
+        if (e?.status === 0 && this.enCurso?.id === id) {
+          this.esperarRespuesta(id, texto);
+          return;
+        }
+        this.alFallar(e, texto);
       },
     });
   }
 
-  /** Enter manda; Shift+Enter hace salto de línea. */
+  /** Al volver al navegador con una respuesta pendiente: quizá ya está guardada. */
+  @HostListener('document:visibilitychange')
+  alVolver(): void {
+    const curso = this.enCurso;
+    if (document.visibilityState === 'visible' && curso && this.pendiente()) {
+      this.api.obtener(curso.id).subscribe({
+        next: c => {
+          if (this.yaRespondio(c)) {
+            this.alResponder(curso.id, c);
+          }
+        },
+        error: () => undefined,
+      });
+    }
+  }
+
+  /**
+   * Enter manda en la computadora (Shift+Enter, salto de línea). En el celular Enter es salto de
+   * línea, como en cualquier chat: se manda con la flecha.
+   */
   alTeclear(evento: KeyboardEvent): void {
-    if (evento.key === 'Enter' && !evento.shiftKey && !evento.isComposing) {
+    if (evento.key === 'Enter' && !evento.shiftKey && !evento.isComposing && !this.tactil) {
       evento.preventDefault();
       this.enviar();
     }
+  }
+
+  private alResponder(id: string, c: ConversacionDto): void {
+    if (!this.enCurso || this.enCurso.id !== id) {
+      return;
+    }
+    this.enCurso = null;
+    this.pendiente.set(null);
+    this.adjuntos.set([]);
+    if (this.clienteId() !== id) {
+      return;
+    }
+    this.mostrar(c);
+    this.cargarPulso(id);
+    // Si dio de alta un cliente, que aparezca ya en la pastilla de arriba.
+    if (c.mensajes.at(-1)?.acciones.some(a => a.startsWith('Dio de alta'))) {
+      this.recargarClientes();
+    }
+  }
+
+  private alFallar(e: unknown, texto: string): void {
+    // Lo escrito vuelve a la caja: el servidor no guardó nada del turno. Los archivos sí
+    // quedaron en la bóveda, así que no se ofrecen otra vez.
+    this.enCurso = null;
+    this.texto = texto.trim();
+    this.adjuntos.set([]);
+    this.pendiente.set(null);
+    this.error.set(mensajeDeError(e, 'No se pudo enviar. Intenta de nuevo.'));
+  }
+
+  /** Revisa cada 5 s, hasta 3 minutos, si el turno ya quedó guardado. */
+  private esperarRespuesta(id: string, texto: string, intento = 0): void {
+    if (this.enCurso?.id !== id) {
+      return;
+    }
+    if (intento >= 36) {
+      this.alFallar(null, texto);
+      return;
+    }
+    setTimeout(() => {
+      if (this.enCurso?.id !== id) {
+        return;
+      }
+      this.api.obtener(id).subscribe({
+        next: c => (this.yaRespondio(c) ? this.alResponder(id, c) : this.esperarRespuesta(id, texto, intento + 1)),
+        error: () => this.esperarRespuesta(id, texto, intento + 1),
+      });
+    }, 5000);
+  }
+
+  /** ¿La conversación ya trae la pregunta en curso con su respuesta al final? */
+  private yaRespondio(c: ConversacionDto): boolean {
+    const curso = this.enCurso;
+    if (!curso || c.mensajes.length <= curso.antes || c.mensajes.at(-1)?.rol !== RolDelMensaje.Asistente) {
+      return false;
+    }
+    const pregunta = [...c.mensajes].reverse().find(m => m.rol === RolDelMensaje.Usuario);
+    return pregunta?.texto === curso.texto;
   }
 
   tocarPulso(dato: DatoDelPulso): void {

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using AuxiliarContable.Autorizacion;
 using AuxiliarContable.IA;
@@ -13,6 +14,8 @@ using Volo.Abp;
 using Volo.Abp.Domain.Repositories;
 using Volo.Abp.Domain.Entities;
 using Volo.Abp.Settings;
+using Volo.Abp.Threading;
+using Volo.Abp.Uow;
 using Volo.Abp.Users;
 
 namespace AuxiliarContable.Conversaciones;
@@ -24,7 +27,8 @@ namespace AuxiliarContable.Conversaciones;
 ///
 /// <para>La llamada al modelo va DENTRO de la petición, a diferencia de leer documentos: es una
 /// plática y la persona espera la respuesta. Si el modelo falla, no se guarda nada del turno
-/// (ni el mensaje de la persona) y la persona lo vuelve a mandar.</para>
+/// (ni el mensaje de la persona) y la persona lo vuelve a mandar. Si quien se va es la persona
+/// (cierra el navegador), el turno se termina y se guarda igual.</para>
 /// </summary>
 [Authorize]
 public class AsistenteAppService : AuxiliarContableAppService, IAsistenteAppService
@@ -89,6 +93,21 @@ public class AsistenteAppService : AuxiliarContableAppService, IAsistenteAppServ
             throw new UserFriendlyException("El asistente no está disponible por ahora.");
         }
 
+        // Si la persona sale del navegador (o se le va la señal) la petición se corta, pero el turno
+        // sigue hasta el final y se guarda: al volver, la respuesta ya está en la conversación. Por eso
+        // corre sin el token de la petición y en su propia unidad de trabajo, que no se deshace aunque
+        // la de la petición se cancele.
+        using (LazyServiceProvider.LazyGetRequiredService<ICancellationTokenProvider>().Use(CancellationToken.None))
+        using (var unidad = UnitOfWorkManager.Begin(requiresNew: true))
+        {
+            var dto = await TurnoAsync(organizacionId, texto);
+            await unidad.CompleteAsync(CancellationToken.None);
+            return dto;
+        }
+    }
+
+    private async Task<ConversacionDto> TurnoAsync(Guid organizacionId, string texto)
+    {
         var yo = CurrentUser.GetId();
         await ExigirCupoAsync(yo);
 
