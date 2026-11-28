@@ -589,6 +589,17 @@ public class MotorFiscalHttp : IMotorFiscal, ITransientDependency
         return r.GetRawText();
     }
 
+    public async Task<string> BuscarEnLeyesDelClienteAsync(IReadOnlyList<string> documentos, string texto, CancellationToken cancellationToken = default)
+    {
+        using var tope = CancelationConTope(_opciones.TimeoutSegundos, cancellationToken);
+        var peticion = new HttpRequestMessage(HttpMethod.Post, "leyes-propias/buscar")
+        {
+            Content = JsonContent.Create(new { documentos, texto, maximo = 20_000 }, options: Json),
+        };
+        var r = await EnviarAsync<System.Text.Json.JsonElement>(peticion, tope.Token, cancellationToken);
+        return r.GetRawText();
+    }
+
     public async Task<string> LeyesEstatalesDelClienteAsync(IReadOnlyDictionary<string, object?> perfil, string? estado,
         CancellationToken cancellationToken = default)
     {

@@ -50,6 +50,7 @@ public class ConsultasDelAsistente : ITransientDependency
     private readonly IAsyncQueryableExecuter _async;
     private readonly AnalizadorNormativo _normativa;
     private readonly IMotorFiscal _motor;
+    private readonly IRepository<LeyDelCliente, Guid> _misLeyes;
 
     public ConsultasDelAsistente(
         Autorizador autorizador,
@@ -59,8 +60,10 @@ public class ConsultasDelAsistente : ITransientDependency
         ILeyesDelClienteAppService leyes,
         IAsyncQueryableExecuter ejecutor,
         AnalizadorNormativo normativa,
-        IMotorFiscal motor)
+        IMotorFiscal motor,
+        IRepository<LeyDelCliente, Guid> misLeyes)
     {
+        _misLeyes = misLeyes;
         _normativa = normativa;
         _motor = motor;
         _autorizador = autorizador;
@@ -483,13 +486,57 @@ public class ConsultasDelAsistente : ITransientDependency
 
     // ---------------------------------------------------------------- leyes que le aplican
 
-    public async Task<string> LeyesQueLeAplicanAsync(Guid organizacionId, string? tema)
+    /// <summary>Lo que se le dice al modelo cuando no se sabe el municipio: que lo pregunte, nunca que lo adivine.</summary>
+    public const string FaltaMunicipio =
+        "No sé el municipio. Si la pregunta depende de lo municipal, pregúntale en qué municipio y estado está y vuelve a " +
+        "consultar con ellos; no lo adivines.";
+
+    /// <summary>
+    /// Las leyes estatales y municipales de un cliente (por su domicilio, o el <paramref name="estado"/> y
+    /// <paramref name="municipio"/> que dijo la persona) o, en la cartera sin cliente (<see cref="Guid.Empty"/>), las de ese
+    /// lugar sin perfil. Al motor solo viajan el estado y el municipio, nada del cliente.
+    /// </summary>
+    public async Task<string> LeyesQueLeAplicanAsync(Guid organizacionId, string? tema, string? estado = null, string? municipio = null)
     {
-        // El servicio de la pantalla exige ver al cliente.
-        var r = await _leyes.GetQueTeAplicanAsync(organizacionId);
+        var clave = LeyesDelClienteAppService.ClaveDeEstado(estado);
+        if (!string.IsNullOrWhiteSpace(estado) && clave == null)
+        {
+            throw new UserFriendlyException($"No reconozco el estado «{estado.Trim()}». Usa su nombre, p. ej. «Morelos» o «Jalisco».");
+        }
+
+        LeyesQueTeAplicanDto? r = null;
+        if (organizacionId == Guid.Empty && clave == null)
+        {
+            throw new UserFriendlyException("Sin cliente, di el estado (y el municipio) de la pregunta, o di de qué cliente es.");
+        }
+
+        if (organizacionId != Guid.Empty)
+        {
+            // El servicio de la pantalla exige ver al cliente.
+            r = await _leyes.GetQueTeAplicanAsync(organizacionId, clave, municipio);
+        }
+
+        // Sin cliente, o un cliente sin perfil todavía: lo del lugar que dijo la persona, sin perfil.
+        if (clave != null && (r == null || r.Leyes.Count == 0))
+        {
+            var lugar = new Dictionary<string, object?> { ["estado"] = clave, ["municipio"] = LeyesDelClienteAppService.Limpio(municipio) };
+            try
+            {
+                r = LeyesDelClienteAppService.LeerQueTeAplican(await _motor.LeyesEstatalesDelClienteAsync(lugar, clave), clave,
+                    new Dictionary<string, Guid>());
+            }
+            catch (MotorFiscalNoDisponibleException)
+            {
+                return "No pude consultar el catálogo de leyes ahora; intenta en unos minutos.";
+            }
+        }
+
+        r ??= new LeyesQueTeAplicanDto();
+
         if (r.Leyes.Count == 0)
         {
-            return r.Aviso ?? "Todavía no se puede decir qué leyes locales le aplican (falta el domicilio fiscal o la actividad en el perfil).";
+            return (r.Aviso ?? "Todavía no se puede decir qué leyes locales le aplican (falta el domicilio fiscal o la actividad en el perfil).")
+                   + " " + FaltaMunicipio;
         }
 
         var leyes = r.Leyes.AsEnumerable();
@@ -502,10 +549,19 @@ public class ConsultasDelAsistente : ITransientDependency
         }
 
         var lista = leyes.ToList();
+        List<LeyDelCliente> subidas = organizacionId == Guid.Empty ? [] : await LeyesSubidasAsync(organizacionId);
         return JsonSerializer.Serialize(new
         {
             estado = r.NombreDelEstado ?? r.Estado,
             municipio = r.Municipio,
+            faltaMunicipio = r.Municipio == null ? FaltaMunicipio : null,
+            subidasEnMisLeyes = subidas.Count == 0 ? null : subidas.Select(l => new
+            {
+                nombre = l.Titulo ?? l.Materia ?? l.NombreDelArchivo,
+                ambito = l.Ambito == AmbitoDeLey.Municipal ? "municipal" : "estatal",
+                lugar = l.Municipio ?? l.Estado,
+                lectura = Lectura(l.Lectura),
+            }),
             avisoMunicipal = r.AvisoMunicipal,
             seTomoEnCuenta = r.Disparadores,
             total = r.Leyes.Count,
@@ -518,9 +574,12 @@ public class ConsultasDelAsistente : ITransientDependency
                 estatus = l.Estatus switch
                 {
                     "local" => "la tenemos",
-                    "pendiente" => "no la encontramos en línea",
+                    _ when l.EnMisLeyes != null => "la tenemos (está en «Mis leyes»)",
+                    "pendiente" => "no la tenemos: no la encontramos en línea",
+                    "sin_ficha" => "no la tenemos: aún no revisamos ese lugar",
                     "no_existe" => "el municipio no tiene reglamento propio",
                     "estatal" => "lo rige la ley estatal",
+                    "municipal" => "lo rige el reglamento municipal",
                     "federal" => "lo rige la ley federal",
                     var e => e,
                 },
@@ -530,6 +589,82 @@ public class ConsultasDelAsistente : ITransientDependency
                 loTratan = l.LoTratan.Count == 0 ? null : l.LoTratan.Select(x => x.Donde == null ? x.Nombre : $"{x.Nombre} ({x.Donde})"),
             }),
         }, Json);
+    }
+
+    private async Task<List<LeyDelCliente>> LeyesSubidasAsync(Guid organizacionId) =>
+        await _async.ToListAsync((await _misLeyes.GetQueryableAsync())
+            .Where(x => x.OrganizacionId == organizacionId).OrderByDescending(x => x.CreationTime).Take(30));
+
+    private static string Lectura(LecturaDeLey l) => l switch
+    {
+        LecturaDeLey.Lista => "lista para consultar",
+        LecturaDeLey.Error => "no se pudo leer (que la vuelva a subir, de preferencia el PDF original)",
+        _ => "se está leyendo: tarda unos minutos",
+    };
+
+    /// <summary>
+    /// Busca en las leyes y reglamentos que el cliente subió a «Mis leyes» (o que tomó de la biblioteca) los artículos que
+    /// tratan el tema, con su texto, para contestar con la cita. Motor sin Claude; al motor solo viajan las huellas de los
+    /// documentos y lo que se busca.
+    /// </summary>
+    public async Task<string> BuscarEnMisLeyesAsync(Guid organizacionId, string texto)
+    {
+        await _autorizador.ExigirAsync(organizacionId, AccionEnOrganizacion.Ver);
+        texto = (texto ?? "").Trim();
+        if (texto.Length < 3)
+        {
+            throw new UserFriendlyException("Falta «texto»: qué buscas en sus leyes.");
+        }
+
+        var subidas = await LeyesSubidasAsync(organizacionId);
+        if (subidas.Count == 0)
+        {
+            return "No ha subido leyes ni reglamentos a «Mis leyes».";
+        }
+
+        var listas = subidas.Where(l => l.Lectura == LecturaDeLey.Lista).ToList();
+        var otras = subidas.Where(l => l.Lectura != LecturaDeLey.Lista)
+            .Select(l => new { nombre = l.Titulo ?? l.NombreDelArchivo, lectura = Lectura(l.Lectura) }).ToList();
+        if (listas.Count == 0)
+        {
+            return JsonSerializer.Serialize(new { encontrado = false, aviso = "Ninguna de sus leyes está lista todavía.", otras }, Json);
+        }
+
+        string json;
+        try
+        {
+            json = await _motor.BuscarEnLeyesDelClienteAsync([.. listas.Select(l => l.Sha256)], Corto(texto, 600));
+        }
+        catch (MotorFiscalNoDisponibleException ex) when (ex.Data["Codigo"] is 404)
+        {
+            return JsonSerializer.Serialize(new { encontrado = false, aviso = "Sus leyes se están volviendo a leer; intenta en unos minutos.", otras }, Json);
+        }
+        catch (MotorFiscalNoDisponibleException)
+        {
+            return "No pude abrir sus leyes ahora; intenta en unos minutos.";
+        }
+
+        var porHuella = listas.GroupBy(l => l.Sha256).ToDictionary(g => g.Key, g => g.First());
+        var nodo = JsonNode.Parse(json)?.AsObject();
+        var articulos = nodo?["articulos"] as JsonArray ?? [];
+        return Corto(JsonSerializer.Serialize(new
+        {
+            encontrado = articulos.Count > 0,
+            revisadas = listas.Select(l => l.Titulo ?? l.NombreDelArchivo),
+            otras = otras.Count == 0 ? null : otras,
+            articulos = articulos.OfType<JsonObject>().Take(15).Select(a =>
+            {
+                var ley = porHuella.GetValueOrDefault(a["documento"]?.GetValue<string>() ?? "");
+                return new
+                {
+                    ley = ley?.Titulo ?? a["ley"]?.GetValue<string>() ?? ley?.NombreDelArchivo,
+                    lugar = ley?.Municipio ?? ley?.Estado,
+                    articulo = a["etiqueta"]?.GetValue<string>(),
+                    pagina = a["pagina"]?.GetValue<int>() is > 0 and var p ? p : (int?)null,
+                    texto = Corto(a["texto"]?.GetValue<string>() ?? "", 2_500),
+                };
+            }),
+        }, Json), 14_000);
     }
 
     // ---------------------------------------------------------------- encuadre de la pregunta

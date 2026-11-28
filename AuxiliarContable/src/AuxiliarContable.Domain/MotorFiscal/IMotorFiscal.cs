@@ -245,6 +245,11 @@ public interface IMotorFiscal
     Task<string> PreguntarLeyesAsync(IReadOnlyList<string> documentos, string pregunta, IReadOnlyDictionary<string, object?> perfil,
         CancellationToken cancellationToken = default);
 
+    /// <summary>Los artículos de las leyes del cliente que tratan el tema, con su texto, sin Claude (motor:
+    /// <c>/leyes-propias/buscar</c>): JSON con encontrado y articulos [{documento, id, etiqueta, pagina, texto, ley}]. 404 en
+    /// <c>Data["Codigo"]</c> si alguna todavía no termina de leerse.</summary>
+    Task<string> BuscarEnLeyesDelClienteAsync(IReadOnlyList<string> documentos, string texto, CancellationToken cancellationToken = default);
+
     /// <summary>
     /// Qué leyes estatales le tocan al cliente por su domicilio y su actividad (motor: <c>/leyes-estatales/del-cliente</c>,
     /// catálogo + ficha del estado, sin Claude): JSON con «aplican» (por qué, qué pide, si ya la tenemos), «no_aplican»,
@@ -512,6 +517,9 @@ public class MotorFiscalSinConfigurar : IMotorFiscal, ISingletonDependency
 
     public Task<string> PreguntarLeyesAsync(IReadOnlyList<string> documentos, string pregunta, IReadOnlyDictionary<string, object?> perfil,
         CancellationToken cancellationToken = default) =>
+        throw new MotorFiscalNoDisponibleException("No hay motor fiscal en este proceso.");
+
+    public Task<string> BuscarEnLeyesDelClienteAsync(IReadOnlyList<string> documentos, string texto, CancellationToken cancellationToken = default) =>
         throw new MotorFiscalNoDisponibleException("No hay motor fiscal en este proceso.");
     public Task<string> LeyesEstatalesDelClienteAsync(IReadOnlyDictionary<string, object?> perfil, string? estado,
         CancellationToken cancellationToken = default) =>

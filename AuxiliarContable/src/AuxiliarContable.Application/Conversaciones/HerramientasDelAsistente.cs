@@ -71,6 +71,7 @@ public class HerramientasDelAsistente : ITransientDependency
     public const string SolicitudesPendientes = "solicitudes_pendientes";
     public const string GenerarArchivo = "generar_archivo";
     public const string ImpuestosEstatales = "impuestos_estatales";
+    public const string BuscarEnMisLeyes = "buscar_en_mis_leyes";
 
     /// <summary>De la conciliación, el modelo recibe un resumen y hasta este número de pendientes por lista.</summary>
     private const int MaxPendientesPorLista = 15;
@@ -292,10 +293,17 @@ public class HerramientasDelAsistente : ITransientDependency
                 "si quieres el texto de la ley, consúltalo después con consultar_leyes.",
                 """{"type":"object","properties":{"operacionId":{"type":"string","format":"uuid"},"uuid":{"type":"string","maxLength":40}}}"""),
             new(LeyesQueLeAplican,
-                "Las leyes estatales y reglamentos municipales que le aplican al cliente activo por su domicilio y su actividad: por " +
-                "qué, qué le piden, si la tenemos, si no la encontramos en línea, si la rige la ley estatal, y qué otros reglamentos " +
-                "tratan el tema cuando no hay uno propio. «tema» filtra (licencia, protección civil, anuncios, predial…).",
-                """{"type":"object","properties":{"tema":{"type":"string","maxLength":60}}}"""),
+                "Las leyes estatales y reglamentos municipales que le aplican al cliente por su domicilio y su actividad: por qué, " +
+                "qué le piden, si la tenemos, si no la tenemos (no la encontramos en línea), si la rige la ley estatal, qué otros " +
+                "reglamentos tratan el tema cuando no hay uno propio y lo que ya subió a «Mis leyes». «tema» filtra (licencia, " +
+                "protección civil, anuncios, predial…). Si «faltaMunicipio» viene, NO sabes el municipio: pregúntalo con su estado y " +
+                "vuelve a llamarla con «estado» y «municipio» (los que dijo la persona sustituyen a los del domicilio).",
+                """{"type":"object","properties":{"tema":{"type":"string","maxLength":60},"estado":{"type":"string","minLength":2,"maxLength":60},"municipio":{"type":"string","minLength":2,"maxLength":80}}}"""),
+            new(BuscarEnMisLeyes,
+                "Busca en las leyes y reglamentos que el cliente subió a «Mis leyes» los artículos que tratan el tema y te da su " +
+                "texto para contestar con la cita (ley, artículo, página). Úsala cuando la pregunta es de un reglamento municipal o " +
+                "ley estatal que él te pasó, y después de que diga que ya lo subió. «texto»: lo que buscas, con palabras de la ley.",
+                """{"type":"object","properties":{"texto":{"type":"string","minLength":3,"maxLength":300}},"required":["texto"]}"""),
             new(AnalizarOperacion,
                 "Arma lo que hay que revisar de una operación que el cliente PIENSA hacer o ya hizo («voy a comprar una camioneta», " +
                 "«me van a pagar desde Estados Unidos», «quiero rentar un local»): con su perfil fiscal, el índice de leyes saca el " +
@@ -410,6 +418,7 @@ public class HerramientasDelAsistente : ITransientDependency
             PolizasDelMes => "Consultó las pólizas",
             ImpuestosDelMes => "Consultó los impuestos",
             LeyesQueLeAplican => "Revisó las leyes que te aplican",
+            BuscarEnMisLeyes => "Revisó las leyes que subiste",
             EncuadrarPregunta => "Encuadró la pregunta con tu perfil",
             BuscarClaveSat => "Buscó la clave SAT",
             RevisarClaves => "Revisó las claves de la factura",
@@ -488,7 +497,8 @@ public class HerramientasDelAsistente : ITransientDependency
 
     /// <summary>Las que solo consultan al motor (sin base ni cliente): sirven en las dos conversaciones y pueden correr a la vez.</summary>
     /// <summary>Las de claves SAT: en la cartera van sin la constancia de un cliente.</summary>
-    public static bool EnAmbas(string nombre) => nombre is BuscarClaveSat or RevisarClaves;
+    /// <remarks>Las leyes de un lugar también: sin cliente, con el estado y el municipio que dijeron.</remarks>
+    public static bool EnAmbas(string nombre) => nombre is BuscarClaveSat or RevisarClaves or LeyesQueLeAplican;
 
     /// <remarks>Armar un archivo tampoco toca la base ni a un cliente: va con ellas.</remarks>
     public static bool SoloConsultaAlMotor(string nombre) => nombre is ConsultarLeyes or ConsultarSentencias or TarifaIsr or LeerLey or GenerarArchivo or ImpuestosEstatales;
@@ -621,7 +631,9 @@ public class HerramientasDelAsistente : ITransientDependency
                 ImpuestosDelMes => await _consultas.ImpuestosDelMesAsync(organizacionId,
                     Entero(uso.Entrada, "anio") ?? throw new UserFriendlyException("Falta «anio»."),
                     Entero(uso.Entrada, "mes") ?? throw new UserFriendlyException("Falta «mes».")),
-                LeyesQueLeAplican => await _consultas.LeyesQueLeAplicanAsync(organizacionId, Opcional(uso.Entrada, "tema")),
+                LeyesQueLeAplican => await _consultas.LeyesQueLeAplicanAsync(organizacionId, Opcional(uso.Entrada, "tema"),
+                    Opcional(uso.Entrada, "estado"), Opcional(uso.Entrada, "municipio")),
+                BuscarEnMisLeyes => await _consultas.BuscarEnMisLeyesAsync(organizacionId, Texto(uso.Entrada, "texto")),
                 Solicitar => SolicitudesJson([await _solicitudes.CrearAsync(organizacionId, new CrearSolicitudDto
                 {
                     Tipo = Texto(uso.Entrada, "tipo") switch

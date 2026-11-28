@@ -201,14 +201,13 @@ public class LeyesDelClienteAppService : AuxiliarContableAppService, ILeyesDelCl
         return Dto(p);
     }
 
-    public async Task<LeyesQueTeAplicanDto> GetQueTeAplicanAsync(Guid organizacionId)
+    public async Task<LeyesQueTeAplicanDto> GetQueTeAplicanAsync(Guid organizacionId, string? estado = null, string? municipio = null)
     {
         await _autorizador.ExigirAsync(organizacionId, AccionEnOrganizacion.Ver);
         Dictionary<string, object?> perfil;
-        string? estado;
         try
         {
-            (perfil, estado) = await _procesador.PerfilParaElMotorAsync(organizacionId, null, null);
+            (perfil, estado) = await _procesador.PerfilParaElMotorAsync(organizacionId, ClaveDeEstado(estado), Limpio(municipio));
         }
         catch (UserFriendlyException ex)
         {
@@ -317,6 +316,17 @@ public class LeyesDelClienteAppService : AuxiliarContableAppService, ILeyesDelCl
     }
 
     /// <summary>La respuesta del motor (<c>/leyes-estatales/del-cliente</c>) a DTO; <paramref name="mias"/>: «EDO/ley» -> id en Mis leyes.</summary>
+    /// <summary>«Morelos», «Ciudad de México», «MOR» -> la clave del estado (MOR, CDMX…); null si no se reconoce.</summary>
+    public static string? ClaveDeEstado(string? estado) =>
+        string.IsNullOrWhiteSpace(estado) ? null : IsnPorEstado.Buscar(estado.Trim())?.Clave;
+
+    /// <summary>El nombre del municipio que dijo la persona, sin espacios de más y con tope; null si viene vacío.</summary>
+    public static string? Limpio(string? municipio)
+    {
+        var t = System.Text.RegularExpressions.Regex.Replace(municipio ?? "", @"\s+", " ").Trim();
+        return t.Length < 2 ? null : t.Length > 80 ? t[..80] : t;
+    }
+
     /// <summary>«lo_tratan» del motor: [{nombre, donde, id}].</summary>
     public static List<ReglamentoQueLoTrataDto> LoTratan(JsonElement e) =>
         e.ValueKind == JsonValueKind.Object && e.TryGetProperty("lo_tratan", out var v) && v.ValueKind == JsonValueKind.Array

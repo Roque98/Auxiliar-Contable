@@ -31,8 +31,9 @@ public interface ILeyesDelClienteAppService : IApplicationService
     Task<PreguntaSobreLeyesDto> PreguntarAsync(Guid organizacionId, PreguntarSobreLeyesDto input);
 
     /// <summary>Qué leyes estatales le tocan por su domicilio y su actividad (catálogo del motor, sin Claude), por qué, qué le
-    /// piden y cuáles ya tenemos para usarlas sin subirlas.</summary>
-    Task<LeyesQueTeAplicanDto> GetQueTeAplicanAsync(Guid organizacionId);
+    /// piden y cuáles ya tenemos para usarlas sin subirlas. <paramref name="estado"/> y <paramref name="municipio"/> (nombre)
+    /// sustituyen a los del domicilio fiscal: los usa el asistente cuando la persona le dice dónde está.</summary>
+    Task<LeyesQueTeAplicanDto> GetQueTeAplicanAsync(Guid organizacionId, string? estado = null, string? municipio = null);
 
     /// <summary>Usa una ley que ya tenemos del estado del cliente (sin subir el PDF): entra a «Mis leyes» y se analiza igual.
     /// <paramref name="ley"/> es la clave del catálogo (salud, proteccion_civil…).</summary>
