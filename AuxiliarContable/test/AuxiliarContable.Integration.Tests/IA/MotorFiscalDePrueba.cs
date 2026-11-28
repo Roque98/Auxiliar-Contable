@@ -83,6 +83,7 @@ public class MotorFiscalDePrueba : IMotorFiscal
         AnalisisDeLeyes = AnalisisDeLeyesPorDefecto;
         PreguntasDeLeyes.Clear();
         CatalogosPedidos.Clear();
+        BusquedasEnLeyes.Clear();
         DomiciliosPedidos.Clear();
         Analisis.Clear();
         Analizados.Clear();
@@ -753,6 +754,21 @@ public class MotorFiscalDePrueba : IMotorFiscal
         PreguntasDeLeyes.Add(pregunta);
         return Task.FromResult("{\"encontrado\":true,\"respuesta\":\"Hasta el día 12.\",\"falta\":\"\",\"citas\":[{\"documento\":\""
                                + documentos[0] + "\",\"articulo\":\"4\",\"etiqueta\":\"Artículo 4\",\"pagina\":2,\"cita\":\"a más tardar el día 12\"}]}");
+    }
+
+    /// <summary>Lo que se buscó en las leyes del cliente.</summary>
+    public List<(IReadOnlyList<string> Documentos, string Texto)> BusquedasEnLeyes { get; } = [];
+
+    public Task<string> BuscarEnLeyesDelClienteAsync(IReadOnlyList<string> documentos, string texto, CancellationToken cancellationToken = default)
+    {
+        if (Caido)
+        {
+            throw new MotorFiscalNoDisponibleException("El motor fiscal no responde.");
+        }
+
+        BusquedasEnLeyes.Add((documentos, texto));
+        return Task.FromResult("{\"encontrado\":true,\"articulos\":[{\"documento\":\"" + documentos[0] + "\",\"id\":\"12\",\"etiqueta\":\"Artículo 12\"," +
+                               "\"pagina\":3,\"ley\":\"Reglamento de Anuncios de Prueba\",\"texto\":\"Artículo 12. Los anuncios adosados requieren licencia anual.\"}]}");
     }
 
     /// <summary>Los perfiles con que se pidió el catálogo estatal.</summary>

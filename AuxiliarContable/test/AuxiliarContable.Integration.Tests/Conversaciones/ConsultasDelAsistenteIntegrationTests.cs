@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using AuxiliarContable.Contabilidad;
 using AuxiliarContable.Conversaciones;
 using AuxiliarContable.IA;
+using AuxiliarContable.LeyesDelCliente;
 using AuxiliarContable.MotorFiscal;
 using AuxiliarContable.Normativa;
 using AuxiliarContable.Organizaciones;
@@ -358,6 +359,92 @@ public class ConsultasDelAsistenteIntegrationTests : ConJerarquiaTestBase
         Resultado().Contenido.ShouldContain("calculada en días");
         _motor.LeyesLeidasSeguidas.ShouldHaveSingleItem().ShouldBe(("RMF-A8", 3));
         conversacion.Mensajes.Last().Acciones.ShouldBe(["Leyó la ley"]);
+    }
+
+    [Fact]
+    public async Task Sin_domicilio_no_adivina_el_municipio_y_con_el_que_le_dicen_busca_lo_de_ese_lugar()
+    {
+        // Sin domicilio fiscal: la herramienta le dice al modelo que pregunte municipio y estado.
+        _modelo.UsarHerramienta(HerramientasDelAsistente.LeyesQueLeAplican, new { tema = "anuncios" });
+        _modelo.Contestar("Para contestarte necesito saber en qué municipio y estado está tu negocio.");
+        await ComoAsync(Usuario, () => _asistente.EnviarAsync(_cliente, Mensaje("¿Necesito permiso para poner un anuncio?")));
+        var sin = Resultado();
+        sin.EsError.ShouldBeFalse();
+        sin.Contenido.ShouldContain(ConsultasDelAsistente.FaltaMunicipio);
+        _motor.CatalogosPedidos.ShouldBeEmpty();
+
+        // Le dice dónde está: al motor van ese estado y ese municipio, nada de su nombre.
+        _modelo.Reiniciar();
+        _modelo.UsarHerramienta(HerramientasDelAsistente.LeyesQueLeAplican, new { tema = "protección civil", estado = "Jalisco", municipio = "  Guadalajara " });
+        _modelo.Contestar("En Guadalajara te piden el visto bueno de protección civil.");
+        await ComoAsync(Usuario, () => _asistente.EnviarAsync(_cliente, Mensaje("Guadalajara, Jalisco")));
+        var con = Resultado();
+        con.EsError.ShouldBeFalse();
+        con.Contenido.ShouldContain("Reglamento de Protección Civil de Guadalajara");
+        con.Contenido.ShouldNotContain("faltaMunicipio");
+        var (perfil, estado) = _motor.CatalogosPedidos.ShouldHaveSingleItem();
+        estado.ShouldBe("JAL");
+        perfil["municipio"].ShouldBe("Guadalajara");
+        perfil.Values.OfType<string>().ShouldNotContain(v => v.Contains("Lupita"));
+
+        // Un estado que no existe no se manda al motor.
+        _modelo.Reiniciar();
+        _modelo.UsarHerramienta(HerramientasDelAsistente.LeyesQueLeAplican, new { estado = "Narnia", municipio = "Centro" });
+        _modelo.Contestar("¿De qué estado?");
+        await ComoAsync(Usuario, () => _asistente.EnviarAsync(_cliente, Mensaje("Narnia")));
+        var mal = Resultado();
+        mal.EsError.ShouldBeTrue();
+        mal.Contenido.ShouldContain("No reconozco el estado");
+    }
+
+    [Fact]
+    public async Task En_la_cartera_sin_cliente_busca_las_leyes_del_lugar_que_le_dicen()
+    {
+        _modelo.UsarHerramienta(HerramientasDelAsistente.LeyesQueLeAplican, new { estado = "Jalisco", municipio = "Guadalajara" });
+        _modelo.Contestar("En Guadalajara lo rige el Reglamento de Protección Civil.");
+
+        var conversacion = await ComoAsync(Administrador, () =>
+            _asistente.EnviarAsync(Guid.Empty, Mensaje("¿Qué pide protección civil en Guadalajara, Jalisco?")));
+
+        var r = Resultado();
+        r.EsError.ShouldBeFalse();
+        r.Contenido.ShouldContain("Reglamento de Protección Civil de Guadalajara");
+        var (perfil, estado) = _motor.CatalogosPedidos.ShouldHaveSingleItem();
+        estado.ShouldBe("JAL");
+        perfil.Keys.OrderBy(k => k).ShouldBe(["estado", "municipio"]);
+        conversacion.Mensajes.Last().Acciones.ShouldBe(["Revisó las leyes que te aplican"]);
+    }
+
+    [Fact]
+    public async Task Lee_el_reglamento_que_subio_el_cliente_y_no_el_de_otro()
+    {
+        var sha = new string('a', 64);
+        await WithUnitOfWorkAsync(async () =>
+        {
+            var leyes = GetRequiredService<IRepository<LeyDelCliente, Guid>>();
+            var suya = new LeyDelCliente(Guid.NewGuid(), _cliente, Guid.NewGuid(), sha, "anuncios.pdf", AmbitoDeLey.Municipal, "JAL",
+                "Guadalajara", "anuncios", DateTime.UtcNow);
+            suya.Leida(10, 0, 40, "Reglamento de Anuncios de Prueba", DateTime.UtcNow);
+            await leyes.InsertAsync(suya);
+            var ajena = new LeyDelCliente(Guid.NewGuid(), _otroCliente, Guid.NewGuid(), new string('b', 64), "otra.pdf", AmbitoDeLey.Municipal,
+                "JAL", "Zapopan", "anuncios", DateTime.UtcNow);
+            ajena.Leida(5, 0, 20, "Reglamento ajeno", DateTime.UtcNow);
+            await leyes.InsertAsync(ajena);
+        });
+
+        _modelo.UsarHerramienta(HerramientasDelAsistente.BuscarEnMisLeyes, new { texto = "licencia de anuncios adosados" });
+        _modelo.Contestar("Sí: el artículo 12 pide licencia anual.");
+        var conversacion = await ComoAsync(Usuario, () => _asistente.EnviarAsync(_cliente, Mensaje("Ya lo subí, ¿necesito licencia?")));
+
+        var r = Resultado();
+        r.EsError.ShouldBeFalse();
+        r.Contenido.ShouldContain("licencia anual");
+        r.Contenido.ShouldContain("Guadalajara");
+        r.Contenido.ShouldNotContain("Reglamento ajeno");
+        var (documentos, texto) = _motor.BusquedasEnLeyes.ShouldHaveSingleItem();
+        documentos.ShouldBe([sha]);
+        texto.ShouldBe("licencia de anuncios adosados");
+        conversacion.Mensajes.Last().Acciones.ShouldBe(["Revisó las leyes que subiste"]);
     }
 
     [Theory]

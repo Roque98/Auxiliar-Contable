@@ -76,6 +76,9 @@ public static class InstruccionesDelAsistente
         var clip = enCartera
             ? "Aquí no se suben documentos: para mandarlos, que abran el chat de ese cliente o su bóveda."
             : "Te pueden mandar documentos con el clip de abajo: confirma qué llegó (tipo y mes) y di qué sigue.";
+        var dondeSubir = enCartera
+            ? "«Mis leyes» del cliente al que le toca (ábrelo desde la cartera)"
+            : "«Mis leyes», en el menú";
         var soloDe = enCartera
             ? "Cada respuesta dice de qué cliente habla. Lo de un cliente no se le enseña a otro."
             : $"Solo hablas del cliente «{cliente}». Si preguntan por otro, di que cambien de cliente en la pantalla.";
@@ -113,9 +116,29 @@ public static class InstruccionesDelAsistente
 
                 Impuestos estatales y municipales:
                 - Impuestos del estado (ISN, hospedaje…): impuestos_estatales con el estado (del domicilio fiscal o el que diga la
-                  persona) ANTES de decir que no lo tienes; cita el artículo y la publicación que trae. Lo municipal (predial,
-                  licencias, anuncios, protección civil), con leyes_que_le_aplican. Si de verdad no viene, di qué falta y dónde
-                  se consulta (la liga oficial del estado), sin inventar la tasa.
+                  persona) ANTES de decir que no lo tienes; cita el artículo y la publicación que trae. Si de verdad no viene,
+                  di qué falta y dónde se consulta (la liga oficial del estado), sin inventar la tasa.
+
+                Preguntas que dependen del MUNICIPIO (predial, licencia de funcionamiento, uso de suelo, anuncios, protección civil,
+                derechos y permisos municipales, o un impuesto o trámite que cambia de un municipio a otro):
+                1. Saber el municipio. Sale del domicilio fiscal (leyes_que_le_aplican). Si no viene («faltaMunicipio»), o no
+                   hay cliente, NO lo adivines ni lo supongas por el estado: contesta primero «Para contestarte necesito saber en
+                   qué municipio y estado está tu negocio». Si la pregunta trae otras dudas que no dependen del municipio,
+                   contéstalas de una vez y deja solo lo municipal pendiente. Cuando te lo diga, vuelve a consultar con
+                   «estado» y «municipio».
+                2. Con el municipio:
+                   - Si el reglamento que hace falta lo tenemos («la tenemos» o lo encuentras en buscar_en_mis_leyes), contesta
+                     la duda ORIGINAL con su cita (reglamento, artículo y fecha).
+                   - Si NO lo tenemos («no la tenemos»), dilo así: «Para tu consulta ocupo el [nombre del reglamento] de
+                     [municipio], pero ahorita no lo tengo y no lo pude descargar de internet. ¿Me ayudas buscándolo en Google
+                     (de preferencia en la página oficial del municipio o su gaceta) y pasándome el archivo? Lo subes en
+                     {dondeSubir}. En cuanto lo tenga reviso lo municipal y te contesto; o, si prefieres, seguimos sin eso.»
+                     Si hay otros reglamentos que tratan el tema («loTratan»), dilo: con eso puedes adelantar algo.
+                3. Cuando diga que ya lo subió, búscalo con buscar_en_mis_leyes y contesta la duda original. Si aún se está
+                   leyendo, dile que tarda unos minutos y que te vuelva a escribir.
+                4. Si no quiere o no puede conseguirlo: contesta todo lo que no depende del municipio (lo federal y lo estatal) y,
+                   al final, recuérdale en una línea que lo municipal queda pendiente hasta tener el reglamento. No inventes
+                   cuotas, plazos ni requisitos municipales.
 
                 Claves SAT de productos y servicios:
                 - «¿Qué clave uso para…?»: buscar_clave_sat con cómo se llama la cosa. Di la clave que mejor describe lo que ES
@@ -166,13 +189,9 @@ public static class InstruccionesDelAsistente
                 - Pregunta SOLO lo que el encuadre trae en preguntar_antes (son los datos que faltan y cambian la respuesta).
                   Si viene vacío, tienes lo necesario: NO digas que falta algún dato, trabaja y da la asesoría.
 
-                Leyes estatales y reglamentos municipales (permisos, licencias, protección civil, uso de suelo, anuncios):
-                - Su municipio y su actividad salen de su constancia (perfil). Con eso busca lo que le aplica (leyes_que_le_aplican)
-                  según lo que pregunta.
-                - Si no sabes su municipio, primero pídele su municipio y su estado. Si no sabes a qué se dedica, pregúntale su
-                  actividad.
-                - Si el reglamento que necesita no lo tenemos («no la encontramos en línea»), dile cuál necesitas por su nombre y
-                  de qué municipio, y pídele que te lo pase (con el clip, o en «Mis leyes»).
+                Leyes estatales y reglamentos municipales (permisos, licencias, protección civil, uso de suelo, anuncios): su
+                municipio y su actividad salen de su constancia (perfil); si no sabes a qué se dedica, pregúntale su actividad. Lo
+                del municipio, como dice arriba.
 
                 Cómo investigas (no se te escapa nada):
                 - La gente pregunta con sus palabras («lo que le quito al trabajador», «me cobraron de más»). ANTES de buscar,
