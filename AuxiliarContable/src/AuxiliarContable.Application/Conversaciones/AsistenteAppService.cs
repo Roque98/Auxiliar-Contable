@@ -98,14 +98,32 @@ public class AsistenteAppService : AuxiliarContableAppService, IAsistenteAppServ
         // sigue hasta el final y se guarda: al volver, la respuesta ya está en la conversación. Por eso
         // corre sin el token de la petición y en su propia unidad de trabajo, que no se deshace aunque
         // la de la petición se cancele.
-        using (LazyServiceProvider.LazyGetRequiredService<ICancellationTokenProvider>().Use(CancellationToken.None))
-        using (var unidad = UnitOfWorkManager.Begin(requiresNew: true))
+        // Un turno a la vez por persona y conversación: si la pantalla se cansa de esperar y lo vuelve a
+        // mandar, el segundo chocaría con el primero al numerar los mensajes.
+        var enCurso = (CurrentUser.GetId(), organizacionId);
+        if (!TurnosEnCurso.TryAdd(enCurso, 0))
         {
-            var dto = await TurnoAsync(organizacionId, texto);
-            await unidad.CompleteAsync(CancellationToken.None);
-            return dto;
+            throw new UserFriendlyException("Todavía estoy contestando tu mensaje anterior. En cuanto termine aparece aquí.");
+        }
+
+        try
+        {
+            using (LazyServiceProvider.LazyGetRequiredService<ICancellationTokenProvider>().Use(CancellationToken.None))
+            using (var unidad = UnitOfWorkManager.Begin(requiresNew: true))
+            {
+                var dto = await TurnoAsync(organizacionId, texto);
+                await unidad.CompleteAsync(CancellationToken.None);
+                return dto;
+            }
+        }
+        finally
+        {
+            TurnosEnCurso.TryRemove(enCurso, out _);
         }
     }
+
+    /// <summary>Los turnos que se están contestando (el API corre en un solo proceso).</summary>
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<(Guid Usuario, Guid Organizacion), byte> TurnosEnCurso = new();
 
     private async Task<ConversacionDto> TurnoAsync(Guid organizacionId, string texto)
     {
