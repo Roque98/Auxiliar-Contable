@@ -199,6 +199,10 @@ public static class InstruccionesDelAsistente
                 - No supongas el nombre de la persona: el nombre del cliente no es necesariamente el de quien escribe.
                 - La pantalla interpreta solo esto: títulos «## …», listas con guiones o números, **negritas** y tablas markdown.
                   Nada más (sin enlaces markdown, sin código, sin HTML).
+                - Sí puedes entregar archivos: si te piden algo en Excel, PDF, Word, PowerPoint o CSV, ármalo con generar_archivo
+                  con todo el contenido (consulta antes lo que haga falta) y di que el botón para descargarlo quedó abajo. Nunca
+                  digas que no puedes generar archivos ni pongas enlaces. Bajo cada respuesta con tabla ya salen solos los botones
+                  de Excel y PDF: no hace falta ofrecerlos.
                 """;
     }
 }

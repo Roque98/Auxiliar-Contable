@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Threading.Tasks;
 using Volo.Abp.Application.Services;
+using Volo.Abp.Content;
 
 namespace AuxiliarContable.Conversaciones;
 
@@ -21,6 +22,22 @@ public interface IAsistenteAppService : IApplicationService
 
     /// <summary>Cierra la conversación abierta; la siguiente empieza de cero (el perfil se queda).</summary>
     Task<ConversacionDto> EmpezarDeNuevoAsync(Guid organizacionId);
+
+    /// <summary>
+    /// Un archivo de la conversación de quien llama: el que armó el asistente (<paramref name="uso"/>) o una respuesta
+    /// suya en <paramref name="formato"/> (excel, pdf, word, powerpoint, csv). Se arma al pedirlo; de otra persona, 404.
+    /// </summary>
+    Task<IRemoteStreamContent> GetArchivoAsync(Guid mensajeId, string? uso, string? formato);
+}
+
+public class ArchivoDelAsistenteDto
+{
+    /// <summary>El mensaje que guarda lo que pidió armar el asistente.</summary>
+    public Guid MensajeId { get; set; }
+
+    public string Uso { get; set; } = string.Empty;
+
+    public string Nombre { get; set; } = string.Empty;
 }
 
 public class EnviarMensajeDto
@@ -60,4 +77,10 @@ public class MensajeDto
 
     /// <summary>Qué hizo el asistente en este turno («Guardó: Giro»), para que se vea sin leer la respuesta.</summary>
     public List<string> Acciones { get; set; } = [];
+
+    /// <summary>Los archivos que armó en este turno, para descargarlos.</summary>
+    public List<ArchivoDelAsistenteDto> Archivos { get; set; } = [];
+
+    /// <summary>¿Trae una tabla? Entonces la pantalla ofrece bajarla en Excel o PDF.</summary>
+    public bool TieneTabla { get; set; }
 }

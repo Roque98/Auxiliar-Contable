@@ -20,7 +20,7 @@ import { mensajeDeError } from '../invitaciones/invitaciones.service';
 import { ClienteVisibleDto, PerfilFiscalService } from '../perfil-fiscal/perfil-fiscal.service';
 import { Bloque, bloquesDeRespuesta } from './formato';
 import { TIPOS_PARA_ADJUNTAR, TipoParaAdjuntar, tipoProbable } from './adjuntos';
-import { AsistenteService, CARTERA, ConversacionDto, MAX_TEXTO, MensajeDto, RolDelMensaje } from './asistente.service';
+import { ArchivoDelAsistenteDto, AsistenteService, CARTERA, ConversacionDto, MAX_TEXTO, MensajeDto, RolDelMensaje } from './asistente.service';
 
 /** Una idea para empezar: el texto que se manda y el icono de la tarjeta. */
 interface Sugerencia {
@@ -272,6 +272,39 @@ export class AsistenteComponent implements OnInit {
           return;
         }
         this.alFallar(e, texto);
+      },
+    });
+  }
+
+  /** Lo que se está bajando (el id del archivo o «mensaje:formato»), para no pedirlo dos veces. */
+  readonly bajando = signal<string | null>(null);
+
+  bajarArchivo(a: ArchivoDelAsistenteDto): void {
+    this.bajar_(a.uso, a.mensajeId, a.uso, null, a.nombre);
+  }
+
+  bajarRespuesta(m: MensajeDto, formato: 'excel' | 'pdf'): void {
+    this.bajar_(`${m.id}:${formato}`, m.id, null, formato, `Respuesta del asistente.${formato === 'excel' ? 'xlsx' : 'pdf'}`);
+  }
+
+  private bajar_(clave: string, mensajeId: string, uso: string | null, formato: string | null, nombre: string): void {
+    if (this.bajando()) {
+      return;
+    }
+    this.bajando.set(clave);
+    this.api.descargar(mensajeId, uso, formato).subscribe({
+      next: blob => {
+        this.bajando.set(null);
+        const url = URL.createObjectURL(blob);
+        const enlace = document.createElement('a');
+        enlace.href = url;
+        enlace.download = nombre;
+        enlace.click();
+        setTimeout(() => URL.revokeObjectURL(url), 10_000);
+      },
+      error: e => {
+        this.bajando.set(null);
+        this.error.set(mensajeDeError(e, 'No se pudo descargar el archivo.'));
       },
     });
   }

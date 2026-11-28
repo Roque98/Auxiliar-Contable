@@ -224,6 +224,25 @@
                   }
                 </ul>
               }
+              @if (m.archivos?.length || m.tieneTabla) {
+                <div class="as-archivos">
+                  @for (a of m.archivos ?? []; track a.uso) {
+                    <button type="button" class="as-archivo" (click)="bajarArchivo(a)" [disabled]="bajando() === a.uso">
+                      <i class="bi bi-download" aria-hidden="true"></i>{{ a.nombre }}
+                    </button>
+                  }
+                  @if (m.tieneTabla) {
+                    <button type="button" class="as-archivo" (click)="bajarRespuesta(m, 'excel')" [disabled]="bajando() === m.id + ':excel'"
+                            aria-label="Bajar esta respuesta en Excel">
+                      <i class="bi bi-file-earmark-spreadsheet" aria-hidden="true"></i>Excel
+                    </button>
+                    <button type="button" class="as-archivo" (click)="bajarRespuesta(m, 'pdf')" [disabled]="bajando() === m.id + ':pdf'"
+                            aria-label="Bajar esta respuesta en PDF">
+                      <i class="bi bi-file-earmark-pdf" aria-hidden="true"></i>PDF
+                    </button>
+                  }
+                </div>
+              }
               <div class="as-pie">
                 <button type="button" class="as-pie-boton" (click)="copiar(m.texto)" aria-label="Copiar respuesta" title="Copiar">
                   <i class="bi bi-clipboard" aria-hidden="true"></i>

@@ -597,6 +597,35 @@
   }
 }
 
+.as-archivos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ig-esp-1);
+  margin-top: var(--ig-esp-2);
+}
+
+.as-archivo {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  max-width: 100%;
+  padding: 6px 12px;
+  border: var(--ig-borde);
+  border-radius: 999px;
+  background: var(--ig-blanco);
+  color: var(--ig-acento);
+  font: inherit;
+  font-size: var(--ig-texto-sm);
+  overflow-wrap: anywhere;
+  cursor: pointer;
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: progress;
+  }
+}
+
 .as-hora {
   display: block;
   margin-top: var(--ig-esp-1);

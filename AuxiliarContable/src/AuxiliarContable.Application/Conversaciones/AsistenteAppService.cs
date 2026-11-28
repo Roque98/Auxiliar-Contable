@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.Authorization;
 using Volo.Abp.Identity;
 using Microsoft.Extensions.Logging;
 using Volo.Abp;
+using Volo.Abp.Content;
 using Volo.Abp.Domain.Repositories;
 using Volo.Abp.Domain.Entities;
 using Volo.Abp.Settings;
@@ -225,6 +226,42 @@ public class AsistenteAppService : AuxiliarContableAppService, IAsistenteAppServ
         return await DescribirAsync(organizacionId, conversacion);
     }
 
+    public async Task<IRemoteStreamContent> GetArchivoAsync(Guid mensajeId, string? uso, string? formato)
+    {
+        // Solo de las conversaciones de quien llama; lo ajeno no existe.
+        var mensaje = await _mensajes.FindAsync(mensajeId);
+        var conversacion = mensaje is null ? null : await _conversaciones.FindAsync(mensaje.ConversacionId);
+        if (mensaje is null || conversacion is null || conversacion.UsuarioId != CurrentUser.GetId() || mensaje.Rol != RolDelMensaje.Asistente)
+        {
+            throw new EntityNotFoundException(typeof(MensajeDeConversacion), mensajeId);
+        }
+
+        await ExigirVerAsync(conversacion.OrganizacionId);
+
+        Exportaciones.ArchivoGenerado archivo;
+        if (!string.IsNullOrWhiteSpace(uso))
+        {
+            var pedido = mensaje.ATurno().Bloques.OfType<BloqueDeUsoDeHerramienta>()
+                             .FirstOrDefault(b => b.Id == uso && b.Nombre == HerramientasDelAsistente.GenerarArchivo)
+                         ?? throw new EntityNotFoundException(typeof(MensajeDeConversacion), mensajeId);
+            var (f, nombre, contenido) = HerramientasDelAsistente.ArchivoPedido(pedido.Entrada);
+            archivo = Exportaciones.ArchivoDesdeTexto.Generar(f, nombre, contenido);
+        }
+        else
+        {
+            var f = Exportaciones.ArchivoDesdeTexto.Formato(formato)
+                    ?? throw new UserFriendlyException("Formato: excel, pdf, word, powerpoint o csv.");
+            if (string.IsNullOrWhiteSpace(mensaje.Texto))
+            {
+                throw new EntityNotFoundException(typeof(MensajeDeConversacion), mensajeId);
+            }
+
+            archivo = Exportaciones.ArchivoDesdeTexto.Generar(f, null, mensaje.Texto);
+        }
+
+        return new RemoteStreamContent(new System.IO.MemoryStream(archivo.Contenido), archivo.Nombre, archivo.TipoMime);
+    }
+
     /// <summary>
     /// La conversación como turnos para el modelo. El turno en curso va completo (sus búsquedas y resultados);
     /// los anteriores, solo lo que se dijo: la pregunta y la respuesta que vio la persona. Sin sus búsquedas ni
@@ -340,10 +377,29 @@ public class AsistenteAppService : AuxiliarContableAppService, IAsistenteAppServ
         // Lo que hizo el asistente, por id del uso. Un uso cuyo resultado fue error NO se enseña:
         // «Dio de alta al cliente» con un nombre repetido sería mentira.
         var acciones = new List<(string Id, string Texto)>();
+        var archivos = new List<ArchivoDelAsistenteDto>();
         foreach (var m in mensajes)
         {
             if (m.Rol == RolDelMensaje.Asistente)
             {
+                foreach (var u in m.ATurno().Bloques.OfType<BloqueDeUsoDeHerramienta>().Where(u => u.Nombre == HerramientasDelAsistente.GenerarArchivo))
+                {
+                    try
+                    {
+                        var (formato, nombre, contenido) = HerramientasDelAsistente.ArchivoPedido(u.Entrada);
+                        archivos.Add(new ArchivoDelAsistenteDto
+                        {
+                            MensajeId = m.Id,
+                            Uso = u.Id,
+                            Nombre = Exportaciones.ArchivoDesdeTexto.NombrePara(formato, nombre, contenido),
+                        });
+                    }
+                    catch (UserFriendlyException)
+                    {
+                        // Pedido mal formado: su resultado ya fue error y el modelo lo supo.
+                    }
+                }
+
                 acciones.AddRange(m.ATurno().Bloques.OfType<BloqueDeUsoDeHerramienta>()
                     .Select(u => (u.Id, Texto: HerramientasDelAsistente.Describir(u)))
                     .Where(a => a.Texto is not null)
@@ -353,6 +409,7 @@ public class AsistenteAppService : AuxiliarContableAppService, IAsistenteAppServ
             {
                 var fallidos = m.ATurno().Bloques.OfType<BloqueDeResultadoDeHerramienta>().Where(r => r.EsError).Select(r => r.IdDelUso).ToHashSet();
                 acciones.RemoveAll(a => fallidos.Contains(a.Id));
+                archivos.RemoveAll(a => fallidos.Contains(a.Uso));
             }
 
             if (m.Rol == RolDelMensaje.Herramientas || string.IsNullOrWhiteSpace(m.Texto))
@@ -367,10 +424,13 @@ public class AsistenteAppService : AuxiliarContableAppService, IAsistenteAppServ
                 Texto = m.Texto,
                 CreadoUtc = m.CreadoUtc,
                 Acciones = m.Rol == RolDelMensaje.Asistente ? acciones.Select(a => a.Texto).Distinct().ToList() : [],
+                Archivos = m.Rol == RolDelMensaje.Asistente ? archivos : [],
+                TieneTabla = m.Rol == RolDelMensaje.Asistente && Exportaciones.ArchivoDesdeTexto.TieneTabla(m.Texto),
             });
             if (m.Rol == RolDelMensaje.Asistente)
             {
                 acciones = [];
+                archivos = [];
             }
         }
 
