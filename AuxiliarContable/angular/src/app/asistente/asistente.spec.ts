@@ -19,6 +19,13 @@ describe('tipoProbable (qué es lo que adjuntaron al chat)', () => {
     expect(tipoProbable(archivo('BBVA 2026-10.pdf', 'application/pdf'))).toBe(TipoDeDocumento.EstadoDeCuenta);
   });
 
+  it('una ley o un reglamento se reconocen por su nombre, aunque digan «Estado»', () => {
+    expect(tipoProbable(archivo('Ley_de_Hacienda_del_Estado_de_Morelos.pdf', 'application/pdf'))).toBe(TipoDeDocumento.LeyLocal);
+    expect(tipoProbable(archivo('Reglamento de Anuncios Cuernavaca.pdf', 'application/pdf'))).toBe(TipoDeDocumento.LeyLocal);
+    expect(tipoProbable(archivo('bando-de-policia.pdf', 'application/pdf'))).toBe(TipoDeDocumento.LeyLocal);
+    expect(tipoProbable(archivo('Estado de cuenta Banorte.pdf', 'application/pdf'))).toBe(TipoDeDocumento.EstadoDeCuenta);
+  });
+
   it('una foto sin más pistas es ticket; un PDF sin pistas, estado de cuenta', () => {
     expect(tipoProbable(archivo('IMG_2041.jpg', 'image/jpeg'))).toBe(TipoDeDocumento.Ticket);
     expect(tipoProbable(archivo('documento.pdf', 'application/pdf'))).toBe(TipoDeDocumento.EstadoDeCuenta);

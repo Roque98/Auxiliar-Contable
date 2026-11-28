@@ -8,6 +8,7 @@ export const TIPOS_PARA_ADJUNTAR: { valor: TipoParaAdjuntar; nombre: string }[] 
   { valor: TipoDeDocumento.EstadoDeCuenta, nombre: 'Estado de cuenta' },
   { valor: 'csf', nombre: 'Constancia fiscal' },
   { valor: TipoDeDocumento.Ticket, nombre: 'Ticket' },
+  { valor: TipoDeDocumento.LeyLocal, nombre: 'Ley o reglamento (PDF)' },
   { valor: TipoDeDocumento.Otro, nombre: 'Otro' },
 ];
 
@@ -19,6 +20,10 @@ export function tipoProbable(archivo: File): TipoParaAdjuntar {
   }
   if (/constancia|csf|situaci[oó]n.?fiscal/.test(nombre)) {
     return 'csf';
+  }
+  // Antes que «estado»: «Ley de Hacienda del Estado…» es una ley, no un estado de cuenta.
+  if (!archivo.type.startsWith('image/') && /(^|[^a-z])(ley|leyes|reglamento|bando|gaceta|c[oó]digo)([^a-z]|$)|peri[oó]dico.?oficial/.test(nombre)) {
+    return TipoDeDocumento.LeyLocal;
   }
   if (/estado|edo|cuenta|banc|bbva|banorte|santander|hsbc|banamex|scotia/.test(nombre)) {
     return TipoDeDocumento.EstadoDeCuenta;

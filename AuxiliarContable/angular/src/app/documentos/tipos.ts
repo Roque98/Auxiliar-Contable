@@ -14,4 +14,6 @@ export enum TipoDeDocumento {
   CatalogoDeCuentas = 8,
   /** Balanza de comprobación con la que llega el cliente (XML del Anexo 24). */
   BalanzaDeComprobacion = 9,
+  /** Una ley estatal o un reglamento municipal (va a «Mis leyes»). */
+  LeyLocal = 10,
 }
